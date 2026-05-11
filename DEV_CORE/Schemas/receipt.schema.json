@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "handoff_id": { "type": "string" },
+    "engine": {
+      "type": "string",
+      "enum": ["claude", "codex", "gemini"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["completed", "low-value", "failed"]
+    },
+    "artifact_refs": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "memory_candidates": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "next_action": { "type": "string" }
+  },
+  "required": [
+    "handoff_id",
+    "engine",
+    "status",
+    "artifact_refs",
+    "memory_candidates",
+    "next_action"
+  ],
+  "additionalProperties": false
+}

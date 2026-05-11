@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(PYTHONPATH=Tools python *)",
+      "Bash(PYTHONPATH=Tools PYTHONIOENCODING=utf-8 python *)"
+    ]
+  }
+}

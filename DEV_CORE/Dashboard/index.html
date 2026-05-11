@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="refresh" content="30">
+<title>DEV_CORE v6 Dashboard</title>
+<style>
+body{font-family:system-ui;background:#0f1117;color:#e2e8f0;margin:0;padding:24px}
+h1{font-size:18px;color:#6366f1;margin:0 0 20px}
+h2{font-size:14px;color:#94a3b8;margin:24px 0 12px;text-transform:uppercase;letter-spacing:.05em}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px}
+.card{background:#1a1d27;border:1px solid #2d3148;border-radius:8px;padding:14px}
+.card-title{font-size:11px;color:#475569;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+.card-val{font-size:28px;font-weight:600;color:#f8fafc}
+.card-sub{font-size:12px;color:#64748b;margin-top:4px}
+.mission{padding:8px 12px;background:#1a1d27;border:1px solid #2d3148;border-radius:6px;margin-bottom:6px;display:flex;gap:10px;align-items:center}
+.badge{font-size:11px;padding:2px 8px;border-radius:4px;font-weight:500}
+.active{background:#312e81;color:#a5b4fc}
+.done{background:#14532d;color:#86efac}
+.todo{background:#1e293b;color:#64748b}
+.status-ok{color:#22c55e}
+.status-warn{color:#eab308}
+.status-error{color:#ef4444}
+.component{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#1a1d27;border:1px solid #2d3148;border-radius:6px;margin-bottom:6px}
+.component-name{font-size:13px;color:#e2e8f0}
+.component-detail{font-size:11px;color:#64748b}
+.progress-bar{height:6px;background:#1e293b;border-radius:3px;overflow:hidden;margin-top:8px}
+.progress-fill{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);transition:width 0.3s}
+</style>
+</head>
+<body>
+<h1>DEV_CORE v6 — Dashboard</h1>
+<div style="font-size:11px;color:#64748b;margin-bottom:20px">Dernière mise à jour: <span id="timestamp"></span></div>
+
+<div class="grid">
+  <div class="card">
+    <div class="card-title">Client actif</div>
+    <div class="card-val" style="font-size:20px">Claude Code</div>
+    <div class="card-sub">Mode: <span id="mode">—</span></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Tâche active</div>
+    <div class="card-val" style="font-size:20px">T-01</div>
+    <div class="card-sub"><span id="task-progress">0/3</span> steps</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Skills installés</div>
+    <div class="card-val">159</div>
+    <div class="card-sub">4 core actifs</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Score global</div>
+    <div class="card-val">93<span style="font-size:18px">%</span></div>
+    <div class="card-sub status-ok">Opérationnel</div>
+  </div>
+</div>
+
+<h2>Infrastructure</h2>
+<div class="component">
+  <div>
+    <div class="component-name">DEV_CORE Scripts</div>
+    <div class="component-detail">20 scripts PowerShell</div>
+  </div>
+  <div class="status-ok">✓</div>
+</div>
+<div class="component">
+  <div>
+    <div class="component-name">9Router</div>
+    <div class="component-detail">3 modes: reasoning / coding / bulk</div>
+  </div>
+  <div class="status-ok">✓</div>
+</div>
+<div class="component">
+  <div>
+    <div class="component-name">Session Context</div>
+    <div class="component-detail">Mission M-01 — Tag [M-01]</div>
+  </div>
+  <div class="status-ok">✓</div>
+</div>
+
+<h2>Qdrant Vector DB</h2>
+<div class="component">
+  <div>
+    <div class="component-name">Service</div>
+    <div class="component-detail">Port 6333 — localhost</div>
+  </div>
+  <div class="status-ok">✓</div>
+</div>
+<div class="component">
+  <div>
+    <div class="component-name">Collection: decisions</div>
+    <div class="component-detail">768d cosine — 0 vectors</div>
+  </div>
+  <div class="status-warn">⚠</div>
+</div>
+<div class="component">
+  <div>
+    <div class="component-name">Collection: patterns</div>
+    <div class="component-detail">768d cosine — 0 vectors</div>
+  </div>
+  <div class="status-warn">⚠</div>
+</div>
+<div class="component">
+  <div>
+    <div class="component-name">Collection: lessons</div>
+    <div class="component-detail">768d cosine — 0 vectors</div>
+  </div>
+  <div class="status-warn">⚠</div>
+</div>
+
+<h2>Ollama Embeddings</h2>
+<div class="component">
+  <div>
+    <div class="component-name">Service</div>
+    <div class="component-detail">v0.23.2 — localhost:11434</div>
+  </div>
+  <div class="status-ok">✓</div>
+</div>
+<div class="component">
+  <div>
+    <div class="component-name">nomic-embed-text</div>
+    <div class="component-detail">274 MB — latest</div>
+  </div>
+  <div class="status-ok">✓</div>
+</div>
+
+<h2>Obsidian Vault</h2>
+<div class="component">
+  <div>
+    <div class="component-name">Vault</div>
+    <div class="component-detail">C:/devcore/DEV_CORE_DATA/Obsidian/</div>
+  </div>
+  <div class="status-ok">✓</div>
+</div>
+<div class="component">
+  <div>
+    <div class="component-name">Structure</div>
+    <div class="component-detail">15 dossiers — Global, DB, Python, Web, Android, AI...</div>
+  </div>
+  <div class="status-ok">✓</div>
+</div>
+<div class="component">
+  <div>
+    <div class="component-name">Contenu</div>
+    <div class="component-detail">Global rules + Design principles</div>
+  </div>
+  <div class="status-warn">⚠</div>
+</div>
+
+<h2>Mémoire partagée</h2>
+<div class="component">
+  <div>
+    <div class="component-name">MEMORY.md</div>
+    <div class="component-detail">Index central — patterns, décisions, stack</div>
+  </div>
+  <div class="status-ok">✓</div>
+</div>
+<div class="component">
+  <div>
+    <div class="component-name">DECISIONS.md</div>
+    <div class="component-detail">5 décisions actives</div>
+  </div>
+  <div class="status-ok">✓</div>
+</div>
+<div class="component">
+  <div>
+    <div class="component-name">GLOBAL_STATE.md</div>
+    <div class="component-detail">DEV_CORE v6 — 5 sources intégrées</div>
+  </div>
+  <div class="status-ok">✓</div>
+</div>
+<div class="component">
+  <div>
+    <div class="component-name">missions.json</div>
+    <div class="component-detail">4 missions (M-01 → M-04)</div>
+  </div>
+  <div class="status-ok">✓</div>
+</div>
+
+<h2>Skills Core</h2>
+<div class="component">
+  <div>
+    <div class="component-name">qdrant</div>
+    <div class="component-detail">Path: C:/devcore/DEV_CORE/Skills/qdrant</div>
+  </div>
+  <div class="status-ok">✓</div>
+</div>
+<div class="component">
+  <div>
+    <div class="component-name">obsidian</div>
+    <div class="component-detail">Path: C:/devcore/DEV_CORE/Skills/obsidian</div>
+  </div>
+  <div class="status-ok">✓</div>
+</div>
+<div class="component">
+  <div>
+    <div class="component-name">graphify</div>
+    <div class="component-detail">Path: C:/devcore/DEV_CORE/Skills/graphify</div>
+  </div>
+  <div class="status-ok">✓</div>
+</div>
+<div class="component">
+  <div>
+    <div class="component-name">fabric-patterns</div>
+    <div class="component-detail">Path: C:/devcore/DEV_CORE/Skills/fabric-patterns</div>
+  </div>
+  <div class="status-ok">✓</div>
+</div>
+
+<h2>Optimisation Tokens</h2>
+<div class="component">
+  <div>
+    <div class="component-name">CLAUDE.md terse</div>
+    <div class="component-detail">drona23/claude-token-efficient</div>
+  </div>
+  <div class="status-ok">✓</div>
+</div>
+<div class="component">
+  <div>
+    <div class="component-name">MCP cache</div>
+    <div class="component-detail">ooples/token-optimizer-mcp</div>
+  </div>
+  <div class="status-ok">✓</div>
+</div>
+<div class="component">
+  <div>
+    <div class="component-name">Ghost finder</div>
+    <div class="component-detail">alexgreensh/token-optimizer</div>
+  </div>
+  <div class="status-ok">✓</div>
+</div>
+
+<h2>Tasks Pipeline</h2>
+<div class="mission">
+  <span class="badge active">ACTIVE</span>
+  <div style="flex:1">
+    <div style="font-size:13px;font-weight:500">T-01: Spec + Plan implementation</div>
+    <div style="font-size:11px;color:#64748b;margin-top:2px">Mode: reasoning — 0/3 steps</div>
+    <div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div>
+  </div>
+</div>
+<div class="mission">
+  <span class="badge todo">TODO</span>
+  <div style="flex:1">
+    <div style="font-size:13px;font-weight:500">T-02: Implementation TDD</div>
+    <div style="font-size:11px;color:#64748b;margin-top:2px">Mode: coding — 0/5 steps — depends: T-01</div>
+  </div>
+</div>
+<div class="mission">
+  <span class="badge todo">TODO</span>
+  <div style="flex:1">
+    <div style="font-size:13px;font-weight:500">T-03: Tests bulk + Documentation</div>
+    <div style="font-size:11px;color:#64748b;margin-top:2px">Mode: bulk — 0/2 steps — depends: T-02</div>
+  </div>
+</div>
+<div class="mission">
+  <span class="badge todo">TODO</span>
+  <div style="flex:1">
+    <div style="font-size:13px;font-weight:500">T-04: Review finale + Qdrant logging</div>
+    <div style="font-size:11px;color:#64748b;margin-top:2px">Mode: reasoning — 0/2 steps — depends: T-03</div>
+  </div>
+</div>
+
+<p style="color:#475569;font-size:12px;margin-top:32px">Ouvrir dans un navigateur · Auto-refresh 30s · DEV_CORE v6</p>
+
+<script>
+function updateTimestamp() {
+  const now = new Date();
+  document.getElementById('timestamp').textContent = now.toLocaleString('fr-FR');
+}
+updateTimestamp();
+setInterval(updateTimestamp, 1000);
+</script>
+</body>
+</html>

@@ -1,0 +1,218 @@
+{
+  "main": {
+    "id": "f11976671b489b91",
+    "type": "split",
+    "children": [
+      {
+        "id": "66c4a563288bc15b",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "9825bb70ad166501",
+            "type": "leaf",
+            "state": {
+              "type": "markdown",
+              "state": {
+                "file": "00_Global/AGENTS.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "AGENTS"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "941d61f86283fb6a",
+    "type": "split",
+    "children": [
+      {
+        "id": "9fc5752d5c9614af",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "8cfc080060bc35f8",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Explorateur de fichiers"
+            }
+          },
+          {
+            "id": "8b87a5de097351b5",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Rechercher"
+            }
+          },
+          {
+            "id": "e6422c9128da7c4d",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Signets"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300
+  },
+  "right": {
+    "id": "ba1b579b1d7ab86d",
+    "type": "split",
+    "children": [
+      {
+        "id": "5da10256284c799f",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "6a753ca7b6392626",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Rétroliens"
+            }
+          },
+          {
+            "id": "fe261602e65ff2e3",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Liens sortants"
+            }
+          },
+          {
+            "id": "d159eb2409e6bd0b",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Mots-clés"
+            }
+          },
+          {
+            "id": "2318bca15802f4f2",
+            "type": "leaf",
+            "state": {
+              "type": "all-properties",
+              "state": {
+                "sortOrder": "frequency",
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-archive",
+              "title": "Toutes les propriétés"
+            }
+          },
+          {
+            "id": "88f4bb9899326f81",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Plan"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Ouvrir le sélecteur rapide": false,
+      "graph:Ouvrir la vue graphique": false,
+      "canvas:Créer une nouvelle toile": false,
+      "daily-notes:Ouvrir la note quotidienne": false,
+      "templates:Insérer le modèle": false,
+      "command-palette:Ouvrir la palette de commandes": false,
+      "bases:Créer une nouvelle base": false
+    }
+  },
+  "active": "9825bb70ad166501",
+  "lastOpenFiles": [
+    "docs/graphify",
+    "Sans titre.base",
+    "2026-05-11.md",
+    "Sans titre.canvas",
+    "docs/superpowers/specs/2026-04-22-dev-core-fr-parser-design.md",
+    "docs/superpowers/plans/2026-04-22-dev-core-v5-foundation.md",
+    "docs/superpowers/specs/2026-04-23-dev-core-declarative-bootstrap-design.md",
+    "docs/superpowers/plans/2026-04-23-dev-core-memory-sync-qdrant.md",
+    "docs/superpowers/plans/2026-04-23-dev-core-router-telemetry-and-scoring.md",
+    "docs/superpowers/plans/2026-04-23-dev-core-fr-launch-flow.md",
+    "docs/superpowers/plans/2026-04-23-dev-core-v5-roadmap.md",
+    "docs/superpowers/specs/2026-04-23-dev-core-v5-final-architecture.md",
+    "docs/superpowers/specs/2026-04-22-dev-core-v5-design.md",
+    "Learnings/README.md",
+    "2026-04-22.md",
+    "README.md",
+    "Daily/2026-04-22.md",
+    "00_Global/TOKEN_RULES.md",
+    "docs/superpowers/plans/2026-04-23-dev-core-declarative-bootstrap-foundation.md",
+    "05_AI/DEV_CORE/Memory Review/pending",
+    "05_AI/DEV_CORE/Memory Review/approved",
+    "05_AI/DEV_CORE/Memory Review",
+    "05_AI/DEV_CORE",
+    "Tools/devcore/__init__.py",
+    "Tools/devcore/paths.py",
+    "Tools/devcore",
+    "Tools",
+    "pyproject.toml",
+    "00_Global/README.md",
+    "00_Global/MEMORY.md",
+    "00_Global/DESIGN.md",
+    "00_Global/AGENTS.md"
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "handoff_id": { "type": "string" },
+    "project_id": { "type": "string" },
+    "task_type": { "type": "string" },
+    "target_engine": {
+      "type": "string",
+      "enum": ["claude", "codex", "gemini"]
+    },
+    "intent": { "type": "string" },
+    "context_refs": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "context_summary": { "type": "string" },
+    "constraints": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "expected_output": { "type": "string" },
+    "prepared_at": { "type": "string" },
+    "mission_id": { "type": ["string", "null"] }
+  },
+  "required": [
+    "handoff_id",
+    "project_id",
+    "task_type",
+    "target_engine",
+    "intent",
+    "context_refs",
+    "context_summary",
+    "constraints",
+    "expected_output",
+    "prepared_at"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,112 @@
+{
+  "project": "cea_dashboard",
+  "current_task": "T-01",
+  "active_client": "claude",
+  "created": "2026-05-11",
+  "tasks": [
+    {
+      "id": "T-01",
+      "title": "Spec + Plan implementation",
+      "mode": "reasoning",
+      "status": "active",
+      "steps_total": 3,
+      "steps_done": 0,
+      "depends_on": null,
+      "steps": [
+        {
+          "id": 1,
+          "title": "Brainstorming + validation approche",
+          "done": false
+        },
+        {
+          "id": 2,
+          "title": "Spec par sections (scope, interfaces, edge cases)",
+          "done": false
+        },
+        {
+          "id": 3,
+          "title": "Plan implementation granulaire",
+          "done": false
+        }
+      ]
+    },
+    {
+      "id": "T-02",
+      "title": "Implementation TDD",
+      "mode": "coding",
+      "status": "todo",
+      "steps_total": 5,
+      "steps_done": 0,
+      "depends_on": "T-01",
+      "steps": [
+        {
+          "id": 1,
+          "title": "Setup tests structure",
+          "done": false
+        },
+        {
+          "id": 2,
+          "title": "Write failing tests",
+          "done": false
+        },
+        {
+          "id": 3,
+          "title": "Implement features",
+          "done": false
+        },
+        {
+          "id": 4,
+          "title": "Pass all tests",
+          "done": false
+        },
+        {
+          "id": 5,
+          "title": "Refactor",
+          "done": false
+        }
+      ]
+    },
+    {
+      "id": "T-03",
+      "title": "Tests bulk + Documentation",
+      "mode": "bulk",
+      "status": "todo",
+      "steps_total": 2,
+      "steps_done": 0,
+      "depends_on": "T-02",
+      "steps": [
+        {
+          "id": 1,
+          "title": "Tests integration bulk",
+          "done": false
+        },
+        {
+          "id": 2,
+          "title": "Documentation OpenAPI + README",
+          "done": false
+        }
+      ]
+    },
+    {
+      "id": "T-04",
+      "title": "Review finale + Qdrant logging",
+      "mode": "reasoning",
+      "status": "todo",
+      "steps_total": 2,
+      "steps_done": 0,
+      "depends_on": "T-03",
+      "steps": [
+        {
+          "id": 1,
+          "title": "Self-review code quality",
+          "done": false
+        },
+        {
+          "id": 2,
+          "title": "Logger decisions dans Qdrant + Obsidian",
+          "done": false
+        }
+      ]
+    }
+  ]
+}

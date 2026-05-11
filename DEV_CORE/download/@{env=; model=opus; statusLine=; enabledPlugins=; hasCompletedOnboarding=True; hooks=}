@@ -1,0 +1,44 @@
+﻿{
+    "env":  {
+                "ANTHROPIC_BASE_URL":  "http://localhost:20128/v1",
+                "ANTHROPIC_AUTH_TOKEN":  "sk-60c873dfaa73a810-kfwd8f-6f9cfc28",
+                "ANTHROPIC_DEFAULT_OPUS_MODEL":  "gemini-3-pro-combo",
+                "ANTHROPIC_DEFAULT_SONNET_MODEL":  "claude-sonnet-4-6-combo",
+                "ANTHROPIC_DEFAULT_HAIKU_MODEL":  "gemini-3-flash-combo"
+            },
+    "model":  "opus",
+    "statusLine":  {
+                       "type":  "command",
+                       "command":  "powershell -ExecutionPolicy Bypass -File \"C:/Users/trb_m/.claude/hooks/caveman-statusline.ps1\""
+                   },
+    "enabledPlugins":  {
+                           "superpowers@claude-plugins-official":  true,
+                           "frontend-design@claude-plugins-official":  true,
+                           "pyright-lsp@claude-plugins-official":  true
+                       },
+    "hasCompletedOnboarding":  true,
+    "hooks":  {
+                  "UserPromptSubmit":  [
+                                           {
+                                               "matcher":  "",
+                                               "hooks":  [
+                                                             {
+                                                                 "type":  "command",
+                                                                 "command":  "powershell -ExecutionPolicy Bypass -NonInteractive -WindowStyle Hidden -File \"C:\\DEV_CORE\\Scripts\\session_start.ps1\""
+                                                             }
+                                                         ]
+                                           }
+                                       ],
+                  "PostToolUse":  [
+                                      {
+                                          "matcher":  "Bash",
+                                          "hooks":  [
+                                                        {
+                                                            "type":  "command",
+                                                            "command":  "powershell -ExecutionPolicy Bypass -NonInteractive -WindowStyle Hidden -File \"C:\\DEV_CORE\\Scripts\\post_tool_hook.ps1\""
+                                                        }
+                                                    ]
+                                      }
+                                  ]
+              }
+}

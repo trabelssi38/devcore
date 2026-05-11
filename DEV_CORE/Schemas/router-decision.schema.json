@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "engine":            { "type": "string", "enum": ["claude","codex","gemini"] },
+    "confidence":        { "type": "number" },
+    "fallback":          { "type": "string", "enum": ["claude","codex","gemini"] },
+    "reason":            { "type": "string" },
+    "recommended_skill": { "type": ["string","null"] }
+  },
+  "required": ["engine","confidence","fallback","reason"],
+  "additionalProperties": false
+}

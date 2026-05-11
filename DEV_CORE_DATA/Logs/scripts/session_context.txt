@@ -1,0 +1,6 @@
+﻿[DEV_CORE] Task active : T-01
+[DEV_CORE] Titre  : Spec + Plan implementation
+[DEV_CORE] Mode   : reasoning
+[DEV_CORE] Budget : 32k tokens
+[DEV_CORE] Steps  : 0/3
+[DEV_CORE] Tag git: [T-01]

@@ -1,0 +1,21 @@
+﻿# DEV_CORE -- graphifyignore
+Cache/
+__pycache__/
+*.pyc
+*.pyo
+*.tmp
+*.log
+*.csv
+*.html
+Logs/
+token_reports/
+Backups/
+qdrant_storage/
+Sessions/
+.git/
+node_modules/
+Bus/archive/
+Bus/receipts/
+.obsidian/
+.DS_Store
+Thumbs.db

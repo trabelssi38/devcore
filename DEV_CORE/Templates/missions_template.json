@@ -1,0 +1,12 @@
+{
+  "project": "nom-du-projet",
+  "current_mission": null,
+  "active_client": "claude",
+  "created": "YYYY-MM-DD",
+  "missions": [
+    { "id": "M-01", "title": "Spec + Plan", "agent": "claude", "status": "todo", "steps_total": 3, "steps_done": 0, "depends_on": null },
+    { "id": "M-02", "title": "Implémentation TDD", "agent": "codex", "status": "todo", "steps_total": 5, "steps_done": 0, "depends_on": "M-01" },
+    { "id": "M-03", "title": "Tests bulk + Docs", "agent": "antigravity", "status": "todo", "steps_total": 2, "steps_done": 0, "depends_on": "M-02" },
+    { "id": "M-04", "title": "Review finale", "agent": "claude", "status": "todo", "steps_total": 1, "steps_done": 0, "depends_on": "M-03" }
+  ]
+}

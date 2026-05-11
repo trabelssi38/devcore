@@ -1,0 +1,62 @@
+{
+  "project": "mon-projet",
+  "current_task": null,
+  "created": "2026-04-26",
+  "tasks": [
+    {
+      "id": "T-01",
+      "title": "Spec + Plan implementation",
+      "mode": "reasoning",
+      "status": "todo",
+      "steps_total": 3,
+      "steps_done": 0,
+      "depends_on": null,
+      "steps": [
+        { "id": 1, "title": "Brainstorming + validation approche", "done": false },
+        { "id": 2, "title": "Spec par sections", "done": false },
+        { "id": 3, "title": "Plan granulaire", "done": false }
+      ]
+    },
+    {
+      "id": "T-02",
+      "title": "Implementation TDD",
+      "mode": "coding",
+      "status": "todo",
+      "steps_total": 5,
+      "steps_done": 0,
+      "depends_on": "T-01",
+      "steps": [
+        { "id": 1, "title": "Etape 1", "done": false },
+        { "id": 2, "title": "Etape 2", "done": false },
+        { "id": 3, "title": "Etape 3", "done": false },
+        { "id": 4, "title": "Etape 4", "done": false },
+        { "id": 5, "title": "Etape 5", "done": false }
+      ]
+    },
+    {
+      "id": "T-03",
+      "title": "Tests bulk + Documentation",
+      "mode": "bulk",
+      "status": "todo",
+      "steps_total": 2,
+      "steps_done": 0,
+      "depends_on": "T-02",
+      "steps": [
+        { "id": 1, "title": "Tests integration bulk", "done": false },
+        { "id": 2, "title": "Documentation", "done": false }
+      ]
+    },
+    {
+      "id": "T-04",
+      "title": "Review finale",
+      "mode": "reasoning",
+      "status": "todo",
+      "steps_total": 1,
+      "steps_done": 0,
+      "depends_on": "T-03",
+      "steps": [
+        { "id": 1, "title": "Self-review + merge + logger decision Vault", "done": false }
+      ]
+    }
+  ]
+}
