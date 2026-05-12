@@ -3,8 +3,8 @@
 **De** : `C:\DEV_CORE` + `C:\DEV_CORE_DATA`  
 **Vers** : `C:\devcore\DEV_CORE` + `C:\devcore\DEV_CORE_DATA`
 
-**Date** : 2026-05-11  
-**Changements** : Missions → Tasks + Structure consolidée
+**Date** : 2026-05-12
+**Changements** : Detection automatique des taches (v6.1)
 
 ---
 
@@ -197,6 +197,56 @@ curl http://localhost:11434/api/version
 # Dashboard
 start C:\devcore\DEV_CORE\Dashboard\index.html
 ```
+
+---
+
+## Nouvelles fonctionnalites v6.1
+
+### Detection automatique des taches
+
+```powershell
+# Scanner toutes les sources
+dc task scan
+
+# Synchroniser dans tasks.json
+dc task sync
+```
+
+Les scripts Auto crees :
+- `task_git_scanner.ps1` — Detecte tags [T-XX] dans commits
+- `task_spec_parser.ps1` — Parse fichiers spec markdown
+- `task_prompt_analyzer.ps1` — Analyse sessions recentes
+- `task_scan.ps1` — Orchestre les 3 scanners
+- `task_sync.ps1` — Syncronise les suggestions
+
+### Integration launch
+
+`launch.ps1` inclut maintenant 8 etapes (au lieu de 7) avec detection automatique.
+
+---
+
+## Nouvelles fonctionnalites v6.1
+
+### Detection automatique des taches
+
+```powershell
+# Scanner toutes les sources
+dc task scan
+
+# Synchroniser dans tasks.json
+dc task sync
+```
+
+Les scripts Auto crees :
+- `task_git_scanner.ps1` — Detecte tags [T-XX] dans commits
+- `task_spec_parser.ps1` — Parse fichiers spec markdown
+- `task_prompt_analyzer.ps1` — Analyse sessions recentes
+- `task_scan.ps1` — Orchestre les 3 scanners
+- `task_sync.ps1` — Syncronise les suggestions
+
+### Integration launch
+
+`launch.ps1` inclut maintenant 8 etapes (au lieu de 7) avec detection automatique.
 
 ---
 

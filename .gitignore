@@ -1,1 +1,42 @@
+# DEV_CORE v6
+
+# Claude worktrees
 .claude/worktrees/
+
+# Data (do not version)
+DEV_CORE_DATA/
+
+# Logs
+DEV_CORE_DATA/Logs/**/*.log
+DEV_CORE_DATA/Logs/**/launch_*.log
+DEV_CORE_DATA/Logs/**/endday_*.log
+
+# Memory queues
+DEV_CORE_DATA/Memory/*_queue.jsonl
+
+# Backups
+DEV_CORE_DATA/Backups/
+DEV_CORE_DATA/Sessions/
+
+# Obsidian vault
+DEV_CORE_DATA/Obsidian/
+DEV_CORE_DATA/Vault/
+
+# Qdrant storage
+DEV_CORE_DATA/qdrant_storage/
+
+# Tasks (auto-generated)
+DEV_CORE_DATA/Memory/tasks.json
+DEV_CORE_DATA/Memory/MEMORY.md
+DEV_CORE_DATA/Memory/DECISIONS.md
+DEV_CORE_DATA/Memory/GLOBAL_STATE.md
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp

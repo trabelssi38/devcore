@@ -4,8 +4,8 @@
 > 
 > Gère la mémoire persistante, le cycle de vie des tâches (Tasks), les modes cognitifs (reasoning/coding/bulk), et les compétences (skills) réutilisables.
 
-**Version** : 6.0  
-**Updated** : 2026-05-11  
+**Version** : 6.1
+**Updated** : 2026-05-12
 **Mode** : Single Client (pas de handoffs multi-agents)
 
 ---
@@ -203,6 +203,10 @@ T-01 (reasoning) → T-02 (coding) → T-03 (bulk) → T-04 (reasoning)
 | `memory_rotate.ps1` | Auto | Rotation mémoire (score < 0.5) |
 | `qdrant_sync.ps1` | Auto | Sync Qdrant |
 | `obsidian_sync.ps1` | Auto | Sync Obsidian |
+| `task_git_scanner.ps1` | Launch + dc task scan | Détecte tags [T-XX] dans les commits git |
+| `task_spec_parser.ps1` | dc task scan | Parse fichiers spec pour extraire tâches |
+| `task_prompt_analyzer.ps1` | dc task scan | Analyse sessions pour suggérer tâches |
+| `lesson_extractor.ps1` | endday | Extraction leçons depuis sessions |
 
 ---
 
@@ -318,7 +322,9 @@ dc next task (nt)              # Prochaine tâche + mode auto
 dc task done (td)              # Valide + sync mémoire auto
 dc task status (ts)            # Dashboard tâches
 dc task pause                  # Pause sans valider
-dc task skip                   # Passe à la suivante
+dc task skip                   # Passe a la suivante
+dc task scan                   # Scan git+spec+prompts -> suggestions
+dc task sync                   # Sync suggestions dans tasks.json
 dc new task [titre] -[mode]    # Ajoute une tâche
 ```
 
@@ -341,7 +347,94 @@ dc ask [prompt]                 # Routing mode auto
 
 ---
 
-## 10. Dashboard
+## 10. Detection automatique des taches
+
+### Vue d'ensemble
+
+DEV_CORE v6 inclut 3 scanners automatiques pour detecter les taches :
+
+| Scanner | Source | Description |
+|---------|--------|-------------|
+| `task_git_scanner.ps1` | Commits git | Detecte les tags [T-XX] manquants dans tasks.json |
+| `task_spec_parser.ps1` | Fichiers spec | Extrait sections (##, ###) et TODOs |
+| `task_prompt_analyzer.ps1` | Sessions | Analyse patterns verbe+action pour suggerer |
+
+### Workflow
+
+```
+dc task scan
+    |
+    +-- task_git_scanner.ps1   -> task_git_queue.jsonl
+    +-- task_spec_parser.ps1   -> task_spec_queue.jsonl
+    +-- task_prompt_analyzer.ps1 -> task_prompt_queue.jsonl
+    |
+    v
+dc task sync
+    |
+    +-- Lit les queues
+    +-- Limite a 10 taches par sync
+    +-- Ajoute dans tasks.json
+    +-- Nettoie les queues
+```
+
+### Commandes
+
+```powershell
+# Scanner toutes les sources (git + spec + prompts)
+dc task scan
+
+# Synchroniser les suggestions dans tasks.json
+dc task sync
+```
+
+### Output exemple
+
+```
+  DEV_CORE v6 -- TASK SCAN
+  ========================================
+  [1/3] Git scanner...
+      [TACHE SANS COMMIT RECENT : T-01 - Spec + Plan]
+  [2/3] Spec parser...
+      [SECTION] 1. Intent [coding]
+      [SECTION] 2. Design Position [reasoning]
+  [3/3] Prompt analyzer...
+
+  DEV_CORE v6 -- TASK SYNC
+  ========================================
+    0 suggestions depuis git
+    234 suggestions depuis spec
+    0 suggestions depuis prompt
+  [INFO] Limite a 10 suggestions par sync
+    + T-35 [coding] dev core fr parser design - 1. Intent
+    + T-36 [reasoning] dev core fr parser design - 2. Design Position
+  10 taches ajoutees a tasks.json
+```
+
+### Integration launch
+
+Le launch inclut une detection automatique (etape 5/8) :
+
+```powershell
+# 5. Task Detection (git scanner)
+Log "5/8 Task detection" "Cyan"
+if (-not $QuickStart) {
+    & "$DEV_CORE\Scripts\Auto\task_git_scanner.ps1" 2>$null
+}
+```
+
+### Detection mode automatique
+
+Les scanners detectent automatiquement le mode approprie :
+
+| Mot-cles | Mode propose |
+|----------|---------------|
+| architecture, design, spec, decision, plan, review | `reasoning` |
+| implement, code, fix, add, create, patch | `coding` |
+| test, doc, readme, bulk, deploy, optimize | `bulk` |
+
+---
+
+## 11. Dashboard
 
 **URL** : `file:///C:/devcore/DEV_CORE/Dashboard/index.html`
 
@@ -363,17 +456,26 @@ dc ask [prompt]                 # Routing mode auto
 
 ## Changelog v6
 
+### 2026-05-12 — Detection automatique des taches
+
+- ✅ `task_git_scanner.ps1` — Scan git commits pour tags [T-XX]
+- ✅ `task_spec_parser.ps1` — Parse fichiers spec -> taches candidates
+- ✅ `task_prompt_analyzer.ps1` — Analyse sessions pour suggestions
+- ✅ `dc task scan` — Lance les 3 scanners
+- ✅ `dc task sync` — Synchronise dans tasks.json (max 10/sync)
+- ✅ `launch.ps1` — Integration detection automatique (etape 5/8)
+- ✅ Documentation mise a jour
+
 ### 2026-05-11 — Single Client Migration
 
-- ✅ Missions → Tasks (workflow simplifié)
-- ✅ Scripts `mission_*.ps1` archivés
-- ✅ `tasks.json` avec modes (reasoning/coding/bulk)
-- ✅ Tags git `[T-XX]` au lieu de `[M-XX]`
-- ✅ CLAUDE.md, DECISIONS.md, MEMORY.md mis à jour
-- ✅ Dashboard adapté pour tasks
-- ✅ Structure déplacée : `C:\devcore\`
-- ✅ Variables d'env mises à jour
-- ✅ Documentation complète
+- Missions → Tasks (workflow simplifié)
+- Scripts `mission_*.ps1` archivés
+- `tasks.json` avec modes (reasoning/coding/bulk)
+- Tags git `[T-XX]` au lieu de `[M-XX]`
+- CLAUDE.md, DECISIONS.md, MEMORY.md mis à jour
+- Dashboard adapté pour tasks
+- Structure déplacée : `C:\devcore\`
+- Variables d'env mises à jour
 
 ### Architecture
 

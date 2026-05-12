@@ -14,6 +14,8 @@ switch -Regex ($cmd) {
     "^task status$|^ts$|^status$"               { & "$SCRIPTS\task_status.ps1" }
     "^task pause$"                              { & "$SCRIPTS\task_pause.ps1" }
     "^task skip$"                               { & "$SCRIPTS\task_skip.ps1" }
+    "^task scan$"                               { & "$SCRIPTS\task_scan.ps1" }
+    "^task sync$"                               { & "$SCRIPTS\task_sync.ps1" }
     "^new task (.+) -(reasoning|coding|bulk)$"  {
         & "$SCRIPTS\task_add.ps1" -Title $Matches[1] -Mode $Matches[2]
     }
@@ -68,6 +70,8 @@ switch -Regex ($cmd) {
         Write-Host "  dc task status (ts)            Dashboard taches" -ForegroundColor Gray
         Write-Host "  dc task pause                  Pause sans valider" -ForegroundColor Gray
         Write-Host "  dc task skip                   Passe a la suivante" -ForegroundColor Gray
+        Write-Host "  dc task scan                   Scan git+spec+prompts -> suggestions" -ForegroundColor Gray
+        Write-Host "  dc task sync                   Sync suggestions dans tasks.json" -ForegroundColor Gray
         Write-Host "  dc new task [titre] -[mode]    Ajoute une tache" -ForegroundColor Gray
         Write-Host "    modes : -reasoning | -coding | -bulk" -ForegroundColor DarkGray
         Write-Host ""
