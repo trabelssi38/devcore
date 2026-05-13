@@ -1,0 +1,89 @@
+# DEV_CORE v6.1 — Cron Configuration for Hermes Agent
+# Emplacement: C:/devcore/DEV_CORE/Scripts/hermes_cron.yaml
+# Timezone: Europe/Paris
+
+version: "1.0"
+
+cron_tasks:
+  # Demarrage quotidien - 10h du matin
+  - id: "daily_launch"
+    name: "DEV_CORE Daily Launch"
+    description: "Demarrage quotidien - verifie infra, charge task active, detection auto"
+    schedule: "0 10 * * *"
+    timezone: "Europe/Paris"
+    enabled: true
+    catchup: true
+    command:
+      type: "powershell"
+      script: "C:/devcore/DEV_CORE/Scripts/launch.ps1"
+      args: []
+
+  # Cloture quotidienne - 4h du matin
+  - id: "daily_endday"
+    name: "DEV_CORE Daily Endday"
+    description: "Cloture quotidienne - extract lessons, sync Qdrant, sync Obsidian"
+    schedule: "0 4 * * *"
+    timezone: "Europe/Paris"
+    enabled: true
+    catchup: false
+    command:
+      type: "powershell"
+      script: "C:/devcore/DEV_CORE/Scripts/endday.ps1"
+      args: ["-SkipBackup"]
+
+  # Maintenance hebdomadaire - Dimanche 5h du matin
+  - id: "weekly_maintenance"
+    name: "DEV_CORE Weekly Maintenance"
+    description: "Maintenance hebdomadaire - rotation memoire, backup, cleanup"
+    schedule: "0 5 * * 0"
+    timezone: "Europe/Paris"
+    enabled: true
+    catchup: false
+    command:
+      type: "powershell"
+      script: "C:/devcore/DEV_CORE/Scripts/Auto/weekly_maintenance.ps1"
+      args: []
+
+  # Scan automatique des taches - toutes les heures (optionnel)
+  - id: "hourly_task_scan"
+    name: "DEV_CORE Hourly Task Scan"
+    description: "Scan automatique git + specs + prompts pour detection taches"
+    schedule: "0 * * * *"
+    timezone: "Europe/Paris"
+    enabled: false
+    catchup: false
+    command:
+      type: "powershell"
+      script: "C:/devcore/DEV_CORE/Scripts/task_scan.ps1"
+      args: []
+
+  # Sync automatique des taches - toutes les heures (optionnel)
+  - id: "hourly_task_sync"
+    name: "DEV_CORE Hourly Task Sync"
+    description: "Sync les taches detectees dans tasks.json"
+    schedule: "30 * * * *"
+    timezone: "Europe/Paris"
+    enabled: false
+    catchup: false
+    command:
+      type: "powershell"
+      script: "C:/devcore/DEV_CORE/Scripts/task_sync.ps1"
+      args: []
+
+# Notification settings
+notifications:
+  on_success: false
+  on_failure: true
+  delivery:
+    - type: "log"
+      path: "C:/devcore/DEV_CORE_DATA/Logs/hermes/cron.log"
+    # Ajouter Telegram/Discord ici si configure
+    # - type: "telegram"
+    #   token: "${TELEGRAM_BOT_TOKEN}"
+    #   chat_id: "${TELEGRAM_CHAT_ID}"
+
+# Persistence settings (pour Daytona/Modal si utilise)
+persistence:
+  enabled: true
+  backend: "daytona"  # ou "modal", "local"
+  hibernate_timeout: 3600  # 1h idle avant hibernation

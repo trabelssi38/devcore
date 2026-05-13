@@ -1,0 +1,39 @@
+[2026-05-13 00:02:40] [INFO] Test du daemon HERMES
+[2026-05-13 00:02:43] [SUCCESS]   Hermes binaire: OK (Hermes Agent v0.13.0 (2026.5.7) Project: C:\devcore\hermes_temp Python: 3.14.0 OpenAI SDK: 2.24.0 Up to date)
+[2026-05-13 00:02:43] [INFO] 
+[2026-05-13 00:02:43] [INFO] Chemins DEV_CORE:
+[2026-05-13 00:02:43] [SUCCESS]   C:\devcore\DEV_CORE\Scripts : OK
+[2026-05-13 00:02:43] [SUCCESS]   C:\devcore\DEV_CORE_DATA\Memory : OK
+[2026-05-13 00:02:43] [SUCCESS]   C:\devcore\DEV_CORE_DATA\Vault : OK
+[2026-05-13 00:02:43] [SUCCESS]   C:\Users\trb_m\.hermes\config.yaml : OK
+[2026-05-13 00:02:43] [INFO] 
+[2026-05-13 00:02:43] [INFO] Services:
+[2026-05-13 00:02:43] [SUCCESS]   Qdrant (6333): OK
+[2026-05-13 00:02:45] [SUCCESS]   Ollama (11434): OK
+[2026-05-13 00:02:45] [INFO] 
+[2026-05-13 00:02:45] [SUCCESS] Test termine
+[2026-05-13 00:02:47] [INFO] Test du daemon HERMES
+[2026-05-13 00:02:49] [SUCCESS]   Hermes binaire: OK (Hermes Agent v0.13.0 (2026.5.7) Project: C:\devcore\hermes_temp Python: 3.14.0 OpenAI SDK: 2.24.0 Up to date)
+[2026-05-13 00:02:49] [INFO] 
+[2026-05-13 00:02:49] [INFO] Chemins DEV_CORE:
+[2026-05-13 00:02:49] [SUCCESS]   C:\devcore\DEV_CORE\Scripts : OK
+[2026-05-13 00:02:49] [SUCCESS]   C:\devcore\DEV_CORE_DATA\Memory : OK
+[2026-05-13 00:02:49] [SUCCESS]   C:\devcore\DEV_CORE_DATA\Vault : OK
+[2026-05-13 00:02:49] [SUCCESS]   C:\Users\trb_m\.hermes\config.yaml : OK
+[2026-05-13 00:02:49] [INFO] 
+[2026-05-13 00:02:49] [INFO] Services:
+[2026-05-13 00:02:49] [SUCCESS]   Qdrant (6333): OK
+[2026-05-13 00:02:51] [SUCCESS]   Ollama (11434): OK
+[2026-05-13 00:02:51] [INFO] 
+[2026-05-13 00:02:51] [SUCCESS] Test termine
+[2026-05-13 01:12:43] [INFO] Installation du daemon HERMES DEV_CORE
+[2026-05-13 01:13:55] [INFO] Status du daemon HERMES
+[2026-05-13 01:13:55] [WARN]   HERMES: STOPPED
+[2026-05-13 01:13:55] [INFO] 
+[2026-05-13 01:13:55] [INFO] Taches planifiees DEV_CORE:
+[2026-05-13 01:14:00] [INFO] Status du daemon HERMES
+[2026-05-13 01:14:00] [WARN]   HERMES: STOPPED
+[2026-05-13 01:14:00] [INFO] 
+[2026-05-13 01:14:00] [INFO] Taches planifiees DEV_CORE:
+[2026-05-13 01:15:15] [INFO] Installation du daemon HERMES DEV_CORE
+[2026-05-13 01:15:16] [INFO] Installation du daemon HERMES DEV_CORE
