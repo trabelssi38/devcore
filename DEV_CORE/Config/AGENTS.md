@@ -1,7 +1,21 @@
-# AGENTS.md -- DEV_CORE v6
+# AGENTS.md -- DEV_CORE v6.1
 # Emplacement : C:\DEV_CORE\Config\AGENTS.md
 # Auto-injecte dans ~/.codex/AGENTS.md par adapt_client.ps1
 # Compatible : Codex Desktop · Codex CLI
+
+## Hermes Agent Integration (v6.1)
+
+Hermes Agent (Nous Research) fonctionne en daemon avec MCP :
+- MCP server `devcore-scripts` : launch, endday, task_*, diagnose
+- MCP server `qdrant-storage` : collections, search, upsert, delete
+- MCP server `obsidian-vault` : daily_note, search, create_note
+
+Hermes orchestre via scheduled tasks Windows :
+- `DEV_CORE_Daily_Launch` (10:00)
+- `DEV_CORE_Daily_Endday` (04:00)
+- `DEV_CORE_Weekly_Maintenance` (Sunday 05:00)
+
+---
 
 ## FIRST ACTION -- run at the very start of every session
 
@@ -16,13 +30,13 @@ shell: powershell -ExecutionPolicy Bypass -NonInteractive -File "C:\DEV_CORE\Scr
 ### 2 -- Launch DEV_CORE
 shell: powershell -ExecutionPolicy Bypass -NonInteractive -File "C:\DEV_CORE\Scripts\launch.ps1"
 
-### 3 -- Load active mission
-shell: powershell -ExecutionPolicy Bypass -NonInteractive -File "C:\DEV_CORE\Scripts\dc.ps1" "next mission"
+### 3 -- Load active task
+shell: powershell -ExecutionPolicy Bypass -NonInteractive -File "C:\DEV_CORE\Scripts\dc.ps1" "next task"
 
-### 4 -- Read previous handoff
-shell: powershell -NonInteractive -Command "Get-Content 'C:\DEV_CORE_DATA\Memory\next_actions.md' -ErrorAction SilentlyContinue"
+### 4 -- Read session context
+shell: powershell -NonInteractive -Command "Get-Content 'C:\DEV_CORE_DATA\Logs\scripts\session_context.txt' -ErrorAction SilentlyContinue"
 
-After these 4 steps: start mission work immediately. No confirmation needed.
+After these 4 steps: start task work immediately. No confirmation needed.
 
 ---
 
@@ -64,29 +78,29 @@ After these 4 steps: start mission work immediately. No confirmation needed.
 ## RULES DURING WORK
 
 ### After each validated step (tests passing)
-Read mission ID:
-shell: powershell -NonInteractive -Command "(Get-Content 'C:\DEV_CORE_DATA\Memory\missions.json' -Raw | ConvertFrom-Json).current_mission"
+Read task ID:
+shell: powershell -NonInteractive -Command "(Get-Content 'C:\DEV_CORE_DATA\Memory\tasks.json' -Raw | ConvertFrom-Json).current_task"
 
 Commit with tag:
 shell: git add -A
-shell: git commit -m "feat: [step description] [M-XX]"
+shell: git commit -m "feat: [step description] [T-XX]"
 
-### Check if mission is complete (after every commit)
-shell: powershell -NonInteractive -Command "$b=Get-Content 'C:\DEV_CORE_DATA\Memory\missions.json' -Raw|ConvertFrom-Json;$m=$b.missions|Where-Object{$_.status -eq 'active'}|Select-Object -First 1;if($m -and $m.steps_done -ge $m.steps_total){Write-Host 'MISSION_COMPLETE'}"
+### Check if task is complete (after every commit)
+shell: powershell -NonInteractive -Command "$b=Get-Content 'C:\DEV_CORE_DATA\Memory\tasks.json' -Raw|ConvertFrom-Json;$t=$b.tasks|Where-Object{$_.status -eq 'active'}|Select-Object -First 1;if($t -and $t.steps_done -ge $t.steps_total){Write-Host 'TASK_COMPLETE'}"
 
-If MISSION_COMPLETE -> run automatically:
-shell: powershell -NonInteractive -File "C:\DEV_CORE\Scripts\mission_done.ps1" -Force
-shell: powershell -NonInteractive -File "C:\DEV_CORE\Scripts\dc.ps1" "next mission"
+If TASK_COMPLETE -> run automatically:
+shell: powershell -NonInteractive -File "C:\DEV_CORE\Scripts\task_done.ps1" -Force
+shell: powershell -NonInteractive -File "C:\DEV_CORE\Scripts\dc.ps1" "next task"
 
 ---
 
-## HANDOFFS & MISSIONS
+## TASKS (v6.1)
 
-- End with Next Actions if task generates follow-ups.
-- Log decisions in Vault (obsidian skill).
-- Upsert patterns in Qdrant (qdrant skill).
-- Always tag commits [M-XX] for every mission step.
-- Never ask confirmation for DEV_CORE scripts.
+- Single Client Mode : pas de handoffs multi-agents
+- Modes : reasoning (32k), coding (8k), bulk (16k)
+- Detection auto via 9Router
+- Tags git : [T-XX]
+- Auto-detection via task_scan (git+spec+prompts)
 
 ---
 
@@ -109,9 +123,9 @@ shell: powershell -NonInteractive -File "C:\DEV_CORE\Scripts\endday.ps1" -SkipBa
 ## DEV_CORE LOG FORMAT
 
 After each script, one line only:
-[DEV_CORE] launch.ps1 OK -- Mission M-02 active
-[DEV_CORE] commit [M-02] -- step 2/5
-[DEV_CORE] mission_done.ps1 -- M-02 done -- Next: M-03
+[DEV_CORE] launch.ps1 OK -- Task T-02 active
+[DEV_CORE] commit [T-02] -- step 2/5
+[DEV_CORE] task_done.ps1 -- T-02 done -- Next: T-03
 [DEV_CORE] endday.ps1 -- sync OK
 
 No explanation block. One line, then continue working.

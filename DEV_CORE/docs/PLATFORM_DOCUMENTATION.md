@@ -5,7 +5,7 @@
 > Gère la mémoire persistante, le cycle de vie des tâches (Tasks), les modes cognitifs (reasoning/coding/bulk), et les compétences (skills) réutilisables.
 
 **Version** : 6.1
-**Updated** : 2026-05-12
+**Updated** : 2026-05-13
 **Mode** : Single Client (pas de handoffs multi-agents)
 
 ---
@@ -21,7 +21,8 @@
 7. [Mémoire et Qdrant](#7-mémoire-et-qdrant)
 8. [Installation et configuration](#8-installation-et-configuration)
 9. [Commandes principales](#9-commandes-principales)
-10. [Dashboard](#10-dashboard)
+10. [Hermes Agent Integration](#10-hermes-agent-integration)
+11. [Dashboard](#11-dashboard)
 
 ---
 
@@ -79,17 +80,25 @@ C:\devcore\
 │   │   ├── endday.ps1          # Clôture + sync
 │   │   ├── task_*.ps1          # Gestion tasks
 │   │   ├── setup.ps1           # Installation initiale
+│   │   ├── hermes-daemon.ps1    # Daemon Hermes
+│   │   ├── hermes_cron.yaml     # Config cron
 │   │   └── Auto\               # Scripts automatiques
+│   ├── MCP\                    # MCP Servers
+│   │   ├── devcore-scripts\    # Outils DEV_CORE
+│   │   ├── qdrant-storage\     # Outils Qdrant
+│   │   └── obsidian-vault\     # Outils Obsidian
 │   ├── Skills\                 # Compétences réutilisables
 │   │   ├── qdrant\
 │   │   ├── obsidian\
 │   │   ├── graphify\
 │   │   ├── fabric-patterns\
-│   │   └── dev-methodology\
+│   │   ├── dev-methodology\
+│   │   └── devcore\            # Integration Hermes
 │   ├── Config\                 # Configuration
 │   │   ├── CLAUDE.md           # Instructions Claude
 │   │   ├── ROUTER.md           # Détection modes
-│   │   └── PATHS.md            # Chemins de référence
+│   │   ├── PATHS.md            # Chemins de référence
+│   │   └── hermes_context.md   # Contexte Hermes
 │   ├── Dashboard\              # Dashboard HTML
 │   └── docs\                   # Documentation
 │
@@ -193,7 +202,10 @@ T-01 (reasoning) → T-02 (coding) → T-03 (bulk) → T-04 (reasoning)
 | `task_next.ps1` | `dc next task` | Charge prochaine tâche |
 | `task_done.ps1` | `dc task done` | Valide tâche + sync |
 | `task_status.ps1` | `dc task status` | Dashboard tâches |
+| `task_scan.ps1` | `dc task scan` | Scan git+spec+prompts |
+| `task_sync.ps1` | `dc task sync` | Sync suggestions |
 | `diagnose.ps1` | `dc check` | Diagnostic complet |
+| `hermes-daemon.ps1` | `-Install|-Start|-Status` | Daemon Hermes |
 
 ### Scripts automatiques (Auto/)
 
@@ -347,7 +359,126 @@ dc ask [prompt]                 # Routing mode auto
 
 ---
 
-## 10. Detection automatique des taches
+## 10. Hermes Agent Integration
+
+### Overview
+
+Hermes Agent (Nous Research) est un agent IA autonome qui fonctionne en daemon et orchestre DEV_CORE via MCP (Model Context Protocol).
+
+### Architecture
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  Hermes Agent v0.13.0 (Daemon)                                   │
+│  ┌─────────────────────────────────────────────────────────────┐  │
+│  │  MCP Servers (3)                                           │  │
+│  │  ├── devcore-scripts  (8 tools)                            │  │
+│  │  ├── qdrant-storage  (6 tools)                             │  │
+│  │  └── obsidian-vault  (6 tools)                             │  │
+│  └─────────────────────────────────────────────────────────────┘  │
+│           │                                                      │
+│           ▼                                                      │
+│  ┌─────────────────────────────────────────────────────────────┐  │
+│  │  DEV_CORE Scripts + Cron                                     │  │
+│  │  ├── daily_launch   (10:00)                                │  │
+│  │  ├── daily_endday   (04:00)                                │  │
+│  │  └── weekly_maintenance (Sunday 05:00)                      │  │
+│  └─────────────────────────────────────────────────────────────┘  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### MCP Servers
+
+| Server | Path | Outils |
+|--------|------|--------|
+| `devcore-scripts` | `MCP/devcore-scripts/server.py` | launch, endday, task_*, diagnose |
+| `qdrant-storage` | `MCP/qdrant-storage/server.py` | collections, search, upsert, delete |
+| `obsidian-vault` | `MCP/obsidian-vault/server.py` | daily_note, search, create_note |
+
+### Installation Hermes
+
+```powershell
+# Cloner Hermes
+git clone https://github.com/nousresearch/hermes-agent.git C:\devcore\hermes_temp
+cd C:\devcore\hermes_temp
+
+# Installer
+uv venv .venv
+uv pip install .
+uv pip install pip
+
+# Configurer API keys dans ~/.hermes/.env
+```
+
+### Configuration
+
+`~/.hermes/config.yaml`:
+```yaml
+agent:
+  name: "DEV_CORE Assistant"
+  default_model: "anthropic/claude-sonnet-4-20250514"
+model:
+  provider: "openai"
+  base_url: "https://api.anthropic.com/v1"
+  default: "anthropic/claude-sonnet-4-20250514"
+tools:
+  terminal: {enabled: true}
+  filesystem: {enabled: true}
+context:
+  - "C:/devcore/DEV_CORE/Config/hermes_context.md"
+```
+
+### Commandes Daemon
+
+```powershell
+.\hermes-daemon.ps1 -Install    # Installe scheduled tasks
+.\hermes-daemon.ps1 -Uninstall  # Desinstalle
+.\hermes-daemon.ps1 -Start      # Lance Hermes en background
+.\hermes-daemon.ps1 -Stop       # Arrete Hermes
+.\hermes-daemon.ps1 -Status     # Status + scheduled tasks
+.\hermes-daemon.ps1 -Test       # Test configuration
+```
+
+### Cron Tasks (Windows Scheduled Tasks)
+
+| Task | Schedule | Script | Description |
+|------|----------|--------|-------------|
+| `DEV_CORE_Daily_Launch` | 10:00 daily | `launch.ps1` | Demarrage quotidien |
+| `DEV_CORE_Daily_Endday` | 04:00 daily | `endday.ps1` | Cloture + sync |
+| `DEV_CORE_Weekly_Maintenance` | Sunday 05:00 | `weekly_maintenance.ps1` | Maintenance hebdo |
+| `HERMES_Daemon` | AtLogOn | `hermes-daemon.ps1 -Start` | Redemarrage auto |
+
+### Fichiers Hermes
+
+| Fichier | Emplacement | Role |
+|---------|------------|------|
+| `hermes-daemon.ps1` | `Scripts/` | Daemon + installation tasks |
+| `hermes_cron.yaml` | `Scripts/` | Configuration cron |
+| `hermes_context.md` | `Config/` | Contexte DEV_CORE pour Hermes |
+| `devcore/SKILL.md` | `Skills/` | Skill Hermes pour DEV_CORE |
+
+### Test Integration
+
+```powershell
+.\test_hermes_integration.ps1 -All
+```
+
+### Test Results (v6.1)
+
+| Component | Status |
+|-----------|--------|
+| Hermes v0.13.0 | PASS |
+| 3 MCP Servers | PASS |
+| 3 Scheduled Tasks | PASS |
+| HERMES_Daemon | Requires admin |
+| Qdrant (Docker) | PASS |
+| Ollama | PASS |
+| 6 Skills | PASS |
+| 19 Scripts | PASS |
+
+---
+
+## 11. Detection automatique des taches
 
 ### Vue d'ensemble
 
@@ -434,7 +565,7 @@ Les scanners detectent automatiquement le mode approprie :
 
 ---
 
-## 11. Dashboard
+## 12. Dashboard
 
 **URL** : `file:///C:/devcore/DEV_CORE/Dashboard/index.html`
 
@@ -455,6 +586,18 @@ Les scanners detectent automatiquement le mode approprie :
 ---
 
 ## Changelog v6
+
+### 2026-05-13 — Hermes Agent Integration
+
+- ✅ Hermes Agent v0.13.0 (Nous Research) installe
+- ✅ 3 MCP servers : devcore-scripts, qdrant-storage, obsidian-vault
+- ✅ hermes-daemon.ps1 avec scheduled tasks Windows
+- ✅ hermes_cron.yaml avec schedule daily/weekly
+- ✅ hermes_context.md pour contexte DEV_CORE
+- ✅ devcore/SKILL.md pour integration Hermes
+- ✅ test_hermes_integration.ps1 (47/48 tests pass)
+- ✅ Documentation mise a jour
+- ✅ Commits : `f685e45` -> `ac4eb79`
 
 ### 2026-05-12 — Detection automatique des taches
 
