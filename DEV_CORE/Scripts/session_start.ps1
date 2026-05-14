@@ -60,3 +60,19 @@ if (Test-Path $tFile) {
 }
 
 Log "session_start.ps1 termine"
+
+# 9. Endday check
+Write-Host "  9/9 Endday verification" -ForegroundColor Cyan
+& "$DEV_CORE\Scripts\endday_check.ps1" 2>$null
+
+# 10. Gen session context
+Write-Host "  10/10 Session context" -ForegroundColor Cyan
+& "$DEV_CORE\Scripts\gen_session_context.ps1" 2>$null
+
+# 9. Endday check
+Write-Host "  9/9 Endday verification" -ForegroundColor Cyan
+& "$DEV_CORE\Scripts\endday_check.ps1" 2>$null
+
+# 10. Gen session context
+Write-Host "  10/10 Session context" -ForegroundColor Cyan
+& "$DEV_CORE\Scripts\gen_session_context.ps1" 2>$null
