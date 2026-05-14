@@ -1,0 +1,5 @@
+{
+  "devDependencies": {
+    "@toon-format/cli": "^2.2.0"
+  }
+}
