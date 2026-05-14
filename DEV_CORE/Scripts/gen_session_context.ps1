@@ -41,6 +41,18 @@ $budget = switch ($active.mode) {
     default     { "16k" }
 }
 
+# Ensure directory exists
+$scriptDir = Split-Path -Parent $CONTEXT_FILE
+if (-not (Test-Path $scriptDir)) {
+    New-Item -ItemType Directory -Path $scriptDir -Force | Out-Null
+}
+
+# Ensure directory exists
+$scriptDir = Split-Path -Parent $CONTEXT_FILE
+if (-not (Test-Path $scriptDir)) {
+    New-Item -ItemType Directory -Path $scriptDir -Force | Out-Null
+}
+
 $content = @"
 [DEV_CORE] Task active : $($active.id)
 [DEV_CORE] Titre  : $($active.title)

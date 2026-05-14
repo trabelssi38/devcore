@@ -39,7 +39,7 @@ if (Test-Path $sessionLog) {
 $progress = if ($totalSteps -gt 0) { [math]::Round(($doneSteps / $totalSteps) * 100) } else { 0 }
 $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 
-$header = "date,active_task,tasks_total,steps_done,steps_total,progress_pct"
+$header = "date,active_task,tasks_count,steps_done,steps_total,progress_pct"
 $row = "$TODAY,$activeTask,$taskCount,$doneSteps,$totalSteps,$progress"
 
 if (-not (Test-Path $METRICS_FILE)) {
