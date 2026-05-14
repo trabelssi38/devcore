@@ -1,6 +1,6 @@
-﻿[DEV_CORE] Task active : T-03
-[DEV_CORE] Titre  : Tests bulk + Documentation
-[DEV_CORE] Mode   : bulk
-[DEV_CORE] Budget : 16k tokens
+[DEV_CORE] Task active : T-04
+[DEV_CORE] Titre  : Review finale + Qdrant logging
+[DEV_CORE] Mode   : reasoning
+[DEV_CORE] Budget : 32k tokens
 [DEV_CORE] Steps  : 0/2
-[DEV_CORE] Tag git: [T-03]
+[DEV_CORE] Tag git: [T-04]

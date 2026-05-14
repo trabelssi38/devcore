@@ -70,7 +70,7 @@
                       "id":  "T-03",
                       "title":  "Tests bulk + Documentation",
                       "mode":  "bulk",
-                      "status":  "active",
+                      "status":  "done",
                       "steps_total":  2,
                       "steps_done":  0,
                       "depends_on":  "T-02",
@@ -85,7 +85,8 @@
                                         "title":  "Documentation OpenAPI + README",
                                         "done":  false
                                     }
-                                ]
+                                ],
+                      "completed_at":  "2026-05-14T22:54:20.5588850+01:00"
                   },
                   {
                       "id":  "T-04",
