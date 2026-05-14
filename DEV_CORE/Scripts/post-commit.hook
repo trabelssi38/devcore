@@ -1,27 +1,27 @@
 #!/bin/sh
-# post-commit -- DEV_CORE v6 -- Single client
-# Auto-incremente steps_done si commit contient [T-XX]
-# Installation : copier dans .git/hooks/post-commit + chmod +x (Linux/Mac)
-#                copier dans .git/hooks/post-commit (Windows)
-
+# post-commit -- DEV_CORE v6.1 -- Full automation
 TASKS="C:/devcore/DEV_CORE_DATA/Memory/tasks.json"
+SCRIPTS="C:/devcore/DEV_CORE/Scripts"
 MSG=$(git log -1 --pretty=%B)
 TID=$(echo "$MSG" | grep -oP '\[T-\d+\]' | tr -d '[]' | head -1)
-[ -z "$TID" ] && exit 0
 
-echo "  [DEV_CORE] Tag $TID detecte dans le commit"
-
-powershell.exe -NonInteractive -Command "
-\$f='$TASKS'
-if(-not(Test-Path \$f)){exit 0}
-\$b=Get-Content \$f -Raw|ConvertFrom-Json
-\$t=\$b.tasks|Where-Object{\$_.id -eq '$TID'}
-if(-not \$t){exit 0}
-\$cur=if(\$t.PSObject.Properties['steps_done']){\$t.steps_done}else{0}
-\$tot=if(\$t.PSObject.Properties['steps_total']){\$t.steps_total}else{1}
-\$new=[math]::Min(\$cur+1,\$tot)
-\$t|Add-Member -NotePropertyName 'steps_done' -NotePropertyValue \$new -Force
-\$b|ConvertTo-Json -Depth 10|Set-Content \$f -Encoding UTF8
-Write-Host \"  [DEV_CORE] Step \$new/\$tot enregistree pour $TID\"
-if(\$new -ge \$tot){Write-Host '  [DEV_CORE] Tache complete -- dc task done (td)' -ForegroundColor Cyan}
-"
+if [ -n "$TID" ]; then
+    echo "  [DEV_CORE] Tag $TID detecte dans le commit"
+    powershell.exe -NonInteractive -Command "
+    \$f='$TASKS'
+    if(-not(Test-Path \$f)){exit 0}
+    \$b=Get-Content \$f -Raw|ConvertFrom-Json
+    \$t=\$b.tasks|Where-Object{\$_.id -eq '$TID'}
+    if(-not \$t){exit 0}
+    \$cur=if(\$t.PSObject.Properties['steps_done']){\$t.steps_done}else{0}
+    \$tot=if(\$t.PSObject.Properties['steps_total']){\$t.steps_total}else{1}
+    \$new=[math]::Min(\$cur+1,\$tot)
+    \$t|Add-Member -NotePropertyName 'steps_done' -NotePropertyValue \$new -Force
+    \$b|ConvertTo-Json -Depth 10|Set-Content \$f -Encoding UTF8
+    Write-Host \"  [DEV_CORE] Step \$new/\$tot enregistree pour $TID\" -ForegroundColor Cyan
+    if(\$new -ge \$tot){Write-Host '  [DEV_CORE] Tache complete!' -ForegroundColor Green; & 'C:/devcore/DEV_CORE/Scripts/task_done.ps1'}
+    "
+fi
+echo "  [DEV_CORE] Synchronisation des taches..."
+powershell.exe -NonInteractive -Command "& '$SCRIPTS/task_sync.ps1' 2>&1 | Out-Null"
+exit 0
