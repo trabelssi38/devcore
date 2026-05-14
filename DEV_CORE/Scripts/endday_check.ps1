@@ -30,11 +30,12 @@ try {
     $q = Invoke-RestMethod "http://localhost:6333/collections" -TimeoutSec 3
     Write-Log "Qdrant OK - lancement endday.ps1" "Green"
     & "$DEV_CORE\Scripts\endday.ps1"
+
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $timestamp | Set-Content $FLAG -Encoding UTF8
+    Write-Log "Flag endday cree: $timestamp" "Green"
 } catch {
     Write-Log "Qdrant non disponible - endday reporte" "Yellow"
+    # DO NOT create flag - allows retry on next run
 }
-
-$timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
-$timestamp | Set-Content $FLAG -Encoding UTF8
-Write-Log "Flag endday cree: $timestamp" "Green"
 Write-Host ""
