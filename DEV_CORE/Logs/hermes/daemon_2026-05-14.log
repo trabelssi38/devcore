@@ -1,0 +1,16 @@
+[2026-05-14 18:29:10] [INFO] Status du daemon HERMES
+[2026-05-14 18:29:10] [WARN]   HERMES: STOPPED
+[2026-05-14 18:29:10] [INFO] 
+[2026-05-14 18:29:10] [INFO] Taches planifiees DEV_CORE:
+[2026-05-14 18:29:16] [INFO]   DEV_CORE_Daily_Launch: Ready | Prochain: 05/15/2026 10:00:00
+[2026-05-14 18:29:16] [INFO]   DEV_CORE_Daily_Endday: Ready | Prochain: 05/15/2026 04:00:00
+[2026-05-14 18:29:16] [INFO]   DEV_CORE_Weekly_Maintenance: Ready | Prochain: 05/17/2026 05:00:00
+[2026-05-14 18:29:16] [INFO]   HERMES_Daemon: Ready | Prochain: 
+[2026-05-14 18:30:12] [INFO] Status du daemon HERMES
+[2026-05-14 18:30:12] [WARN]   HERMES: STOPPED
+[2026-05-14 18:30:12] [INFO] 
+[2026-05-14 18:30:12] [INFO] Taches planifiees DEV_CORE:
+[2026-05-14 18:30:21] [INFO]   DEV_CORE_Daily_Launch: Running | Prochain: 05/15/2026 10:00:00
+[2026-05-14 18:30:21] [INFO]   DEV_CORE_Daily_Endday: Running | Prochain: 05/15/2026 04:00:00
+[2026-05-14 18:30:21] [INFO]   DEV_CORE_Weekly_Maintenance: Ready | Prochain: 05/17/2026 05:00:00
+[2026-05-14 18:30:21] [INFO]   HERMES_Daemon: Ready | Prochain: 

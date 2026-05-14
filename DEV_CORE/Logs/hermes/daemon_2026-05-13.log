@@ -37,3 +37,45 @@
 [2026-05-13 01:14:00] [INFO] Taches planifiees DEV_CORE:
 [2026-05-13 01:15:15] [INFO] Installation du daemon HERMES DEV_CORE
 [2026-05-13 01:15:16] [INFO] Installation du daemon HERMES DEV_CORE
+[2026-05-13 01:24:57] [INFO] Installation du daemon HERMES DEV_CORE
+[2026-05-13 01:24:58] [SUCCESS]   Tache planifiee HERMES_Daemon creee
+[2026-05-13 01:24:58] [SUCCESS]   Tache planifiee DEV_CORE_Daily_Launch creee - Demarrage quotidien DEV_CORE - 10h
+[2026-05-13 01:24:58] [SUCCESS]   Tache planifiee DEV_CORE_Daily_Endday creee - Cloture quotidienne DEV_CORE - 4h
+[2026-05-13 01:24:58] [SUCCESS]   Tache planifiee DEV_CORE_Weekly_Maintenance creee - Maintenance hebdomadaire DEV_CORE - Dimanche 5h
+[2026-05-13 01:24:58] [SUCCESS] Installation terminee
+[2026-05-13 02:13:50] [INFO] Demarrage du daemon HERMES
+[2026-05-13 02:13:50] [SUCCESS]   HERMES lance en background
+[2026-05-13 02:13:52] [INFO] Demarrage du daemon HERMES
+[2026-05-13 02:13:52] [SUCCESS]   HERMES lance en background
+[2026-05-13 02:17:09] [INFO] Status du daemon HERMES
+[2026-05-13 02:17:09] [WARN]   HERMES: STOPPED
+[2026-05-13 02:17:09] [INFO] 
+[2026-05-13 02:17:09] [INFO] Taches planifiees DEV_CORE:
+[2026-05-13 02:17:14] [INFO]   DEV_CORE_Daily_Launch: Ready | Prochain: 05/13/2026 10:00:00
+[2026-05-13 02:17:14] [INFO]   DEV_CORE_Daily_Endday: Ready | Prochain: 05/13/2026 04:00:00
+[2026-05-13 02:17:14] [INFO]   DEV_CORE_Weekly_Maintenance: Ready | Prochain: 05/17/2026 05:00:00
+[2026-05-13 02:17:14] [INFO]   HERMES_Daemon: Ready | Prochain: 
+[2026-05-13 02:17:16] [INFO] Status du daemon HERMES
+[2026-05-13 02:17:16] [WARN]   HERMES: STOPPED
+[2026-05-13 02:17:16] [INFO] 
+[2026-05-13 02:17:16] [INFO] Taches planifiees DEV_CORE:
+[2026-05-13 02:17:25] [INFO]   DEV_CORE_Daily_Launch: Ready | Prochain: 05/13/2026 10:00:00
+[2026-05-13 02:17:25] [INFO]   DEV_CORE_Daily_Endday: Ready | Prochain: 05/13/2026 04:00:00
+[2026-05-13 02:17:25] [INFO]   DEV_CORE_Weekly_Maintenance: Ready | Prochain: 05/17/2026 05:00:00
+[2026-05-13 02:17:25] [INFO]   HERMES_Daemon: Ready | Prochain: 
+[2026-05-13 02:38:08] [INFO] Installation du daemon HERMES DEV_CORE
+[2026-05-13 02:38:08] [SUCCESS]   Tache planifiee HERMES_Daemon creee
+[2026-05-13 02:38:09] [SUCCESS]   Tache planifiee DEV_CORE_Daily_Launch creee - Demarrage quotidien DEV_CORE - 10h
+[2026-05-13 02:38:09] [SUCCESS]   Tache planifiee DEV_CORE_Daily_Endday creee - Cloture quotidienne DEV_CORE - 4h
+[2026-05-13 02:38:09] [SUCCESS]   Tache planifiee DEV_CORE_Weekly_Maintenance creee - Maintenance hebdomadaire DEV_CORE - Dimanche 5h
+[2026-05-13 02:38:09] [SUCCESS] Installation terminee
+[2026-05-13 02:44:15] [INFO] Installation du daemon HERMES DEV_CORE
+[2026-05-13 02:44:17] [SUCCESS]   Tache planifiee HERMES_Daemon creee
+[2026-05-13 02:44:17] [SUCCESS]   Tache planifiee DEV_CORE_Daily_Launch creee - Demarrage quotidien DEV_CORE - 10h
+[2026-05-13 02:44:18] [SUCCESS]   Tache planifiee DEV_CORE_Daily_Endday creee - Cloture quotidienne DEV_CORE - 4h
+[2026-05-13 02:44:18] [SUCCESS]   Tache planifiee DEV_CORE_Weekly_Maintenance creee - Maintenance hebdomadaire DEV_CORE - Dimanche 5h
+[2026-05-13 02:44:18] [SUCCESS] Installation terminee
+[2026-05-13 02:52:31] [INFO] Demarrage du daemon HERMES
+[2026-05-13 02:52:32] [SUCCESS]   HERMES lance en background
+[2026-05-13 19:30:21] [INFO] Demarrage du daemon HERMES
+[2026-05-13 19:30:30] [SUCCESS]   HERMES lance en background

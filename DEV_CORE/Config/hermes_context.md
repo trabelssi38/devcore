@@ -53,13 +53,60 @@ C:\devcore\
 | `dc endday` | Clôture quotidienne (4h) |
 | `dc weekly` | Maintenance hebdomadaire (dimanche 5h) |
 
-## Cognitive Modes (9Router)
+## Cognitive Modes (9Router — Hermes Compatible)
 
-| Mode | Budget | Usage |
-|------|--------|-------|
-| **reasoning** | 32k tokens | Architecture, spec, decisions |
-| **coding** | 8k tokens | Implementation, fix, patch |
-| **bulk** | 16k tokens | Tests, docs, migrations |
+### Mode Detection
+
+Hermes lit le mode actif depuis `tasks.json`:
+```json
+{
+  "current_task": "T-01",
+  "tasks": [{
+    "id": "T-01",
+    "mode": "reasoning",  // <- Mode detecté
+    ...
+  }]
+}
+```
+
+### Routing Rules
+
+| Mode | Model (Anthropic) | Budget | When |
+|------|----------|--------|------|
+| **reasoning** | `claude-opus-4-7` | 32k | Architecture, spec, decisions, debug cause inconnue |
+| **coding** | `claude-sonnet-4-6` | 8k | Implementation, fix, refactoring, TDD |
+| **bulk** | `claude-haiku-4-5` | 16k | Tests en masse, docs, migrations, batch |
+
+### Provider Selection
+
+Hermes ajuste le provider selon le mode:
+```yaml
+model:
+  provider: "openai"
+  base_url: "https://api.anthropic.com/v1"
+  reasoning_model: "anthropic/claude-opus-4-7"
+  coding_model: "anthropic/claude-sonnet-4-6"
+  bulk_model: "anthropic/claude-haiku-4-5"
+```
+
+### Skills Charged per Mode
+
+| Mode | Skills |
+|------|--------|
+| reasoning | dev-methodology, fabric-patterns, qdrant |
+| coding | dev-methodology, python_api, web_ui, android_release |
+| bulk | fabric-patterns |
+
+### Fallback
+
+Si un modele echoue: reasoning -> coding -> bulk
+- `claude-opus-4-7` -> `claude-sonnet-4-6` -> `claude-haiku-4-5`
+- Même base_url Anthropic donc transparent pour Hermes
+
+### Integration Files
+
+- `C:/devcore/DEV_CORE/Config/ROUTER.md` — Spec complete 9Router
+- `C:/devcore/DEV_CORE/Config/9router_hermes.md` — Config Hermes
 
 ## Task Format
 

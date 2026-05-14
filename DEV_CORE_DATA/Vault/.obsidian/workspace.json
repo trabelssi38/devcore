@@ -11,14 +11,10 @@
             "id": "9825bb70ad166501",
             "type": "leaf",
             "state": {
-              "type": "markdown",
-              "state": {
-                "file": "00_Global/AGENTS.md",
-                "mode": "source",
-                "source": false
-              },
+              "type": "empty",
+              "state": {},
               "icon": "lucide-file",
-              "title": "AGENTS"
+              "title": "Nouvel onglet"
             }
           }
         ]
@@ -180,27 +176,29 @@
       "bases:Créer une nouvelle base": false
     }
   },
-  "active": "9825bb70ad166501",
+  "active": "8cfc080060bc35f8",
   "lastOpenFiles": [
-    "docs/graphify",
-    "Sans titre.base",
     "2026-05-11.md",
+    "Sans titre.base",
     "Sans titre.canvas",
-    "docs/superpowers/specs/2026-04-22-dev-core-fr-parser-design.md",
-    "docs/superpowers/plans/2026-04-22-dev-core-v5-foundation.md",
-    "docs/superpowers/specs/2026-04-23-dev-core-declarative-bootstrap-design.md",
-    "docs/superpowers/plans/2026-04-23-dev-core-memory-sync-qdrant.md",
-    "docs/superpowers/plans/2026-04-23-dev-core-router-telemetry-and-scoring.md",
-    "docs/superpowers/plans/2026-04-23-dev-core-fr-launch-flow.md",
     "docs/superpowers/plans/2026-04-23-dev-core-v5-roadmap.md",
+    "docs/superpowers/plans/2026-04-23-dev-core-router-telemetry-and-scoring.md",
+    "docs/superpowers/plans/2026-04-23-dev-core-memory-sync-qdrant.md",
+    "docs/superpowers/plans/2026-04-23-dev-core-declarative-bootstrap-foundation.md",
+    "docs/superpowers/plans/2026-04-22-dev-core-v5-foundation.md",
+    "00_Global/TOKEN_RULES.md",
+    "00_Global/DESIGN.md",
+    "00_Global/AGENTS.md",
+    "docs/graphify",
+    "docs/superpowers/specs/2026-04-22-dev-core-fr-parser-design.md",
+    "docs/superpowers/specs/2026-04-23-dev-core-declarative-bootstrap-design.md",
+    "docs/superpowers/plans/2026-04-23-dev-core-fr-launch-flow.md",
     "docs/superpowers/specs/2026-04-23-dev-core-v5-final-architecture.md",
     "docs/superpowers/specs/2026-04-22-dev-core-v5-design.md",
     "Learnings/README.md",
     "2026-04-22.md",
     "README.md",
     "Daily/2026-04-22.md",
-    "00_Global/TOKEN_RULES.md",
-    "docs/superpowers/plans/2026-04-23-dev-core-declarative-bootstrap-foundation.md",
     "05_AI/DEV_CORE/Memory Review/pending",
     "05_AI/DEV_CORE/Memory Review/approved",
     "05_AI/DEV_CORE/Memory Review",
@@ -209,10 +207,7 @@
     "Tools/devcore/paths.py",
     "Tools/devcore",
     "Tools",
-    "pyproject.toml",
     "00_Global/README.md",
-    "00_Global/MEMORY.md",
-    "00_Global/DESIGN.md",
-    "00_Global/AGENTS.md"
+    "00_Global/MEMORY.md"
   ]
 }

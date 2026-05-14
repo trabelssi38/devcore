@@ -48,6 +48,27 @@ if (Test-Path $tFile) {
     $board = Get-Content $tFile -Raw | ConvertFrom-Json
     $doneTasks = $board.tasks | Where-Object { $_.status -eq "done" }
     Write-Log "Taches completees: $($doneTasks.Count)" "Green"
+
+    # Update Daily Note with accomplishments
+    if ($doneTasks.Count -gt 0) {
+        $note = Get-Content $NOTE_PATH -Raw
+
+        # Build accomplishments list
+        $accList = "## Taches accomplies`n`n"
+        foreach ($t in $doneTasks) {
+            $accList += "- [x] **$($t.id)**: $($t.title)`n"
+        }
+
+        # Replace or append section
+        if ($note -match "## Taches accomplies") {
+            $note = $note -replace "## Taches accomplies[\s\S]*?(?=\n##|$)", $accList
+        } else {
+            $note += "`n$accList"
+        }
+
+        $note | Set-Content $NOTE_PATH -Encoding UTF8
+        Write-Log "Daily Note mise a jour avec $($doneTasks.Count) taches" "Green"
+    }
 }
 
 Write-Log "Obsidian sync termine" "Green"
