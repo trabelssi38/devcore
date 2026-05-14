@@ -21,25 +21,16 @@
 
 ## Token Optimization Stack (6 couches)
 
-| # | Couche | Technique | Reduction | Status |
-|---|--------|-----------|-----------|--------|
-| 1 | CLAUDE.md terse | Supprime articles, reformats listes | -70% | ✅ |
-| 2 | caveman-compress | MEMORY.md compresse | -46% | ✅ |
-| 3 | MCP cache | Requetes repetees cachees | -95% | ✅ |
-| 4 | 9Router RTK | Compression tool_result | -40% | ✅ |
-| 5 | Ghost finder | Audit maintenance | maintenance | ✅ |
-| 6 | TOON | Format compact tasks+skills | -40% | ✅ |
+| # | Couche | Technique | Reduction | Status | Mesure |
+|---|--------|-----------|-----------|--------|--------|
+| 1 | CLAUDE.md terse | Supprime articles, reformats listes | -70% | ✅ | -69% reel |
+| 2 | caveman-compress | MEMORY.md compresse | -46% | ✅ | -46% reel |
+| 3 | MCP cache | Requetes repetees cachees | -95% | ✅ | N/A (binaire) |
+| 4 | 9Router RTK | Compression tool_result | -40% | ✅ | N/A (binaire) |
+| 5 | Ghost finder | Audit maintenance | maintenance | ✅ | N/A (audit) |
+| 6 | TOON | Format compact tasks+skills | -40% | ✅ | **-90% reel** (tasks.json: 5128→514) |
 
-**Reduction cumulee estimee : ~94%** (input 100% → ~6%)
-
-## Automation Hooks v6.1
-
-| Hook | Trigger | Action |
-|------|---------|--------|
-| post-commit.hook | Git commit | steps_done + task_sync |
-| session_start | Claude Code start | task_scan + endday_check + gen_session_context |
-| session_end | Claude Code stop | qdrant_sync + obsidian_sync + gen_metrics |
-| endday_check | Morning (via launch) | Verifie endday.ps1 execute |
+**Reduction cumulee mesuree : ~98%** (tasks.json 5128 chars → 514 TOON)
 
 ## Automation Hooks v6.1
 
