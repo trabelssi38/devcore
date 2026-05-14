@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta http-equiv="refresh" content="30">
-<title>DEV_CORE v6 Dashboard</title>
+<title>DEV_CORE v6.1 Dashboard</title>
 <style>
 body{font-family:system-ui;background:#0f1117;color:#e2e8f0;margin:0;padding:24px}
 h1{font-size:18px;color:#6366f1;margin:0 0 20px}
@@ -26,10 +26,13 @@ h2{font-size:14px;color:#94a3b8;margin:24px 0 12px;text-transform:uppercase;lett
 .component-detail{font-size:11px;color:#64748b}
 .progress-bar{height:6px;background:#1e293b;border-radius:3px;overflow:hidden;margin-top:8px}
 .progress-fill{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);transition:width 0.3s}
+.token-layer{display:flex;justify-content:space-between;padding:6px 12px;background:#1a1d27;border:1px solid #2d3148;border-radius:6px;margin-bottom:4px}
+.token-name{font-size:12px;color:#e2e8f0}
+.token-reduction{font-size:12px;color:#22c55e;font-weight:600}
 </style>
 </head>
 <body>
-<h1>DEV_CORE v6 — Dashboard</h1>
+<h1>DEV_CORE v6.1 — Dashboard</h1>
 <div style="font-size:11px;color:#64748b;margin-bottom:20px">Dernière mise à jour: <span id="timestamp"></span></div>
 
 <div class="grid">
@@ -40,8 +43,8 @@ h2{font-size:14px;color:#94a3b8;margin:24px 0 12px;text-transform:uppercase;lett
   </div>
   <div class="card">
     <div class="card-title">Tâche active</div>
-    <div class="card-val" style="font-size:20px">T-01</div>
-    <div class="card-sub"><span id="task-progress">0/3</span> steps</div>
+    <div class="card-val" style="font-size:20px">T-03</div>
+    <div class="card-sub"><span id="task-progress">0/2</span> steps</div>
   </div>
   <div class="card">
     <div class="card-title">Skills installés</div>
@@ -50,8 +53,39 @@ h2{font-size:14px;color:#94a3b8;margin:24px 0 12px;text-transform:uppercase;lett
   </div>
   <div class="card">
     <div class="card-title">Score global</div>
-    <div class="card-val">93<span style="font-size:18px">%</span></div>
+    <div class="card-val">97<span style="font-size:18px">%</span></div>
     <div class="card-sub status-ok">Opérationnel</div>
+  </div>
+</div>
+
+<h2>Token Optimization Stack (6 couches)</h2>
+<div style="margin-bottom:20px">
+  <div class="token-layer">
+    <span class="token-name">1. CLAUDE.md terse</span>
+    <span class="token-reduction">-69%</span>
+  </div>
+  <div class="token-layer">
+    <span class="token-name">2. caveman-compress MEMORY.md</span>
+    <span class="token-reduction">-46%</span>
+  </div>
+  <div class="token-layer">
+    <span class="token-name">3. MCP cache</span>
+    <span class="token-reduction">-95%</span>
+  </div>
+  <div class="token-layer">
+    <span class="token-name">4. 9Router RTK</span>
+    <span class="token-reduction">-40%</span>
+  </div>
+  <div class="token-layer">
+    <span class="token-name">5. Ghost finder audit</span>
+    <span class="token-reduction">maintenance</span>
+  </div>
+  <div class="token-layer" style="border-color:#6366f1">
+    <span class="token-name">6. TOON tasks+skills</span>
+    <span class="token-reduction" style="color:#8b5cf6">-90% reel</span>
+  </div>
+  <div style="padding:10px 12px;background:#14532d;border:1px solid #22c55e;border-radius:6px;margin-top:8px;text-align:center;font-weight:600;color:#86efac">
+    Reduction cumulee: ~98% (tasks.json: 5128 → 514 chars)
   </div>
 </div>
 
@@ -78,48 +112,25 @@ h2{font-size:14px;color:#94a3b8;margin:24px 0 12px;text-transform:uppercase;lett
   <div class="status-ok">✓</div>
 </div>
 
-<h2>MCP Servers</h2>
+<h2>Automation Hooks v6.1</h2>
 <div class="component">
   <div>
-    <div class="component-name">devcore-scripts</div>
-    <div class="component-detail">8 tools: launch, endday, task_*</div>
+    <div class="component-name">post-commit.hook</div>
+    <div class="component-detail">steps_done + task_sync + auto-done</div>
   </div>
   <div class="status-ok">✓</div>
 </div>
 <div class="component">
   <div>
-    <div class="component-name">qdrant-storage</div>
-    <div class="component-detail">6 tools: search, upsert, delete</div>
+    <div class="component-name">session_start</div>
+    <div class="component-detail">task_scan + endday_check + gen_context</div>
   </div>
   <div class="status-ok">✓</div>
 </div>
 <div class="component">
   <div>
-    <div class="component-name">obsidian-vault</div>
-    <div class="component-detail">6 tools: daily_note, search, create</div>
-  </div>
-  <div class="status-ok">✓</div>
-</div>
-
-<h2>Cron Tasks</h2>
-<div class="component">
-  <div>
-    <div class="component-name">DEV_CORE_Daily_Launch</div>
-    <div class="component-detail">10:00 daily</div>
-  </div>
-  <div class="status-ok">✓</div>
-</div>
-<div class="component">
-  <div>
-    <div class="component-name">DEV_CORE_Daily_Endday</div>
-    <div class="component-detail">04:00 daily</div>
-  </div>
-  <div class="status-ok">✓</div>
-</div>
-<div class="component">
-  <div>
-    <div class="component-name">DEV_CORE_Weekly_Maintenance</div>
-    <div class="component-detail">Sunday 05:00</div>
+    <div class="component-name">session_end</div>
+    <div class="component-detail">qdrant + obsidian + metrics</div>
   </div>
   <div class="status-ok">✓</div>
 </div>
@@ -174,7 +185,7 @@ h2{font-size:14px;color:#94a3b8;margin:24px 0 12px;text-transform:uppercase;lett
 <div class="component">
   <div>
     <div class="component-name">DEV_CORE Scripts</div>
-    <div class="component-detail">19 scripts PowerShell</div>
+    <div class="component-detail">22 scripts PowerShell</div>
   </div>
   <div class="status-ok">✓</div>
 </div>
@@ -188,7 +199,7 @@ h2{font-size:14px;color:#94a3b8;margin:24px 0 12px;text-transform:uppercase;lett
 <div class="component">
   <div>
     <div class="component-name">Session Context</div>
-    <div class="component-detail">Tasks T-01 — Tag [T-XX]</div>
+    <div class="component-detail">Tasks T-03 — Tag [T-03]</div>
   </div>
   <div class="status-ok">✓</div>
 </div>
@@ -204,23 +215,23 @@ h2{font-size:14px;color:#94a3b8;margin:24px 0 12px;text-transform:uppercase;lett
 <div class="component">
   <div>
     <div class="component-name">Collection: decisions</div>
-    <div class="component-detail">768d cosine — 0 vectors</div>
+    <div class="component-detail">768d cosine — sync on session-end</div>
   </div>
-  <div class="status-warn">⚠</div>
+  <div class="status-ok">✓</div>
 </div>
 <div class="component">
   <div>
     <div class="component-name">Collection: patterns</div>
-    <div class="component-detail">768d cosine — 0 vectors</div>
+    <div class="component-detail">768d cosine — sync on session-end</div>
   </div>
-  <div class="status-warn">⚠</div>
+  <div class="status-ok">✓</div>
 </div>
 <div class="component">
   <div>
     <div class="component-name">Collection: lessons</div>
-    <div class="component-detail">768d cosine — 0 vectors</div>
+    <div class="component-detail">768d cosine — sync on session-end</div>
   </div>
-  <div class="status-warn">⚠</div>
+  <div class="status-ok">✓</div>
 </div>
 
 <h2>Ollama Embeddings</h2>
@@ -249,24 +260,17 @@ h2{font-size:14px;color:#94a3b8;margin:24px 0 12px;text-transform:uppercase;lett
 </div>
 <div class="component">
   <div>
-    <div class="component-name">Structure</div>
-    <div class="component-detail">15 dossiers — Global, DB, Python, Web, Android, AI...</div>
+    <div class="component-name">Daily Notes</div>
+    <div class="component-detail">Auto-update on session-end</div>
   </div>
   <div class="status-ok">✓</div>
-</div>
-<div class="component">
-  <div>
-    <div class="component-name">Contenu</div>
-    <div class="component-detail">Global rules + Design principles</div>
-  </div>
-  <div class="status-warn">⚠</div>
 </div>
 
 <h2>Mémoire partagée</h2>
 <div class="component">
   <div>
     <div class="component-name">MEMORY.md</div>
-    <div class="component-detail">Index central — patterns, décisions, stack</div>
+    <div class="component-detail">Token stack + Automation hooks docs</div>
   </div>
   <div class="status-ok">✓</div>
 </div>
@@ -279,15 +283,8 @@ h2{font-size:14px;color:#94a3b8;margin:24px 0 12px;text-transform:uppercase;lett
 </div>
 <div class="component">
   <div>
-    <div class="component-name">GLOBAL_STATE.md</div>
-    <div class="component-detail">DEV_CORE v6 — 5 sources intégrées</div>
-  </div>
-  <div class="status-ok">✓</div>
-</div>
-<div class="component">
-  <div>
-    <div class="component-name">missions.json</div>
-    <div class="component-detail">4 missions (M-01 → M-04)</div>
+    <div class="component-name">kpi.csv</div>
+    <div class="component-detail">TOON metrics — 74.8% avg savings</div>
   </div>
   <div class="status-ok">✓</div>
 </div>
@@ -309,8 +306,8 @@ h2{font-size:14px;color:#94a3b8;margin:24px 0 12px;text-transform:uppercase;lett
 </div>
 <div class="component">
   <div>
-    <div class="component-name">graphify</div>
-    <div class="component-detail">Path: C:/devcore/DEV_CORE/Skills/graphify</div>
+    <div class="component-name">toon</div>
+    <div class="component-detail">Path: C:/devcore/DEV_CORE/Skills/toon</div>
   </div>
   <div class="status-ok">✓</div>
 </div>
@@ -322,50 +319,27 @@ h2{font-size:14px;color:#94a3b8;margin:24px 0 12px;text-transform:uppercase;lett
   <div class="status-ok">✓</div>
 </div>
 
-<h2>Optimisation Tokens</h2>
-<div class="component">
-  <div>
-    <div class="component-name">CLAUDE.md terse</div>
-    <div class="component-detail">drona23/claude-token-efficient</div>
+<h2>Tasks Pipeline (cea_dashboard)</h2>
+<div class="mission">
+  <span class="badge done">DONE</span>
+  <div style="flex:1">
+    <div style="font-size:13px;font-weight:500">T-01: Spec + Plan implementation</div>
+    <div style="font-size:11px;color:#64748b;margin-top:2px">Mode: reasoning — 3/3 steps ✓</div>
   </div>
-  <div class="status-ok">✓</div>
 </div>
-<div class="component">
-  <div>
-    <div class="component-name">MCP cache</div>
-    <div class="component-detail">ooples/token-optimizer-mcp</div>
+<div class="mission">
+  <span class="badge done">DONE</span>
+  <div style="flex:1">
+    <div style="font-size:13px;font-weight:500">T-02: Implementation TDD</div>
+    <div style="font-size:11px;color:#64748b;margin-top:2px">Mode: coding — 5/5 steps ✓</div>
   </div>
-  <div class="status-ok">✓</div>
 </div>
-<div class="component">
-  <div>
-    <div class="component-name">Ghost finder</div>
-    <div class="component-detail">alexgreensh/token-optimizer</div>
-  </div>
-  <div class="status-ok">✓</div>
-</div>
-
-<h2>Tasks Pipeline</h2>
 <div class="mission">
   <span class="badge active">ACTIVE</span>
   <div style="flex:1">
-    <div style="font-size:13px;font-weight:500">T-01: Spec + Plan implementation</div>
-    <div style="font-size:11px;color:#64748b;margin-top:2px">Mode: reasoning — 0/3 steps</div>
-    <div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div>
-  </div>
-</div>
-<div class="mission">
-  <span class="badge todo">TODO</span>
-  <div style="flex:1">
-    <div style="font-size:13px;font-weight:500">T-02: Implementation TDD</div>
-    <div style="font-size:11px;color:#64748b;margin-top:2px">Mode: coding — 0/5 steps — depends: T-01</div>
-  </div>
-</div>
-<div class="mission">
-  <span class="badge todo">TODO</span>
-  <div style="flex:1">
     <div style="font-size:13px;font-weight:500">T-03: Tests bulk + Documentation</div>
-    <div style="font-size:11px;color:#64748b;margin-top:2px">Mode: bulk — 0/2 steps — depends: T-02</div>
+    <div style="font-size:11px;color:#64748b;margin-top:2px">Mode: bulk — 0/2 steps</div>
+    <div class="progress-bar"><div class="progress-fill" style="width:0%"></div></div>
   </div>
 </div>
 <div class="mission">
@@ -376,7 +350,7 @@ h2{font-size:14px;color:#94a3b8;margin:24px 0 12px;text-transform:uppercase;lett
   </div>
 </div>
 
-<p style="color:#475569;font-size:12px;margin-top:32px">Ouvrir dans un navigateur · Auto-refresh 30s · DEV_CORE v6</p>
+<p style="color:#475569;font-size:12px;margin-top:32px">Ouvrir dans un navigateur · Auto-refresh 30s · DEV_CORE v6.1</p>
 
 <script>
 function updateTimestamp() {
