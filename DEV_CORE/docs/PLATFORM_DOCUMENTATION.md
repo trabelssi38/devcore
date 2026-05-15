@@ -359,6 +359,7 @@ dc endday                       # Clôture + sync auto
 dc weekly                       # Maintenance hebdo
 dc check                        # Diagnostic complet
 dc ask [prompt]                 # Routing mode auto
+dc rtk [commande]               # Execute et compresse la sortie (-40%)
 ```
 
 ---
@@ -661,7 +662,7 @@ PUT http://localhost:6333/collections/{collection}/points
 | 1 | CLAUDE.md terse | -69% | Instructions concises, caveman-compress |
 | 2 | MEMORY.md compress | -46% | Memoire partagee structuree |
 | 3 | MCP cache | -95% | Contexte des outils mis en cache |
-| 4 | 9Router RTK | -40% | Routage modeles optimal |
+| 4 | DEV_CORE RTK | -40% | Compression native des outputs (dc rtk / MCP) |
 | 5 | Ghost finder audit | maintenance | Detection code mort |
 | 6 | TOON tasks+skills | -90% | tasks.json compresse (5128 → 514 chars) |
 
@@ -691,6 +692,14 @@ Le script `toonify.ps1` gère automatiquement la synchronisation à chaque comma
 ---
 
 ## Changelog v6
+
+### 2026-05-16 — Intégration Native RTK
+
+- ✅ Migration de la logique RTK (Result Tool Kit) de 9Router vers DEV_CORE.
+- ✅ Création du filtre universel `rtk.ps1` (Smart Truncate, minification, suppression des espaces inutiles).
+- ✅ Ajout de la commande CLI `dc rtk <commande>` pour l'optimisation des outputs de l'agent.
+- ✅ Middleware MCP (`server.py`) pour appliquer la compression aux retours des outils Hermes.
+- ✅ Télémétrie et enregistrement des KPIs de compression dans `kpi.csv`.
 
 ### 2026-05-15 — Autonomie 100% v6.2
 
