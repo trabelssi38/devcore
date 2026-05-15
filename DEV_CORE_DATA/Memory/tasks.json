@@ -1,4 +1,4 @@
-{
+﻿{
     "project":  "cea_dashboard",
     "current_task":  "T-04",
     "active_client":  "claude",
@@ -171,10 +171,40 @@
                                         "done":  false
                                     }
                                 ]
+                  },
+                  {
+                      "id":  "T-06",
+                      "title":  "dev core fr parser design - 1. Intent",
+                      "mode":  "coding",
+                      "status":  "todo",
+                      "steps_total":  1,
+                      "steps_done":  0,
+                      "depends_on":  null,
+                      "source":  "2026-04-22-dev-core-fr-parser-design.md"
+                  },
+                  {
+                      "id":  "T-07",
+                      "title":  "dev core fr parser design - 2. Design Position",
+                      "mode":  "reasoning",
+                      "status":  "todo",
+                      "steps_total":  1,
+                      "steps_done":  0,
+                      "depends_on":  null,
+                      "source":  "2026-04-22-dev-core-fr-parser-design.md"
+                  },
+                  {
+                      "id":  "T-08",
+                      "title":  "dev core fr parser design - 3. Core Principle",
+                      "mode":  "bulk",
+                      "status":  "todo",
+                      "steps_total":  1,
+                      "steps_done":  0,
+                      "depends_on":  null,
+                      "source":  "2026-04-22-dev-core-fr-parser-design.md"
                   }
               ],
     "detected_from_git":  [
-
+                              "T-04",
+                              "T-03"
                           ]
 }
-

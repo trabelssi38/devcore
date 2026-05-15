@@ -32,6 +32,12 @@ switch -Regex ($cmd) {
         $DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { 'C:\devcore\DEV_CORE_DATA' }
         & "$SCRIPTS\toonify.ps1" -InputFile "$DATA\Memory\tasks.json" -StatsSave
     }
+    
+    # -- RTK (Result Tool Kit)
+    "^rtk\s+(.+)$" {
+        $execCmd = $Matches[1]
+        Invoke-Expression $execCmd 2>&1 | & "$SCRIPTS\rtk.ps1" -StatsSave
+    }
     "^step done(\s+\d+)?$|^sd(\s+\d+)?$"        {
         $n = if ($Matches[1]) { [int]$Matches[1].Trim() } elseif ($Matches[2]) { [int]$Matches[2].Trim() } else { 0 }
         & "$SCRIPTS\task_step_done.ps1" -StepNumber $n
@@ -115,6 +121,9 @@ switch -Regex ($cmd) {
         Write-Host "  dc toon encode [fichier]        JSON -> TOON" -ForegroundColor Gray
         Write-Host "  dc toon decode [fichier]        TOON -> JSON" -ForegroundColor Gray
         Write-Host "  dc toon session                 Affiche session_context.toon" -ForegroundColor Gray
+        Write-Host ""
+        Write-Host "  RTK (Result Tool Kit)" -ForegroundColor White
+        Write-Host "  dc rtk [commande]               Execute et compresse la sortie (-40%)" -ForegroundColor Gray
         Write-Host ""
         Write-Host "  STEPS" -ForegroundColor White
         Write-Host "  dc step done [N] (sd)          Marque step N done (auto si N=0)" -ForegroundColor Gray

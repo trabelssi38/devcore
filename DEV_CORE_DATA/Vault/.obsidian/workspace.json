@@ -11,10 +11,10 @@
             "id": "9825bb70ad166501",
             "type": "leaf",
             "state": {
-              "type": "empty",
+              "type": "graph",
               "state": {},
-              "icon": "lucide-file",
-              "title": "Nouvel onglet"
+              "icon": "lucide-git-fork",
+              "title": "Vue graphique"
             }
           }
         ]
@@ -176,8 +176,9 @@
       "bases:Créer une nouvelle base": false
     }
   },
-  "active": "8cfc080060bc35f8",
+  "active": "9825bb70ad166501",
   "lastOpenFiles": [
+    "Lessons/workflow/session_2026-05-15.md",
     "2026-05-11.md",
     "Sans titre.base",
     "Sans titre.canvas",

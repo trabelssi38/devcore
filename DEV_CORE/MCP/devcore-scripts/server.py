@@ -3,6 +3,8 @@
 
 import json
 import subprocess
+import re
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +20,48 @@ except ImportError:
 DEVCORE_SCRIPTS = Path("C:/devcore/DEV_CORE/Scripts")
 DEVCORE_DATA = Path("C:/devcore/DEV_CORE_DATA")
 
+def apply_rtk(text: str) -> str:
+    """Apply RTK compression to tool outputs."""
+    if not text:
+        return text
+    
+    original_size = len(text)
+    lines = text.splitlines()
+    
+    compressed_lines = []
+    for line in lines:
+        line = line.strip()
+        if line:
+            line = re.sub(r'\s{2,}', ' ', line)
+            compressed_lines.append(line)
+            
+    if len(compressed_lines) > 500:
+        head = compressed_lines[:200]
+        tail = compressed_lines[-200:]
+        trunc_count = len(compressed_lines) - 400
+        compressed_lines = head + [f"\n... [RTK TRUNCATED {trunc_count} LINES] ...\n"] + tail
+        
+    compressed_text = '\n'.join(compressed_lines)
+    new_size = len(compressed_text)
+    
+    if original_size > 0:
+        savings = round(((original_size - new_size) / original_size) * 100, 1)
+        try:
+            kpi_file = DEVCORE_DATA / "Metrics" / "kpi.csv"
+            kpi_file.parent.mkdir(parents=True, exist_ok=True)
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            row = f"{timestamp},MCP_RTK_filter,{original_size},{new_size},{savings},YES\n"
+            
+            if not kpi_file.exists():
+                with open(kpi_file, "w", encoding="utf-8") as f:
+                    f.write("timestamp,file,json_chars,toon_chars,savings_pct,recommended\n")
+            with open(kpi_file, "a", encoding="utf-8") as f:
+                f.write(row)
+        except Exception:
+            pass
+            
+    return compressed_text
+
 
 def run_powershell(script_path: str, args: list = None) -> dict:
     """Execute a PowerShell script and return output."""
@@ -32,9 +76,12 @@ def run_powershell(script_path: str, args: list = None) -> dict:
             text=True,
             timeout=300
         )
+        stdout = result.stdout
+        stdout = apply_rtk(stdout)
+        
         return {
             "success": True,
-            "stdout": result.stdout,
+            "stdout": stdout,
             "stderr": result.stderr,
             "returncode": result.returncode
         }
