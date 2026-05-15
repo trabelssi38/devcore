@@ -29,10 +29,10 @@ def _canonicalize_root(path_value: str) -> Path:
 
 def get_paths() -> DevCorePaths:
     platform_root = _canonicalize_root(
-        os.environ.get("DEVCORE_PLATFORM_ROOT", r"C:\DEV_CORE")
+        os.environ.get("DEVCORE_PLATFORM_ROOT", r"C:\devcore\DEV_CORE")
     )
     data_root = _canonicalize_root(
-        os.environ.get("DEVCORE_DATA_ROOT", r"C:\DEV_CORE_DATA")
+        os.environ.get("DEVCORE_DATA_ROOT", r"C:\devcore\DEV_CORE_DATA")
     )
 
     bus_root = platform_root / "Bus"

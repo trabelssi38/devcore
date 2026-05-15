@@ -72,7 +72,7 @@ multi_agent = true
 
 ### 1. Onboarding sur un projet inconnu
 ```
-/graphify C:\DEV_CORE\Tools\devcore
+/graphify C:\devcore\DEV_CORE\Tools\devcore
 ```
 Produit en quelques minutes :
 - `GRAPH_REPORT.md` — nœuds centraux, surprises, questions suggérées
@@ -138,13 +138,13 @@ if (Test-Path $graphDir) {
 }
 ```
 
-### Dans mission_next.ps1 — hint graphify pour M-01 (architecture)
+### Dans task_next.ps1 — hint graphify pour T-01 (architecture)
 ```powershell
-# Si la mission est pour Claude et de type architecture/review
-if ($current.agent -eq "claude" -and $current.title -match "spec|architecture|review") {
+# Si la tache est de type architecture/review
+if ($current.title -match "spec|architecture|review") {
     $graphReport = "$DEV_CORE_DATA\Vault\docs\graphify\devcore-platform\GRAPH_REPORT.md"
     if (Test-Path $graphReport) {
-        Write-Host "  Graph disponible — Claude chargera GRAPH_REPORT.md automatiquement" -ForegroundColor DarkGray
+        Write-Host "  Graph disponible — GRAPH_REPORT.md charge automatiquement" -ForegroundColor DarkGray
     }
 }
 ```

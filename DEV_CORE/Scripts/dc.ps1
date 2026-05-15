@@ -1,8 +1,8 @@
 # dc.ps1 -- DEV_CORE v6 -- Single client -- ASCII safe
-# Alias : Set-Alias dc 'C:\DEV_CORE\Scripts\dc.ps1'
+# Alias : Set-Alias dc 'C:\devcore\DEV_CORE\Scripts\dc.ps1'
 param([Parameter(ValueFromRemainingArguments=$true)][string[]]$Args)
 
-$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\DEV_CORE" }
+$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $SCRIPTS  = "$DEV_CORE\Scripts"
 $cmd = ($Args -join " ").ToLower().Trim()
 
@@ -12,10 +12,30 @@ switch -Regex ($cmd) {
     "^next task$|^nt$"                          { & "$SCRIPTS\task_next.ps1" }
     "^task done$|^td$|^done$"                   { & "$SCRIPTS\task_done.ps1" }
     "^task status$|^ts$|^status$"               { & "$SCRIPTS\task_status.ps1" }
+    "^task list$|^tl$|^list$"                   { & "$SCRIPTS\task_list.ps1" }
+    "^task edit (T-\d+)(.*)$"                   { Invoke-Expression "& `"$SCRIPTS\task_edit.ps1`" -Id $($Matches[1]) $($Matches[2])" }
     "^task pause$"                              { & "$SCRIPTS\task_pause.ps1" }
     "^task skip$"                               { & "$SCRIPTS\task_skip.ps1" }
     "^task scan$"                               { & "$SCRIPTS\task_scan.ps1" }
     "^task sync$"                               { & "$SCRIPTS\task_sync.ps1" }
+    "^toon convert-tasks$|^toon ct$" {
+        $DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { 'C:\devcore\DEV_CORE_DATA' }
+        & "$SCRIPTS\toonify.ps1" -InputFile "$DATA\Memory\tasks.json" -StatsSave
+    }
+    "^toon encode (.+)$" { & "$SCRIPTS\toonify.ps1" -InputFile $Matches[1] -StatsSave }
+    "^toon decode (.+)$" { & "$SCRIPTS\toonify.ps1" -InputFile $Matches[1] -Decode }
+    "^toon session$" {
+        $DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { 'C:\devcore\DEV_CORE_DATA' }
+        Get-Content "$DATA\Logs\scripts\session_context.toon" -ErrorAction SilentlyContinue
+    }
+    "^toon$" {
+        $DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { 'C:\devcore\DEV_CORE_DATA' }
+        & "$SCRIPTS\toonify.ps1" -InputFile "$DATA\Memory\tasks.json" -StatsSave
+    }
+    "^step done(\s+\d+)?$|^sd(\s+\d+)?$"        {
+        $n = if ($Matches[1]) { [int]$Matches[1].Trim() } elseif ($Matches[2]) { [int]$Matches[2].Trim() } else { 0 }
+        & "$SCRIPTS\task_step_done.ps1" -StepNumber $n
+    }
     "^new task (.+) -(reasoning|coding|bulk)$"  {
         & "$SCRIPTS\task_add.ps1" -Title $Matches[1] -Mode $Matches[2]
     }
@@ -40,7 +60,8 @@ switch -Regex ($cmd) {
     "^weekly$"  { & "$SCRIPTS\Auto\weekly_maintenance.ps1" }
 
     # -- DIAGNOSTIC
-    "^check$"   { & "$SCRIPTS\diagnose.ps1" }
+    "^check --fix$"  { & "$SCRIPTS\diagnose.ps1" -Fix }
+    "^check$"        { & "$SCRIPTS\diagnose.ps1" }
 
     # -- ASK (routing mode auto)
     "^ask (.+)$" { & "$SCRIPTS\ask.ps1" -PromptFr $Matches[1] }
@@ -68,6 +89,8 @@ switch -Regex ($cmd) {
         Write-Host "  dc next task (nt)              Prochaine tache + mode auto" -ForegroundColor Gray
         Write-Host "  dc task done (td)              Valide + sync memoire auto" -ForegroundColor Gray
         Write-Host "  dc task status (ts)            Dashboard taches" -ForegroundColor Gray
+        Write-Host "  dc task list (tl)              Liste des taches todo" -ForegroundColor Gray
+        Write-Host "  dc task edit [id] -mode ...    Editer une tache" -ForegroundColor Gray
         Write-Host "  dc task pause                  Pause sans valider" -ForegroundColor Gray
         Write-Host "  dc task skip                   Passe a la suivante" -ForegroundColor Gray
         Write-Host "  dc task scan                   Scan git+spec+prompts -> suggestions" -ForegroundColor Gray
@@ -86,10 +109,23 @@ switch -Regex ($cmd) {
         Write-Host "  dc check                        Diagnostic complet" -ForegroundColor Gray
         Write-Host "  dc ask [prompt]                 Routing mode auto" -ForegroundColor Gray
         Write-Host ""
-        Write-Host "  MODES 9ROUTER" -ForegroundColor White
-        Write-Host "  reasoning : architecture, spec, decision (32k)" -ForegroundColor Gray
-        Write-Host "  coding    : implementation, patch, TDD (8k)" -ForegroundColor Gray
-        Write-Host "  bulk      : generation masse, docs, tests (16k)" -ForegroundColor Gray
+        Write-Host "  TOON" -ForegroundColor White
+        Write-Host "  dc toon                         tasks.json -> tasks.toon (avec stats)" -ForegroundColor Gray
+        Write-Host "  dc toon convert-tasks (ct)      Idem avec rapport KPI" -ForegroundColor Gray
+        Write-Host "  dc toon encode [fichier]        JSON -> TOON" -ForegroundColor Gray
+        Write-Host "  dc toon decode [fichier]        TOON -> JSON" -ForegroundColor Gray
+        Write-Host "  dc toon session                 Affiche session_context.toon" -ForegroundColor Gray
+        Write-Host ""
+        Write-Host "  STEPS" -ForegroundColor White
+        Write-Host "  dc step done [N] (sd)          Marque step N done (auto si N=0)" -ForegroundColor Gray
+        Write-Host ""
+        Write-Host "  AUTOMATION" -ForegroundColor White
+        Write-Host "  session_start  -> launch + task_next + scan (auto)" -ForegroundColor DarkGray
+        Write-Host "  post_tool_hook -> git detect + step incr + integrity (auto)" -ForegroundColor DarkGray
+        Write-Host "  task_done      -> lesson + qdrant + obsidian + next (auto)" -ForegroundColor DarkGray
+        Write-Host "  session_end    -> sync + endday (auto)" -ForegroundColor DarkGray
+        Write-Host "  post-commit    -> step++ + auto-complete (auto)" -ForegroundColor DarkGray
+        Write-Host "  weekly         -> audit + backup + report (scheduled)" -ForegroundColor DarkGray
         Write-Host ""
     }
 

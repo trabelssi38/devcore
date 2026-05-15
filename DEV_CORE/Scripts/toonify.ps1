@@ -35,14 +35,19 @@ if (-not $Decode) {
     Write-Log "Encoding: $InputFile -> TOON" "Cyan"
 
     try {
-        $tempJson = [System.IO.Path]::GetTempFileName() + ".json"
-        $sourceContent | Set-Content $tempJson -Encoding UTF8
+        $tempJson = [System.IO.Path]::GetTempFileName() -replace '\.tmp$', '.json'
+        # PS5.1 : Set-Content -Encoding UTF8 ajoute un BOM que npx toon rejette
+        $Utf8NoBom = New-Object System.Text.UTF8Encoding $False
+        [System.IO.File]::WriteAllText($tempJson, $sourceContent, $Utf8NoBom)
 
-        $toonOutput = & cmd /c "npx @toon-format/cli encode --input $tempJson" 2>&1
+        # Syntaxe correcte : npx @toon-format/cli -e [INPUT] (pas 'encode --input')
+        $toonOutput = & npx @toon-format/cli -e "$tempJson" 2>&1 |
+            Where-Object { $_ -notmatch 'ExperimentalWarning' -and $_ -notmatch 'CommonJS module' -and $_ -notmatch 'require\(\)' }
+        $toonOutput = $toonOutput -join "`n"
         Remove-Item $tempJson -Force -ErrorAction SilentlyContinue
 
-        if ($LASTEXITCODE -ne 0 -or (-not $toonOutput)) {
-            throw "TOON encode failed"
+        if (-not $toonOutput -or $toonOutput.Length -lt 5) {
+            throw "TOON encode produced empty output"
         }
 
         $toonChars = $toonOutput.Length
@@ -75,7 +80,9 @@ if (-not $Decode) {
             Write-Log "  TOON ecrit dans $toonFile" "Green"
         }
 
-        return @{ savings = $savings; recommended = ($savings -gt 25) }
+        # Pas de return ici -- evite la pollution du pipeline quand appele depuis un autre script
+        $script:ToonSavings    = $savings
+        $script:ToonRecommended = ($savings -gt 25)
 
     } catch {
         Write-Log "ERREUR encoding TOON: $_ - Fallback JSON" "Red"
@@ -85,14 +92,17 @@ if (-not $Decode) {
     # DECODE: TOON -> JSON
     Write-Log "Decoding: $InputFile -> JSON" "Cyan"
     try {
-        $tempToon = [System.IO.Path]::GetTempFileName() + ".toon"
+        $tempToon = [System.IO.Path]::GetTempFileName() -replace '\.tmp$', '.toon'
         $sourceContent | Set-Content $tempToon -Encoding UTF8
 
-        $jsonOutput = & cmd /c "npx @toon-format/cli decode --input $tempToon" 2>&1
+        # Syntaxe correcte : npx @toon-format/cli -d [INPUT] (pas 'decode --input')
+        $jsonOutput = & npx @toon-format/cli -d "$tempToon" 2>&1 |
+            Where-Object { $_ -notmatch 'ExperimentalWarning' -and $_ -notmatch 'CommonJS module' -and $_ -notmatch 'require\(\)' }
+        $jsonOutput = $jsonOutput -join "`n"
         Remove-Item $tempToon -Force -ErrorAction SilentlyContinue
 
-        if ($LASTEXITCODE -ne 0 -or (-not $jsonOutput)) {
-            throw "TOON decode failed"
+        if (-not $jsonOutput -or $jsonOutput.Length -lt 2) {
+            throw "TOON decode produced empty output"
         }
 
         if (-not $DryRun) {

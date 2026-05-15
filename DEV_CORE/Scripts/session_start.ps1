@@ -2,8 +2,8 @@
 # Declenche par hook UserPromptSubmit de Claude Code
 # Ne relance pas si deja execute aujourd'hui
 
-$DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\DEV_CORE" }
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\DEV_CORE_DATA" }
+$DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
+$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
 $TODAY         = Get-Date -Format "yyyy-MM-dd"
 $LOG_DIR       = "$DEV_CORE_DATA\Logs\scripts"
 $SESSION_FLAG  = "$LOG_DIR\session_started_$TODAY.flag"
@@ -39,25 +39,37 @@ if (Test-Path $SESSION_FLAG) { exit 0 }
 New-Item -ItemType File -Path $SESSION_FLAG -Force | Out-Null
 
 $LOG = "$LOG_DIR\session_start_$TODAY.log"
-Log "session_start.ps1 -- hook UserPromptSubmit"
+Log "session_start.ps1 -- hook auto"
 
 # 2. Launch
 Log "launch.ps1"
 & "$DEV_CORE\Scripts\launch.ps1" -QuickStart 2>>$LOG
 
-# 3. Charger la tache active (tasks.json en priorite, missions.json en fallback)
-$tFile = "$DEV_CORE_DATA\Memory\tasks.json"
-$mFile = "$DEV_CORE_DATA\Memory\missions.json"
+# 2b. Watchdog Qdrant (4.2) -- tenter de demarrer si down
+try { Invoke-RestMethod "http://localhost:6333" -TimeoutSec 2 | Out-Null }
+catch {
+    Log "Qdrant down -- tentative docker start"
+    Start-Process "docker" -ArgumentList "start qdrant" -WindowStyle Hidden -ErrorAction SilentlyContinue
+    Start-Sleep 3
+}
 
+# 3. Charger la tache active
+$tFile = "$DEV_CORE_DATA\Memory\tasks.json"
 if (Test-Path $tFile) {
     Log "task_next.ps1"
     & "$DEV_CORE\Scripts\task_next.ps1" 2>>$LOG
-} elseif (Test-Path $mFile) {
-    Log "mission_next.ps1 (fallback)"
-    & "$DEV_CORE\Scripts\mission_next.ps1" 2>>$LOG
 } else {
     Log "Aucun board de taches -- dc new task ou dc new project"
 }
+
+# 4. Auto-scan + sync en background (2.2)
+Log "Auto-scan background"
+$scanBlock = {
+    param($dc)
+    & "$dc\Scripts\task_scan.ps1" 2>$null
+    & "$dc\Scripts\task_sync.ps1" 2>$null
+}
+Start-Job -ScriptBlock $scanBlock -ArgumentList $DEV_CORE | Out-Null
 
 Log "session_start.ps1 termine"
 

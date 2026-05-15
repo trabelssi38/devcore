@@ -13,8 +13,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 $HERMES_HOME = "$env:USERPROFILE\.hermes"
-$HERMES_BIN = "C:\devcore\hermes_temp\.venv\Scripts\hermes.exe"
-$DEVCORE_ROOT = "C:\devcore\DEV_CORE"
+$DEVCORE_ROOT = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
+$HERMES_BIN   = if ($env:HERMES_BIN) { $env:HERMES_BIN } else { "C:\devcore\hermes_temp\.venv\Scripts\hermes.exe" }
 $LOG_DIR = "$DEVCORE_ROOT\Logs\hermes"
 $LOG_FILE = "$LOG_DIR\daemon_$(Get-Date -Format 'yyyy-MM-dd').log"
 

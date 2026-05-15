@@ -1,5 +1,5 @@
 # setup.ps1 -- DEV_CORE v6 -- Installation initiale (lancer UNE fois en admin)
-# Usage : powershell -ExecutionPolicy Bypass -File C:\DEV_CORE\Scripts\setup.ps1
+# Usage : powershell -ExecutionPolicy Bypass -File C:\devcore\DEV_CORE\Scripts\setup.ps1
 
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
@@ -86,12 +86,16 @@ foreach ($d in $dirs) {
 }
 Write-Host "  [OK] Dossiers verifies" -ForegroundColor Green
 
+# 6. Hooks clients IA (Claude, Codex, Gemini, Qwen, Antigravity)
+Write-Host "  6/6 Hooks clients IA..." -ForegroundColor Cyan
+& "$DEV_CORE\Scripts\install_universal_hooks.ps1"
+
 # Recharger le profil
 try { . $PROFILE } catch {}
 
 Write-Host ""
 Write-Host "  ============================================" -ForegroundColor Green
-Write-Host "  DEV_CORE v6 -- Setup termine               " -ForegroundColor Green
+Write-Host "  DEV_CORE v6.1 -- Setup termine             " -ForegroundColor Green
 Write-Host "  ============================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Prochaine etape : dc launch" -ForegroundColor Cyan

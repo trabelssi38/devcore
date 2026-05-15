@@ -1,4 +1,6 @@
 # task_sync.ps1 -- DEV_CORE v6 -- Synchronise les suggestions dans tasks.json
+param([int]$MaxPerSource = 3)
+
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
 $TODAY         = Get-Date -Format "yyyy-MM-dd"
@@ -26,14 +28,15 @@ $suggestions = @()
 foreach ($src in $queues.Keys) {
     $path = $queues[$src]
     if (Test-Path $path) {
-        $lines = Get-Content $path -ErrorAction SilentlyContinue
-        foreach ($line in $lines) {
+        $lines = @(Get-Content $path -ErrorAction SilentlyContinue)
+        $selectedLines = $lines | Select-Object -First $MaxPerSource
+        foreach ($line in $selectedLines) {
             try {
                 $item = $line | ConvertFrom-Json
                 $suggestions += $item
             } catch {}
         }
-        Log "$($lines.Count) suggestions depuis $src" "Cyan"
+        Log "$($selectedLines.Count) suggestions (sur $($lines.Count)) depuis $src" "Cyan"
     } else {
         Log "0 suggestions depuis $src" "Gray"
     }
@@ -57,12 +60,6 @@ if ($suggestions.Count -gt $MAX_ADD) {
     $suggestions = $suggestions | Select-Object -First $MAX_ADD
 }
 
-# Limiter le nombre de taches ajoutees par sync
-$MAX_ADD = 10
-if ($suggestions.Count -gt $MAX_ADD) {
-    Write-Host "  [INFO] Limite a $MAX_ADD suggestions par sync" -ForegroundColor Yellow
-    $suggestions = $suggestions | Select-Object -First $MAX_ADD
-}
 
 # Lire tasks.json
 $tFile = "$DEV_CORE_DATA\Memory\tasks.json"

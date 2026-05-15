@@ -1,4 +1,4 @@
-﻿{
+{
     "version":  "6.0",
     "auto_skill_threshold":  3,
     "prune_after_days":  30,
@@ -202,7 +202,7 @@
                        "id":  "graphify",
                        "name":  "Graphify Knowledge Graph",
                        "description":  "Knowledge graph structurel depuis code, SQL, docs, images. Complementaire a Qdrant.",
-                       "skill_path":  "C:\\DEV_CORE\\Skills\\graphify\\SKILL.md",
+                       "skill_path":  "C:\\devcore\\DEV_CORE\\Skills\\graphify\\SKILL.md",
                        "source":  "safishamsi/graphify",
                        "created":  "2026-05-02",
                        "last_used":  "2026-05-02",
@@ -234,5 +234,6 @@
     "archived_skills":  [
 
                         ],
-    "last_updated":  "2026-05-02"
+    "last_updated":  "2026-05-02",
+    "last_checked":  "2026-05-15T10:13:09.3792301+01:00"
 }

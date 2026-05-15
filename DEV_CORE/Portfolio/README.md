@@ -8,6 +8,6 @@ Gestion multi-projets : roadmap, priorités, statut global, allocation agents.
 
 ## Ajouter un projet
 1. Créer `DEV_CORE_DATA\Projects\[nom]\`
-2. Copier `DEV_CORE\Templates\missions_template.json` → `DEV_CORE_DATA\Memory\missions.json`
+2. Creer `DEV_CORE_DATA\Memory\tasks.json` via `dc new project [nom]`
 3. Éditer le project name et les missions
 4. `dc launch -Project [nom]`

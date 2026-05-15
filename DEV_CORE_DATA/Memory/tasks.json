@@ -1,6 +1,6 @@
-﻿{
+{
     "project":  "cea_dashboard",
-    "current_task":  "T-03",
+    "current_task":  "T-04",
     "active_client":  "claude",
     "created":  "2026-05-13",
     "tasks":  [
@@ -72,18 +72,18 @@
                       "mode":  "bulk",
                       "status":  "done",
                       "steps_total":  2,
-                      "steps_done":  0,
+                      "steps_done":  2,
                       "depends_on":  "T-02",
                       "steps":  [
                                     {
                                         "id":  1,
                                         "title":  "Tests integration bulk",
-                                        "done":  false
+                                        "done":  true
                                     },
                                     {
                                         "id":  2,
                                         "title":  "Documentation OpenAPI + README",
-                                        "done":  false
+                                        "done":  true
                                     }
                                 ],
                       "completed_at":  "2026-05-14T22:54:20.5588850+01:00"
@@ -92,7 +92,7 @@
                       "id":  "T-04",
                       "title":  "Review finale + Qdrant logging",
                       "mode":  "reasoning",
-                      "status":  "todo",
+                      "status":  "active",
                       "steps_total":  2,
                       "steps_done":  0,
                       "depends_on":  "T-03",
@@ -107,6 +107,69 @@
                                         "title":  "Logger decisions dans Qdrant + Obsidian",
                                         "done":  false
                                     }
+                                ],
+                      "started_at":  "2026-05-15T10:11:42.1311300+01:00"
+                  },
+                  {
+                      "id":  "T-05",
+                      "title":  "Implementer dev-core-fr-parser",
+                      "mode":  "coding",
+                      "status":  "todo",
+                      "steps_total":  10,
+                      "steps_done":  0,
+                      "depends_on":  null,
+                      "source":  "2026-04-22-dev-core-fr-parser-design.md",
+                      "steps":  [
+                                    {
+                                        "id":  1,
+                                        "title":  "1. Intent",
+                                        "done":  false
+                                    },
+                                    {
+                                        "id":  2,
+                                        "title":  "2. Design Position",
+                                        "done":  false
+                                    },
+                                    {
+                                        "id":  3,
+                                        "title":  "3. Core Principle",
+                                        "done":  false
+                                    },
+                                    {
+                                        "id":  4,
+                                        "title":  "4. Fields In Scope",
+                                        "done":  false
+                                    },
+                                    {
+                                        "id":  5,
+                                        "title":  "5. Project Detection Strategy",
+                                        "done":  false
+                                    },
+                                    {
+                                        "id":  6,
+                                        "title":  "6. Parser Responsibilities",
+                                        "done":  false
+                                    },
+                                    {
+                                        "id":  7,
+                                        "title":  "7. Recommended Interpretation Order",
+                                        "done":  false
+                                    },
+                                    {
+                                        "id":  8,
+                                        "title":  "8. Heuristics",
+                                        "done":  false
+                                    },
+                                    {
+                                        "id":  9,
+                                        "title":  "9. Confidence And Ambiguity",
+                                        "done":  false
+                                    },
+                                    {
+                                        "id":  10,
+                                        "title":  "10. Confirmation Rule",
+                                        "done":  false
+                                    }
                                 ]
                   }
               ],
@@ -114,3 +177,4 @@
 
                           ]
 }
+

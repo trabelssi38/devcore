@@ -9,8 +9,8 @@ param(
     [switch]$DryRun
 )
 
-$DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\DEV_CORE" }
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\DEV_CORE_DATA" }
+$DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
+$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
 $SKILLS_DIR    = "$DEV_CORE\Skills"
 $CONFIG_DIR    = "$DEV_CORE\Config"
 $ACTIVE_FILE   = "$CONFIG_DIR\active_client.txt"
@@ -102,21 +102,21 @@ if (-not (Test-Path $dstDir) -and -not $DryRun) {
 # Lire le fichier boot source
 $bootContent = Get-Content $bootSrc -Raw -ErrorAction SilentlyContinue
 
-# Injecter la mission courante en haut si disponible
+# Injecter la task courante en haut si disponible
 $missionBlock = ""
-$missionsFile = "$DEV_CORE_DATA\Memory\missions.json"
-if (Test-Path $missionsFile) {
+$tasksFile = "$DEV_CORE_DATA\Memory\tasks.json"
+if (Test-Path $tasksFile) {
     try {
-        $board   = Get-Content $missionsFile -Raw | ConvertFrom-Json
-        $current = $board.missions | Where-Object { $_.status -eq "active" } | Select-Object -First 1
+        $board   = Get-Content $tasksFile -Raw | ConvertFrom-Json
+        $current = $board.tasks | Where-Object { $_.status -eq "active" } | Select-Object -First 1
         if ($current) {
             $missionBlock = @"
-## MISSION ACTIVE INJECTEE -- $($current.id)
+## TASK ACTIVE INJECTEE -- $($current.id)
 Titre  : $($current.title)
-Agent  : $($current.agent)
+Mode   : $($current.mode)
 Steps  : $($current.steps_done)/$($current.steps_total)
 Tag git: [$($current.id)]
-Action : dc.ps1 "mission validee" quand steps_done = steps_total
+Action : dc task done quand steps_done = steps_total
 
 "@
         }

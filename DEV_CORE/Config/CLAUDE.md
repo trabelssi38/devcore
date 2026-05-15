@@ -1,5 +1,5 @@
 # CLAUDE.md -- DEV_CORE v6 -- Single Client Mode
-# Emplacement : C:\DEV_CORE\Config\CLAUDE.md
+# Emplacement : C:\devcore\DEV_CORE\Config\CLAUDE.md
 # --> Injecte dans ~/.claude/CLAUDE.md par adapt_client.ps1
 #
 # Mode : single client + 9Router pour le routing des modeles
@@ -13,8 +13,8 @@ Au debut de chaque session, les hooks ont execute automatiquement :
 - task_next.ps1
 
 Lire en premier :
-  C:\DEV_CORE_DATA\Logs\scripts\session_context.txt
-  C:\DEV_CORE_DATA\Memory\tasks.json (tache active + mode)
+  C:\devcore\DEV_CORE_DATA\Logs\scripts\session_context.txt
+  C:\devcore\DEV_CORE_DATA\Memory\tasks.json (tache active + mode)
 
 ---
 
@@ -76,18 +76,18 @@ Le hook post-commit incremente steps_done automatiquement.
 
 ### Verifier si tache complete (apres chaque commit)
 Lire tasks.json : steps_done >= steps_total sur la tache active ?
-  -> Executer : powershell -NonInteractive -File "C:\DEV_CORE\Scripts\task_done.ps1" -Force
-  -> Lire le signal : C:\DEV_CORE_DATA\Logs\scripts\session_context.txt
+  -> Executer : powershell -NonInteractive -File "C:\devcore\DEV_CORE\Scripts\task_done.ps1" -Force
+  -> Lire le signal : C:\devcore\DEV_CORE_DATA\Logs\scripts\session_context.txt
 
 ### Fin de session
 Executer avant de terminer :
-  powershell -NonInteractive -File "C:\DEV_CORE\Scripts\endday.ps1" -SkipBackup
+  powershell -NonInteractive -File "C:\devcore\DEV_CORE\Scripts\endday.ps1" -SkipBackup
 
 ---
 
 ## Taches & tracking
 
-- Tache active dans : C:\DEV_CORE_DATA\Memory\tasks.json
+- Tache active dans : C:\devcore\DEV_CORE_DATA\Memory\tasks.json
 - Commit tag : [T-XX] (pas [M-XX] -- ancienne version multi-client)
 - Plus de handoffs entre agents -- tout dans le meme client
 - Plus de adapt_client.ps1 -- 9Router gere le routing des modeles

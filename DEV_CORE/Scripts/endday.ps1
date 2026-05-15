@@ -1,8 +1,8 @@
 # endday.ps1 — DEV_CORE v6
 param([switch]$SkipBackup, [switch]$SkipQdrant)
 
-$DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\DEV_CORE" }
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\DEV_CORE_DATA" }
+$DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
+$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
 $AUTO          = "$DEV_CORE\Scripts\Auto"
 $TODAY         = Get-Date -Format "yyyy-MM-dd"
 $LOG           = "$DEV_CORE_DATA\Logs\scripts\endday_$TODAY.log"

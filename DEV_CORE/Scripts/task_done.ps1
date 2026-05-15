@@ -1,7 +1,7 @@
 # task_done.ps1 -- DEV_CORE v6 single client
 param([switch]$Force)
-$DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\DEV_CORE" }
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\DEV_CORE_DATA" }
+$DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
+$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
 $AUTO          = "$DEV_CORE\Scripts\Auto"
 $TODAY         = Get-Date -Format "yyyy-MM-dd"
 $tFile         = "$DEV_CORE_DATA\Memory\tasks.json"
@@ -20,6 +20,12 @@ if ($stepsDone -lt $stepsTotal -and -not $Force) {
     if ($c -notmatch "^o|^y") { Write-Host "  Tache non validee." -ForegroundColor DarkGray; exit 0 }
 }
 
+# Garde d'integrite (si force)
+if ($current.steps_done -lt $current.steps_total) {
+    Write-Host "  [WARN] $($current.id) force done : steps_done corrige $($current.steps_done) -> $($current.steps_total)" -ForegroundColor Yellow
+    $current.steps_done = $current.steps_total
+}
+
 # Marquer done
 $current.status = "done"
 $current | Add-Member -NotePropertyName "completed_at" -NotePropertyValue (Get-Date -Format "o") -Force
@@ -36,13 +42,19 @@ Write-Host "  1/5 Lecons..." -ForegroundColor Cyan
 if (Test-Path "$AUTO\lesson_extractor.ps1") { & "$AUTO\lesson_extractor.ps1" }
 
 Write-Host "  2/5 Qdrant..." -ForegroundColor Cyan
-if (Test-Path "$AUTO\qdrant_sync.ps1") { & "$AUTO\qdrant_sync.ps1" }
+if (Test-Path "$DEV_CORE\Scripts\qdrant_sync.ps1") { & "$DEV_CORE\Scripts\qdrant_sync.ps1" }
 
 Write-Host "  3/5 Obsidian..." -ForegroundColor Cyan
-if (Test-Path "$AUTO\obsidian_sync.ps1") { & "$AUTO\obsidian_sync.ps1" }
+if (Test-Path "$DEV_CORE\Scripts\obsidian_sync.ps1") { & "$DEV_CORE\Scripts\obsidian_sync.ps1" }
 
-Write-Host "  4/5 Memoire..." -ForegroundColor Cyan
+Write-Host "  4/5 Memoire + TOON..." -ForegroundColor Cyan
 if (Test-Path "$AUTO\memory_rotate.ps1") { & "$AUTO\memory_rotate.ps1" }
+# Regenerer tasks.toon via toonify.ps1 (gere les paths Windows)
+$toonTarget = "$DEV_CORE_DATA\Memory\tasks.toon"
+try {
+    & "$DEV_CORE\Scripts\toonify.ps1" -InputFile $tFile 2>$null | Out-Null
+    Write-Host "    [TOON] tasks.toon regenere" -ForegroundColor DarkGray
+} catch { Write-Host "    [TOON] toonify.ps1 absent" -ForegroundColor DarkGray }
 
 Write-Host "  5/5 Notification..." -ForegroundColor Cyan
 try {
@@ -58,5 +70,12 @@ $done  = ($board.tasks | Where-Object { $_.status -eq "done" }).Count
 $total = $board.tasks.Count
 Write-Host ""
 Write-Host "  [OK] $($current.id) done | $done/$total taches" -ForegroundColor Green
-if ($nextTask) { Write-Host "  Suivant : dc next task -> $($nextTask.id) [$($nextTask.mode)]" -ForegroundColor Cyan }
+
+# Auto-chainage (2.1) -- charge automatiquement la tache suivante
+if ($nextTask) {
+    Write-Host "  [AUTO] Chargement $($nextTask.id)..." -ForegroundColor Cyan
+    & "$DEV_CORE\Scripts\task_next.ps1"
+} else {
+    Write-Host "  Toutes les taches sont terminees !" -ForegroundColor Green
+}
 Write-Host ""

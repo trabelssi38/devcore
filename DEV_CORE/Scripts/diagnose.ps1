@@ -1,14 +1,20 @@
-# diagnose.ps1 -- DEV_CORE v6 -- ASCII safe
-$DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\DEV_CORE" }
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\DEV_CORE_DATA" }
+# diagnose.ps1 -- DEV_CORE v6.2 -- Auto-reparation
+# Usage : dc check        (diagnostic seul)
+#         dc check --fix   (diagnostic + reparation automatique)
+param([switch]$Fix)
+
+$DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
+$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
 $CLAUDE_DIR    = "$env:USERPROFILE\.claude"
+$GEMINI_DIR    = "$env:USERPROFILE\.gemini"
 
 Write-Host ""
-Write-Host "  DEV_CORE v6 -- Diagnostic autonomie" -ForegroundColor Cyan
-Write-Host "  =====================================" -ForegroundColor DarkGray
+Write-Host "  DEV_CORE v6.2 -- Diagnostic autonomie" -ForegroundColor Cyan
+if ($Fix) { Write-Host "  MODE AUTO-FIX ACTIVE" -ForegroundColor Yellow }
+Write-Host "  =======================================" -ForegroundColor DarkGray
 Write-Host ""
 
-$ok = 0; $warn = 0; $fail = 0
+$ok = 0; $warn = 0; $fail = 0; $fixed = 0
 
 function Check {
     param($label, $status, $fix="")
@@ -25,92 +31,160 @@ function Check {
     }
 }
 
-# 1. CLAUDE.md global -- nouveau check v6 (cherche "devcore-automation" et "session_context")
-$claudeMd = "$CLAUDE_DIR\CLAUDE.md"
-if (Test-Path $claudeMd) {
-    $content = Get-Content $claudeMd -Raw
-    if ($content -match "devcore-automation" -and $content -match "session_context") {
-        Check "~\.claude\CLAUDE.md OK -- directives DEV_CORE v6 presentes" "OK"
-    } elseif ($content -match "DEV_CORE") {
-        Check "~\.claude\CLAUDE.md version incomplete (relancer adapt_client)" "WARN" "powershell -File C:\DEV_CORE\Scripts\adapt_client.ps1 -Client claude"
-    } else {
-        Check "~\.claude\CLAUDE.md sans directives DEV_CORE" "FAIL" "powershell -File C:\DEV_CORE\Scripts\adapt_client.ps1 -Client claude"
+function AutoFix {
+    param($label, $action)
+    if ($script:Fix) {
+        Write-Host "  [FIX]  $label" -ForegroundColor Magenta
+        try { & $action; $script:fixed++ }
+        catch { Write-Host "  [ERR]  Fix echoue : $_" -ForegroundColor Red }
     }
-} else {
-    Check "~\.claude\CLAUDE.md absent" "FAIL" "powershell -File C:\DEV_CORE\Scripts\adapt_client.ps1 -Client claude"
 }
 
-# 2. settings.json -- hook UserPromptSubmit
-$settingsFile = "$CLAUDE_DIR\settings.json"
-if (Test-Path $settingsFile) {
-    try {
-        $s = Get-Content $settingsFile -Raw | ConvertFrom-Json
-        if ($s.hooks -and $s.hooks.UserPromptSubmit) {
-            Check "settings.json -- hook UserPromptSubmit present" "OK"
-        } else {
-            Check "settings.json sans hook UserPromptSubmit" "FAIL" "powershell -File C:\DEV_CORE\Scripts\install_hooks.ps1"
-        }
-    } catch {
-        Check "settings.json JSON invalide" "FAIL" "powershell -File C:\DEV_CORE\Scripts\install_hooks.ps1"
-    }
-} else {
-    Check "settings.json absent" "FAIL" "powershell -File C:\DEV_CORE\Scripts\install_hooks.ps1"
-}
-
-# 3. session_start.ps1
-if (Test-Path "$DEV_CORE\Scripts\session_start.ps1") {
-    Check "Scripts\session_start.ps1 present" "OK"
-} else {
-    Check "Scripts\session_start.ps1 absent" "FAIL" "Copier session_start.ps1 dans C:\DEV_CORE\Scripts\"
-}
-
-# 4. Skill devcore-automation lie
-if (Test-Path "$CLAUDE_DIR\skills\devcore-automation") {
-    Check "Skill devcore-automation lie dans ~/.claude/skills/" "OK"
-} else {
-    Check "Skill devcore-automation absent" "FAIL" "powershell -File C:\DEV_CORE\Scripts\adapt_client.ps1 -Client claude"
-}
-
-# 5. CLAUDE.md projet dans CWD
-if (Test-Path "$(Get-Location)\CLAUDE.md") {
-    Check "CLAUDE.md projet present dans le CWD" "OK"
-} else {
-    Check "CLAUDE.md projet absent dans $(Get-Location)" "WARN" "dc new project [nom]"
-}
-
-# 6. Mission active
-$mFile = "$DEV_CORE_DATA\Memory\missions.json"
-if (Test-Path $mFile) {
-    try {
-        $board  = Get-Content $mFile -Raw | ConvertFrom-Json
-        $active = $board.missions | Where-Object { $_.status -eq "active" } | Select-Object -First 1
-        if ($active) { Check "Mission active : $($active.id)" "OK" }
-        else { Check "Aucune mission active" "WARN" "dc next mission" }
-    } catch { Check "missions.json illisible" "WARN" "Verifier $mFile" }
-} else {
-    Check "missions.json absent" "WARN" "dc new project [nom]"
-}
-
-# 7. devcore-automation SKILL.md
-if (Test-Path "$DEV_CORE\Skills\devcore-automation\SKILL.md") {
-    Check "Skills\devcore-automation\SKILL.md present" "OK"
-} else {
-    Check "Skills\devcore-automation\SKILL.md absent" "FAIL" "Copier le skill"
-}
-
-# 8. Env vars
+# 1. Variables d'environnement
 if ($env:DEVCORE_PLATFORM_ROOT) { Check "DEVCORE_PLATFORM_ROOT defini" "OK" }
-else { Check "DEVCORE_PLATFORM_ROOT non defini" "WARN" "Relancer setup.ps1" }
+else {
+    Check "DEVCORE_PLATFORM_ROOT non defini" "WARN" "Relancer setup.ps1"
+    AutoFix "Set DEVCORE_PLATFORM_ROOT" {
+        [System.Environment]::SetEnvironmentVariable("DEVCORE_PLATFORM_ROOT", $DEV_CORE, "User")
+        $env:DEVCORE_PLATFORM_ROOT = $DEV_CORE
+    }
+}
+if ($env:DEVCORE_DATA_ROOT) { Check "DEVCORE_DATA_ROOT defini" "OK" }
+else {
+    Check "DEVCORE_DATA_ROOT non defini" "WARN" "Relancer setup.ps1"
+    AutoFix "Set DEVCORE_DATA_ROOT" {
+        [System.Environment]::SetEnvironmentVariable("DEVCORE_DATA_ROOT", $DEV_CORE_DATA, "User")
+        $env:DEVCORE_DATA_ROOT = $DEV_CORE_DATA
+    }
+}
 
-# 9. Logs dir
-if (Test-Path "$DEV_CORE_DATA\Logs\scripts") { Check "Logs\scripts accessible" "OK" }
-else { Check "Logs\scripts absent" "WARN" "Relancer setup.ps1" }
+# 2. Dossiers critiques
+$critDirs = @(
+    "$DEV_CORE_DATA\Memory",
+    "$DEV_CORE_DATA\Logs\scripts",
+    "$DEV_CORE_DATA\Backups\auto",
+    "$DEV_CORE_DATA\Sessions"
+)
+foreach ($d in $critDirs) {
+    if (Test-Path $d) { Check "Dossier $(Split-Path $d -Leaf) present" "OK" }
+    else {
+        Check "Dossier $d absent" "WARN" "mkdir $d"
+        AutoFix "Creer $d" { New-Item -ItemType Directory -Path $d -Force | Out-Null }
+    }
+}
 
+# 3. Hooks clients IA
+$hookChecks = @{
+    ".claude" = @{ file = "$CLAUDE_DIR\settings.json"; event = "UserPromptSubmit" }
+    ".gemini" = @{ file = "$GEMINI_DIR\settings.json"; event = "BeforeAgent" }
+}
+foreach ($client in $hookChecks.Keys) {
+    $hc = $hookChecks[$client]
+    if (Test-Path $hc.file) {
+        try {
+            $s = Get-Content $hc.file -Raw | ConvertFrom-Json
+            if ($s.hooks -and ($s.hooks.PSObject.Properties.Name -contains $hc.event)) {
+                Check "$client hooks ($($hc.event)) OK" "OK"
+            } else {
+                Check "$client hooks manquants" "FAIL" "install_universal_hooks.ps1"
+                AutoFix "Reinstaller hooks $client" { & "$DEV_CORE\Scripts\install_universal_hooks.ps1" }
+            }
+        } catch {
+            Check "$client settings.json invalide" "FAIL" "install_universal_hooks.ps1"
+            AutoFix "Reinstaller hooks $client" { & "$DEV_CORE\Scripts\install_universal_hooks.ps1" }
+        }
+    } else {
+        Check "$client settings.json absent" "FAIL" "install_universal_hooks.ps1"
+        AutoFix "Creer hooks $client" { & "$DEV_CORE\Scripts\install_universal_hooks.ps1" }
+    }
+}
+
+# 4. Scripts critiques
+$scripts = @("session_start.ps1","session_end.ps1","post_tool_hook.ps1","task_next.ps1","task_done.ps1","task_step_done.ps1","launch.ps1")
+foreach ($s in $scripts) {
+    if (Test-Path "$DEV_CORE\Scripts\$s") { Check "Script $s present" "OK" }
+    else { Check "Script $s MANQUANT" "FAIL" "Reinstaller DEV_CORE" }
+}
+
+# 5. Task active + integrite
+$tFile = "$DEV_CORE_DATA\Memory\tasks.json"
+if (Test-Path $tFile) {
+    try {
+        $board  = Get-Content $tFile -Raw | ConvertFrom-Json
+        $active = $board.tasks | Where-Object { $_.status -eq "active" } | Select-Object -First 1
+        if ($active) {
+            Check "Task active : $($active.id) ($($active.steps_done)/$($active.steps_total))" "OK"
+
+            # Integrity check : steps_done vs steps reellement done
+            if ($active.steps -and $active.steps.Count -gt 0) {
+                $realDone = @($active.steps | Where-Object { $_.done }).Count
+                if ($active.steps_done -ne $realDone) {
+                    Check "Integrite steps $($active.id) : steps_done=$($active.steps_done) vs reel=$realDone" "WARN" "Corriger steps_done"
+                    AutoFix "Corriger steps_done $($active.id)" {
+                        $active.steps_done = $realDone
+                        $board | ConvertTo-Json -Depth 10 | Set-Content $tFile -Encoding UTF8
+                    }
+                } else {
+                    Check "Integrite steps $($active.id) coherente" "OK"
+                }
+            }
+
+            # Check tasks 'done' avec steps incompletes
+            $corruptDone = $board.tasks | Where-Object {
+                $_.status -eq "done" -and $_.steps_done -lt $_.steps_total
+            }
+            if ($corruptDone) {
+                foreach ($cd in $corruptDone) {
+                    Check "Corruption : $($cd.id) done mais $($cd.steps_done)/$($cd.steps_total)" "WARN"
+                    AutoFix "Corriger $($cd.id) steps_done" {
+                        $cd.steps_done = $cd.steps_total
+                        if ($cd.steps) { $cd.steps | ForEach-Object { $_.done = $true } }
+                        $board | ConvertTo-Json -Depth 10 | Set-Content $tFile -Encoding UTF8
+                    }
+                }
+            }
+        } else {
+            Check "Aucune task active" "WARN" "dc next task"
+        }
+    } catch { Check "tasks.json illisible" "FAIL" "Verifier $tFile" }
+} else {
+    Check "tasks.json absent" "WARN" "dc new task [nom]"
+}
+
+# 6. CLAUDE.md projet CWD
+if (Test-Path "$(Get-Location)\CLAUDE.md") { Check "CLAUDE.md projet present" "OK" }
+else { Check "CLAUDE.md projet absent" "WARN" "dc new project [nom]" }
+
+# 7. Qdrant
+try {
+    $q = Invoke-RestMethod "http://localhost:6333/collections" -TimeoutSec 3
+    Check "Qdrant OK ($($q.result.collections.Count) collections)" "OK"
+} catch {
+    Check "Qdrant non disponible" "WARN" "docker start qdrant"
+    AutoFix "Demarrer Qdrant" {
+        Start-Process "docker" -ArgumentList "start qdrant" -WindowStyle Hidden -ErrorAction SilentlyContinue
+        Start-Sleep 3
+    }
+}
+
+# 8. Post-commit hook
+$gitHooksDir = "$(Get-Location)\.git\hooks"
+if (Test-Path "$gitHooksDir\post-commit") { Check "Git post-commit hook installe" "OK" }
+elseif (Test-Path $gitHooksDir) {
+    Check "Git post-commit hook absent" "WARN" "Copier post-commit.hook"
+    AutoFix "Installer post-commit hook" {
+        Copy-Item "$DEV_CORE\Scripts\post-commit.hook" "$gitHooksDir\post-commit" -Force
+    }
+}
+
+# Resultat
 Write-Host ""
-Write-Host "  =====================================" -ForegroundColor DarkGray
-Write-Host "  OK: $ok  |  WARN: $warn  |  FAIL: $fail" -ForegroundColor White
+Write-Host "  =======================================" -ForegroundColor DarkGray
+Write-Host "  OK: $ok  |  WARN: $warn  |  FAIL: $fail" -NoNewline -ForegroundColor White
+if ($Fix -and $fixed -gt 0) { Write-Host "  |  FIXED: $fixed" -ForegroundColor Magenta }
+else { Write-Host "" }
 Write-Host ""
-if ($fail -gt 0)      { Write-Host "  FAIL a corriger -- suivre les Fix ci-dessus" -ForegroundColor Red }
-elseif ($warn -gt 0)  { Write-Host "  Quasi pret -- WARN non bloquants" -ForegroundColor Yellow }
-else                  { Write-Host "  Tout est OK -- fermer et rouvrir Claude Code Desktop" -ForegroundColor Green }
+if ($fail -gt 0)      { Write-Host "  FAIL a corriger -- dc check --fix pour auto-reparer" -ForegroundColor Red }
+elseif ($warn -gt 0)  { Write-Host "  Quasi pret -- dc check --fix pour corriger les WARN" -ForegroundColor Yellow }
+else                  { Write-Host "  100% operationnel -- autonomie complete" -ForegroundColor Green }
 Write-Host ""

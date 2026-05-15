@@ -19,8 +19,11 @@ Write-Host "  [1/3] Sync Qdrant..." -ForegroundColor Cyan
 Write-Host "  [2/3] Sync Obsidian..." -ForegroundColor Cyan
 & "$DEV_CORE\Scripts\obsidian_sync.ps1"
 
-Write-Host "  [3/3] Generation metrics..." -ForegroundColor Cyan
+Write-Host "  [3/4] Generation metrics..." -ForegroundColor Cyan
 & "$DEV_CORE\Scripts\gen_metrics.ps1"
+
+Write-Host "  [4/4] Endday check..." -ForegroundColor Cyan
+& "$DEV_CORE\Scripts\endday_check.ps1" 2>$null
 
 Write-Host ""
 Write-Host "  ========================================" -ForegroundColor Green

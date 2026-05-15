@@ -4,7 +4,7 @@
     "id": "graphify",
     "name": "Graphify Knowledge Graph",
     "description": "Construit un knowledge graph structurel depuis code, SQL, docs, images. Complémentaire à Qdrant (structurel vs sémantique). Déclencher avec /graphify (Claude) ou $graphify (Codex).",
-    "skill_path": "C:\\DEV_CORE\\Skills\\graphify\\SKILL.md",
+    "skill_path": "C:\\devcore\\DEV_CORE\\Skills\\graphify\\SKILL.md",
     "source": "safishamsi/graphify",
     "created": "2026-04-26",
     "last_used": "2026-04-26",

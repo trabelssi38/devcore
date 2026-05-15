@@ -1,6 +1,6 @@
 # task_next.ps1 -- DEV_CORE v6 single client
-$DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\DEV_CORE" }
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\DEV_CORE_DATA" }
+$DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
+$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
 $tFile = "$DEV_CORE_DATA\Memory\tasks.json"
 
 if (-not (Test-Path $tFile)) {
@@ -33,6 +33,8 @@ if ($current.status -eq "todo") {
     $current | Add-Member -NotePropertyName "started_at" -NotePropertyValue (Get-Date -Format "o") -Force
     $board.current_task = $current.id
     $board | ConvertTo-Json -Depth 10 | Set-Content $tFile -Encoding UTF8
+    # Regenerer tasks.toon apres activation (via toonify.ps1 qui gere les paths Windows)
+    try { & "$DEV_CORE\Scripts\toonify.ps1" -InputFile $tFile 2>$null | Out-Null } catch {}
 }
 
 # Mode -> budget
@@ -83,3 +85,17 @@ $ctx = @"
 "@
 New-Item -ItemType Directory -Path "$DEV_CORE_DATA\Logs\scripts" -Force | Out-Null
 $ctx | Set-Content "$DEV_CORE_DATA\Logs\scripts\session_context.txt" -Encoding UTF8
+
+# Ecrire aussi en format TOON pour LLM prompts
+$toonCtx = @"
+session:
+  active_task: $($current.id)
+  title: $($current.title)
+  mode: $($current.mode)
+  budget: $budget
+  steps_done: $($current.steps_done)
+  steps_total: $($current.steps_total)
+  git_tag: [$($current.id)]
+  project: $($board.project)
+"@
+$toonCtx | Set-Content "$DEV_CORE_DATA\Logs\scripts\session_context.toon" -Encoding UTF8

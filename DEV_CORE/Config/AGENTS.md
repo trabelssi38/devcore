@@ -1,5 +1,5 @@
 # AGENTS.md -- DEV_CORE v6.1
-# Emplacement : C:\DEV_CORE\Config\AGENTS.md
+# Emplacement : C:\devcore\DEV_CORE\Config\AGENTS.md
 # Auto-injecte dans ~/.codex/AGENTS.md par adapt_client.ps1
 # Compatible : Codex Desktop · Codex CLI
 
@@ -25,16 +25,16 @@ Before responding to anything, run in order:
 shell: powershell -ExecutionPolicy Bypass -NonInteractive -Command "Test-Path '.devcore\project.json'"
 
 If False -> initialize automatically:
-shell: powershell -ExecutionPolicy Bypass -NonInteractive -File "C:\DEV_CORE\Scripts\new_project.ps1" -Name (Split-Path (Get-Location) -Leaf) -Stack auto
+shell: powershell -ExecutionPolicy Bypass -NonInteractive -File "C:\devcore\DEV_CORE\Scripts\new_project.ps1" -Name (Split-Path (Get-Location) -Leaf) -Stack auto
 
 ### 2 -- Launch DEV_CORE
-shell: powershell -ExecutionPolicy Bypass -NonInteractive -File "C:\DEV_CORE\Scripts\launch.ps1"
+shell: powershell -ExecutionPolicy Bypass -NonInteractive -File "C:\devcore\DEV_CORE\Scripts\launch.ps1"
 
 ### 3 -- Load active task
-shell: powershell -ExecutionPolicy Bypass -NonInteractive -File "C:\DEV_CORE\Scripts\dc.ps1" "next task"
+shell: powershell -ExecutionPolicy Bypass -NonInteractive -File "C:\devcore\DEV_CORE\Scripts\dc.ps1" "next task"
 
 ### 4 -- Read session context
-shell: powershell -NonInteractive -Command "Get-Content 'C:\DEV_CORE_DATA\Logs\scripts\session_context.txt' -ErrorAction SilentlyContinue"
+shell: powershell -NonInteractive -Command "Get-Content 'C:\devcore\DEV_CORE_DATA\Logs\scripts\session_context.txt' -ErrorAction SilentlyContinue"
 
 After these 4 steps: start task work immediately. No confirmation needed.
 
@@ -79,18 +79,18 @@ After these 4 steps: start task work immediately. No confirmation needed.
 
 ### After each validated step (tests passing)
 Read task ID:
-shell: powershell -NonInteractive -Command "(Get-Content 'C:\DEV_CORE_DATA\Memory\tasks.json' -Raw | ConvertFrom-Json).current_task"
+shell: powershell -NonInteractive -Command "(Get-Content 'C:\devcore\DEV_CORE_DATA\Memory\tasks.json' -Raw | ConvertFrom-Json).current_task"
 
 Commit with tag:
 shell: git add -A
 shell: git commit -m "feat: [step description] [T-XX]"
 
 ### Check if task is complete (after every commit)
-shell: powershell -NonInteractive -Command "$b=Get-Content 'C:\DEV_CORE_DATA\Memory\tasks.json' -Raw|ConvertFrom-Json;$t=$b.tasks|Where-Object{$_.status -eq 'active'}|Select-Object -First 1;if($t -and $t.steps_done -ge $t.steps_total){Write-Host 'TASK_COMPLETE'}"
+shell: powershell -NonInteractive -Command "$b=Get-Content 'C:\devcore\DEV_CORE_DATA\Memory\tasks.json' -Raw|ConvertFrom-Json;$t=$b.tasks|Where-Object{$_.status -eq 'active'}|Select-Object -First 1;if($t -and $t.steps_done -ge $t.steps_total){Write-Host 'TASK_COMPLETE'}"
 
 If TASK_COMPLETE -> run automatically:
-shell: powershell -NonInteractive -File "C:\DEV_CORE\Scripts\task_done.ps1" -Force
-shell: powershell -NonInteractive -File "C:\DEV_CORE\Scripts\dc.ps1" "next task"
+shell: powershell -NonInteractive -File "C:\devcore\DEV_CORE\Scripts\task_done.ps1" -Force
+shell: powershell -NonInteractive -File "C:\devcore\DEV_CORE\Scripts\dc.ps1" "next task"
 
 ---
 
@@ -107,16 +107,17 @@ shell: powershell -NonInteractive -File "C:\DEV_CORE\Scripts\dc.ps1" "next task"
 ## ROUTING
 
 - Follow ROUTER.md for engine choice and token budget.
-- Codex handles: fast coding, patches, TDD, refactoring.
-- Handoff to Claude for architecture and complex decisions.
-- Handoff to Antigravity for bulk generation.
+- mode=reasoning -> 9Router routes to Tier 1 automatically.
+- mode=coding    -> 9Router routes to Tier 2 automatically.
+- mode=bulk      -> 9Router routes to Tier 3 automatically.
+- No handoffs. Single client. 9Router handles model selection.
 
 ---
 
 ## LAST ACTION -- before closing session
 
 Always run before ending:
-shell: powershell -NonInteractive -File "C:\DEV_CORE\Scripts\endday.ps1" -SkipBackup
+shell: powershell -NonInteractive -File "C:\devcore\DEV_CORE\Scripts\endday.ps1" -SkipBackup
 
 ---
 

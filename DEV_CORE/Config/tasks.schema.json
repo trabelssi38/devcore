@@ -1,0 +1,43 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+        "project": { "type": "string" },
+        "current_task": { "type": ["string", "null"] },
+        "active_client": { "type": "string" },
+        "created": { "type": "string" },
+        "tasks": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "title": { "type": "string" },
+                    "mode": { "type": "string", "enum": ["reasoning", "coding", "bulk"] },
+                    "status": { "type": "string", "enum": ["todo", "active", "done", "paused", "skipped"] },
+                    "steps_total": { "type": "integer" },
+                    "steps_done": { "type": "integer" },
+                    "depends_on": { "type": ["string", "null"] },
+                    "source": { "type": ["string", "null"] },
+                    "steps": { 
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": { "type": "integer" },
+                                "title": { "type": "string" },
+                                "done": { "type": "boolean" }
+                            },
+                            "required": ["id", "title", "done"]
+                        }
+                    },
+                    "completed_at": { "type": "string" },
+                    "paused_at": { "type": "string" },
+                    "skipped_at": { "type": "string" },
+                    "skipped_reason": { "type": "string" }
+                },
+                "required": ["id", "title", "mode", "status", "steps_total", "steps_done"]
+            }
+        }
+    }
+}

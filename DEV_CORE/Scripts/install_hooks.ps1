@@ -1,9 +1,9 @@
 # install_hooks.ps1 -- DEV_CORE v6
 # Installe les hooks Claude Code dans settings.json
 # C'est CE fichier qui rend les actions autonomes -- CLAUDE.md seul ne suffit pas
-# Usage : powershell -ExecutionPolicy Bypass -File C:\DEV_CORE\Scripts\install_hooks.ps1
+# Usage : powershell -ExecutionPolicy Bypass -File C:\devcore\DEV_CORE\Scripts\install_hooks.ps1
 
-$DEV_CORE   = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\DEV_CORE" }
+$DEV_CORE   = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $CLAUDE_DIR = "$env:USERPROFILE\.claude"
 $SETTINGS   = "$CLAUDE_DIR\settings.json"
 

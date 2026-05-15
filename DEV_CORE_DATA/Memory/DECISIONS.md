@@ -4,7 +4,7 @@
 - Use global shared memory (MEMORY.md + Qdrant) cross-agents
 - Use skills_registry.json as single source of truth for skills
 - Client-agnostic via adapt_client.ps1 + symbolic links
-- Mission board (missions.json) as handoff mechanism
+- Task board (tasks.json) comme source de verite unique (Single Client mode)
 - Bootstrap declarative (@load, @when, @policy directives)
 
 ## Stack validée

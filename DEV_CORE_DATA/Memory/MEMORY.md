@@ -9,7 +9,7 @@
 - [score: 0.85] Embedding : nomic-embed-text via Ollama local (pas OpenAI)
 - [score: 0.8] Dedup Qdrant : hash SHA-256 obligatoire avant tout upsert
 - [score: 0.8] Token : 6 couches (CLAUDE.md terse + MCP cache + ghost finder + 9Router RTK + TOON) → -94%
-- [score: 0.75] Missions : missions.json = source de vérité unique cross-agents
+- [score: 0.85] Tasks : tasks.json = source de verite unique (Single Client mode)
 
 ## Prompts efficaces
 

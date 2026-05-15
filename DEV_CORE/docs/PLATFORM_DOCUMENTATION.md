@@ -4,8 +4,8 @@
 > 
 > Gère la mémoire persistante, le cycle de vie des tâches (Tasks), les modes cognitifs (reasoning/coding/bulk), et les compétences (skills) réutilisables.
 
-**Version** : 6.1
-**Updated** : 2026-05-13
+**Version** : 6.2
+**Updated** : 2026-05-15
 **Mode** : Single Client (pas de handoffs multi-agents)
 
 ---
@@ -23,6 +23,8 @@
 9. [Commandes principales](#9-commandes-principales)
 10. [Hermes Agent Integration](#10-hermes-agent-integration)
 11. [Dashboard](#11-dashboard)
+12. [Automation Hooks v6.1](#12-automation-hooks-v61)
+13. [Token Optimization Stack](#13-token-optimization-stack)
 
 ---
 
@@ -251,12 +253,13 @@ Skills installés via symlinks dans `~/.claude/skills/` :
 ### Architecture mémoire
 
 ```
-MEMORY.md (index)
+MEMORY.md / LESSONS.md / PATTERNS.md
     ↓
-Qdrant (3 collections)
+Qdrant (4 collections)
     ├── decisions (768d cosine)
     ├── patterns (768d cosine)
-    └── lessons (768d cosine)
+    ├── lessons (768d cosine)
+    └── codebase (768d cosine)
     ↓
 Obsidian Vault (notes structurées)
 ```
@@ -277,7 +280,8 @@ curl http://localhost:6333/collections
 #   "collections": [
 #     {"name": "decisions"},
 #     {"name": "patterns"},
-#     {"name": "lessons"}
+#     {"name": "lessons"},
+#     {"name": "codebase"}
 #   ]
 # }
 ```
@@ -585,7 +589,130 @@ Les scanners detectent automatiquement le mode approprie :
 
 ---
 
+## 12. Automation Hooks v6.1
+
+### Vue d'ensemble
+
+Les automation hooks automatisent le workflow DEV_CORE sans intervention manuelle :
+
+| Hook | Trigger | Actions |
+|------|---------|---------|
+| `post-commit.hook` | Après chaque commit | steps_done++, task_sync, auto-done si complete |
+| `session_start.hook` | Demarrage session | task_scan, endday_check, gen_context |
+| `session_end.hook` | Fin session | qdrant_sync, obsidian_sync, metrics |
+
+### post-commit.hook
+
+```powershell
+# Exemple de workflow automatise
+git commit -m "feat: add auth module [T-02]"
+
+# Hook execute automatiquement :
+# 1. Parse [T-XX] depuis commit message
+# 2. Incrémente steps_done dans tasks.json
+# 3. Si steps_done >= steps_total -> task_done.ps1
+```
+
+### session_start.hook
+
+```powershell
+# Au demarrage de session :
+# 1. task_scan.ps1 — Detecte taches depuis git/spec/prompts
+# 2. endday_check.ps1 — Verifie si clotureveille passee
+# 3. gen_context.ps1 — Genere session_context.txt
+```
+
+### session_end.hook
+
+```powershell
+# A la fin de session :
+# 1. qdrant_sync.ps1 — Sync decisions/patterns/lessons
+# 2. obsidian_sync.ps1 — Update daily note
+# 3. metrics.ps1 — Collecte KPIs (tokens, savings)
+```
+
+### Qdrant Sync (qdrant_sync.ps1)
+
+Implementation technique :
+
+```powershell
+# 1. Embedding via Ollama
+POST http://localhost:11434/api/embeddings
+{"model": "nomic-embed-text", "prompt": "..."}
+
+# 2. Stockage dans Qdrant (UUID auto-genere)
+PUT http://localhost:6333/collections/{collection}/points
+{"points": [{"id": "<uuid>", "vector": [...], "payload": {...}}]}
+```
+
+**Problemes resolus :**
+- Locale française (virgule decimal) → `InvariantCulture`
+- BOM UTF-8 → `UTF8NoBomEncoding`
+- API Qdrant from PowerShell → Python subprocess + curl
+
+---
+
+## 13. Token Optimization Stack
+
+### 6 couches de reduction
+
+| Couche | Technologie | Reduction | Description |
+|--------|-------------|-----------|-------------|
+| 1 | CLAUDE.md terse | -69% | Instructions concises, caveman-compress |
+| 2 | MEMORY.md compress | -46% | Memoire partagee structuree |
+| 3 | MCP cache | -95% | Contexte des outils mis en cache |
+| 4 | 9Router RTK | -40% | Routage modeles optimal |
+| 5 | Ghost finder audit | maintenance | Detection code mort |
+| 6 | TOON tasks+skills | -90% | tasks.json compresse (5128 → 514 chars) |
+
+### Reduction cumulee
+
+```
+~98% de reduction (tasks.json: 5128 → 514 chars)
+```
+
+### TOON Integration (v6.2)
+
+TOON (Token-Oriented Object Notation) compresse l'état pour les prompts :
+
+```json
+// tasks.json (JSON, ~8.4KB)
+{"project": "cea_dashboard", "current_task": "T-01", ...}
+
+// tasks.toon (TOON format, ~2KB) - Gain ~75-90%
+project: cea_dashboard
+current_task: T-01
+tasks[5]:
+  - id: T-01
+...
+```
+Le script `toonify.ps1` gère automatiquement la synchronisation à chaque commande `dc task next` et `dc task done`.
+
+---
+
 ## Changelog v6
+
+### 2026-05-15 — Autonomie 100% v6.2
+
+- ✅ Synchronisation Qdrant complète : 4 collections (`decisions`, `lessons`, `patterns`, `codebase`).
+- ✅ Génération automatique de `CODEBASE_INDEX.md` pour l'indexation RAG du code.
+- ✅ Extraction des leçons : Refonte de `lesson_extractor.ps1` (génère `LESSONS.md` et `PATTERNS.md` via l'historique de tâches et git).
+- ✅ TOON Intégration 100% : Utilisation de `npx @toon-format/cli` encapsulé dans `toonify.ps1`.
+- ✅ Auto-synchronisation `tasks.toon` à chaque étape du cycle de vie via hooks.
+- ✅ Fix bugs Windows paths & Node.js experimental warnings filtering.
+- ✅ Le système est désormais 100% autonome sur son cycle de données.
+
+### 2026-05-14 — Automation Hooks v6.1
+
+- ✅ `post-commit.hook` — steps_done auto-increment + task_sync + auto-done
+- ✅ `session_start.hook` — task_scan + endday_check + gen_context
+- ✅ `session_end.hook` — qdrant + obsidian + metrics sync
+- ✅ Qdrant sync completement reimplémenté avec Python+curl (Ollama embeddings)
+- ✅ TOON integration (tasks.json 5128 → 514 chars = -90%)
+- ✅ `qdrant_sync.ps1` — InvariantCulture + UTF8NoBomEncoding fixes
+- ✅ Dashboard mis à jour avec T-04 complet (2/2 steps)
+- ✅ DECISIONS.md et MEMORY.md mis à jour avec hooks docs
+- ✅ Documentation mise à jour
 
 ### 2026-05-13 — Hermes Agent Integration
 
