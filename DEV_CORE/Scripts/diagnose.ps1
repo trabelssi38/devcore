@@ -1,4 +1,4 @@
-# diagnose.ps1 -- DEV_CORE v6.2 -- Auto-reparation
+﻿# diagnose.ps1 -- DEV_CORE v6.2 -- Auto-reparation
 # Usage : dc check        (diagnostic seul)
 #         dc check --fix   (diagnostic + reparation automatique)
 param([switch]$Fix)
@@ -107,7 +107,7 @@ foreach ($s in $scripts) {
 }
 
 # 5. Task active + integrite
-$tFile = "$DEV_CORE_DATA\Memory\tasks.json"
+$tFile = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
 if (Test-Path $tFile) {
     try {
         $board  = Get-Content $tFile -Raw | ConvertFrom-Json
@@ -188,3 +188,5 @@ if ($fail -gt 0)      { Write-Host "  FAIL a corriger -- dc check --fix pour aut
 elseif ($warn -gt 0)  { Write-Host "  Quasi pret -- dc check --fix pour corriger les WARN" -ForegroundColor Yellow }
 else                  { Write-Host "  100% operationnel -- autonomie complete" -ForegroundColor Green }
 Write-Host ""
+
+

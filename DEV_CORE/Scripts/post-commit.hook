@@ -1,6 +1,7 @@
 #!/bin/sh
 # post-commit -- DEV_CORE v6.1 -- Full automation
-TASKS="C:/devcore/DEV_CORE_DATA/Memory/tasks.json"
+PROJ_NAME=$(basename $(git rev-parse --show-toplevel))
+TASKS="C:/devcore/DEV_CORE_DATA/Memory/$PROJ_NAME/tasks.json"
 SCRIPTS="C:/devcore/DEV_CORE/Scripts"
 MSG=$(git log -1 --pretty=%B)
 TID=$(echo "$MSG" | grep -oP '\[T-\d+\]' | tr -d '[]' | head -1)

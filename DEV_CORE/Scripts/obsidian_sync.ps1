@@ -1,4 +1,4 @@
-# obsidian_sync.ps1 -- DEV_CORE v6.1
+﻿# obsidian_sync.ps1 -- DEV_CORE v6.1
 # Sync accomplishments vers Obsidian Daily Note
 
 $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
@@ -43,7 +43,7 @@ tags: [daily, devcore]
 }
 
 # Lire le board de taches
-$tFile = "$DEV_CORE_DATA\Memory\tasks.json"
+$tFile = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
 if (Test-Path $tFile) {
     $board = Get-Content $tFile -Raw | ConvertFrom-Json
     $doneTasks = $board.tasks | Where-Object { $_.status -eq "done" }
@@ -73,3 +73,5 @@ if (Test-Path $tFile) {
 
 Write-Log "Obsidian sync termine" "Green"
 Write-Host ""
+
+

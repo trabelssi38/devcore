@@ -46,42 +46,23 @@ Initialise avec DEV_CORE v6.
     Write-Host "  [OK] CLAUDE.md local cree" -ForegroundColor Green
 }
 
-# 3. Gerer tasks.json (changement de contexte projet)
-$tFile = "$DEV_CORE_DATA\Memory\tasks.json"
-$archiveDir = "$DEV_CORE_DATA\Memory\Projects"
-if (-not (Test-Path $archiveDir)) { New-Item -ItemType Directory -Path $archiveDir -Force | Out-Null }
-
-if (Test-Path $tFile) {
-    $currentBoard = Get-Content $tFile -Raw | ConvertFrom-Json
-    $oldProject = $currentBoard.project
-    
-    if ($oldProject -and $oldProject -ne $Name) {
-        # Archiver les taches de l'ancien projet
-        $oldArchiveFile = "$archiveDir\tasks_$oldProject.json"
-        Copy-Item -Path $tFile -Destination $oldArchiveFile -Force
-        Write-Host "  [OK] Contexte de l'ancien projet ($oldProject) sauvegarde" -ForegroundColor Yellow
-        Remove-Item -Path $tFile -Force
-    }
+# 3. Gerer tasks.json (chaque projet a son propre dossier isolé)
+$projDir = "$DEV_CORE_DATA\Memory\$Name"
+if (-not (Test-Path $projDir)) {
+    New-Item -ItemType Directory -Path $projDir -Force | Out-Null
 }
+$tFile = "$projDir\tasks.json"
 
-# 4. Restaurer ou creer le tasks.json du nouveau projet
-$newArchiveFile = "$archiveDir\tasks_$Name.json"
 if (-not (Test-Path $tFile)) {
-    if (Test-Path $newArchiveFile) {
-        # Restaurer l'historique existant
-        Copy-Item -Path $newArchiveFile -Destination $tFile -Force
-        Write-Host "  [OK] Historique des taches restaure pour le projet $Name" -ForegroundColor Green
-    } else {
-        # Creer un nouveau fichier vierge
-        $board = @{
-            project = $Name
-            current_task = $null
-            tasks = @()
-            detected_from_git = @()
-        }
-        $board | ConvertTo-Json -Depth 5 | Set-Content $tFile -Encoding UTF8
-        Write-Host "  [OK] Nouveau tasks.json initialise pour le projet $Name" -ForegroundColor Green
+    # Creer un nouveau fichier vierge
+    $board = @{
+        project = $Name
+        current_task = $null
+        tasks = @()
+        detected_from_git = @()
     }
+    $board | ConvertTo-Json -Depth 5 | Set-Content $tFile -Encoding UTF8
+    Write-Host "  [OK] Nouveau tasks.json initialise pour le projet $Name" -ForegroundColor Green
 } else {
     Write-Host "  [INFO] Contexte des taches deja actif pour $Name" -ForegroundColor DarkGray
 }

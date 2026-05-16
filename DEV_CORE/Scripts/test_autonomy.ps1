@@ -1,10 +1,10 @@
-# test_autonomy.ps1 -- DEV_CORE v6.2 -- Test d'integration autonomie
+﻿# test_autonomy.ps1 -- DEV_CORE v6.2 -- Test d'integration autonomie
 # Simule un cycle complet : projet -> tache -> steps -> done -> chainage
 # Usage : powershell -File test_autonomy.ps1
 
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
-$tFile         = "$DEV_CORE_DATA\Memory\tasks.json"
+$tFile         = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
 $passed = 0; $failed = 0
 
 function Assert {
@@ -126,3 +126,5 @@ if ($failed -eq 0) {
     Write-Host "  $failed tests en echec -- corriger avant deploiement" -ForegroundColor Red
 }
 Write-Host ""
+
+

@@ -1,4 +1,4 @@
-# gen_metrics.ps1 -- DEV_CORE v6.1
+﻿# gen_metrics.ps1 -- DEV_CORE v6.1
 # Genere les metriques de session
 
 $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
@@ -12,7 +12,7 @@ if (-not (Test-Path $METRICS_DIR)) {
 }
 
 # Lire tasks
-$tFile = "$DEV_CORE_DATA\Memory\tasks.json"
+$tFile = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
 $totalSteps = 0
 $doneSteps = 0
 $taskCount = 0
@@ -48,3 +48,4 @@ if (-not (Test-Path $METRICS_FILE)) {
 $row | Add-Content $METRICS_FILE -Encoding UTF8
 
 Write-Host "  [METRICS] $TODAY | $activeTask | $doneSteps/$totalSteps steps | $progress%" -ForegroundColor Cyan
+

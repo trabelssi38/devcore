@@ -1,4 +1,4 @@
-# lesson_extractor.ps1 -- DEV_CORE v6.2 Auto layer
+﻿# lesson_extractor.ps1 -- DEV_CORE v6.2 Auto layer
 # Extrait les lecons depuis : git log, tasks done, MEMORY.md
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
@@ -8,13 +8,13 @@ function Log { param($msg,$color="Gray"); $l="[$(Get-Date -f HH:mm:ss)] $msg"; A
 Log "lesson_extractor v6.2 -- extraction multi-source" "Cyan"
 
 $lessonsFile = "$DEV_CORE_DATA\Memory\LESSONS.md"
-$tFile       = "$DEV_CORE_DATA\Memory\tasks.json"
+$tFile       = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\..\Get-ActiveProject.ps1")\tasks.json"
 $existed     = Test-Path $lessonsFile
 
 # 1. Creer LESSONS.md si absent
 if (-not $existed) {
     @"
-# LESSONS.md — DEV_CORE v6.2
+# LESSONS.md â€” DEV_CORE v6.2
 <!-- Auto-genere par lesson_extractor.ps1 -->
 <!-- Score min inclusion : 0.5 | Derniere maj : $TODAY -->
 
@@ -40,7 +40,7 @@ if (Test-Path $tFile) {
         $tag = "lesson:$($t.id)"
         if ($content -notmatch [regex]::Escape($tag)) {
             $stepsInfo = if ($t.steps) {
-                ($t.steps | ForEach-Object { $_.title }) -join " → "
+                ($t.steps | ForEach-Object { $_.title }) -join " â†’ "
             } else { "$($t.steps_total) steps" }
             
             $lesson = "- [score: 0.7] [$tag] $($t.title) ($($t.mode)) : $stepsInfo"
@@ -107,3 +107,5 @@ Voir LESSONS.md pour les lecons consolidees.
 }
 
 Log "lesson_extractor termine" "Green"
+
+

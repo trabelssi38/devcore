@@ -1,4 +1,4 @@
-# task_sync.ps1 -- DEV_CORE v6 -- Synchronise les suggestions dans tasks.json
+﻿# task_sync.ps1 -- DEV_CORE v6 -- Synchronise les suggestions dans tasks.json
 param([int]$MaxPerSource = 3)
 
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
@@ -17,11 +17,13 @@ Write-Host "  DEV_CORE v6 -- TASK SYNC" -ForegroundColor Cyan
 Write-Host "  ========================================" -ForegroundColor DarkGray
 Write-Host ""
 
-# Lire les queues
+# Lire les queues (isolees par projet)
+$projName = & "$PSScriptRoot\Get-ActiveProject.ps1"
+$projMem = "$DEV_CORE_DATA\Memory\$projName"
 $queues = @{
-    git = "$DEV_CORE_DATA\Memory\task_git_queue.jsonl"
-    spec = "$DEV_CORE_DATA\Memory\task_spec_queue.jsonl"
-    prompt = "$DEV_CORE_DATA\Memory\task_prompt_queue.jsonl"
+    git = "$projMem\task_git_queue.jsonl"
+    spec = "$projMem\task_spec_queue.jsonl"
+    prompt = "$projMem\task_prompt_queue.jsonl"
 }
 
 $suggestions = @()
@@ -62,7 +64,7 @@ if ($suggestions.Count -gt $MAX_ADD) {
 
 
 # Lire tasks.json
-$tFile = "$DEV_CORE_DATA\Memory\tasks.json"
+$tFile = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
 if (-not (Test-Path $tFile)) {
     @{
         project="auto-detected"
@@ -124,3 +126,5 @@ Write-Host ""
 Write-Host "  ========================================" -ForegroundColor Green
 Write-Host "  $added taches ajoutees a tasks.json" -ForegroundColor Green
 Write-Host ""
+
+

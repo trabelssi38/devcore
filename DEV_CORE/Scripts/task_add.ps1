@@ -1,11 +1,11 @@
-# task_add.ps1 -- DEV_CORE v6 single client
+﻿# task_add.ps1 -- DEV_CORE v6 single client
 param(
     [Parameter(Mandatory=$true)][string]$Title,
     [ValidateSet("reasoning","coding","bulk")][string]$Mode = "coding",
     [string]$DependsOn = ""
 )
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\DEV_CORE_DATA" }
-$tFile = "$DEV_CORE_DATA\Memory\tasks.json"
+$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
+$tFile = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
 
 if (-not (Test-Path $tFile)) {
     @{ project="default"; current_task=$null; tasks=@() } |
@@ -30,3 +30,5 @@ $t = [PSCustomObject]@{
 $board.tasks += $t
 $board | ConvertTo-Json -Depth 10 | Set-Content $tFile -Encoding UTF8
 Write-Host "  [OK] Tache ajoutee : $id [$Mode] -- $Title" -ForegroundColor Green
+
+

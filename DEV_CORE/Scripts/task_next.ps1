@@ -1,7 +1,7 @@
-# task_next.ps1 -- DEV_CORE v6 single client
+﻿# task_next.ps1 -- DEV_CORE v6 single client
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
-$tFile = "$DEV_CORE_DATA\Memory\tasks.json"
+$tFile = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
 
 if (-not (Test-Path $tFile)) {
     Write-Host "  Aucun tasks.json -- dc new task 'titre'" -ForegroundColor Yellow; exit 0
@@ -74,7 +74,8 @@ $hint = switch ($current.mode) {
 Write-Host "  Hint : $hint" -ForegroundColor DarkGray
 Write-Host ""
 
-# Ecrire le contexte session
+# Ecrire le contexte session (isolأ© par projet)
+$projDir = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")"
 $ctx = @"
 [DEV_CORE] Task active : $($current.id)
 [DEV_CORE] Titre  : $($current.title)
@@ -85,6 +86,8 @@ $ctx = @"
 "@
 New-Item -ItemType Directory -Path "$DEV_CORE_DATA\Logs\scripts" -Force | Out-Null
 $ctx | Set-Content "$DEV_CORE_DATA\Logs\scripts\session_context.txt" -Encoding UTF8
+# Copie aussi dans le dossier projet
+$ctx | Set-Content "$projDir\session_context.txt" -Encoding UTF8
 
 # Ecrire aussi en format TOON pour LLM prompts
 $toonCtx = @"
@@ -99,3 +102,6 @@ session:
   project: $($board.project)
 "@
 $toonCtx | Set-Content "$DEV_CORE_DATA\Logs\scripts\session_context.toon" -Encoding UTF8
+$toonCtx | Set-Content "$projDir\session_context.toon" -Encoding UTF8
+
+

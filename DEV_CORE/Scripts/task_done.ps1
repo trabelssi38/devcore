@@ -1,10 +1,10 @@
-# task_done.ps1 -- DEV_CORE v6 single client
+﻿# task_done.ps1 -- DEV_CORE v6 single client
 param([switch]$Force)
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
 $AUTO          = "$DEV_CORE\Scripts\Auto"
 $TODAY         = Get-Date -Format "yyyy-MM-dd"
-$tFile         = "$DEV_CORE_DATA\Memory\tasks.json"
+$tFile         = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
 
 if (-not (Test-Path $tFile)) { Write-Host "  Aucun tasks.json." -ForegroundColor Red; exit 1 }
 $board = Get-Content $tFile -Raw | ConvertFrom-Json
@@ -49,8 +49,7 @@ if (Test-Path "$DEV_CORE\Scripts\obsidian_sync.ps1") { & "$DEV_CORE\Scripts\obsi
 
 Write-Host "  4/5 Memoire + TOON..." -ForegroundColor Cyan
 if (Test-Path "$AUTO\memory_rotate.ps1") { & "$AUTO\memory_rotate.ps1" }
-# Regenerer tasks.toon via toonify.ps1 (gere les paths Windows)
-$toonTarget = "$DEV_CORE_DATA\Memory\tasks.toon"
+# Regenerer tasks.toon via toonify.ps1 (chemin projet rأ©solu via $tFile)
 try {
     & "$DEV_CORE\Scripts\toonify.ps1" -InputFile $tFile 2>$null | Out-Null
     Write-Host "    [TOON] tasks.toon regenere" -ForegroundColor DarkGray
@@ -79,3 +78,5 @@ if ($nextTask) {
     Write-Host "  Toutes les taches sont terminees !" -ForegroundColor Green
 }
 Write-Host ""
+
+

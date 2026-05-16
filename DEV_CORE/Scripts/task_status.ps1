@@ -1,6 +1,6 @@
-# task_status.ps1 -- DEV_CORE v6 single client
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\DEV_CORE_DATA" }
-$tFile = "$DEV_CORE_DATA\Memory\tasks.json"
+﻿# task_status.ps1 -- DEV_CORE v6 single client
+$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
+$tFile = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
 if (-not (Test-Path $tFile)) { Write-Host "  Aucun tasks.json -- dc new task 'titre'" -ForegroundColor Yellow; exit 0 }
 
 $board = Get-Content $tFile -Raw | ConvertFrom-Json
@@ -30,3 +30,5 @@ foreach ($t in $board.tasks) {
 Write-Host "  -------------------------------------------------------" -ForegroundColor DarkGray
 Write-Host "  [$bar] $pct% ($done/$total done)" -ForegroundColor Cyan
 Write-Host ""
+
+

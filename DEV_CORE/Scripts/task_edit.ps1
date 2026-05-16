@@ -1,4 +1,4 @@
-# task_edit.ps1 -- DEV_CORE v6 single client
+﻿# task_edit.ps1 -- DEV_CORE v6 single client
 param(
     [Parameter(Mandatory=$true)][string]$Id,
     [string]$Title,
@@ -6,7 +6,7 @@ param(
     [int]$Steps
 )
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
-$tFile = "$DEV_CORE_DATA\Memory\tasks.json"
+$tFile = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
 if (-not (Test-Path $tFile)) { Write-Host "  Aucun tasks.json." -ForegroundColor Red; exit 1 }
 
 $board = Get-Content $tFile -Raw | ConvertFrom-Json
@@ -25,3 +25,5 @@ if ($updated) {
 } else {
     Write-Host "  Aucune modification specifiee. Exemple: dc task edit T-05 -Mode bulk -Steps 5" -ForegroundColor Yellow
 }
+
+

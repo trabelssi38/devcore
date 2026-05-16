@@ -1,4 +1,4 @@
-# dc.ps1 -- DEV_CORE v6 -- Single client -- ASCII safe
+﻿# dc.ps1 -- DEV_CORE v6 -- Single client -- ASCII safe
 # Alias : Set-Alias dc 'C:\devcore\DEV_CORE\Scripts\dc.ps1'
 param([Parameter(ValueFromRemainingArguments=$true)][string[]]$Args)
 
@@ -20,7 +20,7 @@ switch -Regex ($cmd) {
     "^task sync$"                               { & "$SCRIPTS\task_sync.ps1" }
     "^toon convert-tasks$|^toon ct$" {
         $DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { 'C:\devcore\DEV_CORE_DATA' }
-        & "$SCRIPTS\toonify.ps1" -InputFile "$DATA\Memory\tasks.json" -StatsSave
+        & "$SCRIPTS\toonify.ps1" -InputFile "$DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json" -StatsSave
     }
     "^toon encode (.+)$" { & "$SCRIPTS\toonify.ps1" -InputFile $Matches[1] -StatsSave }
     "^toon decode (.+)$" { & "$SCRIPTS\toonify.ps1" -InputFile $Matches[1] -Decode }
@@ -30,7 +30,7 @@ switch -Regex ($cmd) {
     }
     "^toon$" {
         $DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { 'C:\devcore\DEV_CORE_DATA' }
-        & "$SCRIPTS\toonify.ps1" -InputFile "$DATA\Memory\tasks.json" -StatsSave
+        & "$SCRIPTS\toonify.ps1" -InputFile "$DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json" -StatsSave
     }
     
     # -- RTK (Result Tool Kit)
@@ -140,3 +140,5 @@ switch -Regex ($cmd) {
 
     default { Write-Host "  Inconnu : '$cmd' -- dc help" -ForegroundColor Yellow }
 }
+
+

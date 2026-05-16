@@ -1,11 +1,12 @@
-# task_prompt_analyzer.ps1 -- DEV_CORE v6 Auto layer
+﻿# task_prompt_analyzer.ps1 -- DEV_CORE v6 Auto layer
 # Analyse les sessions recentes pour suggerer des taches
 
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
 $TODAY         = Get-Date -Format "yyyy-MM-dd"
 $LOG           = "$DEV_CORE_DATA\Logs\scripts\task_prompt_analyzer_$TODAY.log"
-$QUEUE         = "$DEV_CORE_DATA\Memory\task_prompt_queue.jsonl"
+$projName      = & "$PSScriptRoot\..\Get-ActiveProject.ps1"
+$QUEUE         = "$DEV_CORE_DATA\Memory\$projName\task_prompt_queue.jsonl"
 
 function Log { param($msg,$color="Gray")
     $l = "[$(Get-Date -f HH:mm:ss)] $msg"
@@ -49,16 +50,16 @@ foreach ($file in $sessionFiles) {
     # 1. Patterns de detection
     $patterns = @{
         "coding" = @(
-            "(?i)\b(?:impl[ée]menter|coder|d[eé]velopper|ajouter|cr[ée]er|corriger|fixer|migrer)\s+[^.?!]+"
-            "(?i)j[e'\s]+ai\s+(?:impl[ée]ment[ée]|cod[ée]|d[eé]velopp[ée]|ajout[ée]|cr[ée][ée]|corrig[ée]|fix[ée])\s+[^.?!]+"
+            "(?i)\b(?:impl[أ©e]menter|coder|d[eأ©]velopper|ajouter|cr[أ©e]er|corriger|fixer|migrer)\s+[^.?!]+"
+            "(?i)j[e'\s]+ai\s+(?:impl[أ©e]ment[أ©e]|cod[أ©e]|d[eأ©]velopp[أ©e]|ajout[أ©e]|cr[أ©e][أ©e]|corrig[أ©e]|fix[أ©e])\s+[^.?!]+"
         )
         "reasoning" = @(
-            "(?i)\b(?:architectur|design|spec|d[ée]cision|plan|review|refactor[ée]r|r[ée]organiser)\s+[^.?!]+"
-            "(?i)j[e'\s]+ai\s+(?:d[ée]cid[ée]|design[ée]|planifi[ée]|review[ée]|refactor[ée])\s+[^.?!]+"
+            "(?i)\b(?:architectur|design|spec|d[أ©e]cision|plan|review|refactor[أ©e]r|r[أ©e]organiser)\s+[^.?!]+"
+            "(?i)j[e'\s]+ai\s+(?:d[أ©e]cid[أ©e]|design[أ©e]|planifi[أ©e]|review[أ©e]|refactor[أ©e])\s+[^.?!]+"
         )
         "bulk" = @(
-            "(?i)\b(?:test|doc|documentation|readme|bulk|d[ée]ploy|ci|optimisation|profiling|lighthouse)\s+[^.?!]+"
-            "(?i)j[e'\s]+ai\s+(?:test[ée]|document[ée]|optimis[ée]|d[ée]ploy[ée])\s+[^.?!]+"
+            "(?i)\b(?:test|doc|documentation|readme|bulk|d[أ©e]ploy|ci|optimisation|profiling|lighthouse)\s+[^.?!]+"
+            "(?i)j[e'\s]+ai\s+(?:test[أ©e]|document[أ©e]|optimis[أ©e]|d[أ©e]ploy[أ©e])\s+[^.?!]+"
         )
     }
 
@@ -117,3 +118,4 @@ if ($candidates.Count -gt 0) {
 } else {
     Log "Aucun candidat trouve" "Gray"
 }
+

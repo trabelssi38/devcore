@@ -1,11 +1,11 @@
-# gen_session_context.ps1 -- DEV_CORE v6.1
+﻿# gen_session_context.ps1 -- DEV_CORE v6.1
 # Genere le fichier session_context.txt
 
 $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
 $CONTEXT_FILE = "$DEV_CORE_DATA\Logs\scripts\session_context.txt"
 
-$tFile = "$DEV_CORE_DATA\Memory\tasks.json"
+$tFile = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
 if (-not (Test-Path $tFile)) {
     Write-Host "tasks.json absent" -ForegroundColor Yellow
     exit 1
@@ -15,7 +15,12 @@ $board = Get-Content $tFile -Raw | ConvertFrom-Json
 $active = $board.tasks | Where-Object { $_.status -eq "active" } | Select-Object -First 1
 
 if (-not $active) {
-    $todo = $board.tasks | Where-Object { $_.status -eq "todo" } | Select-Object -First 1
+    $done_ids = ($board.tasks | Where-Object { $_.status -eq "done" }).id
+    $todo = $board.tasks | Where-Object {
+        $_.status -eq "todo" -and (
+            -not $_.depends_on -or $done_ids -contains $_.depends_on
+        )
+    } | Select-Object -First 1
     if ($todo) {
         $board.current_task = $todo.id
         $todo.status = "active"
@@ -58,3 +63,4 @@ $content = @"
 
 $content | Set-Content $CONTEXT_FILE -Encoding UTF8
 Write-Host "  [DEV_CORE] Session context genere: $($active.id) - $($active.mode)" -ForegroundColor Green
+

@@ -1,4 +1,4 @@
-# post_tool_hook.ps1 -- DEV_CORE v6.2 -- Full Autonomy
+﻿# post_tool_hook.ps1 -- DEV_CORE v6.2 -- Full Autonomy
 # Declenche par le hook PostToolUse(Bash) / AfterTool(Gemini)
 # 1. Verifie si la tache active est complete
 # 2. Detecte les commits [T-XX] pour auto-incrementer steps
@@ -6,7 +6,7 @@
 
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
-$tFile         = "$DEV_CORE_DATA\Memory\tasks.json"
+$tFile         = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
 
 if (-not (Test-Path $tFile)) { exit 0 }
 
@@ -57,3 +57,5 @@ if ($active.steps_done -ge $active.steps_total) {
         & "$DEV_CORE\Scripts\task_done.ps1" -Force
     }
 }
+
+

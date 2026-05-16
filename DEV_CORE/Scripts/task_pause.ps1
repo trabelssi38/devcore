@@ -1,6 +1,6 @@
-# task_pause.ps1 -- DEV_CORE v6 single client
+﻿# task_pause.ps1 -- DEV_CORE v6 single client
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
-$tFile = "$DEV_CORE_DATA\Memory\tasks.json"
+$tFile = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
 
 if (-not (Test-Path $tFile)) { Write-Host "  Aucun tasks.json." -ForegroundColor Red; exit 1 }
 
@@ -18,3 +18,5 @@ $board.current_task = $null
 $board | ConvertTo-Json -Depth 10 | Set-Content $tFile -Encoding UTF8
 
 Write-Host "  [OK] Tache $($current.id) mise en pause -- dc next task pour reprendre" -ForegroundColor Green
+
+

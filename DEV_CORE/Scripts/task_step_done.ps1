@@ -1,11 +1,11 @@
-# task_step_done.ps1 -- DEV_CORE v6.2 -- Marquer une step individuelle
+﻿# task_step_done.ps1 -- DEV_CORE v6.2 -- Marquer une step individuelle
 # Usage : dc step done [N]  ou  dc sd [N]
 # Si N=0 ou absent, marque la prochaine step non-faite
 param([int]$StepNumber = 0)
 
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
-$tFile         = "$DEV_CORE_DATA\Memory\tasks.json"
+$tFile         = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
 
 if (-not (Test-Path $tFile)) { Write-Host "  Aucun tasks.json." -ForegroundColor Red; exit 1 }
 
@@ -49,3 +49,5 @@ if ($current.steps_done -ge $current.steps_total) {
     Write-Host "  [AUTO] Toutes les steps terminees ! Validation automatique..." -ForegroundColor Cyan
     & "$DEV_CORE\Scripts\task_done.ps1" -Force
 }
+
+

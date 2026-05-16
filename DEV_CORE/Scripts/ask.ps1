@@ -1,4 +1,4 @@
-# ask.ps1 — DEV_CORE v6.2 (migre vers tasks.json)
+﻿# ask.ps1 â€” DEV_CORE v6.2 (migre vers tasks.json)
 param([Parameter(Mandatory=$true)][string]$PromptFr)
 
 $ErrorActionPreference = 'Stop'
@@ -11,7 +11,7 @@ $env:DEVCORE_ASK_CWD       = $projectCwd
 
 # Injecter task_id courant si disponible
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
-$tFile = "$DEV_CORE_DATA\Memory\tasks.json"
+$tFile = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
 if (Test-Path $tFile) {
     $board = Get-Content $tFile -Raw | ConvertFrom-Json
     $active = $board.tasks | Where-Object { $_.status -eq "active" } | Select-Object -First 1
@@ -24,3 +24,5 @@ Write-Output $payload.confirmation_text
 $confirm = Read-Host
 if ($confirm -match "^n$|^N$") { Write-Output "Launch cancelled."; exit 0 }
 Write-Output ($payload.prepare | ConvertTo-Json -Depth 5)
+
+

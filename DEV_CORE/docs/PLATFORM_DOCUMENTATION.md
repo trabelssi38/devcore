@@ -4,9 +4,9 @@
 > 
 > Gère la mémoire persistante, le cycle de vie des tâches (Tasks), les modes cognitifs (reasoning/coding/bulk), et les compétences (skills) réutilisables.
 
-**Version** : 6.2
-**Updated** : 2026-05-15
-**Mode** : Single Client (pas de handoffs multi-agents)
+**Version** : 6.3
+**Updated** : 2026-05-16
+**Mode** : Single Client (Multi-Projets / Zero Switch)
 
 ---
 
@@ -24,7 +24,8 @@
 10. [Hermes Agent Integration](#10-hermes-agent-integration)
 11. [Dashboard](#11-dashboard)
 12. [Automation Hooks v6.1](#12-automation-hooks-v61)
-13. [Token Optimization Stack](#13-token-optimization-stack)
+27. [Token Optimization Stack](#13-token-optimization-stack)
+28. [Architecture Multi-Projets](#14-architecture-multi-projets-zero-switch)
 
 ---
 
@@ -687,11 +688,40 @@ tasks[5]:
   - id: T-01
 ...
 ```
-Le script `toonify.ps1` gère automatiquement la synchronisation à chaque commande `dc task next` et `dc task done`.
+---
+
+## 14. Architecture Multi-Projets (Zero Switch)
+
+### Vue d'ensemble
+
+DEV_CORE v6.3 introduit une architecture **Multi-Projets / Zero Config**, où chaque dépôt Git devient un univers de tâches autonome, sans nécessiter de configuration manuelle ou de changement de contexte explicite de la part de l'utilisateur.
+
+### Fonctionnement "Zero Switch"
+
+1. **Détection Automatique** : `Get-ActiveProject.ps1` détecte instantanément le contexte via `git rev-parse --show-toplevel` (ou le dossier courant en fallback).
+2. **Isolation des Données** : Les fichiers d'état (`tasks.json`, `.toon`, fichiers de contexte) sont isolés dans `DEV_CORE_DATA\Memory\<nom_du_projet>\`.
+3. **Mise en Cache Intelligente** : Le contexte projet est mis en cache dans les variables d'environnement (`$env:DEVCORE_ACTIVE_PROJECT_NAME`). Si l'utilisateur navigue vers un autre dossier (`cd`), le cache est automatiquement invalidé et mis à jour (`$env:DEVCORE_ACTIVE_PROJECT_PWD`).
+4. **Scanners Isolés** : Les queues d'attente (`.jsonl`) de détection de tâches sont spécifiques à chaque projet pour éviter toute collision.
+5. **Indépendance des IDEs** : Deux fenêtres d'éditeurs différentes travaillant sur deux projets distincts opèrent de manière 100% étanche grâce à l'isolation par processus.
+
+### Workflow Multi-Projets
+
+- Vous n'avez plus besoin d'exécuter `dc switch`. 
+- Placez-vous simplement dans le dossier de votre projet (ex: `C:\Projet_A`).
+- Toute commande `dc` (`dc task status`, `dc next task`, etc.) ciblera automatiquement le projet local sans interférer avec les autres projets.
 
 ---
 
 ## Changelog v6
+
+### 2026-05-16 — Architecture Multi-Projets / Zero Config
+
+- ✅ Refonte de l'architecture pour le support "Multi-Projets" simultané sans configuration.
+- ✅ Isolation complète des données par projet (`Memory/<nom_du_projet>/tasks.json`).
+- ✅ Détection dynamique via `Get-ActiveProject.ps1` avec système de cache d'environnement intelligent (`PWD`).
+- ✅ Isolation des files d'attente des scanners automatiques (`task_*.jsonl`).
+- ✅ Correction globale des chemins absolus remplacés par `$PSScriptRoot` pour une portabilité totale.
+- ✅ Le système gère parfaitement l'utilisation concurrente via plusieurs fenêtres IDE (VS Code, etc.).
 
 ### 2026-05-16 — Intégration Native RTK
 

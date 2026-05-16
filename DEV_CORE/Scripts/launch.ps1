@@ -1,4 +1,4 @@
-# launch.ps1 -- DEV_CORE v6
+﻿# launch.ps1 -- DEV_CORE v6
 param(
     [string]$Client = "auto",
     [string]$Project = "",
@@ -35,7 +35,7 @@ else { Log "  MEMORY.md absent - sera cree a endday" "Yellow" }
 
 # 4. Tasks
 Log "4/8 Tasks" "Cyan"
-$tFile = "$DEV_CORE_DATA\Memory\tasks.json"
+$tFile = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
 if (Test-Path $tFile) {
     $b = Get-Content $tFile -Raw | ConvertFrom-Json
     $active = $b.tasks | Where-Object { $_.status -eq "active" }
@@ -110,3 +110,5 @@ if ($Project) { Write-Host "  ||  Projet : $($Project.PadRight(29))||" -Foregrou
 Write-Host "  ||  dc help pour la liste des commandes  ||" -ForegroundColor Gray
 Write-Host "  ========================================" -ForegroundColor Green
 Write-Host ""
+
+

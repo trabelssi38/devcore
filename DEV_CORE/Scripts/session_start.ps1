@@ -1,4 +1,4 @@
-# session_start.ps1 -- DEV_CORE v6 -- Single client -- ASCII safe
+﻿# session_start.ps1 -- DEV_CORE v6 -- Single client -- ASCII safe
 # Declenche par hook UserPromptSubmit de Claude Code
 # Ne relance pas si deja execute aujourd'hui
 
@@ -54,7 +54,7 @@ catch {
 }
 
 # 3. Charger la tache active
-$tFile = "$DEV_CORE_DATA\Memory\tasks.json"
+$tFile = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
 if (Test-Path $tFile) {
     Log "task_next.ps1"
     & "$DEV_CORE\Scripts\task_next.ps1" 2>>$LOG
@@ -80,3 +80,5 @@ Write-Host "  9/9 Endday verification" -ForegroundColor Cyan
 # 10. Gen session context
 Write-Host "  10/10 Session context" -ForegroundColor Cyan
 & "$DEV_CORE\Scripts\gen_session_context.ps1" 2>$null
+
+

@@ -1,11 +1,12 @@
-# task_git_scanner.ps1 -- DEV_CORE v6 Auto layer
+﻿# task_git_scanner.ps1 -- DEV_CORE v6 Auto layer
 # Scan git commits pour detecter les tags [T-XX] manquants
 
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
 $TODAY         = Get-Date -Format "yyyy-MM-dd"
 $LOG           = "$DEV_CORE_DATA\Logs\scripts\task_git_scanner_$TODAY.log"
-$QUEUE         = "$DEV_CORE_DATA\Memory\task_git_queue.jsonl"
+$projName      = & "$PSScriptRoot\..\Get-ActiveProject.ps1"
+$QUEUE         = "$DEV_CORE_DATA\Memory\$projName\task_git_queue.jsonl"
 
 function Log { param($msg,$color="Gray")
     $l = "[$(Get-Date -f HH:mm:ss)] $msg"
@@ -15,7 +16,9 @@ function Log { param($msg,$color="Gray")
 
 Log "task_git_scanner -- analyse commits" "Cyan"
 
-Push-Location (Split-Path -Parent $DEV_CORE)
+# Rأ©soudre le dأ©pأ´t du projet actif (pas forcأ©ment C:\devcore)
+$gitRoot = git rev-parse --show-toplevel 2>$null
+if ($gitRoot) { Push-Location $gitRoot } else { Push-Location (Split-Path -Parent $DEV_CORE) }
 try {
     # 1. Lire les commits des 30 derniers jours
     $commits = git log --since="30 days ago" --format="%H|%s|%ai" 2>$null
@@ -35,7 +38,7 @@ try {
     }
 
     # 3. Lire tasks.json
-    $tFile = "$DEV_CORE_DATA\Memory\tasks.json"
+    $tFile = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\..\Get-ActiveProject.ps1")\tasks.json"
     if (-not (Test-Path $tFile)) {
         Log "tasks.json absent - creation" "Yellow"
         @{
@@ -102,3 +105,5 @@ try {
 } finally {
     Pop-Location
 }
+
+

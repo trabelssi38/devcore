@@ -1,4 +1,4 @@
-# adapt_client.ps1 -- DEV_CORE v6
+﻿# adapt_client.ps1 -- DEV_CORE v6
 # Expose DEV_CORE au client actif : liens skills + injection boot
 # Usage : adapt_client.ps1 -Client claude|codex|gemini|qwen|auto
 
@@ -58,9 +58,9 @@ if (-not $DryRun) { $resolved | Set-Content $ACTIVE_FILE -Encoding UTF8 }
 
 Write-Host "  [adapt_client] Client : $resolved" -ForegroundColor Cyan
 
-# ─────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # 1. LIENS SYMBOLIQUES SKILLS
-# ─────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 $skillsTarget = $CLIENT_SKILLS[$resolved]
 if ($skillsTarget) {
     if (-not (Test-Path $skillsTarget) -and -not $DryRun) {
@@ -82,9 +82,9 @@ if ($skillsTarget) {
     Write-Host "  [adapt_client] Skills lies dans $skillsTarget" -ForegroundColor Green
 }
 
-# ─────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # 2. INJECTION DU FICHIER BOOT
-# ─────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 $bootSrc = $CLIENT_BOOT_SRC[$resolved]
 $bootDst = $CLIENT_BOOT_DST[$resolved]
 
@@ -104,7 +104,7 @@ $bootContent = Get-Content $bootSrc -Raw -ErrorAction SilentlyContinue
 
 # Injecter la task courante en haut si disponible
 $missionBlock = ""
-$tasksFile = "$DEV_CORE_DATA\Memory\tasks.json"
+$tasksFile = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
 if (Test-Path $tasksFile) {
     try {
         $board   = Get-Content $tasksFile -Raw | ConvertFrom-Json
@@ -133,3 +133,5 @@ if (-not $DryRun) {
 
 Write-Host "  [adapt_client] Boot injecte : $bootDst" -ForegroundColor Green
 Write-Host "  [adapt_client] Source       : $bootSrc" -ForegroundColor DarkGray
+
+
