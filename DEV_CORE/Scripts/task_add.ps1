@@ -1,4 +1,4 @@
-﻿# task_add.ps1 -- DEV_CORE v6 single client
+# task_add.ps1 -- DEV_CORE v6 single client
 param(
     [Parameter(Mandatory=$true)][string]$Title,
     [ValidateSet("reasoning","coding","bulk")][string]$Mode = "coding",
@@ -26,9 +26,11 @@ $t = [PSCustomObject]@{
     steps_total= 1
     steps_done = 0
     depends_on = if ($DependsOn) { "T-$DependsOn" } else { $null }
+    worktree   = if ($env:DEVCORE_ACTIVE_WORKTREE_NAME) { $env:DEVCORE_ACTIVE_WORKTREE_NAME } else { "main" }
 }
 $board.tasks += $t
 $board | ConvertTo-Json -Depth 10 | Set-Content $tFile -Encoding UTF8
 Write-Host "  [OK] Tache ajoutee : $id [$Mode] -- $Title" -ForegroundColor Green
 
 
+& \gen_dashboard.ps1

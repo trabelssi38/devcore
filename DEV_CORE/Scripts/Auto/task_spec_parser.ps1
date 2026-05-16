@@ -1,4 +1,4 @@
-﻿# task_spec_parser.ps1 -- DEV_CORE v6 Auto layer
+# task_spec_parser.ps1 -- DEV_CORE v6 Auto layer
 # Parser les fichiers de spec pour extraire des taches candidates
 
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
@@ -65,6 +65,7 @@ foreach ($file in $specFiles) {
             source = $file.Name
             source_type = "spec_header"
             detected = $TODAY
+            worktree = if ($env:DEVCORE_ACTIVE_WORKTREE_NAME) { $env:DEVCORE_ACTIVE_WORKTREE_NAME } else { "main" }
         }
         Log "  [SECTION] $sectionTitle [$mode]" "Gray"
     }
@@ -81,6 +82,7 @@ foreach ($file in $specFiles) {
             source = $file.Name
             source_type = "todo"
             detected = $TODAY
+            worktree = if ($env:DEVCORE_ACTIVE_WORKTREE_NAME) { $env:DEVCORE_ACTIVE_WORKTREE_NAME } else { "main" }
         }
         Log "  [TODO] $todoTitle [$mode]" "Gray"
     }

@@ -51,3 +51,4 @@ if ($current.steps_done -ge $current.steps_total) {
 }
 
 
+& \gen_dashboard.ps1

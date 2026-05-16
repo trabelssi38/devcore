@@ -105,3 +105,4 @@ $toonCtx | Set-Content "$DEV_CORE_DATA\Logs\scripts\session_context.toon" -Encod
 $toonCtx | Set-Content "$projDir\session_context.toon" -Encoding UTF8
 
 
+& \gen_dashboard.ps1

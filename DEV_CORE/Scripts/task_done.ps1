@@ -80,3 +80,4 @@ if ($nextTask) {
 Write-Host ""
 
 
+& \gen_dashboard.ps1

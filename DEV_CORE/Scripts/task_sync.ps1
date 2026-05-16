@@ -1,4 +1,4 @@
-﻿# task_sync.ps1 -- DEV_CORE v6 -- Synchronise les suggestions dans tasks.json
+# task_sync.ps1 -- DEV_CORE v6 -- Synchronise les suggestions dans tasks.json
 param([int]$MaxPerSource = 3)
 
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
@@ -105,6 +105,7 @@ foreach ($s in $suggestions) {
             steps_done = 0
             depends_on = $null
             source     = $s.source
+            worktree   = if ($s.worktree) { $s.worktree } elseif ($env:DEVCORE_ACTIVE_WORKTREE_NAME) { $env:DEVCORE_ACTIVE_WORKTREE_NAME } else { "main" }
         }
         $board.tasks += $t
         $existingIds += $id
@@ -128,3 +129,4 @@ Write-Host "  $added taches ajoutees a tasks.json" -ForegroundColor Green
 Write-Host ""
 
 
+& \gen_dashboard.ps1

@@ -1,4 +1,4 @@
-﻿# task_git_scanner.ps1 -- DEV_CORE v6 Auto layer
+# task_git_scanner.ps1 -- DEV_CORE v6 Auto layer
 # Scan git commits pour detecter les tags [T-XX] manquants
 
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
@@ -65,6 +65,7 @@ try {
                 source = "git"
                 reason = "tag_found_in_commit"
                 detected = $TODAY
+                worktree = if ($env:DEVCORE_ACTIVE_WORKTREE_NAME) { $env:DEVCORE_ACTIVE_WORKTREE_NAME } else { "main" }
             }
             Log "TAG MANQUANT : $tag" "Yellow"
         }

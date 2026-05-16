@@ -1,4 +1,4 @@
-﻿# task_status.ps1 -- DEV_CORE v6 single client
+# task_status.ps1 -- DEV_CORE v6 single client
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
 $tFile = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
 if (-not (Test-Path $tFile)) { Write-Host "  Aucun tasks.json -- dc new task 'titre'" -ForegroundColor Yellow; exit 0 }
@@ -20,7 +20,8 @@ foreach ($t in $board.tasks) {
     $icon  = switch ($t.status) { "done"{"[done]  "}; "active"{"[active]"}; "todo"{"[todo]  "}; default{$t.status} }
     $color = switch ($t.status) { "done"{"Green"}; "active"{"Cyan"}; "todo"{"Gray"}; default{"Gray"} }
     $steps = if ($t.PSObject.Properties["steps_total"] -and $t.steps_total -gt 1) { " [$($t.steps_done)/$($t.steps_total)]" } else { "" }
-    $title = "$($t.title)$steps"
+    $wtTag = if ($t.PSObject.Properties["worktree"] -and $t.worktree -ne "main") { "[$($t.worktree)] " } else { "" }
+    $title = "$wtTag$($t.title)$steps"
     if ($title.Length -gt 30) { $title = $title.Substring(0,27) + "..." }
     $pre   = if ($t.id -eq $board.current_task) { ">" } else { " " }
     Write-Host ("$pre {0,-6} {1,-12} " -f $t.id, $t.mode) -NoNewline -ForegroundColor White

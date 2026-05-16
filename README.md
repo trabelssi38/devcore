@@ -2,8 +2,8 @@
 
 **Single Client Mode** — Plateforme d'orchestration IA pour le développement logiciel
 
-Version : 6.0  
-Updated : 2026-05-11  
+Version : 6.3  
+Updated : 2026-05-16  
 Mode : Single Client (pas de handoffs multi-agents)
 
 ---
@@ -99,11 +99,11 @@ file:///C:/devcore/DEV_CORE/Dashboard/index.html
 ```
 
 Auto-refresh 30s — Affiche :
-- Tâche active + mode
-- Infrastructure (Qdrant, Ollama, Obsidian)
-- Mémoire (MEMORY.md, DECISIONS.md)
-- Skills actifs
-- Pipeline tasks (T-01 → T-04)
+- Multi-projets : Cards récapitulatives par projet
+- Worktrees : Tags [worktree] dans la pipeline
+- Infrastructure Temps Réel : Monitoring ports (Qdrant, Ollama, Hermes)
+- Automation Hooks : Horodatage réel des dernières exécutions
+- Pipeline tasks globale (T-01 → T-04)
 
 ---
 
@@ -156,6 +156,13 @@ Voir : `C:\devcore\DEV_CORE\docs\PLATFORM_DOCUMENTATION.md`
 - ✅ Structure déplacée : `C:\devcore\`
 - ✅ Variables d'env mises à jour
 - ✅ Documentation complète
+
+### 2026-05-16 — v6.3 Multi-Project & Worktree Support
+
+- ✅ **Multi-Projet** : Dashboard dynamique agrégeant tous les projets de `DEV_CORE_DATA\Memory\`.
+- ✅ **Worktree Isolation** : Support natif de `git worktree` via `Get-ActiveProject.ps1`.
+- ✅ **Dynamic Monitoring** : Dashboard auto-généré avec état réel des ports et timestamps de logs.
+- ✅ **Tags Worktree** : Métadonnée `"worktree"` injectée dans les tâches pour le tracking multi-branche.
 
 **Avant** : Multi-client (claude → codex → antigravity)  
 **Après** : Single client (claude + 9Router)  
