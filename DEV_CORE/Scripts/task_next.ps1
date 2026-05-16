@@ -1,4 +1,4 @@
-﻿# task_next.ps1 -- DEV_CORE v6 single client
+# task_next.ps1 -- DEV_CORE v6 single client
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
 $tFile = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
@@ -105,4 +105,4 @@ $toonCtx | Set-Content "$DEV_CORE_DATA\Logs\scripts\session_context.toon" -Encod
 $toonCtx | Set-Content "$projDir\session_context.toon" -Encoding UTF8
 
 
-& \gen_dashboard.ps1
+& "$PSScriptRoot\gen_dashboard.ps1"

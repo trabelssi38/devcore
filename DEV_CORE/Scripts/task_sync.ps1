@@ -129,4 +129,4 @@ Write-Host "  $added taches ajoutees a tasks.json" -ForegroundColor Green
 Write-Host ""
 
 
-& \gen_dashboard.ps1
+& "$PSScriptRoot\gen_dashboard.ps1"
