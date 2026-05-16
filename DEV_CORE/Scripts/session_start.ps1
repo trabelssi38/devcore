@@ -1,4 +1,4 @@
-﻿# session_start.ps1 -- DEV_CORE v6 -- Single client -- ASCII safe
+# session_start.ps1 -- DEV_CORE v6 -- Single client -- ASCII safe
 # Declenche par hook UserPromptSubmit de Claude Code
 # Ne relance pas si deja execute aujourd'hui
 
@@ -54,12 +54,21 @@ catch {
 }
 
 # 3. Charger la tache active
-$tFile = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
+$projName = & "$PSScriptRoot\Get-ActiveProject.ps1"
+$tFile = "$DEV_CORE_DATA\Memory\$projName\tasks.json"
+
+if (-not (Test-Path $tFile)) {
+    Log "Board manquant -- initialisation automatique (link project + new task)"
+    & "$DEV_CORE\Scripts\new_project.ps1" -Name $projName -Path (Get-Location).Path 2>>$LOG
+    & "$DEV_CORE\Scripts\task_add.ps1" -Title "Session de travail auto ($TODAY)" -Mode "coding" 2>>$LOG
+    $tFile = "$DEV_CORE_DATA\Memory\$projName\tasks.json"
+}
+
 if (Test-Path $tFile) {
     Log "task_next.ps1"
     & "$DEV_CORE\Scripts\task_next.ps1" 2>>$LOG
 } else {
-    Log "Aucun board de taches -- dc new task ou dc new project"
+    Log "Erreur lors de la creation du board de taches."
 }
 
 # 4. Auto-scan + sync en background (2.2)

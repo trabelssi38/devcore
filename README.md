@@ -166,6 +166,8 @@ Voir : `C:\devcore\DEV_CORE\docs\PLATFORM_DOCUMENTATION.md`
 - ✅ **Cockpit Single View** : Interface 100vh compacte en 3 colonnes avec défilements indépendants.
 - ✅ **Filtres Historiques & Tri Dynamique** : Filtrage temporel JS (All, 1j, 7j, 30j) des tâches closes et tri intelligent (les Worktrees et Tâches récents s'affichent en premier).
 - ✅ **Clarté UX & Détails fluides** : Élimination des caractères spéciaux, suppression des fonds opaques verts pour les tâches, et affichage étendu sur une ligne des étapes (`steps-container`).
+- ✅ **Correction des Hooks Antigravity** : Correction du script `install_universal_hooks.ps1` pour installer correctement les déclencheurs dans le dossier utilisateur d'Antigravity (`.gemini\antigravity`) au lieu de `.antigravity`.
+- ✅ **Cycle des Tâches 100% Autonome** : Amélioration de `session_start.ps1` pour lier automatiquement un projet (`dc link project`) et créer la première tâche (`dc new task`) si aucun tableau de bord n'existe encore. Plus de blocage manuel pour l'initialisation.
 
 **Avant** : Multi-client (claude → codex → antigravity)  
 **Après** : Single client (claude + 9Router)  

@@ -722,6 +722,8 @@ DEV_CORE v6.3 introduit une architecture **Multi-Projets / Zero Config**, où ch
 - ✅ Isolation des files d'attente des scanners automatiques (`task_*.jsonl`).
 - ✅ Correction globale des chemins absolus remplacés par `$PSScriptRoot` pour une portabilité totale.
 - ✅ Le système gère parfaitement l'utilisation concurrente via plusieurs fenêtres IDE (VS Code, etc.).
+- ✅ **Correction des Hooks Antigravity** : Correction du script `install_universal_hooks.ps1` pour installer correctement les déclencheurs dans le dossier utilisateur d'Antigravity (`.gemini\antigravity`) au lieu de `.antigravity`.
+- ✅ **Cycle des Tâches 100% Autonome** : Amélioration de `session_start.ps1` pour lier automatiquement un projet (`dc link project`) et créer la première tâche (`dc new task`) si aucun tableau de bord n'existe encore. Plus de blocage manuel pour l'initialisation.
 
 ### 2026-05-16 — Intégration Native RTK
 

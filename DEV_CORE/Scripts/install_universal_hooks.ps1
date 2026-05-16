@@ -23,7 +23,12 @@ $hookSchemas = @{
 
 $clients = @(".claude", ".codex", ".gemini", ".qwen", ".antigravity")
 foreach ($client in $clients) {
-    $dir = "$env:USERPROFILE\$client"
+    if ($client -eq ".antigravity") {
+        $dir = "$env:USERPROFILE\.gemini\antigravity"
+    } else {
+        $dir = "$env:USERPROFILE\$client"
+    }
+    
     if (-not (Test-Path $dir)) {
         New-Item -ItemType Directory -Path $dir -Force | Out-Null
     }
