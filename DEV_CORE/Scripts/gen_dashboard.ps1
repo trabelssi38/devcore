@@ -49,31 +49,83 @@ foreach ($p in $projects) {
   <div class="card">
     <div class="card-title">Projet : $($p.Name)</div>
     <div class="card-val" style="font-size:20px">$($p.ActiveTask)</div>
-    <div class="card-sub">Mode: $($p.Mode) | $($p.Progress)% <span class="$statusClass">●</span></div>
+    <div class="card-sub">Mode: $($p.Mode) | $($p.Progress)% <span class="$statusClass">*</span></div>
   </div>
 "@
 
-    $tasksHtml += "<h2>Tasks Pipeline ($($p.Name))</h2>`n"
-    if (-not $p.Tasks -or $p.Tasks.Count -eq 0) {
-        $tasksHtml += "<div class=`"mission`"><div style=`"font-size:13px;color:#64748b`">Aucune tâche</div></div>`n"
-    } else {
-        foreach ($t in $p.Tasks) {
+    # Groupement par Projet et Worktree avec accordéons
+    $tasksHtml += "<details open><summary><h2 style='color:#6366f1; cursor:pointer; padding:5px; background:#1a1d27; border-radius:4px;'>Projet : $($p.Name)</h2></summary><div style='padding: 10px 0;'>`n"
+    
+    $groups = $p.Tasks | Group-Object worktree | Sort-Object {
+        $maxId = 0
+        foreach ($t in $_.Group) {
+            if ($t.id) {
+                $idNum = [int]($t.id -replace "\D", "")
+                if ($idNum -gt $maxId) { $maxId = $idNum }
+            }
+        }
+        $maxId
+    } -Descending
+    foreach ($group in $groups) {
+        $tasksHtml += "<details open style='margin-left: 15px; margin-bottom: 10px; border-left: 2px solid #2d3148; padding-left: 12px;'><summary><h3 style='font-size:11px; color:#94a3b8; margin-bottom:8px;'>Worktree: $($group.Name)</h3></summary>`n"
+        
+        $sortedTasks = $group.Group | Sort-Object { [int]($_.id -replace "\D", "") } -Descending
+        foreach ($t in $sortedTasks) {
             $badgeClass = switch ($t.status) { "done"{"done"}; "active"{"active"}; default{"todo"} }
             $badgeText  = $t.status.ToUpper()
+            $activeClass = if ($t.status -eq "active") { "active-task" } else { "" }
             $stepsStr   = if ($t.PSObject.Properties["steps_total"] -and $t.steps_total -gt 1) { "$($t.steps_done)/$($t.steps_total) steps" } else { "" }
-            $wtStr      = if ($t.PSObject.Properties["worktree"] -and $t.worktree -ne "main") { "[$($t.worktree)] " } else { "" }
             
+            # Gestion des étapes détaillées
+            $stepsDetailHtml = ""
+            if ($t.PSObject.Properties["steps"]) {
+                $stepsDetailHtml = "<div class='steps-container'>"
+                foreach ($s in $t.steps) {
+                    $icon = if ($s.done) { "<b style='color:#22c55e'>[v]</b>" } else { "<span style='color:#475569'>[ ]</span>" }
+                    $stepClass = if ($s.done) { "step-done" } else { "" }
+                    $stepsDetailHtml += "<div class='step-item $stepClass'>$icon $($s.title)</div>"
+                }
+                $stepsDetailHtml += "</div>"
+            }
+
+            # Gestion de la date pour le filtrage JS
+            $taskDate = if ($t.PSObject.Properties["started_at"]) { $t.started_at } elseif ($t.PSObject.Properties["completed_at"]) { $t.completed_at } else { (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss") }
+
+            # Formatage des dates pour l'affichage
+            $datesHtml = ""
+            $startDate = ""
+            $endDate = ""
+            if ($t.PSObject.Properties["started_at"] -and $t.started_at) {
+                try { $startDate = "Debut: " + [datetime]::Parse($t.started_at).ToString("yyyy-MM-dd HH:mm:ss") } catch { }
+            }
+            if ($t.PSObject.Properties["completed_at"] -and $t.completed_at) {
+                try { $endDate = "Fin: " + [datetime]::Parse($t.completed_at).ToString("yyyy-MM-dd HH:mm:ss") } catch { }
+            }
+            if ($startDate -or $endDate) {
+                $datesHtml = "<div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>"
+                if ($startDate) { $datesHtml += $startDate }
+                if ($startDate -and $endDate) { $datesHtml += " | " }
+                if ($endDate) { $datesHtml += $endDate }
+                $datesHtml += "</div>"
+            }
+
             $tasksHtml += @"
-<div class="mission">
-  <span class="badge $badgeClass">$badgeText</span>
-  <div style="flex:1">
-    <div style="font-size:13px;font-weight:500">$($t.id): $wtStr$($t.title)</div>
-    <div style="font-size:11px;color:#64748b;margin-top:2px">Mode: $($t.mode) — $stepsStr</div>
-  </div>
-</div>
+<details class="mission $activeClass $($t.status)" data-date="$taskDate">
+  <summary style="display:flex; gap:10px; align-items:center; width:100%">
+    <span class="badge $badgeClass">$badgeText</span>
+    <div style="flex:1">
+      <div class="mission-title">$($t.id): $($t.title)</div>
+      <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: $($t.mode) - $stepsStr</div>
+      $datesHtml
+    </div>
+  </summary>
+  $stepsDetailHtml
+</details>
 "@
         }
+        $tasksHtml += "</details>"
     }
+    $tasksHtml += "</div></details>"
 }
 
 # 4. Generer HTML des services
@@ -151,7 +203,7 @@ if (Test-Path $TEMPLATE_FILE) {
     $template = $template -replace '\{\{SERVICES_MONITORING\}\}', $infraHtml
 
     $template | Set-Content $OUTPUT_FILE -Encoding UTF8
-    Write-Host "Dashboard généré : $OUTPUT_FILE" -ForegroundColor Green
+    Write-Host "Dashboard genere : $OUTPUT_FILE" -ForegroundColor Green
 } else {
     Write-Host "Erreur : template.html introuvable" -ForegroundColor Red
 }

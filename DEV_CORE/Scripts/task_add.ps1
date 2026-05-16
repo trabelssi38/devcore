@@ -15,7 +15,7 @@ if (-not (Test-Path $tFile)) {
 $board = Get-Content $tFile -Raw | ConvertFrom-Json
 $nums  = $board.tasks | Where-Object { $_.id -match "^T-(\d+)$" } |
          ForEach-Object { [int]($_.id -replace "T-","") }
-$next  = if ($nums) { ($nums | Measure-Object -Maximum).Maximum + 1 } else { 1 }
+$next  = if ($nums) { [int](($nums | Measure-Object -Maximum).Maximum) + 1 } else { 1 }
 $id    = "T-{0:D2}" -f $next
 
 $t = [PSCustomObject]@{
@@ -33,4 +33,4 @@ $board | ConvertTo-Json -Depth 10 | Set-Content $tFile -Encoding UTF8
 Write-Host "  [OK] Tache ajoutee : $id [$Mode] -- $Title" -ForegroundColor Green
 
 
-& \gen_dashboard.ps1
+& "$PSScriptRoot\gen_dashboard.ps1"

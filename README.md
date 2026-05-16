@@ -163,6 +163,9 @@ Voir : `C:\devcore\DEV_CORE\docs\PLATFORM_DOCUMENTATION.md`
 - ✅ **Worktree Isolation** : Support natif de `git worktree` via `Get-ActiveProject.ps1`.
 - ✅ **Dynamic Monitoring** : Dashboard auto-généré avec état réel des ports et timestamps de logs.
 - ✅ **Tags Worktree** : Métadonnée `"worktree"` injectée dans les tâches pour le tracking multi-branche.
+- ✅ **Cockpit Single View** : Interface 100vh compacte en 3 colonnes avec défilements indépendants.
+- ✅ **Filtres Historiques & Tri Dynamique** : Filtrage temporel JS (All, 1j, 7j, 30j) des tâches closes et tri intelligent (les Worktrees et Tâches récents s'affichent en premier).
+- ✅ **Clarté UX & Détails fluides** : Élimination des caractères spéciaux, suppression des fonds opaques verts pour les tâches, et affichage étendu sur une ligne des étapes (`steps-container`).
 
 **Avant** : Multi-client (claude → codex → antigravity)  
 **Après** : Single client (claude + 9Router)  

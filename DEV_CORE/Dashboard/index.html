@@ -1,363 +1,289 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="utf-8">
 <meta http-equiv="refresh" content="30">
-<title>DEV_CORE v6.1 Dashboard</title>
+<title>DEV_CORE v6.3 Cockpit</title>
 <style>
-body{font-family:system-ui;background:#0f1117;color:#e2e8f0;margin:0;padding:24px}
-h1{font-size:18px;color:#6366f1;margin:0 0 20px}
-h2{font-size:14px;color:#94a3b8;margin:24px 0 12px;text-transform:uppercase;letter-spacing:.05em}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:20px}
-.card{background:#1a1d27;border:1px solid #2d3148;border-radius:8px;padding:14px}
-.card-title{font-size:11px;color:#475569;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
-.card-val{font-size:28px;font-weight:600;color:#f8fafc}
-.card-sub{font-size:12px;color:#64748b;margin-top:4px}
-.mission{padding:8px 12px;background:#1a1d27;border:1px solid #2d3148;border-radius:6px;margin-bottom:6px;display:flex;gap:10px;align-items:center}
-.badge{font-size:11px;padding:2px 8px;border-radius:4px;font-weight:500}
-.active{background:#312e81;color:#a5b4fc}
-.done{background:#14532d;color:#86efac}
-.todo{background:#1e293b;color:#64748b}
+body{font-family:system-ui;background:#0f1117;color:#e2e8f0;margin:0;padding:0;height:100vh;overflow:hidden;display:flex;flex-direction:column}
+header{padding:12px 20px;background:#1a1d27;border-bottom:1px solid #2d3148;display:flex;justify-content:space-between;align-items:center}
+h1{font-size:16px;color:#6366f1;margin:0}
+h2{font-size:11px;color:#94a3b8;margin:0 0 12px;text-transform:uppercase;letter-spacing:.05em}
+
+.main-layout{display:grid;grid-template-columns:300px 1fr 320px;flex:1;overflow:hidden}
+.column{display:flex;flex-direction:column;border-right:1px solid #2d3148;padding:16px;overflow:hidden}
+.column:last-child{border-right:none}
+.scroll-area{flex:1;overflow-y:auto;padding-right:8px}
+.scroll-area::-webkit-scrollbar{width:4px}
+.scroll-area::-webkit-scrollbar-thumb{background:#2d3148;border-radius:2px}
+
+.card{background:#1a1d27;border:1px solid #2d3148;border-radius:8px;padding:12px;margin-bottom:8px}
+.card-title{font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.card-val{font-size:18px;font-weight:600;color:#f8fafc}
+.card-sub{font-size:11px;color:#64748b;margin-top:2px}
+
+.mission{padding:8px 12px;background:#1a1d27;border:1px solid #2d3148;border-radius:6px;margin-bottom:6px;display:flex;gap:10px;align-items:center;transition: all 0.2s}
+.mission.active-task{border:1.5px solid #6366f1;box-shadow:0 0 12px rgba(99,102,241,0.4);background:#1e1b4b;animation: pulse 2s infinite}
+
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(99, 102, 241, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+}
+
+summary{cursor:pointer; outline:none; list-style:none}
+summary::-webkit-details-marker{display:none}
+details{margin-bottom: 8px}
+
+.filters{display:flex; gap:8px; margin-bottom:12px}
+.filter-btn{font-size:10px; background:#1e293b; border:1px solid #2d3148; color:#94a3b8; padding:4px 8px; border-radius:4px; cursor:pointer}
+.filter-btn.active{background:#6366f1; color:white; border-color:#6366f1}
+.hidden{display:none !important}
+
+.badge{font-size:10px;padding:2px 6px;border-radius:4px;font-weight:600; background:transparent}
+.active{color:#a5b4fc; border:1.5px solid #312e81}
+.done{color:#86efac; border:1.5px solid #14532d}
+.todo{color:#64748b; border:1.5px solid #1e293b}
+
 .status-ok{color:#22c55e}
 .status-warn{color:#eab308}
 .status-error{color:#ef4444}
+
+.mission-title{font-size:12px;font-weight:500;color:#ffffff}
+.mission.active-task .mission-title{color:#ffffff; font-weight:600}
+.mission.done .mission-title{color:#94a3b8}
+
+.steps-container{margin-top:10px; padding:10px; background:rgba(0,0,0,0.3); border-radius:6px; border-left:3px solid #6366f1; width: calc(100% - 20px); }
+.step-item{font-size:11px; color:#94a3b8; display:flex; align-items:center; gap:8px; margin-bottom:6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+.step-item.step-done{color:#86efac}
+.step-item b{font-family: monospace; font-size: 12px;}
+
 .component{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#1a1d27;border:1px solid #2d3148;border-radius:6px;margin-bottom:6px}
-.component-name{font-size:13px;color:#e2e8f0}
-.component-detail{font-size:11px;color:#64748b}
-.progress-bar{height:6px;background:#1e293b;border-radius:3px;overflow:hidden;margin-top:8px}
-.progress-fill{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);transition:width 0.3s}
+.component-name{font-size:12px;color:#e2e8f0}
+.component-detail{font-size:10px;color:#64748b}
+
 .token-layer{display:flex;justify-content:space-between;padding:6px 12px;background:#1a1d27;border:1px solid #2d3148;border-radius:6px;margin-bottom:4px}
-.token-name{font-size:12px;color:#e2e8f0}
-.token-reduction{font-size:12px;color:#22c55e;font-weight:600}
+.token-name{font-size:11px;color:#e2e8f0}
+.token-reduction{font-size:11px;color:#22c55e;font-weight:600}
 </style>
 </head>
 <body>
-<h1>DEV_CORE v6.1 — Dashboard</h1>
-<div style="font-size:11px;color:#64748b;margin-bottom:20px">Dernière mise à jour: <span id="timestamp"></span></div>
+<header>
+  <h1>DEV_CORE v6.3 — Cockpit</h1>
+  <div style="font-size:11px;color:#64748b">Derniere mise a jour: <span id="timestamp"></span></div>
+</header>
 
-<div class="grid">
-  <div class="card">
-    <div class="card-title">Client actif</div>
-    <div class="card-val" style="font-size:20px">Claude Code</div>
-    <div class="card-sub">Mode: <span id="mode">reasoning</span></div>
+<div class="main-layout">
+  <!-- Colonne 1 : Projets & Infrastructure -->
+  <div class="column" style="background:#0b0d12">
+    <h2>Projets</h2>
+    <div style="margin-bottom:20px">
+        <div class="card">
+    <div class="card-title">Projet : devcore</div>
+    <div class="card-val" style="font-size:20px">Aucune</div>
+    <div class="card-sub">Mode: N/A | 100% <span class="status-ok">*</span></div>
   </div>
-  <div class="card">
-    <div class="card-title">Tâche active</div>
-    <div class="card-val" style="font-size:20px">T-04</div>
-    <div class="card-sub"><span id="task-progress">2/2</span> steps ✓</div>
-  </div>
-  <div class="card">
-    <div class="card-title">Skills installés</div>
-    <div class="card-val">159</div>
-    <div class="card-sub">4 core actifs</div>
-  </div>
-  <div class="card">
-    <div class="card-title">Score global</div>
-    <div class="card-val">97<span style="font-size:18px">%</span></div>
-    <div class="card-sub status-ok">Opérationnel</div>
-  </div>
-</div>
-
-<h2>Token Optimization Stack (6 couches)</h2>
-<div style="margin-bottom:20px">
-  <div class="token-layer">
-    <span class="token-name">1. CLAUDE.md terse</span>
-    <span class="token-reduction">-69%</span>
-  </div>
-  <div class="token-layer">
-    <span class="token-name">2. caveman-compress MEMORY.md</span>
-    <span class="token-reduction">-46%</span>
-  </div>
-  <div class="token-layer">
-    <span class="token-name">3. MCP cache</span>
-    <span class="token-reduction">-95%</span>
-  </div>
-  <div class="token-layer">
-    <span class="token-name">4. 9Router RTK</span>
-    <span class="token-reduction">-40%</span>
-  </div>
-  <div class="token-layer">
-    <span class="token-name">5. Ghost finder audit</span>
-    <span class="token-reduction">maintenance</span>
-  </div>
-  <div class="token-layer" style="border-color:#6366f1">
-    <span class="token-name">6. TOON tasks+skills</span>
-    <span class="token-reduction" style="color:#8b5cf6">-90% reel</span>
-  </div>
-  <div style="padding:10px 12px;background:#14532d;border:1px solid #22c55e;border-radius:6px;margin-top:8px;text-align:center;font-weight:600;color:#86efac">
-    Reduction cumulee: ~98% (tasks.json: 5128 → 514 chars)
-  </div>
-</div>
-
-<h2>Hermes Agent</h2>
+    </div>
+    
+    <h2>Infrastructure</h2>
+    <div class="scroll-area">
+      <h2>Services & Infrastructure</h2>
 <div class="component">
   <div>
-    <div class="component-name">Hermes v0.13.0</div>
-    <div class="component-detail">http://127.0.0.1:20128/v1 — 9Router</div>
+    <div class="component-name">Hermes Agent</div>
+    <div class="component-detail">Port 20128</div>
   </div>
-  <div class="status-ok" id="hermes-status">✓</div>
-</div>
+  <div class="status-ok">&#10003;</div>
+</div><div class="component">
+  <div>
+    <div class="component-name">Qdrant Vector DB</div>
+    <div class="component-detail">Port 6333</div>
+  </div>
+  <div class="status-ok">&#10003;</div>
+</div><div class="component">
+  <div>
+    <div class="component-name">Ollama Embeddings</div>
+    <div class="component-detail">Port 11434</div>
+  </div>
+  <div class="status-ok">&#10003;</div>
+</div><h2>Automation Hooks</h2>
 <div class="component">
   <div>
-    <div class="component-name">HERMES_Daemon</div>
-    <div class="component-detail" id="hermes-daemon-status">Scheduled Task Ready</div>
+    <div class="component-name">task_sync</div>
+    <div class="component-detail">Dernier: 1 heures</div>
   </div>
-  <div class="status-ok">✓</div>
-</div>
-<div class="component">
-  <div>
-    <div class="component-name">9Router Models</div>
-    <div class="component-detail">claude-Cowork-combo | kimi / deepseek / minimax</div>
-  </div>
-  <div class="status-ok">✓</div>
-</div>
-
-<h2>Automation Hooks v6.1</h2>
-<div class="component">
-  <div>
-    <div class="component-name">post-commit.hook</div>
-    <div class="component-detail">steps_done + task_sync + auto-done</div>
-  </div>
-  <div class="status-ok">✓</div>
-</div>
-<div class="component">
+  <div class="status-ok">&#10003;</div>
+</div><div class="component">
   <div>
     <div class="component-name">session_start</div>
-    <div class="component-detail">task_scan + endday_check + gen_context</div>
+    <div class="component-detail">Dernier: 20 heures</div>
   </div>
-  <div class="status-ok">✓</div>
-</div>
-<div class="component">
+  <div class="status-ok">&#10003;</div>
+</div><div class="component">
   <div>
     <div class="component-name">session_end</div>
-    <div class="component-detail">qdrant + obsidian + metrics</div>
+    <div class="component-detail">Dernier: Jamais</div>
   </div>
-  <div class="status-ok">✓</div>
+  <div class="status-error">&#10007;</div>
 </div>
+    </div>
+  </div>
 
-<h2>MCP Servers</h2>
-<div class="component">
-  <div>
-    <div class="component-name">devcore-scripts</div>
-    <div class="component-detail">8 tools: launch, endday, task_*</div>
+  <!-- Colonne 2 : Pipeline (Sessions Actives) -->
+  <div class="column">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
+      <h2>Taches & Sessions</h2>
+      <div class="filters">
+        <button class="filter-btn active" onclick="applyFilter(this, 0)">All</button>
+        <button class="filter-btn" onclick="applyFilter(this, 1)">1j</button>
+        <button class="filter-btn" onclick="applyFilter(this, 7)">7j</button>
+        <button class="filter-btn" onclick="applyFilter(this, 30)">Mois</button>
+      </div>
+    </div>
+    <div class="scroll-area" id="tasks-pipeline">
+      <details open><summary><h2 style='color:#6366f1; cursor:pointer; padding:5px; background:#1a1d27; border-radius:4px;'>Projet : devcore</h2></summary><div style='padding: 10px 0;'>
+<details open style='margin-left: 15px; margin-bottom: 10px; border-left: 2px solid #2d3148; padding-left: 12px;'><summary><h3 style='font-size:11px; color:#94a3b8; margin-bottom:8px;'>Worktree: main</h3></summary>
+<details class="mission  done" data-date="2026-05-16T18:36:05.1912807+01:00">
+  <summary style="display:flex; gap:10px; align-items:center; width:100%">
+    <span class="badge done">DONE</span>
+    <div style="flex:1">
+      <div class="mission-title">T-08: Details des taches et optimisation UI</div>
+      <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - 3/3 steps</div>
+      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-16 18:36:05 | Fin: 2026-05-16 19:36:05</div>
+    </div>
+  </summary>
+  <div class='steps-container'><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Affichage des etapes sur 1 seule ligne (ellipsis)</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Design eppure (borders colorees)</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Typographie et horodatage precis</div></div>
+</details><details class="mission  done" data-date="2026-05-16T18:06:05.1912807+01:00">
+  <summary style="display:flex; gap:10px; align-items:center; width:100%">
+    <span class="badge done">DONE</span>
+    <div style="flex:1">
+      <div class="mission-title">T-07: Historique & Filtres temporels</div>
+      <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - 2/2 steps</div>
+      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-16 18:06:05 | Fin: 2026-05-16 18:36:05</div>
+    </div>
+  </summary>
+  <div class='steps-container'><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Groupement Projet > Worktree par accordeons</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Filtres dynamiques JS (1j, 7j, Mois)</div></div>
+</details><details class="mission  done" data-date="2026-05-16T17:36:05.1912807+01:00">
+  <summary style="display:flex; gap:10px; align-items:center; width:100%">
+    <span class="badge done">DONE</span>
+    <div style="flex:1">
+      <div class="mission-title">T-06: Architecture Cockpit Single View</div>
+      <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - 3/3 steps</div>
+      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-16 17:36:05 | Fin: 2026-05-16 18:06:05</div>
+    </div>
+  </summary>
+  <div class='steps-container'><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Layout 3 Colonnes Grid</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Scrollbars independantes</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Animation CSS pulse sur active-task</div></div>
+</details><details class="mission  done" data-date="2026-05-16T16:36:05.1912807+01:00">
+  <summary style="display:flex; gap:10px; align-items:center; width:100%">
+    <span class="badge done">DONE</span>
+    <div style="flex:1">
+      <div class="mission-title">T-05: Dashboard Multi-Project Implementation</div>
+      <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - 5/5 steps</div>
+      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-16 16:36:05 | Fin: 2026-05-16 17:36:05</div>
+    </div>
+  </summary>
+  <div class='steps-container'><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Detection dossiers Memory</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Parsing JSON (tasks.json)</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Refactoring template.html</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Injection tags HTML</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Auto-refresh via gen_dashboard.ps1</div></div>
+</details></details><details open style='margin-left: 15px; margin-bottom: 10px; border-left: 2px solid #2d3148; padding-left: 12px;'><summary><h3 style='font-size:11px; color:#94a3b8; margin-bottom:8px;'>Worktree: </h3></summary>
+<details class="mission  done" data-date="2026-05-15T10:11:42.1311300+01:00">
+  <summary style="display:flex; gap:10px; align-items:center; width:100%">
+    <span class="badge done">DONE</span>
+    <div style="flex:1">
+      <div class="mission-title">T-04: Review finale + Qdrant logging</div>
+      <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: reasoning - 2/2 steps</div>
+      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-15 10:11:42 | Fin: 2026-05-16 16:46:57</div>
+    </div>
+  </summary>
+  <div class='steps-container'><div class='step-item '><span style='color:#475569'>[ ]</span> Self-review code quality</div><div class='step-item '><span style='color:#475569'>[ ]</span> Logger decisions dans Qdrant + Obsidian</div></div>
+</details><details class="mission  done" data-date="2026-05-14T22:54:20.5588850+01:00">
+  <summary style="display:flex; gap:10px; align-items:center; width:100%">
+    <span class="badge done">DONE</span>
+    <div style="flex:1">
+      <div class="mission-title">T-03: Tests bulk + Documentation</div>
+      <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: bulk - 2/2 steps</div>
+      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Fin: 2026-05-14 22:54:20</div>
+    </div>
+  </summary>
+  <div class='steps-container'><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Tests integration bulk</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Documentation OpenAPI + README</div></div>
+</details><details class="mission  done" data-date="2026-05-16T19:42:36">
+  <summary style="display:flex; gap:10px; align-items:center; width:100%">
+    <span class="badge done">DONE</span>
+    <div style="flex:1">
+      <div class="mission-title">T-02: Implementation TDD</div>
+      <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - 5/5 steps</div>
+      
+    </div>
+  </summary>
+  <div class='steps-container'><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Setup tests structure</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Write failing tests</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Implement features</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Pass all tests</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Refactor</div></div>
+</details><details class="mission  done" data-date="2026-05-16T19:42:36">
+  <summary style="display:flex; gap:10px; align-items:center; width:100%">
+    <span class="badge done">DONE</span>
+    <div style="flex:1">
+      <div class="mission-title">T-01: Spec + Plan implementation</div>
+      <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: reasoning - 3/3 steps</div>
+      
+    </div>
+  </summary>
+  <div class='steps-container'><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Brainstorming + validation approche</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Spec par sections (scope, interfaces, edge cases)</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Plan implementation granulaire</div></div>
+</details></details></div></details>
+    </div>
   </div>
-  <div class="status-ok">✓</div>
-</div>
-<div class="component">
-  <div>
-    <div class="component-name">qdrant-storage</div>
-    <div class="component-detail">6 tools: search, upsert, delete</div>
-  </div>
-  <div class="status-ok">✓</div>
-</div>
-<div class="component">
-  <div>
-    <div class="component-name">obsidian-vault</div>
-    <div class="component-detail">6 tools: daily_note, search, create</div>
-  </div>
-  <div class="status-ok">✓</div>
-</div>
 
-<h2>Cron Tasks</h2>
-<div class="component">
-  <div>
-    <div class="component-name">DEV_CORE_Daily_Launch</div>
-    <div class="component-detail">10:00 daily</div>
-  </div>
-  <div class="status-ok">✓</div>
-</div>
-<div class="component">
-  <div>
-    <div class="component-name">DEV_CORE_Daily_Endday</div>
-    <div class="component-detail">04:00 daily</div>
-  </div>
-  <div class="status-ok">✓</div>
-</div>
-<div class="component">
-  <div>
-    <div class="component-name">DEV_CORE_Weekly_Maintenance</div>
-    <div class="component-detail">Sunday 05:00</div>
-  </div>
-  <div class="status-ok">✓</div>
-</div>
+  <!-- Colonne 3 : Optimisation & Métriques -->
+  <div class="column" style="background:#0b0d12">
+    <h2>Token Optimization Stack</h2>
+    <div class="scroll-area">
+      <div class="token-layer"><span class="token-name">1. CLAUDE.md terse</span><span class="token-reduction">-69%</span></div>
+      <div class="token-layer"><span class="token-name">2. caveman-compress</span><span class="token-reduction">-46%</span></div>
+      <div class="token-layer"><span class="token-name">3. MCP cache</span><span class="token-reduction">-95%</span></div>
+      <div class="token-layer"><span class="token-name">4. 9Router RTK</span><span class="token-reduction">-40%</span></div>
+      <div class="token-layer"><span class="token-name">5. Ghost finder</span><span class="token-reduction">audit</span></div>
+      <div class="token-layer" style="border-color:#6366f1"><span class="token-name">6. TOON compact</span><span class="token-reduction">-90%</span></div>
+      
+      <div style="padding:10px;background:#14532d;border:1px solid #22c55e;border-radius:6px;margin-top:12px;text-align:center;font-size:12px;font-weight:600;color:#86efac">
+        Reduction cumulee: ~98%
+      </div>
 
-<h2>Infrastructure</h2>
-<div class="component">
-  <div>
-    <div class="component-name">DEV_CORE Scripts</div>
-    <div class="component-detail">22 scripts PowerShell</div>
-  </div>
-  <div class="status-ok">✓</div>
-</div>
-<div class="component">
-  <div>
-    <div class="component-name">9Router</div>
-    <div class="component-detail">3 modes: reasoning / coding / bulk</div>
-  </div>
-  <div class="status-ok">✓</div>
-</div>
-<div class="component">
-  <div>
-    <div class="component-name">Session Context</div>
-    <div class="component-detail">Tasks T-03 — Tag [T-03]</div>
-  </div>
-  <div class="status-ok">✓</div>
-</div>
-
-<h2>Qdrant Vector DB</h2>
-<div class="component">
-  <div>
-    <div class="component-name">Service</div>
-    <div class="component-detail">Port 6333 — localhost</div>
-  </div>
-  <div class="status-ok">✓</div>
-</div>
-<div class="component">
-  <div>
-    <div class="component-name">Collection: decisions</div>
-    <div class="component-detail">768d cosine — sync on session-end</div>
-  </div>
-  <div class="status-ok">✓</div>
-</div>
-<div class="component">
-  <div>
-    <div class="component-name">Collection: patterns</div>
-    <div class="component-detail">768d cosine — sync on session-end</div>
-  </div>
-  <div class="status-ok">✓</div>
-</div>
-<div class="component">
-  <div>
-    <div class="component-name">Collection: lessons</div>
-    <div class="component-detail">768d cosine — sync on session-end</div>
-  </div>
-  <div class="status-ok">✓</div>
-</div>
-
-<h2>Ollama Embeddings</h2>
-<div class="component">
-  <div>
-    <div class="component-name">Service</div>
-    <div class="component-detail">v0.23.2 — localhost:11434</div>
-  </div>
-  <div class="status-ok">✓</div>
-</div>
-<div class="component">
-  <div>
-    <div class="component-name">nomic-embed-text</div>
-    <div class="component-detail">274 MB — latest</div>
-  </div>
-  <div class="status-ok">✓</div>
-</div>
-
-<h2>Obsidian Vault</h2>
-<div class="component">
-  <div>
-    <div class="component-name">Vault</div>
-    <div class="component-detail">C:/devcore/DEV_CORE_DATA/Obsidian/</div>
-  </div>
-  <div class="status-ok">✓</div>
-</div>
-<div class="component">
-  <div>
-    <div class="component-name">Daily Notes</div>
-    <div class="component-detail">Auto-update on session-end</div>
-  </div>
-  <div class="status-ok">✓</div>
-</div>
-
-<h2>Mémoire partagée</h2>
-<div class="component">
-  <div>
-    <div class="component-name">MEMORY.md</div>
-    <div class="component-detail">Token stack + Automation hooks docs</div>
-  </div>
-  <div class="status-ok">✓</div>
-</div>
-<div class="component">
-  <div>
-    <div class="component-name">DECISIONS.md</div>
-    <div class="component-detail">5 décisions actives</div>
-  </div>
-  <div class="status-ok">✓</div>
-</div>
-<div class="component">
-  <div>
-    <div class="component-name">kpi.csv</div>
-    <div class="component-detail">TOON metrics — 74.8% avg savings</div>
-  </div>
-  <div class="status-ok">✓</div>
-</div>
-
-<h2>Skills Core</h2>
-<div class="component">
-  <div>
-    <div class="component-name">qdrant</div>
-    <div class="component-detail">Path: C:/devcore/DEV_CORE/Skills/qdrant</div>
-  </div>
-  <div class="status-ok">✓</div>
-</div>
-<div class="component">
-  <div>
-    <div class="component-name">obsidian</div>
-    <div class="component-detail">Path: C:/devcore/DEV_CORE/Skills/obsidian</div>
-  </div>
-  <div class="status-ok">✓</div>
-</div>
-<div class="component">
-  <div>
-    <div class="component-name">toon</div>
-    <div class="component-detail">Path: C:/devcore/DEV_CORE/Skills/toon</div>
-  </div>
-  <div class="status-ok">✓</div>
-</div>
-<div class="component">
-  <div>
-    <div class="component-name">fabric-patterns</div>
-    <div class="component-detail">Path: C:/devcore/DEV_CORE/Skills/fabric-patterns</div>
-  </div>
-  <div class="status-ok">✓</div>
-</div>
-
-<h2>Tasks Pipeline (cea_dashboard)</h2>
-<div class="mission">
-  <span class="badge done">DONE</span>
-  <div style="flex:1">
-    <div style="font-size:13px;font-weight:500">T-01: Spec + Plan implementation</div>
-    <div style="font-size:11px;color:#64748b;margin-top:2px">Mode: reasoning — 3/3 steps ✓</div>
+      <h2 style="margin-top:24px">Quick Links</h2>
+      <div class="component"><div class="component-name">Ouvrir README</div><div class="status-ok">→</div></div>
+      <div class="component"><div class="component-name">Logs Plateforme</div><div class="status-ok">→</div></div>
+      
+      <p style="color:#475569;font-size:10px;margin-top:32px;text-align:center">Auto-refresh 30s<br>DEV_CORE v6.3.1</p>
+    </div>
   </div>
 </div>
-<div class="mission">
-  <span class="badge done">DONE</span>
-  <div style="flex:1">
-    <div style="font-size:13px;font-weight:500">T-02: Implementation TDD</div>
-    <div style="font-size:11px;color:#64748b;margin-top:2px">Mode: coding — 5/5 steps ✓</div>
-  </div>
-</div>
-<div class="mission">
-  <span class="badge done">DONE</span>
-  <div style="flex:1">
-    <div style="font-size:13px;font-weight:500">T-03: Tests bulk + Documentation</div>
-    <div style="font-size:11px;color:#64748b;margin-top:2px">Mode: bulk — 2/2 steps ✓</div>
-  </div>
-</div>
-<div class="mission">
-  <span class="badge done">DONE</span>
-  <div style="flex:1">
-    <div style="font-size:13px;font-weight:500">T-04: Review finale + Qdrant logging</div>
-    <div style="font-size:11px;color:#64748b;margin-top:2px">Mode: reasoning — 2/2 steps ✓</div>
-  </div>
-</div>
-
-<p style="color:#475569;font-size:12px;margin-top:32px">Ouvrir dans un navigateur · Auto-refresh 30s · DEV_CORE v6.1</p>
 
 <script>
 function updateTimestamp() {
   const now = new Date();
   document.getElementById('timestamp').textContent = now.toLocaleString('fr-FR');
 }
+
+function applyFilter(btn, days) {
+  // Update buttons
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  
+  const now = new Date();
+  const cutoff = days > 0 ? new Date(now.getTime() - (days * 24 * 60 * 60 * 1000)) : null;
+  
+  document.querySelectorAll('.mission').forEach(m => {
+    const dateStr = m.getAttribute('data-date');
+    if (!dateStr || !cutoff) {
+      m.classList.remove('hidden');
+      return;
+    }
+    const taskDate = new Date(dateStr);
+    if (taskDate < cutoff && m.classList.contains('done')) {
+      m.classList.add('hidden');
+    } else {
+      m.classList.remove('hidden');
+    }
+  });
+}
+
 updateTimestamp();
 setInterval(updateTimestamp, 1000);
 </script>
 </body>
 </html>
+

@@ -10,11 +10,15 @@
 - [score: 0.8] Dedup Qdrant : hash SHA-256 obligatoire avant tout upsert
 - [score: 0.8] Token : 6 couches (CLAUDE.md terse + MCP cache + ghost finder + 9Router RTK + TOON) → -94%
 - [score: 0.85] Tasks : tasks.json = source de verite unique (Single Client mode)
+- [score: 0.9] Multi-Projet : Isolation par dossier dans DEV_CORE_DATA\Memory
+- [score: 0.9] Worktrees : Detection via `git rev-parse --git-common-dir` pour partage de config inter-branches
+- [score: 0.8] Observabilité : Dashboard dynamique avec monitoring TCP et timestamps de logs
+
 
 ## Prompts efficaces
 
 ## Stack technique
-- Platform : DEV_CORE v6.1 (PowerShell + Python)
+- Platform : DEV_CORE v6.3 (Multi-Project & Worktree Aware)
 - Clients : Claude Code (GML) · Codex Desktop · Antigravity (Gemini+Sonnet)
 - Mémoire : MEMORY.md + Qdrant local + Vault Obsidian
 - Skills : obsidian · qdrant · dev-methodology · ui-ux · fabric-patterns

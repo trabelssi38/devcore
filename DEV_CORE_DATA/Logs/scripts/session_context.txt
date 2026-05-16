@@ -1,6 +1,6 @@
-﻿[DEV_CORE] Task active : T-04
-[DEV_CORE] Titre  : Review finale + Qdrant logging
-[DEV_CORE] Mode   : reasoning
-[DEV_CORE] Budget : 32k tokens
-[DEV_CORE] Steps  : 0/2
-[DEV_CORE] Tag git: [T-04]
+﻿[DEV_CORE] Task active : 
+[DEV_CORE] Titre  : refonte visuelle cockpit & dashboard -coding
+[DEV_CORE] Mode   : coding
+[DEV_CORE] Budget : 8k tokens
+[DEV_CORE] Steps  : 0/1
+[DEV_CORE] Tag git: []
