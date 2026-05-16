@@ -15,7 +15,7 @@ if (Test-Path $MEMORY_DIR) {
     foreach ($folder in $folders) {
         $tasksFile = Join-Path $folder.FullName "tasks.json"
         if (Test-Path $tasksFile) {
-            $board = Get-Content $tasksFile -Raw | ConvertFrom-Json
+            $board = Get-Content $tasksFile -Raw -Encoding UTF8 | ConvertFrom-Json
             $total = $board.tasks.Count
             $done  = ($board.tasks | Where-Object { $_.status -eq "done" }).Count
             $pct   = if ($total -gt 0) { [math]::Round(($done / $total) * 100) } else { 0 }
