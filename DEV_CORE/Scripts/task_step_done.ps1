@@ -1,4 +1,4 @@
-﻿# task_step_done.ps1 -- DEV_CORE v6.2 -- Marquer une step individuelle
+# task_step_done.ps1 -- DEV_CORE v6.2 -- Marquer une step individuelle
 # Usage : dc step done [N]  ou  dc sd [N]
 # Si N=0 ou absent, marque la prochaine step non-faite
 param([int]$StepNumber = 0)
@@ -51,4 +51,4 @@ if ($current.steps_done -ge $current.steps_total) {
 }
 
 
-& \gen_dashboard.ps1
+& "$PSScriptRoot\gen_dashboard.ps1"

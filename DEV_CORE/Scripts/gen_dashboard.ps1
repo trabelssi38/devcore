@@ -27,6 +27,14 @@ if (Test-Path $MEMORY_DIR) {
                 "$($activeTask.steps_done)/$($activeTask.steps_total)"
             } else { "" }
 
+            $lastDate = [datetime]::MinValue
+            foreach ($t in $board.tasks) {
+                $d = $null
+                if ($t.PSObject.Properties["started_at"] -and $t.started_at) { try { $d = [datetime]::Parse($t.started_at) } catch {} }
+                if (-not $d -and $t.PSObject.Properties["completed_at"] -and $t.completed_at) { try { $d = [datetime]::Parse($t.completed_at) } catch {} }
+                if ($d -and $d -gt $lastDate) { $lastDate = $d }
+            }
+
             $projects += [PSCustomObject]@{
                 Name        = $folder.Name
                 ActiveTask  = $activeId
@@ -34,10 +42,14 @@ if (Test-Path $MEMORY_DIR) {
                 Progress    = $pct
                 Steps       = $activeSteps
                 Tasks       = $board.tasks
+                LastDate    = $lastDate
             }
         }
     }
 }
+
+$projects = $projects | Sort-Object LastDate -Descending
+
 
 # 3. Generer le HTML
 $cardsHtml = ""

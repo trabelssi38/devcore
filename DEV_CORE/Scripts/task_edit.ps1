@@ -27,3 +27,4 @@ if ($updated) {
 }
 
 
+& " $PSScriptRoot\gen_dashboard.ps1\

@@ -1,4 +1,4 @@
-﻿# task_done.ps1 -- DEV_CORE v6 single client
+# task_done.ps1 -- DEV_CORE v6 single client
 param([switch]$Force)
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
@@ -49,7 +49,7 @@ if (Test-Path "$DEV_CORE\Scripts\obsidian_sync.ps1") { & "$DEV_CORE\Scripts\obsi
 
 Write-Host "  4/5 Memoire + TOON..." -ForegroundColor Cyan
 if (Test-Path "$AUTO\memory_rotate.ps1") { & "$AUTO\memory_rotate.ps1" }
-# Regenerer tasks.toon via toonify.ps1 (chemin projet rأ©solu via $tFile)
+# Regenerer tasks.toon via toonify.ps1 (chemin projet résolu via $tFile)
 try {
     & "$DEV_CORE\Scripts\toonify.ps1" -InputFile $tFile 2>$null | Out-Null
     Write-Host "    [TOON] tasks.toon regenere" -ForegroundColor DarkGray
@@ -80,4 +80,4 @@ if ($nextTask) {
 Write-Host ""
 
 
-& \gen_dashboard.ps1
+& "$PSScriptRoot\gen_dashboard.ps1"

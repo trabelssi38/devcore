@@ -20,3 +20,4 @@ $board | ConvertTo-Json -Depth 10 | Set-Content $tFile -Encoding UTF8
 Write-Host "  [OK] Tache $($current.id) mise en pause -- dc next task pour reprendre" -ForegroundColor Green
 
 
+& " $PSScriptRoot\gen_dashboard.ps1\
