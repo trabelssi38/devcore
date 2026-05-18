@@ -16,6 +16,14 @@ if [ -n "$TID" ]; then
     \$b=Get-Content \$f -Raw|ConvertFrom-Json
     \$t=\$b.tasks|Where-Object{\$_.id -eq '$TID'}
     if(-not \$t){exit 0}
+    if (\$t.title -like 'Session de travail auto*') {
+        \$cleanMsg = \"$MSG\" -replace '\[T-\d+\]', ''
+        \$cleanMsg = \$cleanMsg.Trim()
+        if (\$cleanMsg) {
+            \$t.title = \$cleanMsg
+            Write-Host \"  [DEV_CORE] Tache \$TID renommee en : \$cleanMsg\" -ForegroundColor Green
+        }
+    }
     \$cur=if(\$t.PSObject.Properties['steps_done']){\$t.steps_done}else{0}
     \$tot=if(\$t.PSObject.Properties['steps_total']){\$t.steps_total}else{1}
     \$new=[math]::Min(\$cur+1,\$tot)
