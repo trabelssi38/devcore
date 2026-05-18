@@ -52,8 +52,8 @@ if (-not $specFiles) {
 $candidates = @()
 
 foreach ($file in $specFiles) {
-    if ($file.Name -eq "2026-04-22-dev-core-v5-design.md") {
-        Log "Ignorer le design global : $($file.Name)" "Yellow"
+    if ($file.Name -eq "2026-04-22-dev-core-v5-design.md" -or $file.Name -eq "2026-05-14-devcore-automation-toon-design.md") {
+        Log "Ignorer le spec design : $($file.Name)" "Yellow"
         continue
     }
     Log "Parsing : $($file.Name)" "Cyan"
