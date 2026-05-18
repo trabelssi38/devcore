@@ -4,8 +4,8 @@
 > 
 > Gère la mémoire persistante, le cycle de vie des tâches (Tasks), les modes cognitifs (reasoning/coding/bulk), et les compétences (skills) réutilisables.
 
-**Version** : 6.3
-**Updated** : 2026-05-16
+**Version** : 6.5
+**Updated** : 2026-05-18
 **Mode** : Single Client (Multi-Projets / Zero Switch)
 
 ---
@@ -713,6 +713,13 @@ DEV_CORE v6.3 introduit une architecture **Multi-Projets / Zero Config**, où ch
 ---
 
 ## Changelog v6
+
+### 2026-05-18 — v6.5 Cockpit API Operations & Task Synchronization
+
+- ✅ **Boutons d'Actions Intégrés** : Ajout de boutons interactifs ("Clôturer" et "Supprimer") directement sur les tâches dans le Cockpit HTML.
+- ✅ **Dashboard local API Server** : Implémentation d'un serveur API local Python (`dashboard_api.py`) sur le port 20129 pour traiter en temps réel la complétion et la suppression des tâches, avec démarrage automatique via le script `gen_dashboard.ps1`.
+- ✅ **Nettoyage des Tâches devcore** : Nettoyage des anciennes tâches obsolètes `T-09` à `T-18` et renumérotation des nouvelles tâches avec synchronisation `.json` et `.toon`.
+- ✅ **Synchronisation job_tracker** : Indexation et validation de l'historique des commits des 17 et 18 mai n'ayant pas de tags de tâches (`T-04` à `T-06`), avec validation visuelle autonome via un sous-agent de navigation (complétion de 100%).
 
 ### 2026-05-16 — Architecture Multi-Projets / Zero Config
 

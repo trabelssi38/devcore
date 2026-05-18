@@ -121,6 +121,18 @@ foreach ($p in $projects) {
                 $datesHtml += "</div>"
             }
 
+            $doneButton = if ($t.status -ne "done") {
+                '<button style="background:#14532d; border:1px solid #22c55e; color:#86efac; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer; margin-right:6px;" title="Clôturer" onclick="completeTask(''{0}'', ''{1}'')">&#10004;</button>' -f $p.Name, $t.id
+            } else { "" }
+            $deleteButton = '<button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask(''{0}'', ''{1}'')">&#128465;</button>' -f $p.Name, $t.id
+            
+            $actionsHtml = @"
+  <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
+    $doneButton
+    $deleteButton
+  </div>
+"@
+
             $tasksHtml += @"
 <details class="mission $activeClass $($t.status)" data-date="$taskDate">
   <summary style="display:flex; gap:10px; align-items:center; width:100%">
@@ -132,6 +144,7 @@ foreach ($p in $projects) {
     </div>
   </summary>
   $stepsDetailHtml
+  $actionsHtml
 </details>
 "@
         }
@@ -189,8 +202,17 @@ function Get-StatusHTML {
 "@
 }
 
+# Auto-démarrer le serveur API du Dashboard si absent
+$apiPort = 20129
+if (-not (Check-Port $apiPort)) {
+    Write-Host "Demarrage du serveur API Dashboard en arriere-plan..." -ForegroundColor Yellow
+    Start-Process -FilePath "python" -ArgumentList "$DEV_CORE\Scripts\dashboard_api.py" -NoNewWindow -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 1
+}
+
 $infraHtml = "<h2>Services & Infrastructure</h2>`n"
 $infraHtml += Get-StatusHTML "Hermes Agent" "Port 20128" (Check-Port 20128)
+$infraHtml += Get-StatusHTML "Dashboard API Server" "Port 20129" (Check-Port 20129)
 $infraHtml += Get-StatusHTML "Qdrant Vector DB" "Port 6333" (Check-Port 6333)
 $infraHtml += Get-StatusHTML "Ollama Embeddings" "Port 11434" (Check-Port 11434)
 

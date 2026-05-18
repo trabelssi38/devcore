@@ -1,6 +1,6 @@
-﻿[DEV_CORE] Task active : 
-[DEV_CORE] Titre  : refonte visuelle cockpit & dashboard -coding
-[DEV_CORE] Mode   : coding
-[DEV_CORE] Budget : 8k tokens
-[DEV_CORE] Steps  : 0/1
-[DEV_CORE] Tag git: []
+﻿[DEV_CORE] Task active : T-11
+[DEV_CORE] Titre  : Finalisation de la synchronisation et validation du dashboard Cockpit
+[DEV_CORE] Mode   : reasoning
+[DEV_CORE] Budget : 32k tokens
+[DEV_CORE] Steps  : 0/2
+[DEV_CORE] Tag git: [T-11]

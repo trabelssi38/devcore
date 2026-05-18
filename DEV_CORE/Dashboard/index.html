@@ -79,15 +79,15 @@ details{margin-bottom: 8px}
     <h2>Projets</h2>
     <div style="margin-bottom:20px">
         <div class="card">
-    <div class="card-title">Projet : job_tracker</div>
-    <div class="card-val" style="font-size:20px">T-01</div>
-    <div class="card-sub">Mode: coding | 0% <span class="">*</span></div>
+    <div class="card-title">Projet : devcore</div>
+    <div class="card-val" style="font-size:20px">T-11</div>
+    <div class="card-sub">Mode: reasoning | 100% <span class="status-ok">*</span></div>
   </div>  <div class="card">
-    <div class="card-title">Projet : cea_dashboard</div>
+    <div class="card-title">Projet : job_tracker</div>
     <div class="card-val" style="font-size:20px">Aucune</div>
     <div class="card-sub">Mode: N/A | 100% <span class="status-ok">*</span></div>
   </div>  <div class="card">
-    <div class="card-title">Projet : devcore</div>
+    <div class="card-title">Projet : cea_dashboard</div>
     <div class="card-val" style="font-size:20px">Aucune</div>
     <div class="card-sub">Mode: N/A | 100% <span class="status-ok">*</span></div>
   </div>
@@ -100,6 +100,12 @@ details{margin-bottom: 8px}
   <div>
     <div class="component-name">Hermes Agent</div>
     <div class="component-detail">Port 20128</div>
+  </div>
+  <div class="status-error">&#10007;</div>
+</div><div class="component">
+  <div>
+    <div class="component-name">Dashboard API Server</div>
+    <div class="component-detail">Port 20129</div>
   </div>
   <div class="status-ok">&#10003;</div>
 </div><div class="component">
@@ -118,13 +124,13 @@ details{margin-bottom: 8px}
 <div class="component">
   <div>
     <div class="component-name">task_sync</div>
-    <div class="component-detail">Dernier: 1 s</div>
+    <div class="component-detail">Dernier: 12 heures</div>
   </div>
   <div class="status-ok">&#10003;</div>
 </div><div class="component">
   <div>
     <div class="component-name">session_start</div>
-    <div class="component-detail">Dernier: 4 heures</div>
+    <div class="component-detail">Dernier: 14 heures</div>
   </div>
   <div class="status-ok">&#10003;</div>
 </div><div class="component">
@@ -149,78 +155,249 @@ details{margin-bottom: 8px}
       </div>
     </div>
     <div class="scroll-area" id="tasks-pipeline">
-      <details open><summary><h2 style='color:#6366f1; cursor:pointer; padding:5px; background:#1a1d27; border-radius:4px;'>Projet : job_tracker</h2></summary><div style='padding: 10px 0;'>
+      <details open><summary><h2 style='color:#6366f1; cursor:pointer; padding:5px; background:#1a1d27; border-radius:4px;'>Projet : devcore</h2></summary><div style='padding: 10px 0;'>
 <details open style='margin-left: 15px; margin-bottom: 10px; border-left: 2px solid #2d3148; padding-left: 12px;'><summary><h3 style='font-size:11px; color:#94a3b8; margin-bottom:8px;'>Worktree: main</h3></summary>
-<details class="mission  todo" data-date="2026-05-17T19:53:24">
+<details class="mission  done" data-date="2026-05-18T13:30:00.0000000+01:00">
   <summary style="display:flex; gap:10px; align-items:center; width:100%">
-    <span class="badge todo">TODO</span>
+    <span class="badge done">DONE</span>
     <div style="flex:1">
-      <div class="mission-title">T-07: dev core v5 design - 3. Non-Negotiable Principles</div>
+      <div class="mission-title">T-11: Finalisation de la synchronisation et validation du dashboard Cockpit</div>
+      <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: reasoning - 2/2 steps</div>
+      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-18 13:30:00 | Fin: 2026-05-18 13:35:38</div>
+    </div>
+  </summary>
+  <div class='steps-container'><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Verification de la coherence du dashboard et des dates</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Synchronisation finale de tasks.json et tasks.toon</div></div>
+    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
+    
+    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('devcore', 'T-11')">&#128465;</button>
+  </div>
+</details><details class="mission  done" data-date="2026-05-18T13:19:15.1877831+01:00">
+  <summary style="display:flex; gap:10px; align-items:center; width:100%">
+    <span class="badge done">DONE</span>
+    <div style="flex:1">
+      <div class="mission-title">T-10: nettoyage des anciennes taches et configuration de la session du 18 mai -reasoning</div>
+      <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - </div>
+      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-18 13:19:15 | Fin: 2026-05-18 13:19:26</div>
+    </div>
+  </summary>
+  
+    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
+    
+    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('devcore', 'T-10')">&#128465;</button>
+  </div>
+</details><details class="mission  done" data-date="2026-05-18T13:17:53.1139914+01:00">
+  <summary style="display:flex; gap:10px; align-items:center; width:100%">
+    <span class="badge done">DONE</span>
+    <div style="flex:1">
+      <div class="mission-title">T-09: nettoyage des anciennes taches et configuration de la session du 18 mai</div>
+      <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: reasoning - </div>
+      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-18 13:17:53 | Fin: 2026-05-18 13:18:23</div>
+    </div>
+  </summary>
+  
+    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
+    
+    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('devcore', 'T-09')">&#128465;</button>
+  </div>
+</details><details class="mission  done" data-date="2026-05-16T18:36:05.1912807+01:00">
+  <summary style="display:flex; gap:10px; align-items:center; width:100%">
+    <span class="badge done">DONE</span>
+    <div style="flex:1">
+      <div class="mission-title">T-08: Details des taches et optimisation UI</div>
+      <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - 3/3 steps</div>
+      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-16 18:36:05 | Fin: 2026-05-16 19:36:05</div>
+    </div>
+  </summary>
+  <div class='steps-container'><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Affichage des etapes sur 1 seule ligne (ellipsis)</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Design eppure (borders colorees)</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Typographie et horodatage precis</div></div>
+    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
+    
+    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('devcore', 'T-08')">&#128465;</button>
+  </div>
+</details><details class="mission  done" data-date="2026-05-16T18:06:05.1912807+01:00">
+  <summary style="display:flex; gap:10px; align-items:center; width:100%">
+    <span class="badge done">DONE</span>
+    <div style="flex:1">
+      <div class="mission-title">T-07: Historique & Filtres temporels</div>
+      <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - 2/2 steps</div>
+      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-16 18:06:05 | Fin: 2026-05-16 18:36:05</div>
+    </div>
+  </summary>
+  <div class='steps-container'><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Groupement Projet > Worktree par accordeons</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Filtres dynamiques JS (1j, 7j, Mois)</div></div>
+    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
+    
+    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('devcore', 'T-07')">&#128465;</button>
+  </div>
+</details><details class="mission  done" data-date="2026-05-16T17:36:05.1912807+01:00">
+  <summary style="display:flex; gap:10px; align-items:center; width:100%">
+    <span class="badge done">DONE</span>
+    <div style="flex:1">
+      <div class="mission-title">T-06: Architecture Cockpit Single View</div>
+      <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - 3/3 steps</div>
+      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-16 17:36:05 | Fin: 2026-05-16 18:06:05</div>
+    </div>
+  </summary>
+  <div class='steps-container'><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Layout 3 Colonnes Grid</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Scrollbars independantes</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Animation CSS pulse sur active-task</div></div>
+    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
+    
+    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('devcore', 'T-06')">&#128465;</button>
+  </div>
+</details><details class="mission  done" data-date="2026-05-16T16:36:05.1912807+01:00">
+  <summary style="display:flex; gap:10px; align-items:center; width:100%">
+    <span class="badge done">DONE</span>
+    <div style="flex:1">
+      <div class="mission-title">T-05: Dashboard Multi-Project Implementation</div>
+      <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - 5/5 steps</div>
+      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-16 16:36:05 | Fin: 2026-05-16 17:36:05</div>
+    </div>
+  </summary>
+  <div class='steps-container'><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Detection dossiers Memory</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Parsing JSON (tasks.json)</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Refactoring template.html</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Injection tags HTML</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Auto-refresh via gen_dashboard.ps1</div></div>
+    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
+    
+    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('devcore', 'T-05')">&#128465;</button>
+  </div>
+</details></details><details open style='margin-left: 15px; margin-bottom: 10px; border-left: 2px solid #2d3148; padding-left: 12px;'><summary><h3 style='font-size:11px; color:#94a3b8; margin-bottom:8px;'>Worktree: </h3></summary>
+<details class="mission  done" data-date="2026-05-15T10:11:42.1311300+01:00">
+  <summary style="display:flex; gap:10px; align-items:center; width:100%">
+    <span class="badge done">DONE</span>
+    <div style="flex:1">
+      <div class="mission-title">T-04: Review finale + Qdrant logging</div>
+      <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: reasoning - 2/2 steps</div>
+      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-15 10:11:42 | Fin: 2026-05-16 16:46:57</div>
+    </div>
+  </summary>
+  <div class='steps-container'><div class='step-item '><span style='color:#475569'>[ ]</span> Self-review code quality</div><div class='step-item '><span style='color:#475569'>[ ]</span> Logger decisions dans Qdrant + Obsidian</div></div>
+    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
+    
+    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('devcore', 'T-04')">&#128465;</button>
+  </div>
+</details><details class="mission  done" data-date="2026-05-14T22:54:20.5588850+01:00">
+  <summary style="display:flex; gap:10px; align-items:center; width:100%">
+    <span class="badge done">DONE</span>
+    <div style="flex:1">
+      <div class="mission-title">T-03: Tests bulk + Documentation</div>
+      <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: bulk - 2/2 steps</div>
+      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Fin: 2026-05-14 22:54:20</div>
+    </div>
+  </summary>
+  <div class='steps-container'><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Tests integration bulk</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Documentation OpenAPI + README</div></div>
+    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
+    
+    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('devcore', 'T-03')">&#128465;</button>
+  </div>
+</details><details class="mission  done" data-date="2026-05-18T13:36:30">
+  <summary style="display:flex; gap:10px; align-items:center; width:100%">
+    <span class="badge done">DONE</span>
+    <div style="flex:1">
+      <div class="mission-title">T-02: Implementation TDD</div>
+      <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - 5/5 steps</div>
+      
+    </div>
+  </summary>
+  <div class='steps-container'><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Setup tests structure</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Write failing tests</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Implement features</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Pass all tests</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Refactor</div></div>
+    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
+    
+    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('devcore', 'T-02')">&#128465;</button>
+  </div>
+</details><details class="mission  done" data-date="2026-05-18T13:36:30">
+  <summary style="display:flex; gap:10px; align-items:center; width:100%">
+    <span class="badge done">DONE</span>
+    <div style="flex:1">
+      <div class="mission-title">T-01: Spec + Plan implementation</div>
+      <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: reasoning - 3/3 steps</div>
+      
+    </div>
+  </summary>
+  <div class='steps-container'><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Brainstorming + validation approche</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Spec par sections (scope, interfaces, edge cases)</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Plan implementation granulaire</div></div>
+    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
+    
+    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('devcore', 'T-01')">&#128465;</button>
+  </div>
+</details></details></div></details><details open><summary><h2 style='color:#6366f1; cursor:pointer; padding:5px; background:#1a1d27; border-radius:4px;'>Projet : job_tracker</h2></summary><div style='padding: 10px 0;'>
+<details open style='margin-left: 15px; margin-bottom: 10px; border-left: 2px solid #2d3148; padding-left: 12px;'><summary><h3 style='font-size:11px; color:#94a3b8; margin-bottom:8px;'>Worktree: main</h3></summary>
+<details class="mission  done" data-date="2026-05-18T12:00:00.0000000+01:00">
+  <summary style="display:flex; gap:10px; align-items:center; width:100%">
+    <span class="badge done">DONE</span>
+    <div style="flex:1">
+      <div class="mission-title">T-06: Session de travail auto (2026-05-18)</div>
+      <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - </div>
+      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-18 12:00:00 | Fin: 2026-05-18 13:30:00</div>
+    </div>
+  </summary>
+  
+    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
+    
+    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('job_tracker', 'T-06')">&#128465;</button>
+  </div>
+</details><details class="mission  done" data-date="2026-05-17T20:00:00.0000000+01:00">
+  <summary style="display:flex; gap:10px; align-items:center; width:100%">
+    <span class="badge done">DONE</span>
+    <div style="flex:1">
+      <div class="mission-title">T-05: Mise a jour du README avec le cockpit DEV_CORE, configuration et CLAUDE.md</div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: bulk - </div>
-      
+      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-17 20:00:00 | Fin: 2026-05-17 23:49:11</div>
     </div>
   </summary>
   
-</details><details class="mission  todo" data-date="2026-05-17T19:53:24">
+    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
+    
+    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('job_tracker', 'T-05')">&#128465;</button>
+  </div>
+</details><details class="mission  done" data-date="2026-05-17T18:03:00.0000000+01:00">
   <summary style="display:flex; gap:10px; align-items:center; width:100%">
-    <span class="badge todo">TODO</span>
+    <span class="badge done">DONE</span>
     <div style="flex:1">
-      <div class="mission-title">T-06: dev core v5 design - 2. Product Position</div>
-      <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - </div>
-      
+      <div class="mission-title">T-04: Documentation de l'outil de diagnostic (diagnose_system.py dans le README)</div>
+      <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: bulk - </div>
+      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-17 18:03:00 | Fin: 2026-05-17 19:53:22</div>
     </div>
   </summary>
   
-</details><details class="mission  todo" data-date="2026-05-17T19:53:24">
+    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
+    
+    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('job_tracker', 'T-04')">&#128465;</button>
+  </div>
+</details><details class="mission  done" data-date="2026-05-17T14:08:12.0000000+01:00">
   <summary style="display:flex; gap:10px; align-items:center; width:100%">
-    <span class="badge todo">TODO</span>
-    <div style="flex:1">
-      <div class="mission-title">T-05: dev core v5 design - 1. Intent</div>
-      <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - </div>
-      
-    </div>
-  </summary>
-  
-</details><details class="mission  todo" data-date="2026-05-17T19:53:24">
-  <summary style="display:flex; gap:10px; align-items:center; width:100%">
-    <span class="badge todo">TODO</span>
-    <div style="flex:1">
-      <div class="mission-title">T-04: Modularisation frontend + stabilisation timeline temps reel (Sprint 8)</div>
-      <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - </div>
-      
-    </div>
-  </summary>
-  
-</details><details class="mission  todo" data-date="2026-05-17T19:53:24">
-  <summary style="display:flex; gap:10px; align-items:center; width:100%">
-    <span class="badge todo">TODO</span>
+    <span class="badge done">DONE</span>
     <div style="flex:1">
       <div class="mission-title">T-03: Stabilisation de l'environnement de developpement (Docker/Redis)</div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - </div>
-      
+      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Fin: 2026-05-17 14:08:12</div>
     </div>
   </summary>
   
-</details><details class="mission  todo" data-date="2026-05-17T19:53:24">
+    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
+    
+    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('job_tracker', 'T-03')">&#128465;</button>
+  </div>
+</details><details class="mission  done" data-date="2026-05-18T01:26:37.0000000+01:00">
   <summary style="display:flex; gap:10px; align-items:center; width:100%">
-    <span class="badge todo">TODO</span>
+    <span class="badge done">DONE</span>
     <div style="flex:1">
       <div class="mission-title">T-02: System And Database Diagnostic Tool (diagnose_system.py)</div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - </div>
-      
+      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Fin: 2026-05-18 01:26:37</div>
     </div>
   </summary>
   
-</details><details class="mission active-task active" data-date="2026-05-17T12:09:40.6561386+01:00">
+    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
+    
+    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('job_tracker', 'T-02')">&#128465;</button>
+  </div>
+</details><details class="mission  done" data-date="2026-05-17T12:09:40.6561386+01:00">
   <summary style="display:flex; gap:10px; align-items:center; width:100%">
-    <span class="badge active">ACTIVE</span>
+    <span class="badge done">DONE</span>
     <div style="flex:1">
       <div class="mission-title">T-01: Session de travail auto (2026-05-17)</div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - </div>
-      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-17 12:09:40</div>
+      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-17 12:09:40 | Fin: 2026-05-17 23:00:00</div>
     </div>
   </summary>
   
+    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
+    
+    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('job_tracker', 'T-01')">&#128465;</button>
+  </div>
 </details></details></div></details><details open><summary><h2 style='color:#6366f1; cursor:pointer; padding:5px; background:#1a1d27; border-radius:4px;'>Projet : cea_dashboard</h2></summary><div style='padding: 10px 0;'>
 <details open style='margin-left: 15px; margin-bottom: 10px; border-left: 2px solid #2d3148; padding-left: 12px;'><summary><h3 style='font-size:11px; color:#94a3b8; margin-bottom:8px;'>Worktree: main</h3></summary>
 <details class="mission  done" data-date="2026-05-16T19:15:00+01:00">
@@ -233,6 +410,10 @@ details{margin-bottom: 8px}
     </div>
   </summary>
   
+    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
+    
+    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('cea_dashboard', 'T-04')">&#128465;</button>
+  </div>
 </details><details class="mission  done" data-date="2026-05-16T18:20:00+01:00">
   <summary style="display:flex; gap:10px; align-items:center; width:100%">
     <span class="badge done">DONE</span>
@@ -243,6 +424,10 @@ details{margin-bottom: 8px}
     </div>
   </summary>
   
+    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
+    
+    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('cea_dashboard', 'T-03')">&#128465;</button>
+  </div>
 </details><details class="mission  done" data-date="2026-05-16T15:45:00+01:00">
   <summary style="display:flex; gap:10px; align-items:center; width:100%">
     <span class="badge done">DONE</span>
@@ -253,6 +438,10 @@ details{margin-bottom: 8px}
     </div>
   </summary>
   
+    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
+    
+    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('cea_dashboard', 'T-02')">&#128465;</button>
+  </div>
 </details><details class="mission  done" data-date="2026-05-16T14:15:00+01:00">
   <summary style="display:flex; gap:10px; align-items:center; width:100%">
     <span class="badge done">DONE</span>
@@ -263,89 +452,10 @@ details{margin-bottom: 8px}
     </div>
   </summary>
   
-</details></details></div></details><details open><summary><h2 style='color:#6366f1; cursor:pointer; padding:5px; background:#1a1d27; border-radius:4px;'>Projet : devcore</h2></summary><div style='padding: 10px 0;'>
-<details open style='margin-left: 15px; margin-bottom: 10px; border-left: 2px solid #2d3148; padding-left: 12px;'><summary><h3 style='font-size:11px; color:#94a3b8; margin-bottom:8px;'>Worktree: main</h3></summary>
-<details class="mission  done" data-date="2026-05-16T18:36:05.1912807+01:00">
-  <summary style="display:flex; gap:10px; align-items:center; width:100%">
-    <span class="badge done">DONE</span>
-    <div style="flex:1">
-      <div class="mission-title">T-08: Details des taches et optimisation UI</div>
-      <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - 3/3 steps</div>
-      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-16 18:36:05 | Fin: 2026-05-16 19:36:05</div>
-    </div>
-  </summary>
-  <div class='steps-container'><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Affichage des etapes sur 1 seule ligne (ellipsis)</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Design eppure (borders colorees)</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Typographie et horodatage precis</div></div>
-</details><details class="mission  done" data-date="2026-05-16T18:06:05.1912807+01:00">
-  <summary style="display:flex; gap:10px; align-items:center; width:100%">
-    <span class="badge done">DONE</span>
-    <div style="flex:1">
-      <div class="mission-title">T-07: Historique & Filtres temporels</div>
-      <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - 2/2 steps</div>
-      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-16 18:06:05 | Fin: 2026-05-16 18:36:05</div>
-    </div>
-  </summary>
-  <div class='steps-container'><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Groupement Projet > Worktree par accordeons</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Filtres dynamiques JS (1j, 7j, Mois)</div></div>
-</details><details class="mission  done" data-date="2026-05-16T17:36:05.1912807+01:00">
-  <summary style="display:flex; gap:10px; align-items:center; width:100%">
-    <span class="badge done">DONE</span>
-    <div style="flex:1">
-      <div class="mission-title">T-06: Architecture Cockpit Single View</div>
-      <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - 3/3 steps</div>
-      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-16 17:36:05 | Fin: 2026-05-16 18:06:05</div>
-    </div>
-  </summary>
-  <div class='steps-container'><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Layout 3 Colonnes Grid</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Scrollbars independantes</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Animation CSS pulse sur active-task</div></div>
-</details><details class="mission  done" data-date="2026-05-16T16:36:05.1912807+01:00">
-  <summary style="display:flex; gap:10px; align-items:center; width:100%">
-    <span class="badge done">DONE</span>
-    <div style="flex:1">
-      <div class="mission-title">T-05: Dashboard Multi-Project Implementation</div>
-      <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - 5/5 steps</div>
-      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-16 16:36:05 | Fin: 2026-05-16 17:36:05</div>
-    </div>
-  </summary>
-  <div class='steps-container'><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Detection dossiers Memory</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Parsing JSON (tasks.json)</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Refactoring template.html</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Injection tags HTML</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Auto-refresh via gen_dashboard.ps1</div></div>
-</details></details><details open style='margin-left: 15px; margin-bottom: 10px; border-left: 2px solid #2d3148; padding-left: 12px;'><summary><h3 style='font-size:11px; color:#94a3b8; margin-bottom:8px;'>Worktree: </h3></summary>
-<details class="mission  done" data-date="2026-05-15T10:11:42.1311300+01:00">
-  <summary style="display:flex; gap:10px; align-items:center; width:100%">
-    <span class="badge done">DONE</span>
-    <div style="flex:1">
-      <div class="mission-title">T-04: Review finale + Qdrant logging</div>
-      <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: reasoning - 2/2 steps</div>
-      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-15 10:11:42 | Fin: 2026-05-16 16:46:57</div>
-    </div>
-  </summary>
-  <div class='steps-container'><div class='step-item '><span style='color:#475569'>[ ]</span> Self-review code quality</div><div class='step-item '><span style='color:#475569'>[ ]</span> Logger decisions dans Qdrant + Obsidian</div></div>
-</details><details class="mission  done" data-date="2026-05-14T22:54:20.5588850+01:00">
-  <summary style="display:flex; gap:10px; align-items:center; width:100%">
-    <span class="badge done">DONE</span>
-    <div style="flex:1">
-      <div class="mission-title">T-03: Tests bulk + Documentation</div>
-      <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: bulk - 2/2 steps</div>
-      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Fin: 2026-05-14 22:54:20</div>
-    </div>
-  </summary>
-  <div class='steps-container'><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Tests integration bulk</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Documentation OpenAPI + README</div></div>
-</details><details class="mission  done" data-date="2026-05-17T19:53:24">
-  <summary style="display:flex; gap:10px; align-items:center; width:100%">
-    <span class="badge done">DONE</span>
-    <div style="flex:1">
-      <div class="mission-title">T-02: Implementation TDD</div>
-      <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - 5/5 steps</div>
-      
-    </div>
-  </summary>
-  <div class='steps-container'><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Setup tests structure</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Write failing tests</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Implement features</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Pass all tests</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Refactor</div></div>
-</details><details class="mission  done" data-date="2026-05-17T19:53:24">
-  <summary style="display:flex; gap:10px; align-items:center; width:100%">
-    <span class="badge done">DONE</span>
-    <div style="flex:1">
-      <div class="mission-title">T-01: Spec + Plan implementation</div>
-      <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: reasoning - 3/3 steps</div>
-      
-    </div>
-  </summary>
-  <div class='steps-container'><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Brainstorming + validation approche</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Spec par sections (scope, interfaces, edge cases)</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Plan implementation granulaire</div></div>
+    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
+    
+    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('cea_dashboard', 'T-01')">&#128465;</button>
+  </div>
 </details></details></div></details>
     </div>
   </div>
@@ -401,6 +511,34 @@ function applyFilter(btn, days) {
       m.classList.remove('hidden');
     }
   });
+}
+
+function completeTask(project, id) {
+  if (!confirm(`Voulez-vous clôturer la tâche ${id} du projet ${project} ?`)) return;
+  fetch(`http://localhost:20129/api/done?project=${encodeURIComponent(project)}&id=${encodeURIComponent(id)}`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        location.reload();
+      } else {
+        alert("Erreur : " + data.error);
+      }
+    })
+    .catch(err => alert("Impossible de joindre le serveur API local (Port 20129). Veuillez vérifier qu'il est bien démarré."));
+}
+
+function deleteTask(project, id) {
+  if (!confirm(`Êtes-vous sûr de vouloir supprimer la tâche ${id} du projet ${project} ?`)) return;
+  fetch(`http://localhost:20129/api/delete?project=${encodeURIComponent(project)}&id=${encodeURIComponent(id)}`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        location.reload();
+      } else {
+        alert("Erreur : " + data.error);
+      }
+    })
+    .catch(err => alert("Impossible de joindre le serveur API local (Port 20129). Veuillez vérifier qu'il est bien démarré."));
 }
 
 updateTimestamp();

@@ -1,8 +1,10 @@
 #!/bin/sh
 # post-commit -- DEV_CORE v6.1 -- Full automation
+PLATFORM_ROOT="${DEVCORE_PLATFORM_ROOT:-C:/devcore/DEV_CORE}"
+DATA_ROOT="${DEVCORE_DATA_ROOT:-C:/devcore/DEV_CORE_DATA}"
 PROJ_NAME=$(basename $(git rev-parse --show-toplevel))
-TASKS="C:/devcore/DEV_CORE_DATA/Memory/$PROJ_NAME/tasks.json"
-SCRIPTS="C:/devcore/DEV_CORE/Scripts"
+TASKS="$DATA_ROOT/Memory/$PROJ_NAME/tasks.json"
+SCRIPTS="$PLATFORM_ROOT/Scripts"
 MSG=$(git log -1 --pretty=%B)
 TID=$(echo "$MSG" | grep -oP '\[T-\d+\]' | tr -d '[]' | head -1)
 
@@ -20,7 +22,10 @@ if [ -n "$TID" ]; then
     \$t|Add-Member -NotePropertyName 'steps_done' -NotePropertyValue \$new -Force
     \$b|ConvertTo-Json -Depth 10|Set-Content \$f -Encoding UTF8
     Write-Host \"  [DEV_CORE] Step \$new/\$tot enregistree pour $TID\" -ForegroundColor Cyan
-    if(\$new -ge \$tot){Write-Host '  [DEV_CORE] Tache complete!' -ForegroundColor Green; & 'C:/devcore/DEV_CORE/Scripts/task_done.ps1'}
+    if(\$new -ge \$tot){
+        Write-Host '  [DEV_CORE] Tache complete!' -ForegroundColor Green
+        & '$SCRIPTS/task_done.ps1' -Force
+    }
     "
 fi
 echo "  [DEV_CORE] Synchronisation des taches..."

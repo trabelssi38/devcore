@@ -24,21 +24,38 @@ function Get-ModeFromContent { param($text)
 
 Log "task_spec_parser -- analyse fichiers spec" "Cyan"
 
-$specDir = "$DEV_CORE_DATA\Vault\docs\superpowers\specs"
-if (-not (Test-Path $specDir)) {
-    Log "Dossier spec introuvable : $specDir" "Yellow"
-    return
+$specDirs = @("$DEV_CORE_DATA\Vault\docs\superpowers\specs")
+
+# Trouver le depot git du projet actif pour y chercher des specs locales
+$gitRoot = git rev-parse --show-toplevel 2>$null
+if ($gitRoot) {
+    $specDirs += "$gitRoot\docs\superpowers\specs"
+    $specDirs += "$gitRoot\DEV_CORE\docs\superpowers\specs"
 }
 
-$specFiles = Get-ChildItem $specDir -Filter "*.md" -ErrorAction SilentlyContinue
+$specFiles = @()
+foreach ($dir in $specDirs) {
+    if (Test-Path $dir) {
+        Log "Scanning specs directory: $dir" "DarkGray"
+        $specFiles += Get-ChildItem $dir -Filter "*.md" -ErrorAction SilentlyContinue
+    }
+}
+
+# Garder les fichiers uniques par leur chemin complet et trier du plus recent au plus ancien
+$specFiles = $specFiles | Group-Object FullName | ForEach-Object { $_.Group[0] } | Sort-Object LastWriteTime -Descending
+
 if (-not $specFiles) {
-    Log "Aucun fichier spec trouve" "Gray"
+    Log "Aucun fichier spec trouve" "Yellow"
     return
 }
 
 $candidates = @()
 
 foreach ($file in $specFiles) {
+    if ($file.Name -eq "2026-04-22-dev-core-v5-design.md") {
+        Log "Ignorer le design global : $($file.Name)" "Yellow"
+        continue
+    }
     Log "Parsing : $($file.Name)" "Cyan"
     $content = Get-Content $file.FullName -Raw -Encoding UTF8
 

@@ -134,8 +134,8 @@ function Do-Uninstall {
 function Do-Start {
     Write-Log "Demarrage du daemon HERMES" "INFO"
 
-    # Lancer hermes en mode background
-    $hermesArgs = @("daemon", "--config", "$HERMES_HOME\config.yaml")
+    # Lancer hermes en mode background (Gateway avec cron integre)
+    $hermesArgs = @("gateway", "run", "--accept-hooks")
 
     # Configurer les variables d'environnement
     $env:DEVCORE_PLATFORM_ROOT = "C:\devcore\DEV_CORE"
@@ -144,7 +144,7 @@ function Do-Start {
     # Lancer HERMES
     if (Test-Path $HERMES_BIN) {
         Start-Process -FilePath $HERMES_BIN -ArgumentList $hermesArgs -WindowStyle Hidden -PassThru
-        Write-Log "  HERMES lance en background" "SUCCESS"
+        Write-Log "  HERMES lance en background (Gateway)" "SUCCESS"
     } else {
         Write-Log "  HERMES non trouve a $HERMES_BIN" "ERROR"
     }

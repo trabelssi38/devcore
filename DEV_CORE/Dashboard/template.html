@@ -156,6 +156,34 @@ function applyFilter(btn, days) {
   });
 }
 
+function completeTask(project, id) {
+  if (!confirm(`Voulez-vous clôturer la tâche ${id} du projet ${project} ?`)) return;
+  fetch(`http://localhost:20129/api/done?project=${encodeURIComponent(project)}&id=${encodeURIComponent(id)}`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        location.reload();
+      } else {
+        alert("Erreur : " + data.error);
+      }
+    })
+    .catch(err => alert("Impossible de joindre le serveur API local (Port 20129). Veuillez vérifier qu'il est bien démarré."));
+}
+
+function deleteTask(project, id) {
+  if (!confirm(`Êtes-vous sûr de vouloir supprimer la tâche ${id} du projet ${project} ?`)) return;
+  fetch(`http://localhost:20129/api/delete?project=${encodeURIComponent(project)}&id=${encodeURIComponent(id)}`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.success) {
+        location.reload();
+      } else {
+        alert("Erreur : " + data.error);
+      }
+    })
+    .catch(err => alert("Impossible de joindre le serveur API local (Port 20129). Veuillez vérifier qu'il est bien démarré."));
+}
+
 updateTimestamp();
 setInterval(updateTimestamp, 1000);
 </script>
