@@ -74,10 +74,10 @@ details{margin-bottom: 8px}
 </header>
 
 <div class="main-layout">
-  <!-- Colonne 1 : Projets & Optimisation -->
+  <!-- Colonne 1 : Projets & Liens -->
   <div class="column" style="background:#0b0d12">
     <h2>Projets</h2>
-    <div style="margin-bottom:24px">
+    <div class="scroll-area" style="margin-bottom:16px">
         <div class="card">
     <div class="card-title">Projet : devcore</div>
     <div class="card-val" style="font-size:20px">T-11</div>
@@ -93,19 +93,9 @@ details{margin-bottom: 8px}
   </div>
     </div>
     
-    <h2>Token Optimization Stack</h2>
-    <div class="scroll-area">
-      <div class="token-layer"><span class="token-name">1. CLAUDE.md terse</span><span class="token-reduction">-69%</span></div>
-      <div class="token-layer"><span class="token-name">2. caveman-compress</span><span class="token-reduction">-46%</span></div>
-      <div class="token-layer"><span class="token-name">3. MCP cache</span><span class="token-reduction">-95%</span></div>
-      <div class="token-layer"><span class="token-name">4. 9Router RTK</span><span class="token-reduction">-40%</span></div>
-      <div class="token-layer"><span class="token-name">5. Ghost finder</span><span class="token-reduction">audit</span></div>
-      <div class="token-layer" style="border-color:#6366f1"><span class="token-name">6. TOON compact</span><span class="token-reduction">-90%</span></div>
-      
-      <div style="padding:10px;background:#14532d;border:1px solid #22c55e;border-radius:6px;margin-top:12px;text-align:center;font-size:12px;font-weight:600;color:#86efac">
-        Reduction cumulee: ~98%
-      </div>
-    </div>
+    <h2>Quick Links</h2>
+    <div class="component"><div class="component-name">Ouvrir README</div><div class="status-ok">→</div></div>
+    <div class="component"><div class="component-name">Logs Plateforme</div><div class="status-ok">→</div></div>
   </div>
 
   <!-- Colonne 2 : Pipeline (Sessions Actives) -->
@@ -249,7 +239,7 @@ details{margin-bottom: 8px}
     
     <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('devcore', 'T-03')">&#128465;</button>
   </div>
-</details><details class="mission  done" data-date="2026-05-18T15:49:52">
+</details><details class="mission  done" data-date="2026-05-18T15:51:35">
   <summary style="display:flex; gap:10px; align-items:center; width:100%">
     <span class="badge done">DONE</span>
     <div style="flex:1">
@@ -263,7 +253,7 @@ details{margin-bottom: 8px}
     
     <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('devcore', 'T-02')">&#128465;</button>
   </div>
-</details><details class="mission  done" data-date="2026-05-18T15:49:52">
+</details><details class="mission  done" data-date="2026-05-18T15:51:35">
   <summary style="display:flex; gap:10px; align-items:center; width:100%">
     <span class="badge done">DONE</span>
     <div style="flex:1">
@@ -425,10 +415,22 @@ details{margin-bottom: 8px}
     </div>
   </div>
 
-  <!-- Colonne 3 : Infrastructure & Liens -->
+  <!-- Colonne 3 : Optimisation & Infrastructure -->
   <div class="column" style="background:#0b0d12">
-    <h2>Infrastructure</h2>
+    <h2>Token Optimization Stack</h2>
     <div class="scroll-area">
+      <div class="token-layer"><span class="token-name">1. CLAUDE.md terse</span><span class="token-reduction">-69%</span></div>
+      <div class="token-layer"><span class="token-name">2. caveman-compress</span><span class="token-reduction">-46%</span></div>
+      <div class="token-layer"><span class="token-name">3. MCP cache</span><span class="token-reduction">-95%</span></div>
+      <div class="token-layer"><span class="token-name">4. 9Router RTK</span><span class="token-reduction">-40%</span></div>
+      <div class="token-layer"><span class="token-name">5. Ghost finder</span><span class="token-reduction">audit</span></div>
+      <div class="token-layer" style="border-color:#6366f1"><span class="token-name">6. TOON compact</span><span class="token-reduction">-90%</span></div>
+      
+      <div style="padding:10px;background:#14532d;border:1px solid #22c55e;border-radius:6px;margin-top:12px;text-align:center;font-size:12px;font-weight:600;color:#86efac">
+        Reduction cumulee: ~98%
+      </div>
+
+      <h2 style="margin-top:24px">Infrastructure</h2>
       <h2>Services & Infrastructure</h2>
 <div class="component">
   <div>
@@ -458,7 +460,7 @@ details{margin-bottom: 8px}
 <div class="component">
   <div>
     <div class="component-name">task_sync</div>
-    <div class="component-detail">Dernier: 40 s</div>
+    <div class="component-detail">Dernier: 1 mins</div>
   </div>
   <div class="status-ok">&#10003;</div>
 </div><div class="component">
@@ -474,10 +476,6 @@ details{margin-bottom: 8px}
   </div>
   <div class="status-error">&#10007;</div>
 </div>
-
-      <h2 style="margin-top:24px">Quick Links</h2>
-      <div class="component"><div class="component-name">Ouvrir README</div><div class="status-ok">→</div></div>
-      <div class="component"><div class="component-name">Logs Plateforme</div><div class="status-ok">→</div></div>
       
       <p style="color:#475569;font-size:10px;margin-top:32px;text-align:center">Auto-refresh 30s<br>DEV_CORE v6.3.1</p>
     </div>
