@@ -74,16 +74,11 @@ details{margin-bottom: 8px}
 </header>
 
 <div class="main-layout">
-  <!-- Colonne 1 : Projets & Infrastructure -->
+  <!-- Colonne 1 : Projets -->
   <div class="column" style="background:#0b0d12">
     <h2>Projets</h2>
-    <div style="margin-bottom:20px">
-      {{PROJECT_CARDS}}
-    </div>
-    
-    <h2>Infrastructure</h2>
     <div class="scroll-area">
-      {{SERVICES_MONITORING}}
+      {{PROJECT_CARDS}}
     </div>
   </div>
 
@@ -103,7 +98,7 @@ details{margin-bottom: 8px}
     </div>
   </div>
 
-  <!-- Colonne 3 : Optimisation & Métriques -->
+  <!-- Colonne 3 : Optimisation, Infrastructure & Liens -->
   <div class="column" style="background:#0b0d12">
     <h2>Token Optimization Stack</h2>
     <div class="scroll-area">
@@ -117,6 +112,9 @@ details{margin-bottom: 8px}
       <div style="padding:10px;background:#14532d;border:1px solid #22c55e;border-radius:6px;margin-top:12px;text-align:center;font-size:12px;font-weight:600;color:#86efac">
         Reduction cumulee: ~98%
       </div>
+
+      <h2 style="margin-top:24px">Infrastructure</h2>
+      {{SERVICES_MONITORING}}
 
       <h2 style="margin-top:24px">Quick Links</h2>
       <div class="component"><div class="component-name">Ouvrir README</div><div class="status-ok">→</div></div>

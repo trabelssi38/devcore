@@ -74,10 +74,10 @@ details{margin-bottom: 8px}
 </header>
 
 <div class="main-layout">
-  <!-- Colonne 1 : Projets & Infrastructure -->
+  <!-- Colonne 1 : Projets -->
   <div class="column" style="background:#0b0d12">
     <h2>Projets</h2>
-    <div style="margin-bottom:20px">
+    <div class="scroll-area">
         <div class="card">
     <div class="card-title">Projet : devcore</div>
     <div class="card-val" style="font-size:20px">T-11</div>
@@ -91,55 +91,6 @@ details{margin-bottom: 8px}
     <div class="card-val" style="font-size:20px">Aucune</div>
     <div class="card-sub">Mode: N/A | 100% <span class="status-ok">*</span></div>
   </div>
-    </div>
-    
-    <h2>Infrastructure</h2>
-    <div class="scroll-area">
-      <h2>Services & Infrastructure</h2>
-<div class="component">
-  <div>
-    <div class="component-name">Hermes Agent</div>
-    <div class="component-detail">Port 20128</div>
-  </div>
-  <div class="status-ok">&#10003;</div>
-</div><div class="component">
-  <div>
-    <div class="component-name">Dashboard API Server</div>
-    <div class="component-detail">Port 20129</div>
-  </div>
-  <div class="status-ok">&#10003;</div>
-</div><div class="component">
-  <div>
-    <div class="component-name">Qdrant Vector DB</div>
-    <div class="component-detail">Port 6333</div>
-  </div>
-  <div class="status-ok">&#10003;</div>
-</div><div class="component">
-  <div>
-    <div class="component-name">Ollama Embeddings</div>
-    <div class="component-detail">Port 11434</div>
-  </div>
-  <div class="status-ok">&#10003;</div>
-</div><h2>Automation Hooks</h2>
-<div class="component">
-  <div>
-    <div class="component-name">task_sync</div>
-    <div class="component-detail">Dernier: 7 mins</div>
-  </div>
-  <div class="status-ok">&#10003;</div>
-</div><div class="component">
-  <div>
-    <div class="component-name">session_start</div>
-    <div class="component-detail">Dernier: 14 heures</div>
-  </div>
-  <div class="status-ok">&#10003;</div>
-</div><div class="component">
-  <div>
-    <div class="component-name">session_end</div>
-    <div class="component-detail">Dernier: Jamais</div>
-  </div>
-  <div class="status-error">&#10007;</div>
-</div>
     </div>
   </div>
 
@@ -284,7 +235,7 @@ details{margin-bottom: 8px}
     
     <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('devcore', 'T-03')">&#128465;</button>
   </div>
-</details><details class="mission  done" data-date="2026-05-18T14:28:46">
+</details><details class="mission  done" data-date="2026-05-18T15:48:36">
   <summary style="display:flex; gap:10px; align-items:center; width:100%">
     <span class="badge done">DONE</span>
     <div style="flex:1">
@@ -298,7 +249,7 @@ details{margin-bottom: 8px}
     
     <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('devcore', 'T-02')">&#128465;</button>
   </div>
-</details><details class="mission  done" data-date="2026-05-18T14:28:46">
+</details><details class="mission  done" data-date="2026-05-18T15:48:36">
   <summary style="display:flex; gap:10px; align-items:center; width:100%">
     <span class="badge done">DONE</span>
     <div style="flex:1">
@@ -460,7 +411,7 @@ details{margin-bottom: 8px}
     </div>
   </div>
 
-  <!-- Colonne 3 : Optimisation & Métriques -->
+  <!-- Colonne 3 : Optimisation, Infrastructure & Liens -->
   <div class="column" style="background:#0b0d12">
     <h2>Token Optimization Stack</h2>
     <div class="scroll-area">
@@ -474,6 +425,53 @@ details{margin-bottom: 8px}
       <div style="padding:10px;background:#14532d;border:1px solid #22c55e;border-radius:6px;margin-top:12px;text-align:center;font-size:12px;font-weight:600;color:#86efac">
         Reduction cumulee: ~98%
       </div>
+
+      <h2 style="margin-top:24px">Infrastructure</h2>
+      <h2>Services & Infrastructure</h2>
+<div class="component">
+  <div>
+    <div class="component-name">Hermes Agent</div>
+    <div class="component-detail">Port 20128</div>
+  </div>
+  <div class="status-ok">&#10003;</div>
+</div><div class="component">
+  <div>
+    <div class="component-name">Dashboard API Server</div>
+    <div class="component-detail">Port 20129</div>
+  </div>
+  <div class="status-ok">&#10003;</div>
+</div><div class="component">
+  <div>
+    <div class="component-name">Qdrant Vector DB</div>
+    <div class="component-detail">Port 6333</div>
+  </div>
+  <div class="status-ok">&#10003;</div>
+</div><div class="component">
+  <div>
+    <div class="component-name">Ollama Embeddings</div>
+    <div class="component-detail">Port 11434</div>
+  </div>
+  <div class="status-ok">&#10003;</div>
+</div><h2>Automation Hooks</h2>
+<div class="component">
+  <div>
+    <div class="component-name">task_sync</div>
+    <div class="component-detail">Dernier: 4 mins</div>
+  </div>
+  <div class="status-ok">&#10003;</div>
+</div><div class="component">
+  <div>
+    <div class="component-name">session_start</div>
+    <div class="component-detail">Dernier: 16 heures</div>
+  </div>
+  <div class="status-ok">&#10003;</div>
+</div><div class="component">
+  <div>
+    <div class="component-name">session_end</div>
+    <div class="component-detail">Dernier: Jamais</div>
+  </div>
+  <div class="status-error">&#10007;</div>
+</div>
 
       <h2 style="margin-top:24px">Quick Links</h2>
       <div class="component"><div class="component-name">Ouvrir README</div><div class="status-ok">→</div></div>
