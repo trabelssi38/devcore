@@ -1,9 +1,9 @@
-# DEV_CORE v6 — README
+# DEV_CORE v7 — README
 
 **Single Client Mode** — Plateforme d'orchestration IA pour le développement logiciel
 
-Version : 6.5  
-Updated : 2026-05-18  
+Version : 7.0  
+Updated : 2026-05-20  
 Mode : Single Client (pas de handoffs multi-agents)
 
 ---
@@ -145,7 +145,16 @@ Voir : `C:\devcore\DEV_CORE\docs\PLATFORM_DOCUMENTATION.md`
 
 ---
 
-## 🔄 Changelog v6
+## 🔄 Changelog v7
+
+### 2026-05-20 — v7.0 Auto-Apprentissage & Intelligence Sémantique
+
+- ✅ **Intelligence Sémantique** : Intégration de l'impératif et du présent conjugués en français pour la détection autonome d'intentions de tâches (ex : `corrige`, `crée`, `ajoute`).
+- ✅ **Analyseur de Prompts Actif** : Remplacement du scan sémantique historique par un analyseur dynamique (`task_prompt_analyzer.py`) scannant en temps réel les journaux de sessions d'Antigravity (`C:\Users\trb_m\.gemini\antigravity\brain`).
+- ✅ **Nettoyage des Titres** : Élimination automatique des balises XML et des métadonnées système (`</USER_REQUEST>`, etc.) des titres de tâches capturés pour un rendu ultra-propre dans le cockpit.
+- ✅ **Registre Sémantique Dynamique** : Création de `intent_patterns.json` pour externaliser les verbes cibles et découpler la logique du code.
+- ✅ **Moteur d'Auto-Apprentissage (`intent_learner.py`)** : Déploiement d'un moteur d'arrière-plan autonome qui extrait le premier mot des tâches validées de `tasks.json`, génère ses déclinaisons sémantiques françaises, et enrichit le registre dynamique sans intervention humaine.
+- ✅ **Intégration au Cycle de Vie** : Hook de l'apprentissage automatique dans la phase 5/8 du script `endday.ps1` et du wrapper Powershell de scan.
 
 ### 2026-05-11 — Single Client Migration
 
