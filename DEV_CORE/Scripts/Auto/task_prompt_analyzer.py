@@ -157,8 +157,8 @@ def main():
                     source = data.get("source")
                     type_ = data.get("type")
                     
-                    # Only parse user queries
-                    if not content or (source != "USER_EXPLICIT" and type_ != "USER_INPUT"):
+                    # Only parse actual user chat inputs
+                    if not content or type_ != "USER_INPUT":
                         continue
                         
                     # Standard intent matching
