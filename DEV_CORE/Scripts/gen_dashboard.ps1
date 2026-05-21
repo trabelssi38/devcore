@@ -72,6 +72,7 @@ $projects = $projects | Sort-Object LastDate -Descending
 # 3. Generer le HTML
 $cardsHtml = ""
 $tasksHtml = ""
+$allDetailsMap = @{}
 
 foreach ($p in $projects) {
     $statusClass = if ($p.Progress -eq 100) { "status-ok" } elseif ($p.Progress -gt 0) { "status-warn" } else { "" }
@@ -120,10 +121,11 @@ foreach ($p in $projects) {
             }
 
             # Gestion du bloc de description (details)
-            $detailsHtml = ""
+            $detailsButton = ""
             if ($t.PSObject.Properties["details"] -and $t.details) {
-                $safeDetails = $t.details -replace '<', '&lt;' -replace '>', '&gt;' -replace '`n', '<br/>'
-                $detailsHtml = "<div class='task-details' style='margin: 8px 0; padding: 10px; background: rgba(99, 102, 241, 0.05); border-left: 3px solid #6366f1; border-radius: 4px; font-size: 11px; color: #cbd5e1; line-height: 1.5; white-space: pre-wrap;'><strong>Description d'origine :</strong><br/>$safeDetails</div>"
+                $key = "$($p.Name)_$($t.id)"
+                $allDetailsMap[$key] = $t.details
+                $detailsButton = "<button class='btn-details' onclick='showDetails(`"$($p.Name)`", `"$($t.id)`", this, event)' title='Voir les d&eacute;tails'>D&eacute;tails</button>"
             }
 
             # Gestion des étapes détaillées
@@ -172,22 +174,21 @@ foreach ($p in $projects) {
 "@
 
             $tasksHtml += @"
-<details class="mission $activeClass $($t.status)" data-date="$taskDate">
-  <summary style="display:flex; gap:10px; align-items:center; width:100%">
+<div class="mission $activeClass $($t.status)" data-date="$taskDate">
+  <div class="mission-header" style="display:flex; gap:10px; align-items:center; width:100%">
     <span class="badge $badgeClass">$badgeText</span>
     <div style="flex:1; min-width: 0;">
       <div class="mission-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-        <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">$($t.id): $($t.title)</span>
-        <div style="display:flex; align-items:center; flex-shrink:0;">$taskTokensStr$taskCostStr</div>
+        <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="$($t.id): $($t.title)">$($t.id): $($t.title)</span>
+        <div style="display:flex; align-items:center; flex-shrink:0;">$taskTokensStr$taskCostStr$detailsButton</div>
       </div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: $($t.mode) - $stepsStr</div>
       $datesHtml
     </div>
-  </summary>
-  $detailsHtml
+  </div>
   $stepsDetailHtml
   $actionsHtml
-</details>
+</div>
 "@
         }
         $tasksHtml += "</details>"
@@ -393,11 +394,18 @@ if ($tokenSummary) {
 
 # 5. Injecter dans template.html et ecrire index.html
 if (Test-Path $TEMPLATE_FILE) {
+    $detailsJson = if ($allDetailsMap.Count -gt 0) {
+        $allDetailsMap | ConvertTo-Json -Depth 10 -Compress
+    } else {
+        "{}"
+    }
+
     $template = Get-Content $TEMPLATE_FILE -Raw -Encoding UTF8
     $template = $template.Replace('{{PROJECT_CARDS}}', $cardsHtml)
     $template = $template.Replace('{{TASKS_PIPELINE}}', $tasksHtml)
     $template = $template.Replace('{{SERVICES_MONITORING}}', $infraHtml)
     $template = $template.Replace('{{TOKEN_ACTIVITY_REPORT}}', $tokenReportHtml)
+    $template = $template.Replace('{{TASK_DETAILS_MAP}}', $detailsJson)
 
     $template | Set-Content $OUTPUT_FILE -Encoding UTF8
     Write-Host "Dashboard genere : $OUTPUT_FILE" -ForegroundColor Green

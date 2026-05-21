@@ -25,7 +25,18 @@ h2{font-size:11px;color:#94a3b8;margin:0 0 12px;text-transform:uppercase;letter-
 .card-val{font-size:18px;font-weight:600;color:#f8fafc}
 .card-sub{font-size:11px;color:#64748b;margin-top:2px}
 
-.mission{padding:8px 12px;background:#1a1d27;border:1px solid #2d3148;border-radius:6px;margin-bottom:6px;display:flex;gap:10px;align-items:center;transition: all 0.2s}
+.mission {
+  padding: 12px;
+  background: #1a1d27;
+  border: 1px solid #2d3148;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  transition: all 0.2s;
+}
 .mission.active-task{border:1.5px solid #6366f1;box-shadow:0 0 12px rgba(99,102,241,0.4);background:#1e1b4b;animation: pulse 2s infinite}
 
 @keyframes pulse {
@@ -56,7 +67,13 @@ details{margin-bottom: 8px}
 .mission.active-task .mission-title{color:#ffffff; font-weight:600}
 .mission.done .mission-title{color:#94a3b8}
 
-.steps-container{margin-top:10px; padding:10px; background:rgba(0,0,0,0.3); border-radius:6px; border-left:3px solid #6366f1; width: calc(100% - 20px); }
+.steps-container {
+  margin-top: 4px;
+  padding: 8px 10px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 6px;
+  border-left: 3px solid #6366f1;
+}
 .step-item{font-size:11px; color:#94a3b8; display:flex; align-items:center; gap:8px; margin-bottom:6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
 .step-item.step-done{color:#86efac}
 .step-item b{font-family: monospace; font-size: 12px;}
@@ -70,6 +87,98 @@ details{margin-bottom: 8px}
 .token-layer{display:flex;justify-content:space-between;padding:6px 12px;background:#1a1d27;border:1px solid #2d3148;border-radius:6px;margin-bottom:4px}
 .token-name{font-size:11px;color:#e2e8f0}
 .token-reduction{font-size:11px;color:#22c55e;font-weight:600}
+
+/* Sleek interactive Details button styling */
+.btn-details {
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  color: #a5b4fc;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-left: 6px;
+  border-style: solid;
+}
+.btn-details:hover {
+  background: rgba(99, 102, 241, 0.25);
+  border-color: #6366f1;
+  color: #ffffff;
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.3);
+}
+
+/* Premium Info-Bubble / Tooltip styling with glassmorphism */
+#details-bubble {
+  position: absolute;
+  z-index: 1000;
+  background: rgba(26, 29, 39, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(99, 102, 241, 0.4);
+  border-radius: 8px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5), 0 0 15px rgba(99, 102, 241, 0.15);
+  color: #e2e8f0;
+  opacity: 0;
+  transform: translateY(-10px) scale(0.95);
+  transition: opacity 0.15s cubic-bezier(0.16, 1, 0.3, 1), transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+  display: none;
+  box-sizing: border-box;
+}
+#details-bubble.show {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+.bubble-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(99, 102, 241, 0.08);
+  border-top-left-radius: 7px;
+  border-top-right-radius: 7px;
+}
+.bubble-header span {
+  font-weight: 600;
+  color: #a5b4fc;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.bubble-close {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  transition: color 0.15s;
+}
+.bubble-close:hover {
+  color: #ef4444;
+}
+.bubble-content {
+  padding: 12px;
+  max-height: 240px;
+  overflow-y: auto;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #cbd5e1;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.bubble-content::-webkit-scrollbar {
+  width: 4px;
+}
+.bubble-content::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.3);
+  border-radius: 2px;
+}
 </style>
 </head>
 <body>
@@ -188,8 +297,82 @@ function deleteTask(project, id) {
     .catch(err => alert("Impossible de joindre le serveur API local (Port 20129). Veuillez vérifier qu'il est bien démarré."));
 }
 
+const taskDetailsMap = {{TASK_DETAILS_MAP}};
+
+function showDetails(projectName, taskId, btnEl, event) {
+  if (event) event.stopPropagation();
+  const key = `${projectName}_${taskId}`;
+  const text = taskDetailsMap[key];
+  if (!text) return;
+
+  const bubble = document.getElementById('details-bubble');
+  const safeText = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;")
+    .replace(/\n/g, "<br/>");
+
+  bubble.innerHTML = `
+    <div class="bubble-header">
+      <span>D&eacute;tails : ${taskId}</span>
+      <button class="bubble-close" onclick="closeDetails(event)">&times;</button>
+    </div>
+    <div class="bubble-content">${safeText}</div>
+  `;
+
+  bubble.style.display = 'block';
+  
+  const rect = btnEl.getBoundingClientRect();
+  const bubbleWidth = 320;
+  bubble.style.width = bubbleWidth + 'px';
+  
+  let left = rect.left + (rect.width / 2) - (bubbleWidth / 2);
+  let top = rect.bottom + window.scrollY + 8;
+  
+  if (left < 10) left = 10;
+  if (left + bubbleWidth > window.innerWidth - 10) {
+    left = window.innerWidth - bubbleWidth - 10;
+  }
+  
+  // Measure height
+  const bubbleHeight = bubble.offsetHeight;
+  if (rect.bottom + bubbleHeight + 20 > window.innerHeight) {
+    top = rect.top + window.scrollY - bubbleHeight - 8;
+  }
+
+  bubble.style.left = left + 'px';
+  bubble.style.top = top + 'px';
+
+  // Force reflow
+  bubble.offsetHeight;
+  bubble.classList.add('show');
+}
+
+function closeDetails(event) {
+  if (event) event.stopPropagation();
+  const bubble = document.getElementById('details-bubble');
+  bubble.classList.remove('show');
+  setTimeout(() => {
+    if (!bubble.classList.contains('show')) {
+      bubble.style.display = 'none';
+    }
+  }, 200);
+}
+
+document.addEventListener('click', function(e) {
+  const bubble = document.getElementById('details-bubble');
+  if (bubble && bubble.classList.contains('show')) {
+    if (!bubble.contains(e.target) && !e.target.classList.contains('btn-details')) {
+      closeDetails();
+    }
+  }
+});
+
 updateTimestamp();
 setInterval(updateTimestamp, 1000);
 </script>
+<div id="details-bubble"></div>
 </body>
 </html>
