@@ -410,7 +410,7 @@ details{margin-bottom: 8px}
     </div>
   </div>
   <div class='steps-container'><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Développement initial du script de diagnostic profond</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Enrichissement avec support multi-DB et validation</div></div>
-</div><div class="mission  done" data-date="2026-05-21T15:06:37.5379997+01:00">
+</div><div class="mission  done" data-date="2026-05-21T18:16:21.0043670+01:00">
   <div class="mission-header" style="display:flex; gap:10px; align-items:center; width:100%">
     <span class="badge done">DONE</span>
     <div style="flex:1; min-width: 0;">
@@ -422,7 +422,7 @@ details{margin-bottom: 8px}
         </div>
       </div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - 3/3 steps</div>
-      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Fin: 2026-05-21 15:06:37</div>
+      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Fin: 2026-05-21 18:16:21</div>
     </div>
   </div>
   <div class='steps-container'><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Implémenter la boîte de dialogue de confirmation personnalisée</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Créer des scrollbars premium sur tous les éléments</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Ajuster l'alignement vertical sous les détails de tâches</div></div>
@@ -1032,19 +1032,19 @@ details{margin-bottom: 8px}
 <div class="component">
   <div>
     <div class="component-name">task_sync</div>
-    <div class="component-detail">Dernier: 3 heures</div>
+    <div class="component-detail">Dernier: 8 heures</div>
   </div>
   <div class="status-ok">&#10003;</div>
 </div><div class="component">
   <div>
     <div class="component-name">session_start</div>
-    <div class="component-detail">Dernier: 18 heures</div>
+    <div class="component-detail">Dernier: 23 heures</div>
   </div>
   <div class="status-ok">&#10003;</div>
 </div><div class="component">
   <div>
     <div class="component-name">session_end</div>
-    <div class="component-detail">Dernier: 4 heures</div>
+    <div class="component-detail">Dernier: 9 heures</div>
   </div>
   <div class="status-ok">&#10003;</div>
 </div>
@@ -1183,22 +1183,13 @@ function showDetails(projectName, taskId, taskStatus, btnEl, event) {
     .replace(/'/g, "&#039;")
     .replace(/\n/g, "<br/>");
 
-  const doneBtn = taskStatus !== 'done' 
-    ? `<button class="btn-action btn-done" style="margin-left:0; margin-right:8px; padding:4px 10px; height:24px; font-size:10px;" onclick="completeTask('${projectName}', '${taskId}')">✔ Cl&ocirc;turer</button>` 
-    : '';
-  const deleteBtn = `<button class="btn-action btn-delete" style="margin-left:0; padding:4px 10px; height:24px; font-size:10px;" onclick="deleteTask('${projectName}', '${taskId}')">&#128465; Supprimer</button>`;
-
   bubble.innerHTML = `
     <div class="bubble-header">
       <span>D&eacute;tails : ${taskId}</span>
       <button class="bubble-close" onclick="closeDetails(event)">&times;</button>
     </div>
     <div class="bubble-content">
-      <div style="margin-bottom:12px;">${safeText}</div>
-      <div style="display:flex; justify-content:flex-end; border-top:1px solid rgba(255,255,255,0.08); padding-top:10px; margin-top:10px;">
-        ${doneBtn}
-        ${doneBtn ? '' : '<span style="color:#86efac; font-size:10px; display:inline-flex; align-items:center; margin-right:auto;">✓ Cl&ocirc;tur&eacute;e</span>'}${deleteBtn}
-      </div>
+      <div style="margin-bottom:0;">${safeText}</div>
     </div>
   `;
 
