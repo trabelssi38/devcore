@@ -17,8 +17,6 @@ h2{font-size:11px;color:#94a3b8;margin:0 0 12px;text-transform:uppercase;letter-
 .column{display:flex;flex-direction:column;border-right:1px solid #2d3148;padding:16px;overflow:hidden}
 .column:last-child{border-right:none}
 .scroll-area{flex:1;overflow-y:auto;padding-right:8px}
-.scroll-area::-webkit-scrollbar{width:4px}
-.scroll-area::-webkit-scrollbar-thumb{background:#2d3148;border-radius:2px}
 
 .card{background:#1a1d27;border:1px solid #2d3148;border-radius:8px;padding:12px;margin-bottom:8px}
 .card-title{font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
@@ -202,12 +200,152 @@ details{margin-bottom: 8px}
   white-space: pre-wrap;
   word-break: break-word;
 }
-.bubble-content::-webkit-scrollbar {
-  width: 4px;
+/* Premium Global scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
-.bubble-content::-webkit-scrollbar-thumb {
-  background: rgba(99, 102, 241, 0.3);
-  border-radius: 2px;
+::-webkit-scrollbar-track {
+  background: rgba(15, 17, 23, 0.5);
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.25);
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.02);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.45);
+}
+
+/* Firefox compatibility */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99, 102, 241, 0.25) rgba(15, 17, 23, 0.5);
+}
+
+/* Custom Confirmation Modal Styling (Glassmorphism) */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(15, 17, 23, 0.7);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  display: none;
+}
+.modal-overlay.show {
+  opacity: 1;
+  pointer-events: auto;
+}
+.modal-card {
+  background: rgba(26, 29, 39, 0.98);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  border-radius: 12px;
+  width: 380px;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.7), 0 0 25px rgba(99, 102, 241, 0.15);
+  transform: scale(0.9) translateY(-10px);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+.modal-overlay.show .modal-card {
+  transform: scale(1) translateY(0);
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(99, 102, 241, 0.06);
+}
+.modal-header span {
+  font-weight: 600;
+  color: #a5b4fc;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.modal-close {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.15s;
+}
+.modal-close:hover {
+  color: #ef4444;
+}
+.modal-body {
+  padding: 20px 18px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #e2e8f0;
+}
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 18px;
+  background: rgba(0, 0, 0, 0.15);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+.btn-modal {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-modal-cancel {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+}
+.btn-modal-cancel:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+.btn-modal-confirm {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #f87171;
+}
+.btn-modal-confirm:hover {
+  background: rgba(239, 68, 68, 0.35);
+  border-color: #ef4444;
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.25);
+}
+.btn-modal-confirm.confirm-done {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #34d399;
+}
+.btn-modal-confirm.confirm-done:hover {
+  background: rgba(16, 185, 129, 0.35);
+  border-color: #10b981;
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.25);
 }
 </style>
 </head>
@@ -299,32 +437,87 @@ function applyFilter(btn, days) {
   });
 }
 
+let activeConfirmCallback = null;
+
+function showConfirmModal(title, bodyText, isDeleteAction, onConfirmCallback) {
+  const modal = document.getElementById('confirm-modal');
+  const titleEl = document.getElementById('confirm-modal-title');
+  const bodyEl = document.getElementById('confirm-modal-body');
+  const btnEl = document.getElementById('confirm-modal-btn');
+  
+  titleEl.textContent = title;
+  bodyEl.innerHTML = bodyText;
+  
+  if (isDeleteAction) {
+    btnEl.className = 'btn-modal btn-modal-confirm';
+    btnEl.textContent = 'Supprimer';
+  } else {
+    btnEl.className = 'btn-modal btn-modal-confirm confirm-done';
+    btnEl.textContent = 'Clôturer';
+  }
+  
+  activeConfirmCallback = onConfirmCallback;
+  
+  modal.style.display = 'flex';
+  modal.offsetHeight; // force reflow
+  modal.classList.add('show');
+}
+
+function closeConfirmModal() {
+  const modal = document.getElementById('confirm-modal');
+  modal.classList.remove('show');
+  setTimeout(() => {
+    if (!modal.classList.contains('show')) {
+      modal.style.display = 'none';
+    }
+  }, 200);
+}
+
+function handleConfirmClick() {
+  if (activeConfirmCallback) {
+    activeConfirmCallback();
+  }
+  closeConfirmModal();
+}
+
 function completeTask(project, id) {
-  if (!confirm(`Voulez-vous clôturer la tâche ${id} du projet ${project} ?`)) return;
-  fetch(`http://localhost:20129/api/done?project=${encodeURIComponent(project)}&id=${encodeURIComponent(id)}`)
-    .then(r => r.json())
-    .then(data => {
-      if (data.success) {
-        location.reload();
-      } else {
-        alert("Erreur : " + data.error);
-      }
-    })
-    .catch(err => alert("Impossible de joindre le serveur API local (Port 20129). Veuillez vérifier qu'il est bien démarré."));
+  showConfirmModal(
+    "Clôture de tâche",
+    `Voulez-vous clôturer la tâche <b>${id}</b> du projet <b>${project}</b> ?`,
+    false,
+    function() {
+      fetch(`http://localhost:20129/api/done?project=${encodeURIComponent(project)}&id=${encodeURIComponent(id)}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) {
+            location.reload();
+          } else {
+            alert("Erreur : " + data.error);
+          }
+        })
+        .catch(err => alert("Impossible de joindre le serveur API local (Port 20129). Veuillez vérifier qu'il est bien démarré."));
+    }
+  );
 }
 
 function deleteTask(project, id) {
-  if (!confirm(`Êtes-vous sûr de vouloir supprimer la tâche ${id} du projet ${project} ?`)) return;
-  fetch(`http://localhost:20129/api/delete?project=${encodeURIComponent(project)}&id=${encodeURIComponent(id)}`)
-    .then(r => r.json())
-    .then(data => {
-      if (data.success) {
-        location.reload();
-      } else {
-        alert("Erreur : " + data.error);
-      }
-    })
-    .catch(err => alert("Impossible de joindre le serveur API local (Port 20129). Veuillez vérifier qu'il est bien démarré."));
+  showConfirmModal(
+    "Suppression de tâche",
+    `Êtes-vous sûr de vouloir supprimer la tâche <b>${id}</b> du projet <b>${project}</b> ?<br/><span style="color:#f87171;font-size:11px;margin-top:8px;display:block;">Cette action est irréversible.</span>`,
+    true,
+    function() {
+      fetch(`http://localhost:20129/api/delete?project=${encodeURIComponent(project)}&id=${encodeURIComponent(id)}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.success) {
+            location.reload();
+          } else {
+            alert("Erreur : " + data.error);
+          }
+        })
+        .catch(err => alert("Impossible de joindre le serveur API local (Port 20129). Veuillez vérifier qu'il est bien démarré."));
+    }
+  );
 }
 
 const taskDetailsMap = {{TASK_DETAILS_MAP}};
@@ -409,11 +602,35 @@ document.addEventListener('click', function(e) {
       closeDetails();
     }
   }
+  
+  const modal = document.getElementById('confirm-modal');
+  if (modal && modal.classList.contains('show')) {
+    if (e.target === modal) {
+      closeConfirmModal();
+    }
+  }
 });
 
 updateTimestamp();
 setInterval(updateTimestamp, 1000);
 </script>
 <div id="details-bubble"></div>
+
+<!-- Custom Confirmation Modal (Glassmorphism) -->
+<div id="confirm-modal" class="modal-overlay">
+  <div class="modal-card">
+    <div class="modal-header">
+      <span id="confirm-modal-title">Confirmation</span>
+      <button class="modal-close" onclick="closeConfirmModal()">&times;</button>
+    </div>
+    <div class="modal-body" id="confirm-modal-body">
+      Êtes-vous sûr de vouloir effectuer cette action ?
+    </div>
+    <div class="modal-footer">
+      <button class="btn-modal btn-modal-cancel" onclick="closeConfirmModal()">Annuler</button>
+      <button class="btn-modal btn-modal-confirm" id="confirm-modal-btn" onclick="handleConfirmClick()">Confirmer</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

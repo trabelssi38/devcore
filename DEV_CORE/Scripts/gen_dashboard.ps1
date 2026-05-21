@@ -141,7 +141,7 @@ foreach ($p in $projects) {
             }
 
             # Gestion de la date pour le filtrage JS
-            $taskDate = if ($t.PSObject.Properties["started_at"]) { $t.started_at } elseif ($t.PSObject.Properties["completed_at"]) { $t.completed_at } else { (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss") }
+            $taskDate = if ($t.PSObject.Properties["started_at"] -and $t.started_at) { $t.started_at } elseif ($t.PSObject.Properties["completed_at"] -and $t.completed_at) { $t.completed_at } else { (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss") }
 
             # Formatage des dates pour l'affichage
             $datesHtml = ""
