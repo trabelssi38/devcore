@@ -88,25 +88,55 @@ details{margin-bottom: 8px}
 .token-name{font-size:11px;color:#e2e8f0}
 .token-reduction{font-size:11px;color:#22c55e;font-weight:600}
 
-/* Sleek interactive Details button styling */
-.btn-details {
-  background: rgba(99, 102, 241, 0.1);
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  color: #a5b4fc;
+/* Premium interactive Action buttons styling */
+.btn-action {
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 9px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
-  margin-left: 6px;
+  margin-left: 4px;
   border-style: solid;
+  border-width: 1px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 18px;
+  user-select: none;
+}
+.btn-details {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.3);
+  color: #a5b4fc;
 }
 .btn-details:hover {
   background: rgba(99, 102, 241, 0.25);
   border-color: #6366f1;
   color: #ffffff;
   box-shadow: 0 0 8px rgba(99, 102, 241, 0.3);
+}
+.btn-done {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #34d399;
+}
+.btn-done:hover {
+  background: rgba(16, 185, 129, 0.3);
+  border-color: #10b981;
+  color: #ffffff;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+}
+.btn-delete {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #f87171;
+}
+.btn-delete:hover {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: #ef4444;
+  color: #ffffff;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
 }
 
 /* Premium Info-Bubble / Tooltip styling with glassmorphism */
@@ -232,153 +262,117 @@ details{margin-bottom: 8px}
     <div style="flex:1; min-width: 0;">
       <div class="mission-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
         <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="T-13: Développement et enrichissement du script de diagnostic système">T-13: Développement et enrichissement du script de diagnostic système</span>
-        <div style="display:flex; align-items:center; flex-shrink:0;"><button class='btn-details' onclick='showDetails("devcore", "T-13", this, event)' title='Voir les d&eacute;tails'>D&eacute;tails</button></div>
+        <div style="display:flex; align-items:center; flex-shrink:0; gap:2px;"><button class='btn-action btn-details' onclick='showDetails("devcore", "T-13", this, event)' title='Voir les d&eacute;tails'>D&eacute;tails</button><button class="btn-action btn-delete" title="Supprimer" onclick="deleteTask('devcore', 'T-13')">&#128465;</button></div>
       </div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: reasoning - </div>
       <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-18 12:20:22 | Fin: 2026-05-18 13:20:22</div>
     </div>
   </div>
   <div class='steps-container'></div>
-    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
-    
-    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('devcore', 'T-13')">&#128465;</button>
-  </div>
 </div><div class="mission  done" data-date="">
   <div class="mission-header" style="display:flex; gap:10px; align-items:center; width:100%">
     <span class="badge done">DONE</span>
     <div style="flex:1; min-width: 0;">
       <div class="mission-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-        <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="T-12: fix: resolve session_end dashboard logs and enrich git task details">T-12: fix: resolve session_end dashboard logs and enrich git task details</span>
-        <div style="display:flex; align-items:center; flex-shrink:0;"><button class='btn-details' onclick='showDetails("devcore", "T-12", this, event)' title='Voir les d&eacute;tails'>D&eacute;tails</button></div>
+        <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="T-12: feat(dashboard): show steps-container always inline and task details in a glassmorphism info-bubble">T-12: feat(dashboard): show steps-container always inline and task details in a glassmorphism info-bubble</span>
+        <div style="display:flex; align-items:center; flex-shrink:0; gap:2px;"><button class='btn-action btn-details' onclick='showDetails("devcore", "T-12", this, event)' title='Voir les d&eacute;tails'>D&eacute;tails</button><button class="btn-action btn-delete" title="Supprimer" onclick="deleteTask('devcore', 'T-12')">&#128465;</button></div>
       </div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - </div>
-      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Fin: 2026-05-21 14:43:15</div>
+      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Fin: 2026-05-21 14:55:51</div>
     </div>
   </div>
   <div class='steps-container'></div>
-    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
-    
-    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('devcore', 'T-12')">&#128465;</button>
-  </div>
 </div><div class="mission  done" data-date="2026-05-17T18:00:00.0000000+01:00">
   <div class="mission-header" style="display:flex; gap:10px; align-items:center; width:100%">
     <span class="badge done">DONE</span>
     <div style="flex:1; min-width: 0;">
       <div class="mission-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
         <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="T-11: feat: add v7.0 sémantique learning loop, dynamic prompt analyzer and token reporting">T-11: feat: add v7.0 sémantique learning loop, dynamic prompt analyzer and token reporting</span>
-        <div style="display:flex; align-items:center; flex-shrink:0;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>1.94M</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$1,68</span><button class='btn-details' onclick='showDetails("devcore", "T-11", this, event)' title='Voir les d&eacute;tails'>D&eacute;tails</button></div>
+        <div style="display:flex; align-items:center; flex-shrink:0; gap:2px;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>1.94M</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$1,68</span><button class='btn-action btn-details' onclick='showDetails("devcore", "T-11", this, event)' title='Voir les d&eacute;tails'>D&eacute;tails</button><button class="btn-action btn-delete" title="Supprimer" onclick="deleteTask('devcore', 'T-11')">&#128465;</button></div>
       </div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: reasoning - </div>
       <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-17 18:00:00 | Fin: 2026-05-17 19:03:11</div>
     </div>
   </div>
   <div class='steps-container'></div>
-    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
-    
-    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('devcore', 'T-11')">&#128465;</button>
-  </div>
 </div><div class="mission  done" data-date="2026-05-18T14:45:00.0000000+01:00">
   <div class="mission-header" style="display:flex; gap:10px; align-items:center; width:100%">
     <span class="badge done">DONE</span>
     <div style="flex:1; min-width: 0;">
       <div class="mission-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
         <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="T-10: Restructuration et synchronisation des tâches système">T-10: Restructuration et synchronisation des tâches système</span>
-        <div style="display:flex; align-items:center; flex-shrink:0;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>900K</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$0,78</span><button class='btn-details' onclick='showDetails("devcore", "T-10", this, event)' title='Voir les d&eacute;tails'>D&eacute;tails</button></div>
+        <div style="display:flex; align-items:center; flex-shrink:0; gap:2px;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>900K</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$0,78</span><button class='btn-action btn-details' onclick='showDetails("devcore", "T-10", this, event)' title='Voir les d&eacute;tails'>D&eacute;tails</button><button class="btn-action btn-delete" title="Supprimer" onclick="deleteTask('devcore', 'T-10')">&#128465;</button></div>
       </div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: reasoning - </div>
       <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-18 14:45:00 | Fin: 2026-05-18 15:53:55</div>
     </div>
   </div>
   <div class='steps-container'></div>
-    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
-    
-    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('devcore', 'T-10')">&#128465;</button>
-  </div>
 </div><div class="mission  done" data-date="2026-05-21T00:30:00.0000000+01:00">
   <div class="mission-header" style="display:flex; gap:10px; align-items:center; width:100%">
     <span class="badge done">DONE</span>
     <div style="flex:1; min-width: 0;">
       <div class="mission-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
         <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="T-09: Optimisation des rapports de tokens quotidiens">T-09: Optimisation des rapports de tokens quotidiens</span>
-        <div style="display:flex; align-items:center; flex-shrink:0;"><button class='btn-details' onclick='showDetails("devcore", "T-09", this, event)' title='Voir les d&eacute;tails'>D&eacute;tails</button></div>
+        <div style="display:flex; align-items:center; flex-shrink:0; gap:2px;"><button class='btn-action btn-details' onclick='showDetails("devcore", "T-09", this, event)' title='Voir les d&eacute;tails'>D&eacute;tails</button><button class="btn-action btn-delete" title="Supprimer" onclick="deleteTask('devcore', 'T-09')">&#128465;</button></div>
       </div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - </div>
       <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-21 00:30:00 | Fin: 2026-05-21 01:36:10</div>
     </div>
   </div>
   <div class='steps-container'></div>
-    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
-    
-    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('devcore', 'T-09')">&#128465;</button>
-  </div>
 </div><div class="mission  done" data-date="2026-05-16T18:36:05.1912807+01:00">
   <div class="mission-header" style="display:flex; gap:10px; align-items:center; width:100%">
     <span class="badge done">DONE</span>
     <div style="flex:1; min-width: 0;">
       <div class="mission-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
         <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="T-08: fix: corriger l'encodage des accents UTF-8 dans gen_dashboard.ps1 et rafraichir le cockpit">T-08: fix: corriger l'encodage des accents UTF-8 dans gen_dashboard.ps1 et rafraichir le cockpit</span>
-        <div style="display:flex; align-items:center; flex-shrink:0;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>615K</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$0,53</span><button class='btn-details' onclick='showDetails("devcore", "T-08", this, event)' title='Voir les d&eacute;tails'>D&eacute;tails</button></div>
+        <div style="display:flex; align-items:center; flex-shrink:0; gap:2px;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>615K</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$0,53</span><button class='btn-action btn-details' onclick='showDetails("devcore", "T-08", this, event)' title='Voir les d&eacute;tails'>D&eacute;tails</button><button class="btn-action btn-delete" title="Supprimer" onclick="deleteTask('devcore', 'T-08')">&#128465;</button></div>
       </div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - 3/3 steps</div>
       <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-16 18:36:05 | Fin: 2026-05-16 19:36:05</div>
     </div>
   </div>
   <div class='steps-container'><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Affichage des etapes sur 1 seule ligne (ellipsis)</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Design eppure (borders colorees)</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Typographie et horodatage precis</div></div>
-    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
-    
-    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('devcore', 'T-08')">&#128465;</button>
-  </div>
 </div><div class="mission  done" data-date="2026-05-16T18:06:05.1912807+01:00">
   <div class="mission-header" style="display:flex; gap:10px; align-items:center; width:100%">
     <span class="badge done">DONE</span>
     <div style="flex:1; min-width: 0;">
       <div class="mission-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
         <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="T-07: Historique & Filtres temporels">T-07: Historique & Filtres temporels</span>
-        <div style="display:flex; align-items:center; flex-shrink:0;"></div>
+        <div style="display:flex; align-items:center; flex-shrink:0; gap:2px;"><button class="btn-action btn-delete" title="Supprimer" onclick="deleteTask('devcore', 'T-07')">&#128465;</button></div>
       </div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - 2/2 steps</div>
       <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-16 18:06:05 | Fin: 2026-05-16 18:36:05</div>
     </div>
   </div>
   <div class='steps-container'><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Groupement Projet > Worktree par accordeons</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Filtres dynamiques JS (1j, 7j, Mois)</div></div>
-    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
-    
-    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('devcore', 'T-07')">&#128465;</button>
-  </div>
 </div><div class="mission  done" data-date="2026-05-16T17:36:05.1912807+01:00">
   <div class="mission-header" style="display:flex; gap:10px; align-items:center; width:100%">
     <span class="badge done">DONE</span>
     <div style="flex:1; min-width: 0;">
       <div class="mission-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
         <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="T-06: Architecture Cockpit Single View">T-06: Architecture Cockpit Single View</span>
-        <div style="display:flex; align-items:center; flex-shrink:0;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>1.08M</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$0,95</span></div>
+        <div style="display:flex; align-items:center; flex-shrink:0; gap:2px;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>1.08M</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$0,95</span><button class="btn-action btn-delete" title="Supprimer" onclick="deleteTask('devcore', 'T-06')">&#128465;</button></div>
       </div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - 3/3 steps</div>
       <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-16 17:36:05 | Fin: 2026-05-16 18:06:05</div>
     </div>
   </div>
   <div class='steps-container'><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Layout 3 Colonnes Grid</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Scrollbars independantes</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Animation CSS pulse sur active-task</div></div>
-    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
-    
-    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('devcore', 'T-06')">&#128465;</button>
-  </div>
 </div><div class="mission  done" data-date="2026-05-16T16:36:05.1912807+01:00">
   <div class="mission-header" style="display:flex; gap:10px; align-items:center; width:100%">
     <span class="badge done">DONE</span>
     <div style="flex:1; min-width: 0;">
       <div class="mission-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
         <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="T-05: Dashboard Multi-Project Implementation">T-05: Dashboard Multi-Project Implementation</span>
-        <div style="display:flex; align-items:center; flex-shrink:0;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>2.24M</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$1,94</span></div>
+        <div style="display:flex; align-items:center; flex-shrink:0; gap:2px;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>2.24M</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$1,94</span><button class="btn-action btn-delete" title="Supprimer" onclick="deleteTask('devcore', 'T-05')">&#128465;</button></div>
       </div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - 5/5 steps</div>
       <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-16 16:36:05 | Fin: 2026-05-16 17:36:05</div>
     </div>
   </div>
   <div class='steps-container'><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Detection dossiers Memory</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Parsing JSON (tasks.json)</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Refactoring template.html</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Injection tags HTML</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Auto-refresh via gen_dashboard.ps1</div></div>
-    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
-    
-    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('devcore', 'T-05')">&#128465;</button>
-  </div>
 </div></details><details open style='margin-left: 15px; margin-bottom: 10px; border-left: 2px solid #2d3148; padding-left: 12px;'><summary><h3 style='font-size:11px; color:#94a3b8; margin-bottom:8px;'>Worktree: </h3></summary>
 <div class="mission  done" data-date="2026-05-15T10:11:42.1311300+01:00">
   <div class="mission-header" style="display:flex; gap:10px; align-items:center; width:100%">
@@ -386,68 +380,52 @@ details{margin-bottom: 8px}
     <div style="flex:1; min-width: 0;">
       <div class="mission-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
         <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="T-04: docs: Update PLATFORM_DOCUMENTATION.md for Multi-Projects (v6.3)">T-04: docs: Update PLATFORM_DOCUMENTATION.md for Multi-Projects (v6.3)</span>
-        <div style="display:flex; align-items:center; flex-shrink:0;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>5.6M</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$4,86</span><button class='btn-details' onclick='showDetails("devcore", "T-04", this, event)' title='Voir les d&eacute;tails'>D&eacute;tails</button></div>
+        <div style="display:flex; align-items:center; flex-shrink:0; gap:2px;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>5.6M</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$4,86</span><button class='btn-action btn-details' onclick='showDetails("devcore", "T-04", this, event)' title='Voir les d&eacute;tails'>D&eacute;tails</button><button class="btn-action btn-delete" title="Supprimer" onclick="deleteTask('devcore', 'T-04')">&#128465;</button></div>
       </div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: reasoning - 2/2 steps</div>
       <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-15 10:11:42 | Fin: 2026-05-16 16:46:57</div>
     </div>
   </div>
   <div class='steps-container'><div class='step-item '><span style='color:#475569'>[ ]</span> Self-review code quality</div><div class='step-item '><span style='color:#475569'>[ ]</span> Logger decisions dans Qdrant + Obsidian</div></div>
-    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
-    
-    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('devcore', 'T-04')">&#128465;</button>
-  </div>
 </div><div class="mission  done" data-date="2026-05-14T22:54:20.5588850+01:00">
   <div class="mission-header" style="display:flex; gap:10px; align-items:center; width:100%">
     <span class="badge done">DONE</span>
     <div style="flex:1; min-width: 0;">
       <div class="mission-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
         <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="T-03: feat: T-03 done, dashboard shows T-04 active">T-03: feat: T-03 done, dashboard shows T-04 active</span>
-        <div style="display:flex; align-items:center; flex-shrink:0;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>2.2M</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$1,93</span><button class='btn-details' onclick='showDetails("devcore", "T-03", this, event)' title='Voir les d&eacute;tails'>D&eacute;tails</button></div>
+        <div style="display:flex; align-items:center; flex-shrink:0; gap:2px;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>2.2M</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$1,93</span><button class='btn-action btn-details' onclick='showDetails("devcore", "T-03", this, event)' title='Voir les d&eacute;tails'>D&eacute;tails</button><button class="btn-action btn-delete" title="Supprimer" onclick="deleteTask('devcore', 'T-03')">&#128465;</button></div>
       </div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: bulk - 2/2 steps</div>
       <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Fin: 2026-05-14 22:54:20</div>
     </div>
   </div>
   <div class='steps-container'><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Tests integration bulk</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Documentation OpenAPI + README</div></div>
-    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
-    
-    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('devcore', 'T-03')">&#128465;</button>
-  </div>
 </div><div class="mission  done" data-date="2026-05-13T19:30:00.0000000+01:00">
   <div class="mission-header" style="display:flex; gap:10px; align-items:center; width:100%">
     <span class="badge done">DONE</span>
     <div style="flex:1; min-width: 0;">
       <div class="mission-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
         <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="T-02: Implementation TDD">T-02: Implementation TDD</span>
-        <div style="display:flex; align-items:center; flex-shrink:0;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>705K</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$0,60</span></div>
+        <div style="display:flex; align-items:center; flex-shrink:0; gap:2px;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>705K</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$0,60</span><button class="btn-action btn-delete" title="Supprimer" onclick="deleteTask('devcore', 'T-02')">&#128465;</button></div>
       </div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - 5/5 steps</div>
       <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Fin: 2026-05-13 19:30:00</div>
     </div>
   </div>
   <div class='steps-container'><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Setup tests structure</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Write failing tests</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Implement features</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Pass all tests</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Refactor</div></div>
-    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
-    
-    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('devcore', 'T-02')">&#128465;</button>
-  </div>
 </div><div class="mission  done" data-date="2026-05-13T18:00:00.0000000+01:00">
   <div class="mission-header" style="display:flex; gap:10px; align-items:center; width:100%">
     <span class="badge done">DONE</span>
     <div style="flex:1; min-width: 0;">
       <div class="mission-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
         <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="T-01: Spec + Plan implementation">T-01: Spec + Plan implementation</span>
-        <div style="display:flex; align-items:center; flex-shrink:0;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>1.84M</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$1,57</span></div>
+        <div style="display:flex; align-items:center; flex-shrink:0; gap:2px;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>1.84M</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$1,57</span><button class="btn-action btn-delete" title="Supprimer" onclick="deleteTask('devcore', 'T-01')">&#128465;</button></div>
       </div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: reasoning - 3/3 steps</div>
       <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Fin: 2026-05-13 18:00:00</div>
     </div>
   </div>
   <div class='steps-container'><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Brainstorming + validation approche</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Spec par sections (scope, interfaces, edge cases)</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Plan implementation granulaire</div></div>
-    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
-    
-    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('devcore', 'T-01')">&#128465;</button>
-  </div>
 </div></details></div></details><details open><summary><h2 style='color:#6366f1; cursor:pointer; padding:5px; background:#1a1d27; border-radius:4px;'>Projet : job_tracker</h2></summary><div style='padding: 10px 0;'>
 <details open style='margin-left: 15px; margin-bottom: 10px; border-left: 2px solid #2d3148; padding-left: 12px;'><summary><h3 style='font-size:11px; color:#94a3b8; margin-bottom:8px;'>Worktree: main</h3></summary>
 <div class="mission  done" data-date="2026-05-18T12:00:00.0000000+01:00">
@@ -456,102 +434,78 @@ details{margin-bottom: 8px}
     <div style="flex:1; min-width: 0;">
       <div class="mission-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
         <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="T-06: Session de travail auto (2026-05-18)">T-06: Session de travail auto (2026-05-18)</span>
-        <div style="display:flex; align-items:center; flex-shrink:0;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>1.08M</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$0,95</span></div>
+        <div style="display:flex; align-items:center; flex-shrink:0; gap:2px;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>1.08M</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$0,95</span><button class="btn-action btn-delete" title="Supprimer" onclick="deleteTask('job_tracker', 'T-06')">&#128465;</button></div>
       </div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - </div>
       <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-18 12:00:00 | Fin: 2026-05-18 13:30:00</div>
     </div>
   </div>
   
-    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
-    
-    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('job_tracker', 'T-06')">&#128465;</button>
-  </div>
 </div><div class="mission  done" data-date="2026-05-17T20:00:00.0000000+01:00">
   <div class="mission-header" style="display:flex; gap:10px; align-items:center; width:100%">
     <span class="badge done">DONE</span>
     <div style="flex:1; min-width: 0;">
       <div class="mission-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
         <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="T-05: Mise a jour du README avec le cockpit DEV_CORE, configuration et CLAUDE.md">T-05: Mise a jour du README avec le cockpit DEV_CORE, configuration et CLAUDE.md</span>
-        <div style="display:flex; align-items:center; flex-shrink:0;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>2.24M</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$1,94</span></div>
+        <div style="display:flex; align-items:center; flex-shrink:0; gap:2px;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>2.24M</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$1,94</span><button class="btn-action btn-delete" title="Supprimer" onclick="deleteTask('job_tracker', 'T-05')">&#128465;</button></div>
       </div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: bulk - </div>
       <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-17 20:00:00 | Fin: 2026-05-17 23:49:11</div>
     </div>
   </div>
   
-    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
-    
-    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('job_tracker', 'T-05')">&#128465;</button>
-  </div>
 </div><div class="mission  done" data-date="2026-05-17T18:03:00.0000000+01:00">
   <div class="mission-header" style="display:flex; gap:10px; align-items:center; width:100%">
     <span class="badge done">DONE</span>
     <div style="flex:1; min-width: 0;">
       <div class="mission-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
         <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="T-04: Documentation de l'outil de diagnostic (diagnose_system.py dans le README)">T-04: Documentation de l'outil de diagnostic (diagnose_system.py dans le README)</span>
-        <div style="display:flex; align-items:center; flex-shrink:0;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>5.6M</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$4,86</span></div>
+        <div style="display:flex; align-items:center; flex-shrink:0; gap:2px;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>5.6M</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$4,86</span><button class="btn-action btn-delete" title="Supprimer" onclick="deleteTask('job_tracker', 'T-04')">&#128465;</button></div>
       </div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: bulk - </div>
       <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-17 18:03:00 | Fin: 2026-05-17 19:53:22</div>
     </div>
   </div>
   
-    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
-    
-    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('job_tracker', 'T-04')">&#128465;</button>
-  </div>
 </div><div class="mission  done" data-date="2026-05-17T14:08:12.0000000+01:00">
   <div class="mission-header" style="display:flex; gap:10px; align-items:center; width:100%">
     <span class="badge done">DONE</span>
     <div style="flex:1; min-width: 0;">
       <div class="mission-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
         <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="T-03: Stabilisation de l'environnement de developpement (Docker/Redis)">T-03: Stabilisation de l'environnement de developpement (Docker/Redis)</span>
-        <div style="display:flex; align-items:center; flex-shrink:0;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>2.2M</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$1,93</span></div>
+        <div style="display:flex; align-items:center; flex-shrink:0; gap:2px;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>2.2M</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$1,93</span><button class="btn-action btn-delete" title="Supprimer" onclick="deleteTask('job_tracker', 'T-03')">&#128465;</button></div>
       </div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - </div>
       <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Fin: 2026-05-17 14:08:12</div>
     </div>
   </div>
   
-    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
-    
-    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('job_tracker', 'T-03')">&#128465;</button>
-  </div>
 </div><div class="mission  done" data-date="2026-05-18T01:26:37.0000000+01:00">
   <div class="mission-header" style="display:flex; gap:10px; align-items:center; width:100%">
     <span class="badge done">DONE</span>
     <div style="flex:1; min-width: 0;">
       <div class="mission-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
         <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="T-02: System And Database Diagnostic Tool (diagnose_system.py)">T-02: System And Database Diagnostic Tool (diagnose_system.py)</span>
-        <div style="display:flex; align-items:center; flex-shrink:0;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>705K</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$0,60</span></div>
+        <div style="display:flex; align-items:center; flex-shrink:0; gap:2px;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>705K</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$0,60</span><button class="btn-action btn-delete" title="Supprimer" onclick="deleteTask('job_tracker', 'T-02')">&#128465;</button></div>
       </div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - </div>
       <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Fin: 2026-05-18 01:26:37</div>
     </div>
   </div>
   
-    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
-    
-    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('job_tracker', 'T-02')">&#128465;</button>
-  </div>
 </div><div class="mission  done" data-date="2026-05-17T12:09:40.6561386+01:00">
   <div class="mission-header" style="display:flex; gap:10px; align-items:center; width:100%">
     <span class="badge done">DONE</span>
     <div style="flex:1; min-width: 0;">
       <div class="mission-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
         <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="T-01: Session de travail auto (2026-05-17)">T-01: Session de travail auto (2026-05-17)</span>
-        <div style="display:flex; align-items:center; flex-shrink:0;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>1.84M</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$1,57</span></div>
+        <div style="display:flex; align-items:center; flex-shrink:0; gap:2px;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>1.84M</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$1,57</span><button class="btn-action btn-delete" title="Supprimer" onclick="deleteTask('job_tracker', 'T-01')">&#128465;</button></div>
       </div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - </div>
       <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-17 12:09:40 | Fin: 2026-05-17 23:00:00</div>
     </div>
   </div>
   
-    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
-    
-    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('job_tracker', 'T-01')">&#128465;</button>
-  </div>
 </div></details></div></details><details open><summary><h2 style='color:#6366f1; cursor:pointer; padding:5px; background:#1a1d27; border-radius:4px;'>Projet : cea_dashboard</h2></summary><div style='padding: 10px 0;'>
 <details open style='margin-left: 15px; margin-bottom: 10px; border-left: 2px solid #2d3148; padding-left: 12px;'><summary><h3 style='font-size:11px; color:#94a3b8; margin-bottom:8px;'>Worktree: main</h3></summary>
 <div class="mission  done" data-date="2026-05-16T19:15:00+01:00">
@@ -560,68 +514,52 @@ details{margin-bottom: 8px}
     <div style="flex:1; min-width: 0;">
       <div class="mission-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
         <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="T-04: Déduplication des transactions du portefeuille (clé composite Date+Propriétaire+Compte) & KPIs">T-04: Déduplication des transactions du portefeuille (clé composite Date+Propriétaire+Compte) & KPIs</span>
-        <div style="display:flex; align-items:center; flex-shrink:0;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>5.6M</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$4,86</span></div>
+        <div style="display:flex; align-items:center; flex-shrink:0; gap:2px;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>5.6M</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$4,86</span><button class="btn-action btn-delete" title="Supprimer" onclick="deleteTask('cea_dashboard', 'T-04')">&#128465;</button></div>
       </div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - </div>
       <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-16 19:15:00 | Fin: 2026-05-16 20:30:00</div>
     </div>
   </div>
   
-    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
-    
-    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('cea_dashboard', 'T-04')">&#128465;</button>
-  </div>
 </div><div class="mission  done" data-date="2026-05-16T18:20:00+01:00">
   <div class="mission-header" style="display:flex; gap:10px; align-items:center; width:100%">
     <span class="badge done">DONE</span>
     <div style="flex:1; min-width: 0;">
       <div class="mission-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
         <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="T-03: Résolution compatibilité Agent (nettoyage et mise à jour de .gitignore)">T-03: Résolution compatibilité Agent (nettoyage et mise à jour de .gitignore)</span>
-        <div style="display:flex; align-items:center; flex-shrink:0;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>2.2M</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$1,93</span></div>
+        <div style="display:flex; align-items:center; flex-shrink:0; gap:2px;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>2.2M</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$1,93</span><button class="btn-action btn-delete" title="Supprimer" onclick="deleteTask('cea_dashboard', 'T-03')">&#128465;</button></div>
       </div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - </div>
       <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-16 18:20:00 | Fin: 2026-05-16 19:00:00</div>
     </div>
   </div>
   
-    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
-    
-    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('cea_dashboard', 'T-03')">&#128465;</button>
-  </div>
 </div><div class="mission  done" data-date="2026-05-16T15:45:00+01:00">
   <div class="mission-header" style="display:flex; gap:10px; align-items:center; width:100%">
     <span class="badge done">DONE</span>
     <div style="flex:1; min-width: 0;">
       <div class="mission-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
         <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="T-02: Correction authentification login.html (injection SCRIPT_ID, imports JS et API_URL via meta tag)">T-02: Correction authentification login.html (injection SCRIPT_ID, imports JS et API_URL via meta tag)</span>
-        <div style="display:flex; align-items:center; flex-shrink:0;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>705K</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$0,60</span></div>
+        <div style="display:flex; align-items:center; flex-shrink:0; gap:2px;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>705K</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$0,60</span><button class="btn-action btn-delete" title="Supprimer" onclick="deleteTask('cea_dashboard', 'T-02')">&#128465;</button></div>
       </div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - </div>
       <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-16 15:45:00 | Fin: 2026-05-16 18:10:00</div>
     </div>
   </div>
   
-    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
-    
-    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('cea_dashboard', 'T-02')">&#128465;</button>
-  </div>
 </div><div class="mission  done" data-date="2026-05-16T14:15:00+01:00">
   <div class="mission-header" style="display:flex; gap:10px; align-items:center; width:100%">
     <span class="badge done">DONE</span>
     <div style="flex:1; min-width: 0;">
       <div class="mission-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
         <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="T-01: Nettoyage du dépôt (suppression des versions android, native, js, pwa obsolètes pour ne garder que Vite)">T-01: Nettoyage du dépôt (suppression des versions android, native, js, pwa obsolètes pour ne garder que Vite)</span>
-        <div style="display:flex; align-items:center; flex-shrink:0;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>1.84M</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$1,57</span></div>
+        <div style="display:flex; align-items:center; flex-shrink:0; gap:2px;"><span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>1.84M</span><span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>$1,57</span><button class="btn-action btn-delete" title="Supprimer" onclick="deleteTask('cea_dashboard', 'T-01')">&#128465;</button></div>
       </div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: bulk - </div>
       <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Debut: 2026-05-16 14:15:00 | Fin: 2026-05-16 15:30:00</div>
     </div>
   </div>
   
-    <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
-    
-    <button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask('cea_dashboard', 'T-01')">&#128465;</button>
-  </div>
 </div></details></div></details>
     </div>
     <details open style="margin-top: 24px; border: 1px solid #2d3148; border-radius: 8px; background: #111420; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.4);">
@@ -887,7 +825,7 @@ details{margin-bottom: 8px}
 <div class="component">
   <div>
     <div class="component-name">task_sync</div>
-    <div class="component-detail">Dernier: 14 mins</div>
+    <div class="component-detail">Dernier: 1 mins</div>
   </div>
   <div class="status-ok">&#10003;</div>
 </div><div class="component">
@@ -899,7 +837,7 @@ details{margin-bottom: 8px}
 </div><div class="component">
   <div>
     <div class="component-name">session_end</div>
-    <div class="component-detail">Dernier: 14 mins</div>
+    <div class="component-detail">Dernier: 20 mins</div>
   </div>
   <div class="status-ok">&#10003;</div>
 </div>

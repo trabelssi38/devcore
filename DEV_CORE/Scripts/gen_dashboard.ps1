@@ -125,7 +125,7 @@ foreach ($p in $projects) {
             if ($t.PSObject.Properties["details"] -and $t.details) {
                 $key = "$($p.Name)_$($t.id)"
                 $allDetailsMap[$key] = $t.details
-                $detailsButton = "<button class='btn-details' onclick='showDetails(`"$($p.Name)`", `"$($t.id)`", this, event)' title='Voir les d&eacute;tails'>D&eacute;tails</button>"
+                $detailsButton = "<button class='btn-action btn-details' onclick='showDetails(`"$($p.Name)`", `"$($t.id)`", this, event)' title='Voir les d&eacute;tails'>D&eacute;tails</button>"
             }
 
             # Gestion des étapes détaillées
@@ -162,16 +162,9 @@ foreach ($p in $projects) {
             }
 
             $doneButton = if ($t.status -ne "done") {
-                '<button style="background:#14532d; border:1px solid #22c55e; color:#86efac; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer; margin-right:6px;" title="Cl&ocirc;turer" onclick="completeTask(''{0}'', ''{1}'')">&#10004;</button>' -f $p.Name, $t.id
+                '<button class="btn-action btn-done" title="Cl&ocirc;turer" onclick="completeTask(''{0}'', ''{1}'')">&#10004;</button>' -f $p.Name, $t.id
             } else { "" }
-            $deleteButton = '<button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask(''{0}'', ''{1}'')">&#128465;</button>' -f $p.Name, $t.id
-            
-            $actionsHtml = @"
-  <div style="margin-top: 10px; padding: 6px 10px; background: rgba(0,0,0,0.2); border-radius: 4px; display: flex; gap: 8px; align-items: center; border-top: 1px solid #2d3148;">
-    $doneButton
-    $deleteButton
-  </div>
-"@
+            $deleteButton = '<button class="btn-action btn-delete" title="Supprimer" onclick="deleteTask(''{0}'', ''{1}'')">&#128465;</button>' -f $p.Name, $t.id
 
             $tasksHtml += @"
 <div class="mission $activeClass $($t.status)" data-date="$taskDate">
@@ -180,14 +173,13 @@ foreach ($p in $projects) {
     <div style="flex:1; min-width: 0;">
       <div class="mission-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
         <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="$($t.id): $($t.title)">$($t.id): $($t.title)</span>
-        <div style="display:flex; align-items:center; flex-shrink:0;">$taskTokensStr$taskCostStr$detailsButton</div>
+        <div style="display:flex; align-items:center; flex-shrink:0; gap:2px;">$taskTokensStr$taskCostStr$detailsButton$doneButton$deleteButton</div>
       </div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: $($t.mode) - $stepsStr</div>
       $datesHtml
     </div>
   </div>
   $stepsDetailHtml
-  $actionsHtml
 </div>
 "@
         }

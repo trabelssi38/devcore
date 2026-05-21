@@ -88,25 +88,55 @@ details{margin-bottom: 8px}
 .token-name{font-size:11px;color:#e2e8f0}
 .token-reduction{font-size:11px;color:#22c55e;font-weight:600}
 
-/* Sleek interactive Details button styling */
-.btn-details {
-  background: rgba(99, 102, 241, 0.1);
-  border: 1px solid rgba(99, 102, 241, 0.3);
-  color: #a5b4fc;
+/* Premium interactive Action buttons styling */
+.btn-action {
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 9px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
-  margin-left: 6px;
+  margin-left: 4px;
   border-style: solid;
+  border-width: 1px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 18px;
+  user-select: none;
+}
+.btn-details {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.3);
+  color: #a5b4fc;
 }
 .btn-details:hover {
   background: rgba(99, 102, 241, 0.25);
   border-color: #6366f1;
   color: #ffffff;
   box-shadow: 0 0 8px rgba(99, 102, 241, 0.3);
+}
+.btn-done {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #34d399;
+}
+.btn-done:hover {
+  background: rgba(16, 185, 129, 0.3);
+  border-color: #10b981;
+  color: #ffffff;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+}
+.btn-delete {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #f87171;
+}
+.btn-delete:hover {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: #ef4444;
+  color: #ffffff;
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
 }
 
 /* Premium Info-Bubble / Tooltip styling with glassmorphism */
