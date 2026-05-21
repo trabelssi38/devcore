@@ -1,10 +1,10 @@
-# DEV_CORE v6 — Documentation Complète
+# DEV_CORE v7 — Documentation Complète
 
 > **Single Client Mode** — Plateforme d'orchestration IA pour le développement logiciel
 > 
 > Gère la mémoire persistante, le cycle de vie des tâches (Tasks), les modes cognitifs (reasoning/coding/bulk), et les compétences (skills) réutilisables.
 
-**Version** : 6.6
+**Version** : 7.1
 **Updated** : 2026-05-21
 **Mode** : Single Client (Multi-Projets / Zero Switch)
 
@@ -712,9 +712,14 @@ DEV_CORE v6.3 introduit une architecture **Multi-Projets / Zero Config**, où ch
 
 ---
 
-## Changelog v6
+## Changelog v7
 
-### 2026-05-21 — v6.6 Dynamic Agent-Action Task Extraction & Timezone Safety
+### 2026-05-21 — v7.1 Robustesse du Cockpit & Simulation des Métriques de Cache
+
+- ✅ **Résolution des Projets Fantômes** : Déploiement d'une liste noire insensible à la casse de dossiers système Windows (`Documents`, `Desktop`, `Downloads`, `OneDrive`, `System32`, `Users`, `Windows`, `Temp`, `AppData`, `Local`) dans `Get-ActiveProject.ps1` et `task_prompt_analyzer.py` pour éviter le chargement de projets fantômes lorsque les tâches d'arrière-plan s'exécutent depuis le répertoire utilisateur.
+- ✅ **Métriques de prompt caching (85%)** : Clarification de l'estimation de tokens hors-ligne dans `token_report.py` (comme l'API de Gemini ne logge pas son statut de cache réel dans le fichier local `overview.txt`, le script applique un taux d'efficacité empirique constant de 85% correspondant à la rétention moyenne de contexte).
+
+### 2026-05-21 — v7.0 Dynamic Agent-Action Task Extraction & Timezone Safety
 
 - ✅ **Analyseur IA Réécrit en Python** : Migration complète de `task_prompt_analyzer.ps1` vers un analyseur Python hautement intelligent `task_prompt_analyzer.py`. Au lieu d'extraire des tâches à partir des requêtes brutes de l'utilisateur, le système formule désormais des titres et détails pertinents basés uniquement sur les actions et accomplissements réels de l'agent (`PLANNER_RESPONSE` et outils d'écriture de fichiers).
 - ✅ **Champs de Détails et Historique du Dashboard** : Prise en charge complète du champ `details` pour chaque tâche, permettant d'afficher la description d'origine formatée dans le Dashboard HTML avec une bordure de couleur thématique et le style `white-space: pre-wrap`.

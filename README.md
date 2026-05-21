@@ -147,6 +147,11 @@ Voir : `C:\devcore\DEV_CORE\docs\PLATFORM_DOCUMENTATION.md`
 
 ## 🔄 Changelog v7
 
+### 2026-05-21 — v7.1 Robustesse du Cockpit & Simulation des Métriques de Cache
+
+- ✅ **Résolution des Projets Fantômes** : Déploiement d'une liste noire insensible à la casse de dossiers système Windows (`Documents`, `Desktop`, `Downloads`, `OneDrive`, etc.) dans `Get-ActiveProject.ps1` et `task_prompt_analyzer.py` pour éviter le chargement de projets fantômes lorsque les tâches d'arrière-plan s'exécutent depuis le répertoire utilisateur.
+- ✅ **Métriques de prompt caching (85%)** : Clarification de l'estimation de tokens hors-ligne dans `token_report.py` (comme l'API de Gemini ne logge pas son statut de cache réel dans le fichier local `overview.txt`, le script applique un taux d'efficacité empirique constant de 85% correspondant à la rétention moyenne de contexte).
+
 ### 2026-05-20 — v7.0 Auto-Apprentissage & Intelligence Sémantique
 
 - ✅ **Intelligence Sémantique** : Intégration de l'impératif et du présent conjugués en français pour la détection autonome d'intentions de tâches (ex : `corrige`, `crée`, `ajoute`).

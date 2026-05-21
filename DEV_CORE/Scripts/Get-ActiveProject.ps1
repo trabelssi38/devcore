@@ -41,6 +41,12 @@ try {
     $projectName = $projectName -replace '[\\/:*?"<>|]', '_'
     $worktreeName = $worktreeName -replace '[\\/:*?"<>|]', '_'
     
+    # Exclure les répertoires système et personnels courants du mécanisme de secours
+    $systemDirs = @("Documents", "Desktop", "Downloads", "OneDrive", "System32", "Users", "Windows", "Temp", "AppData", "Local")
+    if ($systemDirs -contains $projectName) {
+        $projectName = "devcore"
+    }
+    
     # Mettre en cache
     $env:DEVCORE_ACTIVE_PROJECT_PWD = $currentPwd
     $env:DEVCORE_ACTIVE_PROJECT_NAME = $projectName
@@ -49,6 +55,6 @@ try {
     # Retourner uniquement le nom canonique
     Write-Output $projectName
 } catch {
-    # Par sécurité, utiliser 'default' en cas d'erreur inattendue
-    Write-Output "default_project"
+    # Par sécurité, utiliser 'devcore' en cas d'erreur inattendue
+    Write-Output "devcore"
 }

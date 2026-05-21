@@ -5,8 +5,10 @@ import subprocess
 from datetime import datetime
 
 def get_active_project(dev_core, dev_core_data):
+    system_dirs = {"documents", "desktop", "downloads", "onedrive", "system32", "users", "windows", "temp", "appdata", "local"}
+    
     env_name = os.environ.get("DEVCORE_ACTIVE_PROJECT_NAME")
-    if env_name:
+    if env_name and env_name.lower() not in system_dirs:
         return env_name
         
     try:
@@ -21,14 +23,14 @@ def get_active_project(dev_core, dev_core_data):
                 projectName = os.path.basename(os.path.dirname(abs_git_dir))
             else:
                 projectName = os.path.basename(abs_git_dir)
-            if projectName:
+            if projectName and projectName.lower() not in system_dirs:
                 return re.sub(r'[\\/:*?"<>|]', '_', projectName)
     except:
         pass
         
     try:
         parent_name = os.path.basename(os.path.dirname(dev_core))
-        if parent_name:
+        if parent_name and parent_name.lower() not in system_dirs:
             return re.sub(r'[\\/:*?"<>|]', '_', parent_name)
     except:
         pass
