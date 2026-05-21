@@ -31,8 +31,13 @@ if [ -n "$TID" ]; then
     \$tot=if(\$t.PSObject.Properties['steps_total']){\$t.steps_total}else{1}
     \$new=[math]::Min(\$cur+1,\$tot)
     \$t|Add-Member -NotePropertyName 'steps_done' -NotePropertyValue \$new -Force
+    if(\$new -ge \$tot){
+        \$t.status = 'done'
+        \$t|Add-Member -NotePropertyName 'completed_at' -NotePropertyValue (Get-Date -Format 'o') -Force
+        Write-Host \"  [DEV_CORE] Tache '$TID' marquee done\"
+    }
     \$b|ConvertTo-Json -Depth 10|Set-Content \$f -Encoding UTF8
-    Write-Host \"  [DEV_CORE] Step \$new/\$tot enregistree pour \$TID\"
+    Write-Host \"  [DEV_CORE] Step \$new/\$tot enregistree pour '$TID'\"
     if(\$new -ge \$tot){
         & '$SCRIPTS/task_done.ps1' -Force
     }
