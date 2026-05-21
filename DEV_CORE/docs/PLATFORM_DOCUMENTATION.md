@@ -4,8 +4,8 @@
 > 
 > Gère la mémoire persistante, le cycle de vie des tâches (Tasks), les modes cognitifs (reasoning/coding/bulk), et les compétences (skills) réutilisables.
 
-**Version** : 6.5
-**Updated** : 2026-05-18
+**Version** : 6.6
+**Updated** : 2026-05-21
 **Mode** : Single Client (Multi-Projets / Zero Switch)
 
 ---
@@ -220,7 +220,7 @@ T-01 (reasoning) → T-02 (coding) → T-03 (bulk) → T-04 (reasoning)
 | `obsidian_sync.ps1` | Auto | Sync Obsidian |
 | `task_git_scanner.ps1` | Launch + dc task scan | Détecte tags [T-XX] dans les commits git |
 | `task_spec_parser.ps1` | dc task scan | Parse fichiers spec pour extraire tâches |
-| `task_prompt_analyzer.ps1` | dc task scan | Analyse sessions pour suggérer tâches |
+| `task_prompt_analyzer.py` | dc task scan | Analyse les accomplissements et actions de l'agent pour formuler des tâches réelles |
 | `lesson_extractor.ps1` | endday | Extraction leçons depuis sessions |
 
 ---
@@ -494,7 +494,7 @@ DEV_CORE v6 inclut 3 scanners automatiques pour detecter les taches :
 |---------|--------|-------------|
 | `task_git_scanner.ps1` | Commits git | Detecte les tags [T-XX] manquants dans tasks.json |
 | `task_spec_parser.ps1` | Fichiers spec | Extrait sections (##, ###) et TODOs |
-| `task_prompt_analyzer.ps1` | Sessions | Analyse patterns verbe+action pour suggerer |
+| `task_prompt_analyzer.py` | Sessions | Analyse les accomplissements réels et fichiers modifiés de l'agent |
 
 ### Workflow
 
@@ -503,7 +503,7 @@ dc task scan
     |
     +-- task_git_scanner.ps1   -> task_git_queue.jsonl
     +-- task_spec_parser.ps1   -> task_spec_queue.jsonl
-    +-- task_prompt_analyzer.ps1 -> task_prompt_queue.jsonl
+    +-- task_prompt_analyzer.py -> task_prompt_queue.jsonl
     |
     v
 dc task sync
@@ -714,6 +714,13 @@ DEV_CORE v6.3 introduit une architecture **Multi-Projets / Zero Config**, où ch
 
 ## Changelog v6
 
+### 2026-05-21 — v6.6 Dynamic Agent-Action Task Extraction & Timezone Safety
+
+- ✅ **Analyseur IA Réécrit en Python** : Migration complète de `task_prompt_analyzer.ps1` vers un analyseur Python hautement intelligent `task_prompt_analyzer.py`. Au lieu d'extraire des tâches à partir des requêtes brutes de l'utilisateur, le système formule désormais des titres et détails pertinents basés uniquement sur les actions et accomplissements réels de l'agent (`PLANNER_RESPONSE` et outils d'écriture de fichiers).
+- ✅ **Champs de Détails et Historique du Dashboard** : Prise en charge complète du champ `details` pour chaque tâche, permettant d'afficher la description d'origine formatée dans le Dashboard HTML avec une bordure de couleur thématique et le style `white-space: pre-wrap`.
+- ✅ **Horodatage Dynamique & fuseaux horaires** : Détermination dynamique des heures de début (`started_at`) et de fin (`completed_at`) calculées automatiquement à partir de la date de modification des répertoires de session d'Antigravity, avec formatage rigoureux respectant le fuseau horaire local (`+01:00`).
+- ✅ **Synchronisation Robuste & Déduplication** : Mise à jour de `task_sync.ps1` pour traiter et fusionner intelligemment les métadonnées étendues (status, dates, détails, étapes), avec déduplication stricte par ID et par titre de tâche.
+
 ### 2026-05-18 — v6.5 Cockpit API Operations & Task Synchronization
 
 - ✅ **Boutons d'Actions Intégrés** : Ajout de boutons interactifs ("Clôturer" et "Supprimer") directement sur les tâches dans le Cockpit HTML.
@@ -778,7 +785,7 @@ DEV_CORE v6.3 introduit une architecture **Multi-Projets / Zero Config**, où ch
 
 - ✅ `task_git_scanner.ps1` — Scan git commits pour tags [T-XX]
 - ✅ `task_spec_parser.ps1` — Parse fichiers spec -> taches candidates
-- ✅ `task_prompt_analyzer.ps1` — Analyse sessions pour suggestions
+- ✅ `task_prompt_analyzer.py` — Formule intelligemment les tâches d'après les actions de l'agent en Python
 - ✅ `dc task scan` — Lance les 3 scanners
 - ✅ `dc task sync` — Synchronise dans tasks.json (max 10/sync)
 - ✅ `launch.ps1` — Integration detection automatique (etape 5/8)

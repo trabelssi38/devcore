@@ -88,6 +88,13 @@ foreach ($p in $projects) {
             $activeClass = if ($t.status -eq "active") { "active-task" } else { "" }
             $stepsStr   = if ($t.PSObject.Properties["steps_total"] -and $t.steps_total -gt 1) { "$($t.steps_done)/$($t.steps_total) steps" } else { "" }
             
+            # Gestion du bloc de description (details)
+            $detailsHtml = ""
+            if ($t.PSObject.Properties["details"] -and $t.details) {
+                $safeDetails = $t.details -replace '<', '&lt;' -replace '>', '&gt;' -replace '`n', '<br/>'
+                $detailsHtml = "<div class='task-details' style='margin: 8px 0; padding: 10px; background: rgba(99, 102, 241, 0.05); border-left: 3px solid #6366f1; border-radius: 4px; font-size: 11px; color: #cbd5e1; line-height: 1.5; white-space: pre-wrap;'><strong>Description d'origine :</strong><br/>$safeDetails</div>"
+            }
+
             # Gestion des étapes détaillées
             $stepsDetailHtml = ""
             if ($t.PSObject.Properties["steps"]) {
@@ -143,6 +150,7 @@ foreach ($p in $projects) {
       $datesHtml
     </div>
   </summary>
+  $detailsHtml
   $stepsDetailHtml
   $actionsHtml
 </details>

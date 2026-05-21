@@ -30,7 +30,7 @@ $suggestions = @()
 foreach ($src in $queues.Keys) {
     $path = $queues[$src]
     if (Test-Path $path) {
-        $lines = @(Get-Content $path -ErrorAction SilentlyContinue)
+        $lines = @(Get-Content $path -Encoding UTF8 -ErrorAction SilentlyContinue)
         $selectedLines = $lines | Select-Object -First $MaxPerSource
         foreach ($line in $selectedLines) {
             try {
@@ -71,9 +71,9 @@ if (-not (Test-Path $tFile)) {
         current_task=$null
         tasks=@()
     } | ConvertTo-Json -Depth 5 | Set-Content $tFile -Encoding UTF8
-    $board = Get-Content $tFile -Raw | ConvertFrom-Json
+    $board = Get-Content $tFile -Raw -Encoding UTF8 | ConvertFrom-Json
 } else {
-    $board = Get-Content $tFile -Raw | ConvertFrom-Json
+    $board = Get-Content $tFile -Raw -Encoding UTF8 | ConvertFrom-Json
 }
 
 # Ajouter les suggestions comme taches
@@ -91,21 +91,26 @@ foreach ($s in $suggestions) {
         $id = "T-" + ($nextNum.ToString().PadLeft(2,'0'))
     }
 
-    # Ne pas dupliquer
-    if ($id -notin $existingIds) {
-        $mode = if ($s.mode) { $s.mode } else { "coding" }
-        $title = if ($s.title) { $s.title } else { $s.reason }
+    $mode = if ($s.mode) { $s.mode } else { "coding" }
+    $title = if ($s.title) { $s.title } else { $s.reason }
+    $details = if ($s.PSObject.Properties["details"]) { $s.details } else { $null }
 
+    # Ne pas dupliquer (par ID et par Titre exact)
+    if ($id -notin $existingIds -and $title -notin ($board.tasks | ForEach-Object { $_.title })) {
         $t = [PSCustomObject]@{
             id         = $id
             title      = $title
             mode       = $mode
-            status     = "todo"
-            steps_total= 1
-            steps_done = 0
+            status     = if ($s.PSObject.Properties["status"] -and $s.status) { $s.status } else { "todo" }
+            steps_total= if ($s.PSObject.Properties["steps_total"] -and $s.steps_total -ne $null) { [int]$s.steps_total } else { 1 }
+            steps_done = if ($s.PSObject.Properties["steps_done"] -and $s.steps_done -ne $null) { [int]$s.steps_done } else { 0 }
             depends_on = $null
             source     = $s.source
             worktree   = if ($s.worktree) { $s.worktree } elseif ($env:DEVCORE_ACTIVE_WORKTREE_NAME) { $env:DEVCORE_ACTIVE_WORKTREE_NAME } else { "main" }
+            details    = $details
+            steps      = if ($s.PSObject.Properties["steps"]) { $s.steps } else { $null }
+            started_at   = if ($s.PSObject.Properties["started_at"] -and $s.started_at) { $s.started_at } elseif ($s.status -eq "done") { [datetime]::Now.AddHours(-1).ToString("yyyy-MM-ddTHH:mm:ss.ffffff0zzz") } elseif ($s.status -eq "active") { [datetime]::Now.ToString("yyyy-MM-ddTHH:mm:ss.ffffff0zzz") } else { $null }
+            completed_at = if ($s.PSObject.Properties["completed_at"] -and $s.completed_at) { $s.completed_at } elseif ($s.status -eq "done") { [datetime]::Now.ToString("yyyy-MM-ddTHH:mm:ss.ffffff0zzz") } else { $null }
         }
         $board.tasks += $t
         $existingIds += $id
