@@ -329,7 +329,7 @@ function deleteTask(project, id) {
 
 const taskDetailsMap = {{TASK_DETAILS_MAP}};
 
-function showDetails(projectName, taskId, btnEl, event) {
+function showDetails(projectName, taskId, taskStatus, btnEl, event) {
   if (event) event.stopPropagation();
   const key = `${projectName}_${taskId}`;
   const text = taskDetailsMap[key];
@@ -344,12 +344,23 @@ function showDetails(projectName, taskId, btnEl, event) {
     .replace(/'/g, "&#039;")
     .replace(/\n/g, "<br/>");
 
+  const doneBtn = taskStatus !== 'done' 
+    ? `<button class="btn-action btn-done" style="margin-left:0; margin-right:8px; padding:4px 10px; height:24px; font-size:10px;" onclick="completeTask('${projectName}', '${taskId}')">✔ Cl&ocirc;turer</button>` 
+    : '';
+  const deleteBtn = `<button class="btn-action btn-delete" style="margin-left:0; padding:4px 10px; height:24px; font-size:10px;" onclick="deleteTask('${projectName}', '${taskId}')">&#128465; Supprimer</button>`;
+
   bubble.innerHTML = `
     <div class="bubble-header">
       <span>D&eacute;tails : ${taskId}</span>
       <button class="bubble-close" onclick="closeDetails(event)">&times;</button>
     </div>
-    <div class="bubble-content">${safeText}</div>
+    <div class="bubble-content">
+      <div style="margin-bottom:12px;">${safeText}</div>
+      <div style="display:flex; justify-content:flex-end; border-top:1px solid rgba(255,255,255,0.08); padding-top:10px; margin-top:10px;">
+        ${doneBtn}
+        ${doneBtn ? '' : '<span style="color:#86efac; font-size:10px; display:inline-flex; align-items:center; margin-right:auto;">✓ Cl&ocirc;tur&eacute;e</span>'}${deleteBtn}
+      </div>
+    </div>
   `;
 
   bubble.style.display = 'block';

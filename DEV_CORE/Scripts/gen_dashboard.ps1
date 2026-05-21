@@ -125,7 +125,7 @@ foreach ($p in $projects) {
             if ($t.PSObject.Properties["details"] -and $t.details) {
                 $key = "$($p.Name)_$($t.id)"
                 $allDetailsMap[$key] = $t.details
-                $detailsButton = "<button class='btn-action btn-details' onclick='showDetails(`"$($p.Name)`", `"$($t.id)`", this, event)' title='Voir les d&eacute;tails'>D&eacute;tails</button>"
+                $detailsButton = "<button class='btn-action btn-details' onclick='showDetails(`"$($p.Name)`", `"$($t.id)`", `"$($t.status)`", this, event)' title='Voir les d&eacute;tails'>D&eacute;tails</button>"
             }
 
             # Gestion des étapes détaillées
@@ -173,7 +173,10 @@ foreach ($p in $projects) {
     <div style="flex:1; min-width: 0;">
       <div class="mission-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
         <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="$($t.id): $($t.title)">$($t.id): $($t.title)</span>
-        <div style="display:flex; align-items:center; flex-shrink:0; gap:2px;">$taskTokensStr$taskCostStr$detailsButton$doneButton$deleteButton</div>
+        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0;">
+          <div style="display:flex; align-items:center; gap:2px;">$taskTokensStr$taskCostStr$detailsButton</div>
+          <div style="display:flex; align-items:center; gap:2px;">$doneButton$deleteButton</div>
+        </div>
       </div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: $($t.mode) - $stepsStr</div>
       $datesHtml
