@@ -11,7 +11,7 @@ $tFile = "$DEV_CORE_DATA\Memory\$projName\tasks.json"
 $issues = @()
 
 if (-not (Test-Path $tFile)) {
-    Write-Host "  ⚠ Le fichier tasks.json est introuvable pour le projet $projName." -ForegroundColor Red
+    Write-Host "  [!] Le fichier tasks.json est introuvable pour le projet $projName." -ForegroundColor Red
     exit 1
 }
 
@@ -28,7 +28,7 @@ if ($board) {
         # Détecter les caractères arabes erronés (encodage cassé/mojibake)
         if ($task.title -match '[\u0600-\u06FF]' -or 
             ($task.details -and $task.details -match '[\u0600-\u06FF]')) {
-            $issues += "[ENCODING] $($task.id): caractères corrompus (mojibake arabe) détectés dans le titre ou les détails"
+            $issues += "[ENCODING] $($task.id): caracteres corrompus (mojibake arabe) detectes dans le titre ou les details"
         }
         # Vérifier les titres vides
         if (-not $task.title -or $task.title.Trim() -eq "") {
@@ -36,7 +36,7 @@ if ($board) {
         }
         # Vérifier les dates manquantes sur les tâches done
         if ($task.status -eq "done" -and -not $task.completed_at) {
-            $issues += "[DATE] $($task.id): tâche terminee (done) sans date de completion completed_at"
+            $issues += "[DATE] $($task.id): tache terminee (done) sans date de completion completed_at"
         }
     }
 }
@@ -60,7 +60,7 @@ try {
             foreach ($tag in $gitTags.Keys) {
                 $task = $board.tasks | Where-Object { $_.id -eq $tag }
                 if (-not $task) {
-                    $issues += "[MISSING] $tag est mentionné dans l'historique Git mais absent de tasks.json"
+                    $issues += "[MISSING] $tag est mentionne dans l'historique Git mais absent de tasks.json"
                 } elseif ($task.title -ne $gitTags[$tag] -and $gitTags[$tag]) {
                     $issues += "[MISMATCH] $tag titre dans tasks.json ('$($task.title)') ne correspond pas au message du commit Git ('$($gitTags[$tag])')"
                 }
@@ -70,7 +70,7 @@ try {
         $issues += "[GIT] Impossible de lire l'historique de commits ou aucun commit dans les 30 derniers jours."
     }
 } catch {
-    $issues += "[GIT] Erreur lors de l'exécution de git log: $_"
+    $issues += "[GIT] Erreur lors de l'execution de git log: $_"
 } finally {
     Pop-Location
 }
@@ -83,15 +83,15 @@ Write-Host "  ========================================" -ForegroundColor DarkGra
 Write-Host ""
 
 if ($issues.Count -gt 0) {
-    Write-Host "  ⚠ $($issues.Count) problème(s) d'intégrité détecté(s):" -ForegroundColor Yellow
+    Write-Host "  [!] $($issues.Count) probleme(s) d'integrite detecte(s):" -ForegroundColor Yellow
     Write-Host ""
     $issues | ForEach-Object { Write-Host "    $_" -ForegroundColor Yellow }
     Write-Host ""
     exit 1
 } else {
-    Write-Host "  ✓ Intégrité parfaite — 0 problème détecté" -ForegroundColor Green
-    Write-Host "  ✓ Encodage UTF-8 sain, sans mojibake" -ForegroundColor Green
-    Write-Host "  ✓ Alignement parfait avec les commits Git" -ForegroundColor Green
+    Write-Host "  [OK] Integrite parfaite - 0 probleme detecte" -ForegroundColor Green
+    Write-Host "  [OK] Encodage UTF-8 sain, sans mojibake" -ForegroundColor Green
+    Write-Host "  [OK] Alignement parfait avec les commits Git" -ForegroundColor Green
     Write-Host ""
     exit 0
 }

@@ -1,39 +1,49 @@
-# session_end.ps1 -- DEV_CORE v6.1
+# session_end.ps1 -- DEV_CORE v7.1
 # Execute a la fin de session Claude Code
 # 1. Sync Qdrant
 # 2. Sync Obsidian
 # 3. Genere metrics
 
-$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
-$TODAY = Get-Date -Format "yyyy-MM-dd"
+$DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
+$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
+$TODAY         = Get-Date -Format "yyyy-MM-dd"
+$LOG_DIR       = "$DEV_CORE_DATA\Logs\scripts"
+$LOG           = "$LOG_DIR\session_end_$TODAY.log"
+
+New-Item -ItemType Directory -Path $LOG_DIR -Force | Out-Null
+
+function Log {
+    param($msg, $color="Cyan")
+    Write-Host "  $msg" -ForegroundColor $color
+    Add-Content $LOG "[$(Get-Date -f HH:mm:ss)] $msg" -ErrorAction SilentlyContinue
+}
 
 Write-Host ""
-Write-Host "  DEV_CORE v6.1 -- Session End" -ForegroundColor Cyan
-Write-Host "  ========================================" -ForegroundColor DarkGray
-Write-Host "  Date: $TODAY" -ForegroundColor White
+Log "DEV_CORE v7.1 -- Session End" "Cyan"
+Log "========================================" "DarkGray"
+Log "Date: $TODAY" "White"
 Write-Host ""
 
-Write-Host "  [1/6] Sync Qdrant..." -ForegroundColor Cyan
-& "$DEV_CORE\Scripts\qdrant_sync.ps1"
+Log "[1/6] Sync Qdrant..." "Cyan"
+& "$DEV_CORE\Scripts\qdrant_sync.ps1" 2>&1 | Tee-Object -FilePath $LOG -Append
 
-Write-Host "  [2/6] Sync Obsidian..." -ForegroundColor Cyan
-& "$DEV_CORE\Scripts\obsidian_sync.ps1"
+Log "[2/6] Sync Obsidian..." "Cyan"
+& "$DEV_CORE\Scripts\obsidian_sync.ps1" 2>&1 | Tee-Object -FilePath $LOG -Append
 
-Write-Host "  [3/6] Generation metrics..." -ForegroundColor Cyan
-& "$DEV_CORE\Scripts\gen_metrics.ps1"
+Log "[3/6] Generation metrics..." "Cyan"
+& "$DEV_CORE\Scripts\gen_metrics.ps1" 2>&1 | Tee-Object -FilePath $LOG -Append
 
-Write-Host "  [4/6] Task scan..." -ForegroundColor Cyan
-& "$DEV_CORE\Scripts\task_scan.ps1"
+Log "[4/6] Task scan..." "Cyan"
+& "$DEV_CORE\Scripts\task_scan.ps1" 2>&1 | Tee-Object -FilePath $LOG -Append
 
-Write-Host "  [5/6] Task sync + Dashboard..." -ForegroundColor Cyan
-& "$DEV_CORE\Scripts\task_sync.ps1"
+Log "[5/6] Task sync + Dashboard..." "Cyan"
+& "$DEV_CORE\Scripts\task_sync.ps1" 2>&1 | Tee-Object -FilePath $LOG -Append
 
-Write-Host "  [6/6] Endday check..." -ForegroundColor Cyan
-& "$DEV_CORE\Scripts\endday_check.ps1" 2>$null
+Log "[6/6] Endday check..." "Cyan"
+& "$DEV_CORE\Scripts\endday_check.ps1" 2>$null | Tee-Object -FilePath $LOG -Append
 
 Write-Host ""
-Write-Host "  ========================================" -ForegroundColor Green
-Write-Host "  ||  Session end complete               ||" -ForegroundColor Green
-Write-Host "  ========================================" -ForegroundColor Green
+Log "========================================" "Green"
+Log "||  Session end complete               ||" "Green"
+Log "========================================" "Green"
 Write-Host ""
-

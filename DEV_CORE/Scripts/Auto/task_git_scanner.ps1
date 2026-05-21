@@ -28,7 +28,7 @@ try {
         return
     }
 
-    # 2. Extraire les tags [T-XX] et leurs messages de commit associant le plus récent
+    # 2. Extraire les tags [T-XX] et leurs messages de commit
     $foundTags = @{}
     foreach ($line in $commits) {
         if ($line -match '\[T-(\d+)\]') {
@@ -41,11 +41,15 @@ try {
             
             if (-not $foundTags.ContainsKey($tag)) {
                 $foundTags[$tag] = @{
-                    title = $cleanTitle
-                    hash = $hash
-                    date = $parts[2]
+                    title   = $cleanTitle
+                    hash    = $hash
+                    date    = $parts[2]
+                    commits = @($msg)
                 }
                 Log "Commit detecte : $tag ($cleanTitle)" "Gray"
+            } else {
+                # Accumuler le commit pour les details
+                $foundTags[$tag].commits += $msg
             }
         }
     }
@@ -68,10 +72,22 @@ try {
         $board | Add-Member -NotePropertyName "detected_from_git" -NotePropertyValue @() -Force
     }
 
-    # 4. Comparer avec tasks.json et synchroniser/mettre à jour les titres
+    # 4. Comparer avec tasks.json et synchroniser/mettre à jour les titres et details
     $missing = @()
     foreach ($tag in $foundTags.Keys) {
-        $exists = $board.tasks | Where-Object { $_.id -eq $tag }
+        $exists = $board.tasks | Where-Object { $_.id -eq $tag } | Select-Object -First 1
+        
+        # Générer des détails élégants à partir des messages de commit accumulés (ordre chronologique inverse)
+        $commitsList = $foundTags[$tag].commits
+        $details = "**Actions detectees dans les commits Git :**`n"
+        foreach ($c in $commitsList) {
+            $cClean = $c -replace '\[T-\d+\]', ''
+            $cClean = $cClean.Trim()
+            if ($cClean) {
+                $details += "- $cClean`n"
+            }
+        }
+
         if (-not $exists) {
             $missing += @{
                 id = $tag
@@ -82,6 +98,7 @@ try {
                 worktree = if ($env:DEVCORE_ACTIVE_WORKTREE_NAME) { $env:DEVCORE_ACTIVE_WORKTREE_NAME } else { "main" }
                 commit_hash = $foundTags[$tag].hash
                 committed_at = $foundTags[$tag].date
+                details = $details
             }
             Log "TAG MANQUANT : $tag -> $($foundTags[$tag].title)" "Yellow"
         } else {
@@ -90,6 +107,17 @@ try {
                 $oldTitle = $exists.title
                 $exists.title = $foundTags[$tag].title
                 Log "TITRE MIS A JOUR : $tag ($oldTitle -> $($foundTags[$tag].title))" "Cyan"
+            }
+            # Mettre à jour les détails si absents ou si ce sont des détails générés par Git
+            $hasDetailsProp = $exists.PSObject.Properties["details"] -ne $null
+            $currentDetails = if ($hasDetailsProp) { $exists.details } else { $null }
+            if (-not $hasDetailsProp -or -not $currentDetails -or $currentDetails -eq $null -or $currentDetails -match "\*\*Actions (detectees|d.tect.es) dans les commits Git :\*\*") {
+                if (-not $hasDetailsProp) {
+                    $exists | Add-Member -NotePropertyName "details" -NotePropertyValue $details -Force
+                } else {
+                    $exists.details = $details
+                }
+                Log "DETAILS MIS A JOUR : $tag" "Cyan"
             }
         }
     }
