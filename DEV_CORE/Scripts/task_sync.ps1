@@ -46,8 +46,9 @@ foreach ($src in $queues.Keys) {
 
 if ($suggestions.Count -eq 0) {
     Write-Host ""
-    Write-Host "  [INFO] Aucune suggestion -- d'abord dc task scan" -ForegroundColor Yellow
+    Write-Host "  [INFO] Aucune nouvelle suggestion" -ForegroundColor Yellow
     Write-Host ""
+    & "$PSScriptRoot\gen_dashboard.ps1"
     return
 }
 

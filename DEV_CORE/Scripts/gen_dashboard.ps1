@@ -11,15 +11,19 @@ $inv           = [System.Globalization.CultureInfo]::InvariantCulture
 
 # 0. Rafraîchir les métriques de tokens en temps réel
 try {
-    & python "$DEV_CORE\Scripts\Auto\token_report.py" | Out-Null
-} catch {}
+    & python "$DEV_CORE\Scripts\Auto\token_report.py" 2>&1 | Out-Null
+} catch {
+    Write-Host "  [WARN] Real-time token report execution failed: $_" -ForegroundColor Yellow
+}
 
 $tokenSummary = $null
 $jsonPath = "$DEV_CORE_DATA\Logs\token_reports\token_metrics_summary.json"
 if (Test-Path $jsonPath) {
     try {
         $tokenSummary = Get-Content $jsonPath -Raw -Encoding UTF8 | ConvertFrom-Json
-    } catch {}
+    } catch {
+        Write-Host "  [WARN] Failed to parse ${jsonPath}: $_" -ForegroundColor Yellow
+    }
 }
 
 # 1. & 2. Parcourir les projets et extraire les donnees
@@ -390,10 +394,10 @@ if ($tokenSummary) {
 # 5. Injecter dans template.html et ecrire index.html
 if (Test-Path $TEMPLATE_FILE) {
     $template = Get-Content $TEMPLATE_FILE -Raw -Encoding UTF8
-    $template = $template -replace '\{\{PROJECT_CARDS\}\}', $cardsHtml
-    $template = $template -replace '\{\{TASKS_PIPELINE\}\}', $tasksHtml
-    $template = $template -replace '\{\{SERVICES_MONITORING\}\}', $infraHtml
-    $template = $template -replace '\{\{TOKEN_ACTIVITY_REPORT\}\}', $tokenReportHtml
+    $template = $template.Replace('{{PROJECT_CARDS}}', $cardsHtml)
+    $template = $template.Replace('{{TASKS_PIPELINE}}', $tasksHtml)
+    $template = $template.Replace('{{SERVICES_MONITORING}}', $infraHtml)
+    $template = $template.Replace('{{TOKEN_ACTIVITY_REPORT}}', $tokenReportHtml)
 
     $template | Set-Content $OUTPUT_FILE -Encoding UTF8
     Write-Host "Dashboard genere : $OUTPUT_FILE" -ForegroundColor Green

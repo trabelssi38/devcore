@@ -166,13 +166,64 @@ TOOLS = [
     },
     {
         "name": "devcore_check",
-        "description": "Verifie l'etat des services (Qdrant, Ollama, tasks, memory)",
+        "description": "Verifie l'état des services (Qdrant, Ollama, tasks, memory)",
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+        }
+    },
+    {
+        "name": "devcore_event_emit",
+        "description": "Émet un événement dans le bus DEV_CORE",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "event_type": {"type": "string"},
+                "payload": {"type": "object"}
+            },
+            "required": ["event_type"]
+        }
+    },
+    {
+        "name": "devcore_dashboard_refresh",
+        "description": "Régénère le dashboard Cockpit immédiatement",
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+        }
+    },
+    {
+        "name": "devcore_health_check",
+        "description": "Vérifie la santé complète du pipeline (tasks.json, encoding, dashboard sync)",
         "input_schema": {
             "type": "object",
             "properties": {},
         }
     }
 ]
+
+
+def emit_event(event_type: str, payload: dict) -> dict:
+    """Emit an event in the DEV_CORE bus."""
+    try:
+        bus_dir = DEVCORE_DATA / "Bus" / "events"
+        bus_dir.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        evt_file = bus_dir / f"{timestamp}_{event_type}.json"
+        
+        evt_data = {
+            "type": event_type,
+            "timestamp": datetime.now().isoformat()
+        }
+        if payload:
+            evt_data.update(payload)
+            
+        with open(evt_file, "w", encoding="utf-8") as f:
+            json.dump(evt_data, f, ensure_ascii=False, indent=2)
+            
+        return {"success": True, "event_file": str(evt_file)}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 
 def handle_tool_call(tool_name: str, arguments: dict) -> dict:
@@ -189,13 +240,20 @@ def handle_tool_call(tool_name: str, arguments: dict) -> dict:
             "tasks_json": read_json(str(DEVCORE_DATA / "Memory" / "tasks.json")),
             "qdrant_status": "check via curl http://localhost:6333/collections",
             "memory_exists": (DEVCORE_DATA / "Memory" / "MEMORY.md").exists()
-        }
+        },
+        "devcore_event_emit": lambda: emit_event(
+            arguments.get("event_type"),
+            arguments.get("payload", {})
+        ),
+        "devcore_dashboard_refresh": lambda: run_powershell(str(DEVCORE_SCRIPTS / "gen_dashboard.ps1")),
+        "devcore_health_check": lambda: run_powershell(str(DEVCORE_SCRIPTS / "Auto" / "integrity_check.ps1"))
     }
 
     if tool_name in results:
         return results[tool_name]()
     else:
         return {"error": f"Unknown tool: {tool_name}"}
+
 
 
 def main():

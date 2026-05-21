@@ -1,6 +1,6 @@
-﻿[DEV_CORE] Task active : T-11
-[DEV_CORE] Titre  : Finalisation de la synchronisation et validation du dashboard Cockpit
-[DEV_CORE] Mode   : reasoning
-[DEV_CORE] Budget : 32k tokens
-[DEV_CORE] Steps  : 0/2
-[DEV_CORE] Tag git: [T-11]
+﻿[DEV_CORE] Task active : T-12
+[DEV_CORE] Titre  : corrige Rapport token C:\devcore\DEV_CORE_DATA\Logs\token_reports\2026-05-20-report
+[DEV_CORE] Mode   : coding
+[DEV_CORE] Budget : 8k tokens
+[DEV_CORE] Steps  : 0/1
+[DEV_CORE] Tag git: [T-12]

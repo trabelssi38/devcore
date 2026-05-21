@@ -7,7 +7,7 @@ $TODAY         = Get-Date -Format "yyyy-MM-dd"
 $tFile         = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
 
 if (-not (Test-Path $tFile)) { Write-Host "  Aucun tasks.json." -ForegroundColor Red; exit 1 }
-$board = Get-Content $tFile -Raw | ConvertFrom-Json
+$board = Get-Content $tFile -Raw -Encoding UTF8 | ConvertFrom-Json
 $current = $board.tasks | Where-Object { $_.status -eq "active" } | Select-Object -First 1
 if (-not $current) { Write-Host "  Aucune tache active -- dc next task" -ForegroundColor Yellow; exit 0 }
 

@@ -231,6 +231,21 @@ def main():
 
     log(f"Starting Dynamic Agent-Action Analyzer for project: '{active_proj}'", "INIT")
 
+    # Read existing sources from tasks.json to avoid duplicates
+    existing_sources = set()
+    tasks_file = os.path.join(queue_dir, "tasks.json")
+    if os.path.exists(tasks_file):
+        try:
+            with open(tasks_file, "r", encoding="utf-8-sig") as tf:
+                board = json.load(tf)
+                for t in board.get("tasks", []):
+                    src = t.get("source")
+                    if src:
+                        existing_sources.add(src)
+            log(f"Loaded {len(existing_sources)} existing task sources to prevent duplicates.", "INIT")
+        except Exception as e:
+            log(f"Error reading tasks.json to deduplicate: {e}", "WARNING")
+
     brain_dir = r"C:\Users\trb_m\.gemini\antigravity\brain"
     if not os.path.exists(brain_dir):
         log(f"Brain folder not found: {brain_dir}", "WARNING")
@@ -255,6 +270,10 @@ def main():
     candidates = []
 
     for s_path, s_mtime, s_id in recent_sessions:
+        if s_id in existing_sources:
+            log(f"Session {s_id} already exists in tasks.json. Skipping scan.", "SKIP")
+            continue
+            
         overview_path = os.path.join(s_path, ".system_generated", "logs", "overview.txt")
         log(f"Scanning active session accomplishments: {s_id}", "SCAN")
         

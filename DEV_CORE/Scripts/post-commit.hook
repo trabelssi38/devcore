@@ -1,41 +1,68 @@
 #!/bin/sh
-# post-commit -- DEV_CORE v6.1 -- Full automation
+# post-commit -- DEV_CORE v7 -- Event-driven & Robust
 PLATFORM_ROOT="${DEVCORE_PLATFORM_ROOT:-C:/devcore/DEV_CORE}"
 DATA_ROOT="${DEVCORE_DATA_ROOT:-C:/devcore/DEV_CORE_DATA}"
-PROJ_NAME=$(basename $(git rev-parse --show-toplevel))
-TASKS="$DATA_ROOT/Memory/$PROJ_NAME/tasks.json"
 SCRIPTS="$PLATFORM_ROOT/Scripts"
 MSG=$(git log -1 --pretty=%B)
 TID=$(echo "$MSG" | grep -oP '\[T-\d+\]' | tr -d '[]' | head -1)
 
+# 1. Step increment et renommage immédiat (si tag présent)
 if [ -n "$TID" ]; then
     echo "  [DEV_CORE] Tag $TID detecte dans le commit"
-    powershell.exe -NonInteractive -Command "
-    \$f='$TASKS'
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -NonInteractive -Command "
+    \$projName = & '$SCRIPTS/Get-ActiveProject.ps1'
+    \$f = \"$DATA_ROOT/Memory/\$projName/tasks.json\"
     if(-not(Test-Path \$f)){exit 0}
-    \$b=Get-Content \$f -Raw|ConvertFrom-Json
+    \$b=Get-Content \$f -Raw -Encoding UTF8 | ConvertFrom-Json
     \$t=\$b.tasks|Where-Object{\$_.id -eq '$TID'}
     if(-not \$t){exit 0}
+    
+    # Renommer les taches generiques
     if (\$t.title -like 'Session de travail auto*') {
         \$cleanMsg = \"$MSG\" -replace '\[T-\d+\]', ''
         \$cleanMsg = \$cleanMsg.Trim()
         if (\$cleanMsg) {
             \$t.title = \$cleanMsg
-            Write-Host \"  [DEV_CORE] Tache \$TID renommee en : \$cleanMsg\" -ForegroundColor Green
+            Write-Host \"  [DEV_CORE] Tache \$TID renommee en : \$cleanMsg\"
         }
     }
+    
     \$cur=if(\$t.PSObject.Properties['steps_done']){\$t.steps_done}else{0}
     \$tot=if(\$t.PSObject.Properties['steps_total']){\$t.steps_total}else{1}
     \$new=[math]::Min(\$cur+1,\$tot)
     \$t|Add-Member -NotePropertyName 'steps_done' -NotePropertyValue \$new -Force
     \$b|ConvertTo-Json -Depth 10|Set-Content \$f -Encoding UTF8
-    Write-Host \"  [DEV_CORE] Step \$new/\$tot enregistree pour $TID\" -ForegroundColor Cyan
+    Write-Host \"  [DEV_CORE] Step \$new/\$tot enregistree pour \$TID\"
     if(\$new -ge \$tot){
-        Write-Host '  [DEV_CORE] Tache complete!' -ForegroundColor Green
         & '$SCRIPTS/task_done.ps1' -Force
     }
     "
 fi
-echo "  [DEV_CORE] Synchronisation des taches..."
-powershell.exe -NonInteractive -Command "& '$SCRIPTS/task_sync.ps1' 2>&1 | Out-Null"
+
+# 2. Émettre l'événement post-commit pour le bus d'événements (Hermes)
+echo "  [DEV_CORE] Emission evenement post-commit..."
+powershell.exe -NoProfile -ExecutionPolicy Bypass -NonInteractive -Command "
+\$evt = @{
+    type = 'post-commit'
+    timestamp = (Get-Date -Format 'o')
+    commit_msg = (\$input | Out-String).Trim()
+    task_id = '$TID'
+} | ConvertTo-Json -Compress
+\$evtDir = '$DATA_ROOT/Bus/events'
+New-Item -ItemType Directory -Path \$evtDir -Force | Out-Null
+Set-Content \"\$evtDir/\$(Get-Date -Format 'yyyyMMdd_HHmmss')_commit.json\" \$evt -Encoding UTF8
+" <<EOF
+$MSG
+EOF
+
+# 3. Lancer le Scan + Sync + Dashboard en arrière-plan (non-bloquant, asynchrone)
+echo "  [DEV_CORE] Scan et synchronisation en fond..."
+powershell.exe -NoProfile -ExecutionPolicy Bypass -NonInteractive -Command "
+Start-Job -ScriptBlock {
+    param(\$scripts)
+    & \"\$scripts/task_scan.ps1\" 2>&1 | Out-Null
+    & \"\$scripts/task_sync.ps1\" 2>&1 | Out-Null
+} -ArgumentList '$SCRIPTS' | Out-Null
+" &
+
 exit 0

@@ -13,16 +13,22 @@ Write-Host "  ========================================" -ForegroundColor DarkGra
 Write-Host "  Date: $TODAY" -ForegroundColor White
 Write-Host ""
 
-Write-Host "  [1/3] Sync Qdrant..." -ForegroundColor Cyan
+Write-Host "  [1/6] Sync Qdrant..." -ForegroundColor Cyan
 & "$DEV_CORE\Scripts\qdrant_sync.ps1"
 
-Write-Host "  [2/3] Sync Obsidian..." -ForegroundColor Cyan
+Write-Host "  [2/6] Sync Obsidian..." -ForegroundColor Cyan
 & "$DEV_CORE\Scripts\obsidian_sync.ps1"
 
-Write-Host "  [3/4] Generation metrics..." -ForegroundColor Cyan
+Write-Host "  [3/6] Generation metrics..." -ForegroundColor Cyan
 & "$DEV_CORE\Scripts\gen_metrics.ps1"
 
-Write-Host "  [4/4] Endday check..." -ForegroundColor Cyan
+Write-Host "  [4/6] Task scan..." -ForegroundColor Cyan
+& "$DEV_CORE\Scripts\task_scan.ps1"
+
+Write-Host "  [5/6] Task sync + Dashboard..." -ForegroundColor Cyan
+& "$DEV_CORE\Scripts\task_sync.ps1"
+
+Write-Host "  [6/6] Endday check..." -ForegroundColor Cyan
 & "$DEV_CORE\Scripts\endday_check.ps1" 2>$null
 
 Write-Host ""
@@ -30,3 +36,4 @@ Write-Host "  ========================================" -ForegroundColor Green
 Write-Host "  ||  Session end complete               ||" -ForegroundColor Green
 Write-Host "  ========================================" -ForegroundColor Green
 Write-Host ""
+

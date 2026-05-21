@@ -44,30 +44,43 @@ cron_tasks:
       script: "C:/devcore/DEV_CORE/Scripts/Auto/weekly_maintenance.ps1"
       args: []
 
-  # Scan automatique des taches - toutes les heures (optionnel)
-  - id: "hourly_task_scan"
-    name: "DEV_CORE Hourly Task Scan"
-    description: "Scan automatique git + specs + prompts pour detection taches"
-    schedule: "0 * * * *"
+  # NOUVEAU : Scan automatique des tâches — toutes les 10 minutes
+  - id: "periodic_task_scan"
+    name: "DEV_CORE Periodic Task Scan"
+    description: "Scan git + specs + prompts toutes les 10 min"
+    schedule: "*/10 * * * *"
     timezone: "Europe/Paris"
-    enabled: false
+    enabled: true
     catchup: false
     command:
       type: "powershell"
       script: "C:/devcore/DEV_CORE/Scripts/task_scan.ps1"
       args: []
 
-  # Sync automatique des taches - toutes les heures (optionnel)
-  - id: "hourly_task_sync"
-    name: "DEV_CORE Hourly Task Sync"
-    description: "Sync les taches detectees dans tasks.json"
-    schedule: "30 * * * *"
+  # NOUVEAU : Sync + Dashboard — 5 minutes après chaque scan
+  - id: "periodic_task_sync_dashboard"
+    name: "DEV_CORE Periodic Sync & Dashboard"
+    description: "Sync tâches et régénère le dashboard"
+    schedule: "5,15,25,35,45,55 * * * *"
     timezone: "Europe/Paris"
-    enabled: false
+    enabled: true
     catchup: false
     command:
       type: "powershell"
       script: "C:/devcore/DEV_CORE/Scripts/task_sync.ps1"
+      args: []
+
+  # NOUVEAU : Event watcher — réactif aux événements bus
+  - id: "event_watcher"
+    name: "DEV_CORE Event Watcher"
+    description: "Traite les événements du bus (post-commit, etc.)"
+    schedule: "*/2 * * * *"
+    timezone: "Europe/Paris"
+    enabled: true
+    catchup: false
+    command:
+      type: "powershell"
+      script: "C:/devcore/DEV_CORE/Scripts/Auto/event_watcher.ps1"
       args: []
 
 # Notification settings
@@ -87,3 +100,4 @@ persistence:
   enabled: true
   backend: "daytona"  # ou "modal", "local"
   hibernate_timeout: 3600  # 1h idle avant hibernation
+

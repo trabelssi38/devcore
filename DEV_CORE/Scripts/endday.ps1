@@ -70,6 +70,15 @@ background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin:6px;text-al
     Log "  Rapport : $rpt" "Green"
 }
 
+Log "7.5/8 Task scan + sync final"
+try {
+    & "$DEV_CORE\Scripts\task_scan.ps1" 2>&1 | Out-Null
+    & "$DEV_CORE\Scripts\task_sync.ps1" 2>&1 | Out-Null
+    Log "  Scan + Sync final OK" "Green"
+} catch {
+    Log "  Erreur scan/sync final: $_" "Yellow"
+}
+
 Log "8/8 Next actions"
 $na = "$DEV_CORE_DATA\Memory\next_actions.md"
 if (Test-Path $na) { Write-Host ""; Get-Content $na | Select-Object -First 15 | ForEach-Object { Write-Host "    $_" -ForegroundColor Gray } }

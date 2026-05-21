@@ -1,6 +1,7 @@
 # task_git_scanner.ps1 -- DEV_CORE v6 Auto layer
 # Scan git commits pour detecter les tags [T-XX] manquants
 
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
 $TODAY         = Get-Date -Format "yyyy-MM-dd"
@@ -16,7 +17,7 @@ function Log { param($msg,$color="Gray")
 
 Log "task_git_scanner -- analyse commits" "Cyan"
 
-# Rأ©soudre le dأ©pأ´t du projet actif (pas forcأ©ment C:\devcore)
+# Résoudre le dépôt du projet actif (pas forcément C:\devcore)
 $gitRoot = git rev-parse --show-toplevel 2>$null
 if ($gitRoot) { Push-Location $gitRoot } else { Push-Location (Split-Path -Parent $DEV_CORE) }
 try {
@@ -27,17 +28,29 @@ try {
         return
     }
 
-    # 2. Extraire les tags [T-XX]
+    # 2. Extraire les tags [T-XX] et leurs messages de commit associant le plus récent
     $foundTags = @{}
     foreach ($line in $commits) {
         if ($line -match '\[T-(\d+)\]') {
             $tag = "T-{0:D2}" -f [int]$Matches[1]
-            $foundTags[$tag] = $true
-            Log "Commit detecte : $tag" "Gray"
+            $parts = $line -split '\|'
+            $hash = $parts[0]
+            $msg = $parts[1]
+            $cleanTitle = $msg -replace '\[T-\d+\]', ''
+            $cleanTitle = $cleanTitle.Trim()
+            
+            if (-not $foundTags.ContainsKey($tag)) {
+                $foundTags[$tag] = @{
+                    title = $cleanTitle
+                    hash = $hash
+                    date = $parts[2]
+                }
+                Log "Commit detecte : $tag ($cleanTitle)" "Gray"
+            }
         }
     }
 
-    # 3. Lire tasks.json
+    # 3. Lire tasks.json en UTF8 de manière robuste
     $tFile = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\..\Get-ActiveProject.ps1")\tasks.json"
     if (-not (Test-Path $tFile)) {
         Log "tasks.json absent - creation" "Yellow"
@@ -50,28 +63,38 @@ try {
         return
     }
 
-    $board = Get-Content $tFile -Raw | ConvertFrom-Json
+    $board = Get-Content $tFile -Raw -Encoding UTF8 | ConvertFrom-Json
     if (-not $board.detected_from_git) {
         $board | Add-Member -NotePropertyName "detected_from_git" -NotePropertyValue @() -Force
     }
 
-    # 4. Comparer avec tasks.json
+    # 4. Comparer avec tasks.json et synchroniser/mettre à jour les titres
     $missing = @()
     foreach ($tag in $foundTags.Keys) {
         $exists = $board.tasks | Where-Object { $_.id -eq $tag }
         if (-not $exists) {
             $missing += @{
                 id = $tag
+                title = $foundTags[$tag].title
                 source = "git"
                 reason = "tag_found_in_commit"
                 detected = $TODAY
                 worktree = if ($env:DEVCORE_ACTIVE_WORKTREE_NAME) { $env:DEVCORE_ACTIVE_WORKTREE_NAME } else { "main" }
+                commit_hash = $foundTags[$tag].hash
+                committed_at = $foundTags[$tag].date
             }
-            Log "TAG MANQUANT : $tag" "Yellow"
+            Log "TAG MANQUANT : $tag -> $($foundTags[$tag].title)" "Yellow"
+        } else {
+            # Si le titre est générique ou a changé, on le met à jour
+            if ($exists.title -match "Session de travail auto" -or ($exists.title -ne $foundTags[$tag].title -and $foundTags[$tag].title -ne "")) {
+                $oldTitle = $exists.title
+                $exists.title = $foundTags[$tag].title
+                Log "TITRE MIS A JOUR : $tag ($oldTitle -> $($foundTags[$tag].title))" "Cyan"
+            }
         }
     }
 
-    # 5. Sauvegarder les tags trouves
+    # 5. Sauvegarder les tags trouves et mettre à jour le board
     $board.detected_from_git = @($foundTags.Keys)
     $board | ConvertTo-Json -Depth 10 | Set-Content $tFile -Encoding UTF8
 

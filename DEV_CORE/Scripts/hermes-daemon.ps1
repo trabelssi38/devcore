@@ -38,7 +38,7 @@ function Write-Log {
 }
 
 function Get-ScheduledTaskStatus {
-    $tasks = @("DEV_CORE_Daily_Launch", "DEV_CORE_Daily_Endday", "DEV_CORE_Weekly_Maintenance", "HERMES_Daemon")
+    $tasks = @("DEV_CORE_Daily_Launch", "DEV_CORE_Daily_Endday", "DEV_CORE_Weekly_Maintenance", "HERMES_Daemon", "DEV_CORE_Event_Watcher", "DEV_CORE_Integrity_Check")
     $status = @()
     foreach ($taskName in $tasks) {
         $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
@@ -91,6 +91,18 @@ function Do-Install {
             Time = "05:00"
             Script = "$DEVCORE_ROOT\Scripts\Auto\weekly_maintenance.ps1"
             Desc = "Maintenance hebdomadaire DEV_CORE - Dimanche 5h"
+        },
+        @{
+            Name = "DEV_CORE_Event_Watcher"
+            RepetitionMinutes = 2
+            Script = "$DEVCORE_ROOT\Scripts\Auto\event_watcher.ps1"
+            Desc = "Traitement reactif des evenements du bus DEV_CORE (toutes les 2 min)"
+        },
+        @{
+            Name = "DEV_CORE_Integrity_Check"
+            Time = "12:00"
+            Script = "$DEVCORE_ROOT\Scripts\Auto\integrity_check.ps1"
+            Desc = "Verification d'integrite quotidienne des taches et encodages (midi)"
         }
     )
 
@@ -100,6 +112,8 @@ function Do-Install {
 
         if ($task.DayOfWeek) {
             $trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek $task.DayOfWeek -At $task.Time
+        } elseif ($task.RepetitionMinutes) {
+            $trigger = New-ScheduledTaskTrigger -Daily -At "00:00" -RepetitionInterval (New-TimeSpan -Minutes $task.RepetitionMinutes)
         } else {
             $trigger = New-ScheduledTaskTrigger -Daily -At $task.Time
         }
@@ -118,7 +132,7 @@ function Do-Install {
 function Do-Uninstall {
     Write-Log "Desinstallation du daemon HERMES" "WARN"
 
-    $tasks = @("HERMES_Daemon", "DEV_CORE_Daily_Launch", "DEV_CORE_Daily_Endday", "DEV_CORE_Weekly_Maintenance")
+    $tasks = @("HERMES_Daemon", "DEV_CORE_Daily_Launch", "DEV_CORE_Daily_Endday", "DEV_CORE_Weekly_Maintenance", "DEV_CORE_Event_Watcher", "DEV_CORE_Integrity_Check")
 
     foreach ($taskName in $tasks) {
         $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
