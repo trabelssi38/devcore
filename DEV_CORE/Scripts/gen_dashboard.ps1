@@ -7,6 +7,20 @@ $DASHBOARD_DIR = "$DEV_CORE\Dashboard"
 $TEMPLATE_FILE = "$DASHBOARD_DIR\template.html"
 $OUTPUT_FILE   = "$DASHBOARD_DIR\index.html"
 $MEMORY_DIR    = "$DEV_CORE_DATA\Memory"
+$inv           = [System.Globalization.CultureInfo]::InvariantCulture
+
+# 0. Rafraîchir les métriques de tokens en temps réel
+try {
+    & python "$DEV_CORE\Scripts\Auto\token_report.py" | Out-Null
+} catch {}
+
+$tokenSummary = $null
+$jsonPath = "$DEV_CORE_DATA\Logs\token_reports\token_metrics_summary.json"
+if (Test-Path $jsonPath) {
+    try {
+        $tokenSummary = Get-Content $jsonPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    } catch {}
+}
 
 # 1. & 2. Parcourir les projets et extraire les donnees
 $projects = @()
@@ -88,6 +102,19 @@ foreach ($p in $projects) {
             $activeClass = if ($t.status -eq "active") { "active-task" } else { "" }
             $stepsStr   = if ($t.PSObject.Properties["steps_total"] -and $t.steps_total -gt 1) { "$($t.steps_done)/$($t.steps_total) steps" } else { "" }
             
+            # Badges de tokens et coûts pour la tâche
+            $taskTokensStr = ""
+            $taskCostStr = ""
+            if ($tokenSummary -and $tokenSummary.tasks -and $tokenSummary.tasks.PSObject.Properties[$t.id]) {
+                $taskStats = $tokenSummary.tasks.PSObject.Properties[$t.id].Value
+                $tTokens = [double]$taskStats.tokens
+                $tTokensStr = if ($tTokens -gt 1000000) { "$([math]::Round($tTokens/1000000, 2))M" } else { "$([math]::Round($tTokens/1000, 1))K" }
+                $tCost = [double]$taskStats.cost_usd
+                $tCostFormatted = '{0:F2}' -f $tCost
+                $taskTokensStr = "<span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consomm&eacute;s par l''agent'>$tTokensStr</span>"
+                $taskCostStr = "<span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Co&ucirc;t estim&eacute; (USD)'>`$$tCostFormatted</span>"
+            }
+
             # Gestion du bloc de description (details)
             $detailsHtml = ""
             if ($t.PSObject.Properties["details"] -and $t.details) {
@@ -129,7 +156,7 @@ foreach ($p in $projects) {
             }
 
             $doneButton = if ($t.status -ne "done") {
-                '<button style="background:#14532d; border:1px solid #22c55e; color:#86efac; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer; margin-right:6px;" title="Clôturer" onclick="completeTask(''{0}'', ''{1}'')">&#10004;</button>' -f $p.Name, $t.id
+                '<button style="background:#14532d; border:1px solid #22c55e; color:#86efac; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer; margin-right:6px;" title="Cl&ocirc;turer" onclick="completeTask(''{0}'', ''{1}'')">&#10004;</button>' -f $p.Name, $t.id
             } else { "" }
             $deleteButton = '<button style="background:#7f1d1d; border:1px solid #ef4444; color:#fca5a5; padding:4px 8px; border-radius:4px; font-size:12px; cursor:pointer;" title="Supprimer" onclick="deleteTask(''{0}'', ''{1}'')">&#128465;</button>' -f $p.Name, $t.id
             
@@ -144,8 +171,11 @@ foreach ($p in $projects) {
 <details class="mission $activeClass $($t.status)" data-date="$taskDate">
   <summary style="display:flex; gap:10px; align-items:center; width:100%">
     <span class="badge $badgeClass">$badgeText</span>
-    <div style="flex:1">
-      <div class="mission-title">$($t.id): $($t.title)</div>
+    <div style="flex:1; min-width: 0;">
+      <div class="mission-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+        <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">$($t.id): $($t.title)</span>
+        <div style="display:flex; align-items:center; flex-shrink:0;">$taskTokensStr$taskCostStr</div>
+      </div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: $($t.mode) - $stepsStr</div>
       $datesHtml
     </div>
@@ -237,12 +267,133 @@ $endLog = Get-LastLogTime "session_end"
 $endOk = ($endLog -ne $null -and ((Get-Date) - $endLog).TotalDays -lt 2)
 $infraHtml += Get-StatusHTML "session_end" ("Dernier: " + (Format-TimeAgo $endLog)) $endOk
 
+# 4.5 Rapport d'activité & consommation tokens dynamique (Option A)
+$tokenReportHtml = ""
+if ($tokenSummary) {
+    $totTokens = [double]$tokenSummary.totals.tokens
+    $totCache = [double]$tokenSummary.totals.cache_hits
+    $totCost = [double]$tokenSummary.totals.cost_usd
+    $totCostFormatted = '{0:F2}' -f $totCost
+    
+    $totTokensStr = if ($totTokens -gt 1000000) { "$([math]::Round($totTokens/1000000, 2))M" } else { "$([math]::Round($totTokens/1000, 1))K" }
+    $totCachePct = if ($totTokens -gt 0) { [math]::Round(($totCache / $totTokens) * 100) } else { 0 }
+    
+    # Barre de répartition par Projet
+    $projectAllocHtml = ""
+    if ($tokenSummary.projects) {
+        $projectAllocHtml += '<div class="project-bar-container" style="display:flex; height:6px; border-radius:3px; overflow:hidden; background:#1e293b; margin:12px 0 8px;">'
+        $colors = @("#6366f1", "#10b981", "#fbbf24", "#ec4899", "#8b5cf6")
+        $idx = 0
+        $projList = $tokenSummary.projects.PSObject.Properties
+        
+        foreach ($proj in $projList) {
+            $pct = [math]::Round(($proj.Value.tokens / $totTokens) * 100)
+            if ($pct -gt 0) {
+                $col = $colors[$idx % $colors.Count]
+                $projectAllocHtml += "<div style='width:$pct%; background:$col;' title='$($proj.Name): $pct% ($([int]$proj.Value.tokens/1000)k tks)'></div>"
+                $idx++
+            }
+        }
+        $projectAllocHtml += '</div>'
+        
+        $projectAllocHtml += '<div style="display:flex; flex-wrap:wrap; gap:10px; font-size:10px; color:#94a3b8; margin-bottom:16px;">'
+        $idx = 0
+        foreach ($proj in $projList) {
+            $pct = [math]::Round(($proj.Value.tokens / $totTokens) * 100)
+            if ($pct -gt 0) {
+                $col = $colors[$idx % $colors.Count]
+                $projectAllocHtml += "<span style='display:flex; align-items:center; gap:4px;'><span style='width:6px; height:6px; border-radius:50%; background:$col;'></span>$($proj.Name) ($pct%)</span>"
+                $idx++
+            }
+        }
+        $projectAllocHtml += '</div>'
+    }
+    
+    # Sessions
+    $sessionsHtml = ""
+    $recentSess = $tokenSummary.sessions
+    if (-not $recentSess -or $recentSess.Count -eq 0) {
+        $sessionsHtml = '<div style="font-size: 11px; font-style: italic; color: #64748b; text-align: center; padding: 10px;">Aucune session active enregistrée.</div>'
+    } else {
+        foreach ($s in $recentSess) {
+            $sTokens = [double]$s.tokens
+            $sTokensStr = if ($sTokens -gt 1000000) { "$([math]::Round($sTokens/1000000, 2))M" } else { "$([math]::Round($sTokens/1000, 1))K" }
+            $sCost = [double]$s.cost_usd
+            $sCostFormatted = '{0:F2}' -f $sCost
+            $sCachePct = if ($sTokens -gt 0) { [math]::Round(($s.cache_hits / $sTokens) * 100) } else { 0 }
+            $tasksJoined = $s.tasks -join ", "
+            
+            $sessionsHtml += @"
+      <div style="background: rgba(30, 41, 59, 0.2); border: 1px solid rgba(255,255,255,0.03); border-radius: 6px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s; font-size: 11px; margin-bottom: 6px;">
+        <div style="flex: 1; min-width: 0; padding-right: 8px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="width: 6px; height: 6px; border-radius: 50%; background: #6366f1; box-shadow: 0 0 6px #6366f1;"></span>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #cbd5e1; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;" title="$($s.id)">$($s.id.Substring(0, 8))...</span>
+            <span style="font-size: 9px; padding: 1px 4px; border-radius: 3px; background: rgba(99,102,241,0.2); border: 1px solid rgba(99,102,241,0.3); color: #cbd5e1;">$($s.project)</span>
+          </div>
+          <div style="font-size: 10px; color: #64748b; margin-top: 3px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+            $($s.date) | $($s.start_time) - $($s.end_time) ($($s.duration))
+          </div>
+          <div style="font-size: 10px; color: #64748b; margin-top: 2px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">
+            <span style="color:#6366f1">T&acirc;ches:</span> $tasksJoined
+          </div>
+        </div>
+        <div style="text-align: right; font-family: 'JetBrains Mono', monospace; min-width: 80px;">
+          <div style="color: #cbd5e1; font-weight: 500;">$sTokensStr tks</div>
+          <div style="font-size: 9px; color: #64748b; margin-top: 2px;">`$$sCostFormatted | $sCachePct%</div>
+        </div>
+      </div>
+"@
+        }
+    }
+    
+    $tokenReportHtml = @"
+<details open style="margin-top: 24px; border: 1px solid #2d3148; border-radius: 8px; background: #111420; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.4);">
+  <summary style="padding: 12px 16px; background: #1a1d27; border-bottom: 1px solid #2d3148; cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
+    <span style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: #6366f1; letter-spacing: 0.05em; display: flex; align-items: center; gap: 8px;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      Rapport de Consommation & Activit&eacute; Agent
+    </span>
+    <span style="font-size: 11px; color: #cbd5e1; font-family: monospace;">Co&ucirc;t total : `$$totCostFormatted USD</span>
+  </summary>
+  <div style="padding: 16px;">
+    <!-- M&eacute;triques globales -->
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;">
+      <div style="background: rgba(30, 41, 59, 0.4); border: 1px solid #2d3148; border-radius: 6px; padding: 10px; text-align: center;">
+        <div style="font-size: 9px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Tokens Totaux</div>
+        <div style="font-size: 16px; font-weight: 600; color: #f8fafc; font-family: 'JetBrains Mono', monospace; margin-top: 2px;">$totTokensStr</div>
+      </div>
+      <div style="background: rgba(30, 41, 59, 0.4); border: 1px solid #2d3148; border-radius: 6px; padding: 10px; text-align: center;">
+        <div style="font-size: 9px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Cache Hits</div>
+        <div style="font-size: 16px; font-weight: 600; color: #10b981; font-family: 'JetBrains Mono', monospace; margin-top: 2px;">$totCachePct%</div>
+      </div>
+      <div style="background: rgba(30, 41, 59, 0.4); border: 1px solid #2d3148; border-radius: 6px; padding: 10px; text-align: center;">
+        <div style="font-size: 9px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Co&ucirc;t Global</div>
+        <div style="font-size: 16px; font-weight: 600; color: #fbbf24; font-family: 'JetBrains Mono', monospace; margin-top: 2px;">`$$totCostFormatted</div>
+      </div>
+    </div>
+    
+    <!-- R&eacute;partition par Projet -->
+    <h3 style="font-size: 10px; color: #94a3b8; text-transform: uppercase; margin: 12px 0 6px;">R&eacute;partition par Projet</h3>
+    $projectAllocHtml
+    
+    <!-- Sessions Actives -->
+    <h3 style="font-size: 10px; color: #94a3b8; text-transform: uppercase; margin: 16px 0 8px;">D&eacute;tail des Sessions</h3>
+    <div style="display: flex; flex-direction: column; max-height: 250px; overflow-y: auto; padding-right: 4px;">
+      $sessionsHtml
+    </div>
+  </div>
+</details>
+"@
+}
+
 # 5. Injecter dans template.html et ecrire index.html
 if (Test-Path $TEMPLATE_FILE) {
     $template = Get-Content $TEMPLATE_FILE -Raw -Encoding UTF8
     $template = $template -replace '\{\{PROJECT_CARDS\}\}', $cardsHtml
     $template = $template -replace '\{\{TASKS_PIPELINE\}\}', $tasksHtml
     $template = $template -replace '\{\{SERVICES_MONITORING\}\}', $infraHtml
+    $template = $template -replace '\{\{TOKEN_ACTIVITY_REPORT\}\}', $tokenReportHtml
 
     $template | Set-Content $OUTPUT_FILE -Encoding UTF8
     Write-Host "Dashboard genere : $OUTPUT_FILE" -ForegroundColor Green

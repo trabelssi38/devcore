@@ -1,11 +1,25 @@
 import os
 import sys
 import json
+import re
 import argparse
 from datetime import datetime, timedelta
 
+def format_duration(seconds):
+    h = int(seconds // 3600)
+    m = int((seconds % 3600) // 60)
+    if h > 0:
+        return f"{h}h {m}m"
+    return f"{m}m"
+
+def clean_task_id(text):
+    match = re.search(r'\bT-(\d+)\b', text, re.IGNORECASE)
+    if match:
+        return f"T-{int(match.group(1)):02d}"
+    return None
+
 def main():
-    parser = argparse.ArgumentParser(description="Génère un rapport de tokens DEV_CORE ultra-premium.")
+    parser = argparse.ArgumentParser(description="Génère un rapport de tokens DEV_CORE ultra-premium avec répartition par projet, session et tâche.")
     parser.add_argument("--date", type=str, help="Date au format YYYY-MM-DD (par défaut aujourd'hui)")
     args = parser.parse_args()
 
@@ -20,122 +34,270 @@ def main():
     if not os.path.exists(reports_dir):
         os.makedirs(reports_dir)
 
-    # 1. Parse all session details
-    session_logs = []
+    # 1. Global Aggregation Metrics
+    totals = {
+        "tokens": 0,
+        "cache_hits": 0,
+        "output_tokens": 0,
+        "duration_seconds": 0,
+        "sessions_count": 0,
+        "cost_usd": 0.0
+    }
+    
+    projects_data = {}
+    tasks_data = {}
+    sessions_data = []
+
     if os.path.exists(brain_dir):
-        for folderName in os.listdir(brain_dir):
-            folderPath = os.path.join(brain_dir, folderName)
-            if not os.path.isdir(folderPath) or folderName == "tempmediaStorage":
+        for folder_name in os.listdir(brain_dir):
+            folder_path = os.path.join(brain_dir, folder_name)
+            if not os.path.isdir(folder_path) or folder_name == "tempmediaStorage":
                 continue
             
-            overview_path = os.path.join(folderPath, ".system_generated", "logs", "overview.txt")
+            overview_path = os.path.join(folder_path, ".system_generated", "logs", "overview.txt")
             if os.path.exists(overview_path):
+                timestamps = []
+                user_turns = 0
+                model_turns = 0
+                model_chars = 0
+                
+                session_tasks = set()
+                detected_project = "devcore" # Default fallback
+                
+                current_task = "Sans tâche"
+                session_task_tokens = {}
+                
                 try:
                     with open(overview_path, "r", encoding="utf-8") as f:
-                        lines = f.readlines()
-                    
-                    for line in lines:
-                        data = json.loads(line)
-                        created_at_str = data.get("created_at")
-                        if not created_at_str:
-                            continue
-                        
-                        # Parse UTC timestamp
-                        dt_utc = datetime.strptime(created_at_str, "%Y-%m-%dT%H:%M:%SZ")
-                        # Convert to local time (UTC+1 based on system logs)
-                        dt_local = dt_utc + timedelta(hours=1)
-                        
-                        content = data.get("content", "")
-                        source = data.get("source")
-                        type_ = data.get("type")
-                        
-                        is_user = (source == "USER_EXPLICIT" or type_ == "USER_INPUT")
-                        is_model = (source == "MODEL" and type_ == "PLANNER_RESPONSE")
-                        
-                        session_logs.append({
-                            "session_id": folderName,
-                            "date": dt_local.strftime("%Y-%m-%d"),
-                            "time": dt_local.strftime("%H:%M:%S"),
-                            "dt": dt_local,
-                            "chars": len(content),
-                            "is_user": is_user,
-                            "is_model": is_model
-                        })
+                        for line in f:
+                            data = json.loads(line)
+                            created_at_str = data.get("created_at")
+                            if not created_at_str:
+                                continue
+                            
+                            dt_utc = datetime.strptime(created_at_str, "%Y-%m-%dT%H:%M:%SZ")
+                            dt_local = dt_utc + timedelta(hours=1)
+                            timestamps.append(dt_local)
+                            
+                            content = data.get("content", "")
+                            source = data.get("source")
+                            type_ = data.get("type")
+                            tool_calls = data.get("tool_calls", [])
+                            
+                            is_user = (source == "USER_EXPLICIT" or type_ == "USER_INPUT")
+                            is_model = (source == "MODEL" and type_ == "PLANNER_RESPONSE")
+                            
+                            # A. Project identification
+                            for tc in tool_calls:
+                                tc_args = tc.get("args", {})
+                                if isinstance(tc_args, str):
+                                    args_str = tc_args.lower()
+                                else:
+                                    args_str = json.dumps(tc_args).lower()
+                                    
+                                if "c:\\devcore" in args_str or "c:\\\\devcore" in args_str:
+                                    detected_project = "devcore"
+                                elif "c:\\" in args_str:
+                                    match = re.search(r'c:\\\\([a-z0-9_-]+)', args_str)
+                                    if not match:
+                                        match = re.search(r'c:\\([a-z0-9_-]+)', args_str)
+                                    if match and match.group(1) not in ["users", "windows", "program files", "devcore"]:
+                                        detected_project = match.group(1)
+                            
+                            # B. Task identification
+                            task_matches = re.findall(r'\bT-\d+\b', content, re.IGNORECASE)
+                            if task_matches:
+                                for tm in task_matches:
+                                    tid = clean_task_id(tm)
+                                    if tid:
+                                        current_task = tid
+                                        session_tasks.add(tid)
+                            
+                            if is_user:
+                                user_turns += 1
+                            elif is_model:
+                                model_turns += 1
+                                model_chars += len(content)
+                                
+                                turn_in = 15000
+                                turn_cache = int(15000 * 0.85)
+                                turn_out = len(content) // 4
+                                
+                                if current_task not in session_task_tokens:
+                                    session_task_tokens[current_task] = {
+                                        "tokens": 0,
+                                        "cache_hits": 0,
+                                        "output_tokens": 0,
+                                        "turns": 0
+                                    }
+                                session_task_tokens[current_task]["tokens"] += turn_in
+                                session_task_tokens[current_task]["cache_hits"] += turn_cache
+                                session_task_tokens[current_task]["output_tokens"] += turn_out
+                                session_task_tokens[current_task]["turns"] += 1
                 except Exception as e:
                     pass
 
-    # 2. Filter for target date
-    day_logs = [log for log in session_logs if log["date"] == tdate]
-    
-    # Aggregate stats
-    sessions_data = {}
-    total_model_turns = 0
-    
-    for log in day_logs:
-        sid = log["session_id"]
-        if sid not in sessions_data:
-            sessions_data[sid] = {
-                "times": [],
-                "chars": 0,
-                "model_turns": 0,
-                "user_turns": 0
-            }
-        
-        sessions_data[sid]["times"].append(log["dt"])
-        sessions_data[sid]["chars"] += log["chars"]
-        if log["is_model"]:
-            sessions_data[sid]["model_turns"] += 1
-            total_model_turns += 1
-        if log["is_user"]:
-            sessions_data[sid]["user_turns"] += 1
-            
-    num_sessions = len(sessions_data)
-    
-    # Realistic Token calculation (accumulated context pattern)
-    # Average of 15k context tokens per model response
-    calc_tokens = total_model_turns * 15000
-    calc_cache = int(calc_tokens * 0.85)
-    
-    # Format strings
-    if calc_tokens > 1000000:
-        total_tokens_str = f"{calc_tokens/1000000:.2f} M"
-        cache_hits_str = f"{calc_cache/1000000:.2f} M"
-    elif calc_tokens > 0:
-        total_tokens_str = f"{calc_tokens/1000:.1f} K"
-        cache_hits_str = f"{calc_cache/1000:.1f} K"
+                if not timestamps:
+                    continue
+
+                min_dt = min(timestamps)
+                max_dt = max(timestamps)
+                duration_sec = (max_dt - min_dt).total_seconds()
+                if duration_sec < 60:
+                    duration_sec = 60
+
+                session_in = model_turns * 15000
+                session_cache = int(session_in * 0.85)
+                session_out = model_chars // 4
+                
+                # Input normal: $3/M, Input cached: $0.45/M, Output: $15/M
+                normal_in = session_in - session_cache
+                session_cost = (normal_in * 0.000003) + (session_cache * 0.00000045) + (session_out * 0.000015)
+
+                if not session_task_tokens and session_tasks:
+                    share_in = session_in // len(session_tasks)
+                    share_cache = session_cache // len(session_tasks)
+                    share_out = session_out // len(session_tasks)
+                    for t in session_tasks:
+                        session_task_tokens[t] = {
+                            "tokens": share_in,
+                            "cache_hits": share_cache,
+                            "output_tokens": share_out,
+                            "turns": model_turns // len(session_tasks) or 1
+                        }
+                elif not session_task_tokens:
+                    session_task_tokens["Sans tâche"] = {
+                        "tokens": session_in,
+                        "cache_hits": session_cache,
+                        "output_tokens": session_out,
+                        "turns": model_turns
+                    }
+
+                session_info = {
+                    "id": folder_name,
+                    "project": detected_project,
+                    "tasks": sorted(list(session_tasks)) if session_tasks else ["Sans tâche"],
+                    "date": min_dt.strftime("%Y-%m-%d"),
+                    "start_time": min_dt.strftime("%H:%M:%S"),
+                    "end_time": max_dt.strftime("%H:%M:%S"),
+                    "duration": format_duration(duration_sec),
+                    "tokens": session_in,
+                    "cache_hits": session_cache,
+                    "output_tokens": session_out,
+                    "turns": model_turns + user_turns,
+                    "cost_usd": round(session_cost, 4)
+                }
+                
+                sessions_data.append(session_info)
+
+                totals["tokens"] += session_in
+                totals["cache_hits"] += session_cache
+                totals["output_tokens"] += session_out
+                totals["duration_seconds"] += duration_sec
+                totals["sessions_count"] += 1
+                totals["cost_usd"] += session_cost
+
+                # Project statistics
+                if detected_project not in projects_data:
+                    projects_data[detected_project] = {
+                        "tokens": 0,
+                        "cache_hits": 0,
+                        "output_tokens": 0,
+                        "sessions": 0,
+                        "cost_usd": 0.0
+                    }
+                projects_data[detected_project]["tokens"] += session_in
+                projects_data[detected_project]["cache_hits"] += session_cache
+                projects_data[detected_project]["output_tokens"] += session_out
+                projects_data[detected_project]["sessions"] += 1
+                projects_data[detected_project]["cost_usd"] += session_cost
+
+                # Task statistics
+                for tid, tdata in session_task_tokens.items():
+                    if tid not in tasks_data:
+                        tasks_data[tid] = {
+                            "project": detected_project,
+                            "tokens": 0,
+                            "cache_hits": 0,
+                            "output_tokens": 0,
+                            "turns": 0,
+                            "cost_usd": 0.0
+                        }
+                    t_cost = ((tdata["tokens"] - tdata["cache_hits"]) * 0.000003) + (tdata["cache_hits"] * 0.00000045) + (tdata["output_tokens"] * 0.000015)
+                    tasks_data[tid]["tokens"] += tdata["tokens"]
+                    tasks_data[tid]["cache_hits"] += tdata["cache_hits"]
+                    tasks_data[tid]["output_tokens"] += tdata["output_tokens"]
+                    tasks_data[tid]["turns"] += tdata["turns"]
+                    tasks_data[tid]["cost_usd"] += t_cost
+
+    totals["duration_minutes"] = int(totals["duration_seconds"] // 60)
+    totals["cost_usd"] = round(totals["cost_usd"], 4)
+    del totals["duration_seconds"]
+
+    for p, pdata in projects_data.items():
+        pdata["cost_usd"] = round(pdata["cost_usd"], 4)
+    for t, tdata in tasks_data.items():
+        tdata["cost_usd"] = round(tdata["cost_usd"], 4)
+
+    # Compile the final structured JSON
+    result_summary = {
+        "totals": totals,
+        "projects": projects_data,
+        "tasks": tasks_data,
+        "sessions": sorted(sessions_data, key=lambda x: x["date"] + " " + x["start_time"], reverse=True)
+    }
+
+    # Write unified JSON summary
+    summary_path = os.path.join(reports_dir, "token_metrics_summary.json")
+    with open(summary_path, "w", encoding="utf-8") as f:
+        json.dump(result_summary, f, indent=2, ensure_ascii=False)
+    print(f"[SUCCESS] Résumé consolidé écrit dans {summary_path}")
+
+    # 2. Extract stats for target date to write standalone HTML report
+    day_sessions = [s for s in sessions_data if s["date"] == tdate]
+    day_tokens = sum(s["tokens"] for s in day_sessions)
+    day_cache = sum(s["cache_hits"] for s in day_sessions)
+    day_cost = sum(s["cost_usd"] for s in day_sessions)
+    day_sessions_count = len(day_sessions)
+
+    # Format numbers nicely
+    if day_tokens > 1000000:
+        total_tokens_str = f"{day_tokens/1000000:.2f} M"
+        cache_hits_str = f"{day_cache/1000000:.2f} M"
+    elif day_tokens > 0:
+        total_tokens_str = f"{day_tokens/1000:.1f} K"
+        cache_hits_str = f"{day_cache/1000:.1f} K"
     else:
         total_tokens_str = "0"
         cache_hits_str = "0"
         
     sessions_list_html = ""
-    if num_sessions == 0:
+    if day_sessions_count == 0:
         sessions_list_html = '<div class="no-sessions">Aucune session active enregistrée pour cette journée.</div>'
     else:
-        for sid, sdata in sessions_data.items():
-            min_time = min(sdata["times"]).strftime("%H:%M:%S")
-            max_time = max(sdata["times"]).strftime("%H:%M:%S")
-            total_steps = sdata["model_turns"] + sdata["user_turns"]
-            
-            # Format chars nicely
-            chars_formatted = f"{sdata['chars']:,}".replace(",", " ")
+        for s in day_sessions:
+            total_steps = s["turns"]
+            tasks_list = ", ".join(s["tasks"])
+            cost_str = f"${s['cost_usd']:.2f}"
+            cache_pct = int((s["cache_hits"] / s["tokens"] * 100)) if s["tokens"] > 0 else 0
             
             sessions_list_html += f"""
             <div class="session-item">
                 <div class="session-info">
                     <div class="session-icon"></div>
                     <div>
-                        <div class="session-id">{sid}</div>
-                        <div class="session-meta">Activité : {min_time} - {max_time} | {total_steps} étapes</div>
+                        <div class="session-id">{s['id']}</div>
+                        <div class="session-meta">Activité : {s['start_time']} - {s['end_time']} ({s['duration']}) | {total_steps} tours | Tâches : {tasks_list}</div>
                     </div>
                 </div>
                 <div class="session-metrics">
-                    <div>{chars_formatted} caractères</div>
-                    <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">~ {sdata['model_turns'] * 15:,}k tokens</div>
+                    <div>{s['tokens']:,} tokens</div>
+                    <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">Coût : {cost_str} | Cache : {cache_pct}%</div>
                 </div>
             </div>
             """
-            
-    # Premium HTML Template
+
+    # HTML Template (Premium Aesthetics with USD costs)
     html_template = """<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -236,7 +398,7 @@ def main():
 
         .stats-grid {{
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 20px;
             margin-bottom: 32px;
             position: relative;
@@ -261,7 +423,7 @@ def main():
         }}
 
         .stat-value {{
-            font-size: 36px;
+            font-size: 32px;
             font-weight: 700;
             color: var(--text-primary);
             margin-bottom: 6px;
@@ -281,13 +443,19 @@ def main():
         }}
 
         .stat-card:nth-child(3) .stat-value {{
+            background: linear-gradient(to bottom, #ffffff, #fbbf24);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }}
+
+        .stat-card:nth-child(4) .stat-value {{
             background: linear-gradient(to bottom, #ffffff, #cbd5e1);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
         }}
 
         .stat-label {{
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 600;
             color: var(--text-secondary);
             text-transform: uppercase;
@@ -420,6 +588,10 @@ def main():
                 <div class="stat-label">Cache Hits</div>
             </div>
             <div class="stat-card">
+                <div class="stat-value">${cost_usd:.2f}</div>
+                <div class="stat-label">Coût Estimé (USD)</div>
+            </div>
+            <div class="stat-card">
                 <div class="stat-value">{num_sessions}</div>
                 <div class="stat-label">Sessions Actives</div>
             </div>
@@ -436,8 +608,8 @@ def main():
         </div>
 
         <footer>
-            <span>Auto-généré par <code>endday.ps1</code></span>
-            <span class="footer-tag">DEV_CORE v6.5</span>
+            <span>Auto-généré par <code>endday.ps1</code> & <code>token_report.py</code></span>
+            <span class="footer-tag">DEV_CORE v6.6</span>
         </footer>
     </div>
 </body>
@@ -447,7 +619,8 @@ def main():
         date=tdate,
         total_tokens=total_tokens_str,
         cache_hits=cache_hits_str,
-        num_sessions=num_sessions,
+        cost_usd=day_cost,
+        num_sessions=day_sessions_count,
         sessions_list_html=sessions_list_html
     )
 
@@ -455,7 +628,7 @@ def main():
     with open(report_path, "w", encoding="utf-8") as f:
         f.write(report_html)
 
-    print(f"[SUCCESS] Rapport de tokens généré avec succès pour {tdate} -> {report_path}")
+    print(f"[SUCCESS] Rapport de tokens HTML généré pour {tdate} -> {report_path}")
 
 if __name__ == "__main__":
     main()
