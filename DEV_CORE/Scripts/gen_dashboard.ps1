@@ -249,23 +249,64 @@ if (-not (Check-Port $apiPort)) {
 }
 
 $infraHtml = "<h2>Services & Infrastructure</h2>`n"
+$tickLog = "$DEV_CORE_DATA\Logs\hermes\cron_tick.log"
+$isDaemonRunning = $false
+if (Test-Path $tickLog) {
+    $lastWrite = (Get-Item $tickLog).LastWriteTime
+    if (((Get-Date) - $lastWrite).TotalMinutes -lt 2.5) {
+        $isDaemonRunning = $true
+    }
+}
 $infraHtml += Get-StatusHTML "Hermes Agent" "Port 20128" (Check-Port 20128)
+$infraHtml += Get-StatusHTML "Hermes Cron Daemon" "Standalone Tick Loop" $isDaemonRunning
 $infraHtml += Get-StatusHTML "Dashboard API Server" "Port 20129" (Check-Port 20129)
 $infraHtml += Get-StatusHTML "Qdrant Vector DB" "Port 6333" (Check-Port 6333)
 $infraHtml += Get-StatusHTML "Ollama Embeddings" "Port 11434" (Check-Port 11434)
 
-$infraHtml += "<h2>Automation Hooks</h2>`n"
+$infraHtml += "<h2>Hermes Background Jobs</h2>`n"
+$jobsFile = "$env:USERPROFILE\.hermes\cron\jobs.json"
+if (Test-Path $jobsFile) {
+    try {
+        $jobs = Get-Content $jobsFile -Raw -Encoding UTF8 | ConvertFrom-Json
+        foreach ($j in $jobs.jobs) {
+            $statusClass = if ($j.enabled) { "status-ok" } else { "status-warn" }
+            $lastRun = if ($j.last_run_at) {
+                try { [datetime]::Parse($j.last_run_at).ToString("yyyy-MM-dd HH:mm:ss") } catch { $j.last_run_at }
+            } else { "Jamais" }
+            $lastStatus = if ($j.last_status) { $j.last_status.ToUpper() } else { "N/A" }
+            $lastStatusClass = if ($j.last_status -eq "success") { "color:#22c55e" } elseif ($j.last_status -eq "error") { "color:#ef4444" } else { "color:#94a3b8" }
+            
+            $infraHtml += @"
+<div class="component" style="padding: 8px 10px; margin-bottom: 6px; background: rgba(30, 41, 59, 0.2); border: 1px solid rgba(255,255,255,0.02); border-radius: 6px; display:flex; justify-content:space-between; align-items:center;">
+  <div style="flex: 1; min-width: 0; padding-right:8px;">
+    <div class="component-name" style="font-size: 11px; font-weight: 600; color: #f8fafc; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="$($j.name)">$($j.name)</div>
+    <div style="font-size: 9px; color: #64748b; margin-top: 2px;">
+      Freq: $($j.schedule_display) | Last: $lastRun | <span style="$lastStatusClass; font-weight:bold;">$lastStatus</span>
+    </div>
+  </div>
+  <div class="$statusClass" style="font-size: 10px; font-weight: bold; flex-shrink:0;">$(if ($j.enabled) { 'ON' } else { 'OFF' })</div>
+</div>
+"@
+        }
+    } catch {
+        $infraHtml += "<div style='font-size:9px; color:#ef4444; padding:5px;'>Erreur parsing jobs.json</div>`n"
+    }
+} else {
+    $infraHtml += "<div style='font-size:9px; color:#94a3b8; padding:5px;'>Aucune tache (jobs.json absent)</div>`n"
+}
+
+$hooksHtml = ""
 $syncLog = Get-LastLogTime "task_sync"
 $syncOk = ($syncLog -ne $null -and ((Get-Date) - $syncLog).TotalDays -lt 1)
-$infraHtml += Get-StatusHTML "task_sync" ("Dernier: " + (Format-TimeAgo $syncLog)) $syncOk
+$hooksHtml += Get-StatusHTML "task_sync" ("Dernier: " + (Format-TimeAgo $syncLog)) $syncOk
 
 $startLog = Get-LastLogTime "session_start"
 $startOk = ($startLog -ne $null -and ((Get-Date) - $startLog).TotalDays -lt 2)
-$infraHtml += Get-StatusHTML "session_start" ("Dernier: " + (Format-TimeAgo $startLog)) $startOk
+$hooksHtml += Get-StatusHTML "session_start" ("Dernier: " + (Format-TimeAgo $startLog)) $startOk
 
 $endLog = Get-LastLogTime "session_end"
 $endOk = ($endLog -ne $null -and ((Get-Date) - $endLog).TotalDays -lt 2)
-$infraHtml += Get-StatusHTML "session_end" ("Dernier: " + (Format-TimeAgo $endLog)) $endOk
+$hooksHtml += Get-StatusHTML "session_end" ("Dernier: " + (Format-TimeAgo $endLog)) $endOk
 
 # 4.5 Rapport d'activité & consommation tokens dynamique (Option A)
 $tokenReportHtml = ""
@@ -399,6 +440,7 @@ if (Test-Path $TEMPLATE_FILE) {
     $template = $template.Replace('{{PROJECT_CARDS}}', $cardsHtml)
     $template = $template.Replace('{{TASKS_PIPELINE}}', $tasksHtml)
     $template = $template.Replace('{{SERVICES_MONITORING}}', $infraHtml)
+    $template = $template.Replace('{{AUTOMATION_HOOKS}}', $hooksHtml)
     $template = $template.Replace('{{TOKEN_ACTIVITY_REPORT}}', $tokenReportHtml)
     $template = $template.Replace('{{TASK_DETAILS_MAP}}', $detailsJson)
 
