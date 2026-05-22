@@ -2,7 +2,6 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="refresh" content="30">
 <title>DEV_CORE v6.3 Cockpit</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -351,7 +350,10 @@ details{margin-bottom: 8px}
 </head>
 <body>
 <header>
-  <h1>DEV_CORE v6.3 — Cockpit</h1>
+  <div style="display:flex; align-items:center; gap:10px;">
+    <h1>DEV_CORE v6.3 — Cockpit</h1>
+    <span id="sync-indicator" style="width:8px; height:8px; border-radius:50%; background:#22c55e; box-shadow:0 0 8px #22c55e; transition: all 0.3s; opacity: 0.7;" title="Connecté au serveur API"></span>
+  </div>
   <div style="font-size:11px;color:#64748b">Derniere mise a jour: <span id="timestamp"></span></div>
 </header>
 
@@ -410,19 +412,19 @@ details{margin-bottom: 8px}
     </div>
   </div>
   <div class='steps-container'><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Développement initial du script de diagnostic profond</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Enrichissement avec support multi-DB et validation</div></div>
-</div><div class="mission  done" data-date="2026-05-21T18:16:21.0043670+01:00">
+</div><div class="mission  done" data-date="2026-05-21T23:12:01.1488960+01:00">
   <div class="mission-header" style="display:flex; gap:10px; align-items:center; width:100%">
     <span class="badge done">DONE</span>
     <div style="flex:1; min-width: 0;">
       <div class="mission-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-        <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="T-12: style(dashboard): vertical alignment of action buttons under task details">T-12: style(dashboard): vertical alignment of action buttons under task details</span>
+        <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="T-12: chore(dashboard): remove status and action buttons from details popover">T-12: chore(dashboard): remove status and action buttons from details popover</span>
         <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0;">
           <div style="display:flex; align-items:center; gap:2px;"><button class='btn-action btn-details' onclick='showDetails("devcore", "T-12", "done", this, event)' title='Voir les d&eacute;tails'>D&eacute;tails</button></div>
           <div style="display:flex; align-items:center; gap:2px;"><button class="btn-action btn-delete" title="Supprimer" onclick="deleteTask('devcore', 'T-12')">&#128465;</button></div>
         </div>
       </div>
       <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: coding - 3/3 steps</div>
-      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Fin: 2026-05-21 18:16:21</div>
+      <div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>Fin: 2026-05-21 23:12:01</div>
     </div>
   </div>
   <div class='steps-container'><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Implémenter la boîte de dialogue de confirmation personnalisée</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Créer des scrollbars premium sur tous les éléments</div><div class='step-item step-done'><b style='color:#22c55e'>[v]</b> Ajuster l'alignement vertical sous les détails de tâches</div></div>
@@ -1032,19 +1034,19 @@ details{margin-bottom: 8px}
 <div class="component">
   <div>
     <div class="component-name">task_sync</div>
-    <div class="component-detail">Dernier: 8 heures</div>
+    <div class="component-detail">Dernier: 30 mins</div>
   </div>
   <div class="status-ok">&#10003;</div>
 </div><div class="component">
   <div>
     <div class="component-name">session_start</div>
-    <div class="component-detail">Dernier: 23 heures</div>
+    <div class="component-detail">Dernier: 30 mins</div>
   </div>
   <div class="status-ok">&#10003;</div>
 </div><div class="component">
   <div>
     <div class="component-name">session_end</div>
-    <div class="component-detail">Dernier: 9 heures</div>
+    <div class="component-detail">Dernier: 11 heures</div>
   </div>
   <div class="status-ok">&#10003;</div>
 </div>
@@ -1136,7 +1138,7 @@ function completeTask(project, id) {
         .then(r => r.json())
         .then(data => {
           if (data.success) {
-            location.reload();
+            refreshDashboard();
           } else {
             alert("Erreur : " + data.error);
           }
@@ -1156,7 +1158,7 @@ function deleteTask(project, id) {
         .then(r => r.json())
         .then(data => {
           if (data.success) {
-            location.reload();
+            refreshDashboard();
           } else {
             alert("Erreur : " + data.error);
           }
@@ -1166,7 +1168,113 @@ function deleteTask(project, id) {
   );
 }
 
-const taskDetailsMap = {"devcore_T-13":"**Actions réalisées par l\u0027agent :**\n- J\u0027ai créé un script Python complet (`diagnose_system\n- J\u0027ai entièrement réécrit le script `diagnose_system\n- J\u0027ai mis à jour le script `diagnose_system\n- J\u0027ai analysé la façon dont cela fonctionne dans `dbSwitchService\n- J\u0027ai **mis à jour le script Python de diagnostic** pour qu\u0027il soit intelligent\n- J\u0027ai lancé le test, et le script a bien détecté vos **3 bases de données\n- J\u0027ai enrichi le script `diagnose_system\n- J\u0027ai ajouté avec succès la **vérification approfondie des privilèges, des rôles et des permissions spécifiques** de\n- J\u0027ai mis à jour la documentation du projet pour y inclure le nouveau script de diagnostic système profond, puis\n- J\u0027ai bien pris en compte vos directives pour le projet **devcore** et j\u0027ai procédé au nettoyage et à la\n- J\u0027ai exécuté un scan de la plateforme (`dc task scan`) pour vérifier s\u0027il restait d\u0027autres tâches ou suggestions de\n- J\u0027ai créé et associé votre prompt sous la forme d\u0027une nouvelle tâche double pour aujourd\u0027hui","devcore_T-12":"**Actions detectees dans les commits Git :**\n- style(dashboard): vertical alignment of action buttons under task details\n- chore(dashboard): style task action buttons small and group them on the right of task title\n- feat(dashboard): show steps-container always inline and task details in a glassmorphism info-bubble\n- fix: resolve session_end dashboard logs and enrich git task details\n- chore: deploy latest post-commit hook fixes\n- feat: complete devcore v7.0 autonomous task pipeline and hermes integration\n- feat: design and implement hermes event bus connector\n","devcore_T-03":"**Actions detectees dans les commits Git :**\n- feat: T-03 done, dashboard shows T-04 active\n- feat: update dashboard v6.1 with Token Optimization Stack\n- docs: add real token measurements to MEMORY.md\n- docs: update MEMORY.md with token stack + automation hooks\n- fix: remove duplicate directory creation in gen_session_context.ps1\n- fix: session scripts - directory creation, CSV header, error handling\n- feat: add toonify.ps1 for JSON\u003c-\u003eTOON conversion with stats\n- feat: add gen_metrics.ps1 for session metrics tracking\n- feat: add session_end.ps1 for Qdrant + Obsidian sync\n- fix: obsidian_sync update Daily Note with completed tasks\n- feat: add obsidian_sync.ps1 for daily note update\n- feat: add qdrant_sync.ps1 for decisions/lessons sync\n- feat: add endday_check + gen_session_context to session_start\n- feat: add endday_check + gen_session_context to session_start\n- feat: add gen_session_context.ps1 for auto-context generation\n- fix: endday_check flag creation bug when Qdrant unavailable\n- feat: add endday_check.ps1 for morning verification\n- feat: enhance post-commit hook with task_sync + auto-done\n","devcore_T-11":"**Actions réalisées par l\u0027agent :**\n- J\u0027ai créé un script Python complet (`diagnose_system\n- J\u0027ai entièrement réécrit le script `diagnose_system\n- J\u0027ai mis à jour le script `diagnose_system\n- J\u0027ai analysé la façon dont cela fonctionne dans `dbSwitchService\n- J\u0027ai **mis à jour le script Python de diagnostic** pour qu\u0027il soit intelligent\n- J\u0027ai lancé le test, et le script a bien détecté vos **3 bases de données\n- J\u0027ai enrichi le script `diagnose_system\n- J\u0027ai ajouté avec succès la **vérification approfondie des privilèges, des rôles et des permissions spécifiques** de\n- J\u0027ai mis à jour la documentation du projet pour y inclure le nouveau script de diagnostic système profond, puis\n- J\u0027ai bien pris en compte vos directives pour le projet **devcore** et j\u0027ai procédé au nettoyage et à la\n- J\u0027ai exécuté un scan de la plateforme (`dc task scan`) pour vérifier s\u0027il restait d\u0027autres tâches ou suggestions de\n- J\u0027ai créé et associé votre prompt sous la forme d\u0027une nouvelle tâche double pour aujourd\u0027hui","devcore_T-04":"**Actions detectees dans les commits Git :**\n- docs: Update PLATFORM_DOCUMENTATION.md for Multi-Projects (v6.3)\n- feat: T-04 done, all automation hooks complete\n- fix: Qdrant sync with Python + curl, invariant culture, UTF8NoBom\n- fix: implement full Qdrant sync with Ollama embeddings\n- feat: T-04 active mode shown in dashboard\n","devcore_T-10":"**Actions réalisées par l\u0027agent :**\n- J\u0027ai mené à bien la restructuration et la synchronisation des tâches pour les deux projets, conformément à vos\n- J\u0027ai finalisé la synchronisation et le nettoyage complet des tâches pour les projets **devcore** et **job_tracker\n- Nous avons supprimé les anciennes tâches \"toon design\", les identifiants de tâches `T-12`, `T-13` et `T-14` se sont\n- J\u0027ai effectué toutes les modifications requises\n- J\u0027ai fait inspecter le Cockpit par un subagent de navigation\n- We have at our disposal\n- J\u0027ai implémenté ce comportement intelligent directement dans le hook de commit global de la plateforme ([post-commit\n- J\u0027ai poussé la mise à jour sur votre dépôt GitHub\n- J\u0027ai réorganisé l\u0027affichage du Cockpit pour déplacer la section **Infrastructure** sous la pile **Token\n- J\u0027ai déplacé les **Quick Links** en bas à gauche de la première colonne (sous vos Projets), et j\u0027ai laissé la pile\n- J\u0027ai rendu la section **Quick Links** entièrement interactive\n\n**Fichiers modifiés :**\n- `DEV_CORE\\Dashboard\\template.html`\n- `DEV_CORE\\Scripts\\Auto\\task_spec_parser.ps1`\n- `DEV_CORE\\Scripts\\post-commit.hook`\n- `DEV_CORE\\docs\\PLATFORM_DOCUMENTATION.md`\n- `DEV_CORE_DATA\\Memory\\devcore\\session_context.toon`\n- `DEV_CORE_DATA\\Memory\\devcore\\session_context.txt`\n- `DEV_CORE_DATA\\Memory\\devcore\\tasks.json`\n- `DEV_CORE_DATA\\Memory\\job_tracker\\tasks.json`\n- `README.md`","devcore_T-09":"**Actions réalisées par l\u0027agent :**\n- I have successfully corrected and upgraded the daily token reports for **May 18th**, **May 19th**, and **May 20th\n- Nous avons scrupuleusement respecté la méthodologie de DevCore (gestion propre du cycle de vie des tâches\n- I have discovered a critical architectural blind spot in the current DevCore autonomous task detection\n- J\u0027ai trouvé la solution idéale pour rétablir la détection autonome des tâches et combler le fossé technique avec\n- Nous avons déployé une architecture hybride\n- Nous avons écrit (basé sur l\u0027implémentation originale de DevCore)\n- J\u0027ai exécuté le script et les résultats sont spectaculaires\n- J\u0027ai formalisé et consolidé l\u0027ensemble de ces propositions, y compris **notre nouveau module d\u0027auto-apprentissage\n- J\u0027ai créé une base de données de configuration externe contenant tous les verbes de détection\n\n**Fichiers modifiés :**\n- `DEV_CORE\\Config\\intent_patterns.json`\n- `DEV_CORE\\Scripts\\Auto\\intent_learner.py`\n- `DEV_CORE\\Scripts\\Auto\\task_prompt_analyzer.ps1`\n- `DEV_CORE\\Scripts\\Auto\\task_prompt_analyzer.py`\n- `DEV_CORE\\Scripts\\Auto\\token_report.py`\n- `DEV_CORE\\Scripts\\endday.ps1`\n- `README.md`","devcore_T-08":"**Actions detectees dans les commits Git :**\n- fix: corriger l\u0027encodage des accents UTF-8 dans gen_dashboard.ps1 et rafraichir le cockpit\n- fix: backslash bug in task_next.ps1 and task_sync.ps1 dashboard invocation\n- docs: update changelog and fix antigravity hook \u0026 task cycle automation\n- docs \u0026 feat: Refonte visuelle Cockpit Dashboard, filtres historiques, tri descendant et plans spec\n"};
+function refreshDashboard() {
+  const indicator = document.getElementById('sync-indicator');
+  if (indicator) {
+    indicator.style.background = '#6366f1';
+    indicator.style.boxShadow = '0 0 12px #6366f1';
+    indicator.style.opacity = '1';
+  }
+
+  fetch('http://localhost:20129/api/refresh')
+    .then(response => {
+      if (!response.ok) throw new Error('API server returned error status');
+      return response.text();
+    })
+    .then(htmlText => {
+      const parser = new DOMParser();
+      const newDoc = parser.parseFromString(htmlText, 'text/html');
+
+      // 1. Mettre à jour la colonne Projets
+      const oldProjects = document.querySelector('.main-layout .column:first-child .scroll-area');
+      const newProjects = newDoc.querySelector('.main-layout .column:first-child .scroll-area');
+      if (oldProjects && newProjects && oldProjects.innerHTML !== newProjects.innerHTML) {
+        oldProjects.innerHTML = newProjects.innerHTML;
+      }
+
+      // 2. Mettre à jour la Pipeline des Tâches
+      const oldTasks = document.getElementById('tasks-pipeline');
+      const newTasks = newDoc.getElementById('tasks-pipeline');
+      if (oldTasks && newTasks && oldTasks.innerHTML !== newTasks.innerHTML) {
+        // Préserver l'état d'ouverture des accordéons de tâches basés sur leur titre summary
+        const openSummaries = new Set();
+        document.querySelectorAll('#tasks-pipeline details').forEach(d => {
+          const summary = d.querySelector('summary');
+          if (summary && d.open) {
+            openSummaries.add(summary.textContent.trim());
+          }
+        });
+
+        oldTasks.innerHTML = newTasks.innerHTML;
+
+        // Restaurer l'état ouvert des accordéons
+        document.querySelectorAll('#tasks-pipeline details').forEach(d => {
+          const summary = d.querySelector('summary');
+          if (summary) {
+            const title = summary.textContent.trim();
+            if (openSummaries.has(title)) {
+              d.open = true;
+            } else {
+              d.removeAttribute('open');
+            }
+          }
+        });
+      }
+
+      // 3. Mettre à jour le Rapport d'Activité / Tokens
+      const oldTokenReport = document.querySelector('.main-layout .column:nth-child(2) > details');
+      const newTokenReport = newDoc.querySelector('.main-layout .column:nth-child(2) > details');
+      if (oldTokenReport && newTokenReport) {
+        const wasOpen = oldTokenReport.open;
+        if (oldTokenReport.innerHTML !== newTokenReport.innerHTML) {
+          oldTokenReport.innerHTML = newTokenReport.innerHTML;
+          if (wasOpen) {
+            oldTokenReport.open = true;
+          } else {
+            oldTokenReport.removeAttribute('open');
+          }
+        }
+      }
+
+      // 4. Mettre à jour l'Infrastructure & Services
+      const oldInfra = document.querySelector('.main-layout .column:last-child .scroll-area');
+      const newInfra = newDoc.querySelector('.main-layout .column:last-child .scroll-area');
+      if (oldInfra && newInfra && oldInfra.innerHTML !== newInfra.innerHTML) {
+        oldInfra.innerHTML = newInfra.innerHTML;
+      }
+
+      // 5. Mettre à jour la variable taskDetailsMap dans le scope global
+      const startMarker = 'const taskDetailsMap = ';
+      const startIndex = htmlText.indexOf(startMarker);
+      if (startIndex !== -1) {
+        const endIndex = htmlText.indexOf(';', startIndex);
+        if (endIndex !== -1) {
+          const jsonStr = htmlText.substring(startIndex + startMarker.length, endIndex);
+          try {
+            window.taskDetailsMap = JSON.parse(jsonStr);
+          } catch (e) {
+            console.error("Error parsing taskDetailsMap:", e);
+          }
+        }
+      }
+
+      if (indicator) {
+        indicator.style.background = '#22c55e';
+        indicator.style.boxShadow = '0 0 8px #22c55e';
+        indicator.style.opacity = '0.7';
+      }
+    })
+    .catch(err => {
+      console.error("Failed to refresh dashboard:", err);
+      if (indicator) {
+        indicator.style.background = '#ef4444';
+        indicator.style.boxShadow = '0 0 12px #ef4444';
+        indicator.style.opacity = '1';
+      }
+    });
+}
+
+const taskDetailsMap = {"devcore_T-13":"**Actions réalisées par l\u0027agent :**\n- J\u0027ai créé un script Python complet (`diagnose_system\n- J\u0027ai entièrement réécrit le script `diagnose_system\n- J\u0027ai mis à jour le script `diagnose_system\n- J\u0027ai analysé la façon dont cela fonctionne dans `dbSwitchService\n- J\u0027ai **mis à jour le script Python de diagnostic** pour qu\u0027il soit intelligent\n- J\u0027ai lancé le test, et le script a bien détecté vos **3 bases de données\n- J\u0027ai enrichi le script `diagnose_system\n- J\u0027ai ajouté avec succès la **vérification approfondie des privilèges, des rôles et des permissions spécifiques** de\n- J\u0027ai mis à jour la documentation du projet pour y inclure le nouveau script de diagnostic système profond, puis\n- J\u0027ai bien pris en compte vos directives pour le projet **devcore** et j\u0027ai procédé au nettoyage et à la\n- J\u0027ai exécuté un scan de la plateforme (`dc task scan`) pour vérifier s\u0027il restait d\u0027autres tâches ou suggestions de\n- J\u0027ai créé et associé votre prompt sous la forme d\u0027une nouvelle tâche double pour aujourd\u0027hui","devcore_T-12":"**Actions detectees dans les commits Git :**\n- chore(dashboard): remove status and action buttons from details popover\n- fix(dashboard): resolve steps-container rendering and data-date parsing bug\n- style(dashboard): vertical alignment of action buttons under task details\n- chore(dashboard): style task action buttons small and group them on the right of task title\n- feat(dashboard): show steps-container always inline and task details in a glassmorphism info-bubble\n- fix: resolve session_end dashboard logs and enrich git task details\n- chore: deploy latest post-commit hook fixes\n- feat: complete devcore v7.0 autonomous task pipeline and hermes integration\n- feat: design and implement hermes event bus connector\n","devcore_T-03":"**Actions detectees dans les commits Git :**\n- feat: T-03 done, dashboard shows T-04 active\n- feat: update dashboard v6.1 with Token Optimization Stack\n- docs: add real token measurements to MEMORY.md\n- docs: update MEMORY.md with token stack + automation hooks\n- fix: remove duplicate directory creation in gen_session_context.ps1\n- fix: session scripts - directory creation, CSV header, error handling\n- feat: add toonify.ps1 for JSON\u003c-\u003eTOON conversion with stats\n- feat: add gen_metrics.ps1 for session metrics tracking\n- feat: add session_end.ps1 for Qdrant + Obsidian sync\n- fix: obsidian_sync update Daily Note with completed tasks\n- feat: add obsidian_sync.ps1 for daily note update\n- feat: add qdrant_sync.ps1 for decisions/lessons sync\n- feat: add endday_check + gen_session_context to session_start\n- feat: add endday_check + gen_session_context to session_start\n- feat: add gen_session_context.ps1 for auto-context generation\n- fix: endday_check flag creation bug when Qdrant unavailable\n- feat: add endday_check.ps1 for morning verification\n- feat: enhance post-commit hook with task_sync + auto-done\n","devcore_T-11":"**Actions réalisées par l\u0027agent :**\n- J\u0027ai créé un script Python complet (`diagnose_system\n- J\u0027ai entièrement réécrit le script `diagnose_system\n- J\u0027ai mis à jour le script `diagnose_system\n- J\u0027ai analysé la façon dont cela fonctionne dans `dbSwitchService\n- J\u0027ai **mis à jour le script Python de diagnostic** pour qu\u0027il soit intelligent\n- J\u0027ai lancé le test, et le script a bien détecté vos **3 bases de données\n- J\u0027ai enrichi le script `diagnose_system\n- J\u0027ai ajouté avec succès la **vérification approfondie des privilèges, des rôles et des permissions spécifiques** de\n- J\u0027ai mis à jour la documentation du projet pour y inclure le nouveau script de diagnostic système profond, puis\n- J\u0027ai bien pris en compte vos directives pour le projet **devcore** et j\u0027ai procédé au nettoyage et à la\n- J\u0027ai exécuté un scan de la plateforme (`dc task scan`) pour vérifier s\u0027il restait d\u0027autres tâches ou suggestions de\n- J\u0027ai créé et associé votre prompt sous la forme d\u0027une nouvelle tâche double pour aujourd\u0027hui","devcore_T-04":"**Actions detectees dans les commits Git :**\n- docs: Update PLATFORM_DOCUMENTATION.md for Multi-Projects (v6.3)\n- feat: T-04 done, all automation hooks complete\n- fix: Qdrant sync with Python + curl, invariant culture, UTF8NoBom\n- fix: implement full Qdrant sync with Ollama embeddings\n- feat: T-04 active mode shown in dashboard\n","devcore_T-10":"**Actions réalisées par l\u0027agent :**\n- J\u0027ai mené à bien la restructuration et la synchronisation des tâches pour les deux projets, conformément à vos\n- J\u0027ai finalisé la synchronisation et le nettoyage complet des tâches pour les projets **devcore** et **job_tracker\n- Nous avons supprimé les anciennes tâches \"toon design\", les identifiants de tâches `T-12`, `T-13` et `T-14` se sont\n- J\u0027ai effectué toutes les modifications requises\n- J\u0027ai fait inspecter le Cockpit par un subagent de navigation\n- We have at our disposal\n- J\u0027ai implémenté ce comportement intelligent directement dans le hook de commit global de la plateforme ([post-commit\n- J\u0027ai poussé la mise à jour sur votre dépôt GitHub\n- J\u0027ai réorganisé l\u0027affichage du Cockpit pour déplacer la section **Infrastructure** sous la pile **Token\n- J\u0027ai déplacé les **Quick Links** en bas à gauche de la première colonne (sous vos Projets), et j\u0027ai laissé la pile\n- J\u0027ai rendu la section **Quick Links** entièrement interactive\n\n**Fichiers modifiés :**\n- `DEV_CORE\\Dashboard\\template.html`\n- `DEV_CORE\\Scripts\\Auto\\task_spec_parser.ps1`\n- `DEV_CORE\\Scripts\\post-commit.hook`\n- `DEV_CORE\\docs\\PLATFORM_DOCUMENTATION.md`\n- `DEV_CORE_DATA\\Memory\\devcore\\session_context.toon`\n- `DEV_CORE_DATA\\Memory\\devcore\\session_context.txt`\n- `DEV_CORE_DATA\\Memory\\devcore\\tasks.json`\n- `DEV_CORE_DATA\\Memory\\job_tracker\\tasks.json`\n- `README.md`","devcore_T-09":"**Actions réalisées par l\u0027agent :**\n- I have successfully corrected and upgraded the daily token reports for **May 18th**, **May 19th**, and **May 20th\n- Nous avons scrupuleusement respecté la méthodologie de DevCore (gestion propre du cycle de vie des tâches\n- I have discovered a critical architectural blind spot in the current DevCore autonomous task detection\n- J\u0027ai trouvé la solution idéale pour rétablir la détection autonome des tâches et combler le fossé technique avec\n- Nous avons déployé une architecture hybride\n- Nous avons écrit (basé sur l\u0027implémentation originale de DevCore)\n- J\u0027ai exécuté le script et les résultats sont spectaculaires\n- J\u0027ai formalisé et consolidé l\u0027ensemble de ces propositions, y compris **notre nouveau module d\u0027auto-apprentissage\n- J\u0027ai créé une base de données de configuration externe contenant tous les verbes de détection\n\n**Fichiers modifiés :**\n- `DEV_CORE\\Config\\intent_patterns.json`\n- `DEV_CORE\\Scripts\\Auto\\intent_learner.py`\n- `DEV_CORE\\Scripts\\Auto\\task_prompt_analyzer.ps1`\n- `DEV_CORE\\Scripts\\Auto\\task_prompt_analyzer.py`\n- `DEV_CORE\\Scripts\\Auto\\token_report.py`\n- `DEV_CORE\\Scripts\\endday.ps1`\n- `README.md`","devcore_T-08":"**Actions detectees dans les commits Git :**\n- fix: corriger l\u0027encodage des accents UTF-8 dans gen_dashboard.ps1 et rafraichir le cockpit\n- fix: backslash bug in task_next.ps1 and task_sync.ps1 dashboard invocation\n- docs: update changelog and fix antigravity hook \u0026 task cycle automation\n- docs \u0026 feat: Refonte visuelle Cockpit Dashboard, filtres historiques, tri descendant et plans spec\n"};
 
 function showDetails(projectName, taskId, taskStatus, btnEl, event) {
   if (event) event.stopPropagation();
@@ -1250,6 +1358,10 @@ document.addEventListener('click', function(e) {
 
 updateTimestamp();
 setInterval(updateTimestamp, 1000);
+
+// Rafraîchir le tableau de bord immédiatement puis toutes les 15 secondes de façon fluide
+refreshDashboard();
+setInterval(refreshDashboard, 15000);
 </script>
 <div id="details-bubble"></div>
 

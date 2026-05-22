@@ -2,7 +2,6 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="refresh" content="30">
 <title>DEV_CORE v6.3 Cockpit</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -351,7 +350,10 @@ details{margin-bottom: 8px}
 </head>
 <body>
 <header>
-  <h1>DEV_CORE v6.3 — Cockpit</h1>
+  <div style="display:flex; align-items:center; gap:10px;">
+    <h1>DEV_CORE v6.3 — Cockpit</h1>
+    <span id="sync-indicator" style="width:8px; height:8px; border-radius:50%; background:#22c55e; box-shadow:0 0 8px #22c55e; transition: all 0.3s; opacity: 0.7;" title="Connecté au serveur API"></span>
+  </div>
   <div style="font-size:11px;color:#64748b">Derniere mise a jour: <span id="timestamp"></span></div>
 </header>
 
@@ -490,7 +492,7 @@ function completeTask(project, id) {
         .then(r => r.json())
         .then(data => {
           if (data.success) {
-            location.reload();
+            refreshDashboard();
           } else {
             alert("Erreur : " + data.error);
           }
@@ -510,7 +512,7 @@ function deleteTask(project, id) {
         .then(r => r.json())
         .then(data => {
           if (data.success) {
-            location.reload();
+            refreshDashboard();
           } else {
             alert("Erreur : " + data.error);
           }
@@ -518,6 +520,112 @@ function deleteTask(project, id) {
         .catch(err => alert("Impossible de joindre le serveur API local (Port 20129). Veuillez vérifier qu'il est bien démarré."));
     }
   );
+}
+
+function refreshDashboard() {
+  const indicator = document.getElementById('sync-indicator');
+  if (indicator) {
+    indicator.style.background = '#6366f1';
+    indicator.style.boxShadow = '0 0 12px #6366f1';
+    indicator.style.opacity = '1';
+  }
+
+  fetch('http://localhost:20129/api/refresh')
+    .then(response => {
+      if (!response.ok) throw new Error('API server returned error status');
+      return response.text();
+    })
+    .then(htmlText => {
+      const parser = new DOMParser();
+      const newDoc = parser.parseFromString(htmlText, 'text/html');
+
+      // 1. Mettre à jour la colonne Projets
+      const oldProjects = document.querySelector('.main-layout .column:first-child .scroll-area');
+      const newProjects = newDoc.querySelector('.main-layout .column:first-child .scroll-area');
+      if (oldProjects && newProjects && oldProjects.innerHTML !== newProjects.innerHTML) {
+        oldProjects.innerHTML = newProjects.innerHTML;
+      }
+
+      // 2. Mettre à jour la Pipeline des Tâches
+      const oldTasks = document.getElementById('tasks-pipeline');
+      const newTasks = newDoc.getElementById('tasks-pipeline');
+      if (oldTasks && newTasks && oldTasks.innerHTML !== newTasks.innerHTML) {
+        // Préserver l'état d'ouverture des accordéons de tâches basés sur leur titre summary
+        const openSummaries = new Set();
+        document.querySelectorAll('#tasks-pipeline details').forEach(d => {
+          const summary = d.querySelector('summary');
+          if (summary && d.open) {
+            openSummaries.add(summary.textContent.trim());
+          }
+        });
+
+        oldTasks.innerHTML = newTasks.innerHTML;
+
+        // Restaurer l'état ouvert des accordéons
+        document.querySelectorAll('#tasks-pipeline details').forEach(d => {
+          const summary = d.querySelector('summary');
+          if (summary) {
+            const title = summary.textContent.trim();
+            if (openSummaries.has(title)) {
+              d.open = true;
+            } else {
+              d.removeAttribute('open');
+            }
+          }
+        });
+      }
+
+      // 3. Mettre à jour le Rapport d'Activité / Tokens
+      const oldTokenReport = document.querySelector('.main-layout .column:nth-child(2) > details');
+      const newTokenReport = newDoc.querySelector('.main-layout .column:nth-child(2) > details');
+      if (oldTokenReport && newTokenReport) {
+        const wasOpen = oldTokenReport.open;
+        if (oldTokenReport.innerHTML !== newTokenReport.innerHTML) {
+          oldTokenReport.innerHTML = newTokenReport.innerHTML;
+          if (wasOpen) {
+            oldTokenReport.open = true;
+          } else {
+            oldTokenReport.removeAttribute('open');
+          }
+        }
+      }
+
+      // 4. Mettre à jour l'Infrastructure & Services
+      const oldInfra = document.querySelector('.main-layout .column:last-child .scroll-area');
+      const newInfra = newDoc.querySelector('.main-layout .column:last-child .scroll-area');
+      if (oldInfra && newInfra && oldInfra.innerHTML !== newInfra.innerHTML) {
+        oldInfra.innerHTML = newInfra.innerHTML;
+      }
+
+      // 5. Mettre à jour la variable taskDetailsMap dans le scope global
+      const startMarker = 'const taskDetailsMap = ';
+      const startIndex = htmlText.indexOf(startMarker);
+      if (startIndex !== -1) {
+        const endIndex = htmlText.indexOf(';', startIndex);
+        if (endIndex !== -1) {
+          const jsonStr = htmlText.substring(startIndex + startMarker.length, endIndex);
+          try {
+            window.taskDetailsMap = JSON.parse(jsonStr);
+          } catch (e) {
+            console.error("Error parsing taskDetailsMap:", e);
+          }
+        }
+      }
+
+      if (indicator) {
+        indicator.style.background = '#22c55e';
+        indicator.style.boxShadow = '0 0 8px #22c55e';
+        indicator.style.opacity = '0.7';
+      }
+    })
+    .catch(err => {
+      console.error("Failed to refresh dashboard:", err);
+      if (indicator) {
+        indicator.style.background = '#ef4444';
+        indicator.style.boxShadow = '0 0 12px #ef4444';
+        indicator.style.opacity = '1';
+      }
+    });
 }
 
 const taskDetailsMap = {{TASK_DETAILS_MAP}};
@@ -604,6 +712,10 @@ document.addEventListener('click', function(e) {
 
 updateTimestamp();
 setInterval(updateTimestamp, 1000);
+
+// Rafraîchir le tableau de bord immédiatement puis toutes les 15 secondes de façon fluide
+refreshDashboard();
+setInterval(refreshDashboard, 15000);
 </script>
 <div id="details-bubble"></div>
 

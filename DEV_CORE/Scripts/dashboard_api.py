@@ -6,6 +6,8 @@ import subprocess
 from pathlib import Path
 import os
 import sys
+from datetime import datetime
+
 
 PORT = 20129
 PLATFORM_ROOT = os.getenv("DEVCORE_PLATFORM_ROOT", "C:/devcore/DEV_CORE")
@@ -59,6 +61,24 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
 
         elif path == "/api/status":
             self.send_success_response("API Server Active")
+        elif path == "/api/refresh":
+            try:
+                cmd = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", 
+                       f"{PLATFORM_ROOT}/Scripts/gen_dashboard.ps1"]
+                subprocess.run(cmd, capture_output=True)
+                
+                index_path = Path(PLATFORM_ROOT) / "Dashboard" / "index.html"
+                if index_path.exists():
+                    with open(index_path, "r", encoding="utf-8") as f:
+                        html_content = f.read()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/html; charset=utf-8")
+                    self.end_headers()
+                    self.wfile.write(html_content.encode("utf-8"))
+                else:
+                    self.send_error_response("index.html not found after regeneration")
+            except Exception as e:
+                self.send_error_response(str(e))
         else:
             self.send_response(404)
             self.end_headers()
@@ -164,5 +184,4 @@ def main():
             sys.exit(0)
 
 if __name__ == "__main__":
-    from datetime import datetime
     main()

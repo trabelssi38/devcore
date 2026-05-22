@@ -4,8 +4,8 @@
 > 
 > Gère la mémoire persistante, le cycle de vie des tâches (Tasks), les modes cognitifs (reasoning/coding/bulk), et les compétences (skills) réutilisables.
 
-**Version** : 7.1
-**Updated** : 2026-05-21
+**Version** : 7.2
+**Updated** : 2026-05-22
 **Mode** : Single Client (Multi-Projets / Zero Switch)
 
 ---
@@ -574,6 +574,7 @@ Les scanners detectent automatiquement le mode approprie :
 ## 12. Dashboard
 
 **URL** : `file:///C:/devcore/DEV_CORE/Dashboard/index.html`
+**API Server** : `http://localhost:20129`
 
 ### Sections
 
@@ -587,7 +588,16 @@ Les scanners detectent automatiquement le mode approprie :
 - **Tokens** : 3 couches d'optimisation
 - **Tasks Pipeline** : T-01 → T-04 avec dépendances
 
-**Auto-refresh** : 30 secondes
+### Mode de rafraîchissement dynamique
+
+Le cockpit n'utilise plus de rafraîchissement complet de page (meta-refresh). À la place, il embarque une logique de rafraîchissement partiel par AJAX (poller à 15 secondes) :
+- **Endpoint `/api/refresh`** : Interroge le serveur local Python (`dashboard_api.py` sur le port `20129`) qui compile et renvoie la vue complète en temps réel.
+- **Comparaison DOM (DOM Diffing)** : Met à jour dynamiquement les parties modifiées de la page sans recharger l'intégralité du document HTML.
+- **Rétention d'État** : Préserve la position de défilement (scroll), l'état d'ouverture des accordéons `<details>`, les tooltips et l'état des bulles cartographiques.
+- **Indicateur de Synchronisation LED (#sync-indicator)** : Un voyant LED interactif dans le header affiche le statut de la synchronisation :
+  - `Clignotant Violet` : Synchronisation en cours.
+  - `Vert` : Synchronisation réussie et état à jour.
+  - `Rouge` : Erreur de communication ou serveur API hors-ligne.
 
 ---
 
@@ -713,6 +723,14 @@ DEV_CORE v6.3 introduit une architecture **Multi-Projets / Zero Config**, où ch
 ---
 
 ## Changelog v7
+
+### 2026-05-22 — v7.2 Dynamic Partial Refresh & Live Cockpit API
+
+- ✅ **Remplacement du Meta-Refresh par AJAX** : Retrait du tag HTML meta-refresh obsolète qui causait une réactualisation totale de la page toutes les 30 secondes, entraînant la perte du défilement, de l'état d'ouverture des accordéons `<details>`, et des tooltips.
+- ✅ **Nouvel Endpoint `/api/refresh`** : Ajout d'une route `GET /api/refresh` dans le serveur API local `dashboard_api.py` (port `20129`) qui compile et retourne de manière dynamique le dernier contenu HTML généré.
+- ✅ **Algorithme de DOM Diffing Partiel** : Implémentation d'une logique JavaScript robuste de comparaison et de mise à jour partielle intelligente dans `template.html`. Met à jour uniquement le contenu dynamique modifié tout en conservant l'état d'interaction de l'utilisateur (scroll, expansions `<details>`, bulles cartographiques).
+- ✅ **Indicateur de Synchronisation (#sync-indicator)** : Ajout d'un voyant LED interactif dans le header du dashboard indiquant l'état en temps réel du rafraîchissement (Violet clignotant = rafraîchissement en cours, Vert = synchronisé, Rouge = erreur de communication avec le serveur).
+- ✅ **Poller Intelligent** : Mise en place d'un intervalle de rafraîchissement dynamique à 15 secondes avec gestion d'erreurs et reprise automatique en cas de déconnexion/reconnexion de l'API.
 
 ### 2026-05-21 — v7.1 Robustesse du Cockpit & Simulation des Métriques de Cache
 
