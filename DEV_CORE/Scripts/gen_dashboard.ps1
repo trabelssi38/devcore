@@ -82,20 +82,29 @@ foreach ($p in $projects) {
         "<span style='color:#a5b4fc; font-weight:600;'>$($p.ActiveTask)</span> <span style='font-size:9px; color:#64748b;'>($($p.Mode))</span>" 
     }
     $cardsHtml += @"
-  <div class="project-row" title="Projet : $($p.Name) | progression : $($p.Progress)%">
-    <div style="display:flex; align-items:center; gap:8px;">
-      <span class="project-dot $($statusClass)"></span>
-      <span style="font-size:11px; font-weight:600; color:#f8fafc;">$($p.Name)</span>
+  <div class="project-row" data-project="$($p.Name)" onclick="toggleProjectFilter(this, '$($p.Name)')" title="Cliquer pour filtrer les taches du projet : $($p.Name) | progression : $($p.Progress)%">
+    <div style="display:flex; flex-direction:column; gap:4px; flex:1; min-width:0; padding-right:12px;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span class="project-dot $($statusClass)"></span>
+        <span style="font-size:11px; font-weight:600; color:#f8fafc;">$($p.Name)</span>
+      </div>
+      <div style="font-size:9.5px; font-family:'JetBrains Mono',monospace; color:#64748b; padding-left:16px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">
+        $activeTaskHtml
+      </div>
     </div>
-    <div style="font-size:10px; font-family:'JetBrains Mono',monospace;">
-      $activeTaskHtml
+    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0;">
+      <div style="font-size:11px; font-weight:600; color:#cbd5e1; display:flex; align-items:center; gap:6px;">
+        $($p.Progress)%
+      </div>
+      <div style="width:45px; height:3px; background:#1e293b; border-radius:1.5px; overflow:hidden;">
+        <div style="width:$($p.Progress)%; height:100%; background:linear-gradient(90deg, #6366f1, #a5b4fc); border-radius:1.5px;"></div>
+      </div>
     </div>
-    <div style="font-size:11px; font-weight:600; color:#cbd5e1;">$($p.Progress)%</div>
   </div>
 "@
 
     # Groupement par Projet et Worktree avec accordéons
-    $tasksHtml += "<details open><summary><h2 style='color:#6366f1; cursor:pointer; padding:5px; background:#1a1d27; border-radius:4px;'>Projet : $($p.Name)</h2></summary><div style='padding: 10px 0;'>`n"
+    $tasksHtml += "<details open class='project-tasks-group' data-project='$($p.Name)'><summary><h2 style='color:#6366f1; cursor:pointer; padding:5px; background:#1a1d27; border-radius:4px;'>Projet : $($p.Name)</h2></summary><div style='padding: 10px 0;'>`n"
     
     $groups = $p.Tasks | Group-Object worktree | Sort-Object {
         $maxId = 0

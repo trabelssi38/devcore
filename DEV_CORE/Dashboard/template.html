@@ -70,11 +70,18 @@ details{margin-bottom: 8px}
   border: 1px solid #2d3148;
   border-radius: 6px;
   margin-bottom: 6px;
-  transition: border-color 0.2s, background-color 0.2s;
+  cursor: pointer;
+  transition: border-color 0.2s, background-color 0.2s, box-shadow 0.2s;
 }
 .project-row:hover {
   border-color: #6366f1;
   background: #232738;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.15);
+}
+.project-row.selected {
+  border-color: #6366f1;
+  background: rgba(99, 102, 241, 0.1);
+  box-shadow: 0 0 12px rgba(99, 102, 241, 0.25);
 }
 .project-dot {
   width: 8px;
@@ -645,6 +652,22 @@ function refreshDashboard() {
         }
       }
 
+      // 6. Restaurer le filtre actif par projet
+      if (window.activeFilteredProject) {
+        const row = document.querySelector(`.project-row[data-project="${window.activeFilteredProject}"]`);
+        if (row) {
+          row.classList.add('selected');
+        }
+        document.querySelectorAll('.project-tasks-group').forEach(group => {
+          const proj = group.getAttribute('data-project');
+          if (proj === window.activeFilteredProject) {
+            group.classList.remove('hidden');
+          } else {
+            group.classList.add('hidden');
+          }
+        });
+      }
+
       if (indicator) {
         indicator.style.background = '#22c55e';
         indicator.style.boxShadow = '0 0 8px #22c55e';
@@ -659,6 +682,37 @@ function refreshDashboard() {
         indicator.style.opacity = '1';
       }
     });
+}
+
+window.activeFilteredProject = null;
+
+function toggleProjectFilter(rowEl, projectName) {
+  const isSelected = rowEl.classList.contains('selected');
+  
+  // Désélectionner toutes les lignes
+  document.querySelectorAll('.project-row').forEach(row => {
+    row.classList.remove('selected');
+  });
+  
+  if (isSelected) {
+    window.activeFilteredProject = null;
+    document.querySelectorAll('.project-tasks-group').forEach(group => {
+      group.classList.remove('hidden');
+    });
+  } else {
+    rowEl.classList.add('selected');
+    window.activeFilteredProject = projectName;
+    
+    document.querySelectorAll('.project-tasks-group').forEach(group => {
+      const proj = group.getAttribute('data-project');
+      if (proj === projectName) {
+        group.classList.remove('hidden');
+        group.open = true; // Déplier automatiquement
+      } else {
+        group.classList.add('hidden');
+      }
+    });
+  }
 }
 
 const taskDetailsMap = {{TASK_DETAILS_MAP}};
