@@ -59,6 +59,31 @@ details{margin-bottom: 8px}
 .status-ok{color:#22c55e}
 .status-warn{color:#eab308}
 .status-error{color:#ef4444}
+.status-todo{color:#64748b}
+
+.project-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: #1a1d27;
+  border: 1px solid #2d3148;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+.project-row:hover {
+  border-color: #6366f1;
+  background: #232738;
+}
+.project-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 6px currentColor;
+  flex-shrink: 0;
+}
 
 .mission-title{font-size:12px;font-weight:500;color:#ffffff}
 .mission.active-task .mission-title{color:#ffffff; font-weight:600}

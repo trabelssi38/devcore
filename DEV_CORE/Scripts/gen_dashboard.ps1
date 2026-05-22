@@ -75,12 +75,22 @@ $tasksHtml = ""
 $allDetailsMap = @{}
 
 foreach ($p in $projects) {
-    $statusClass = if ($p.Progress -eq 100) { "status-ok" } elseif ($p.Progress -gt 0) { "status-warn" } else { "" }
+    $statusClass = if ($p.Progress -eq 100) { "status-ok" } elseif ($p.Progress -gt 0) { "status-warn" } else { "status-todo" }
+    $activeTaskHtml = if ($p.ActiveTask -eq "Aucune") { 
+        '<span style="color:#64748b">Aucune</span>' 
+    } else { 
+        "<span style='color:#a5b4fc; font-weight:600;'>$($p.ActiveTask)</span> <span style='font-size:9px; color:#64748b;'>($($p.Mode))</span>" 
+    }
     $cardsHtml += @"
-  <div class="card">
-    <div class="card-title">Projet : $($p.Name)</div>
-    <div class="card-val" style="font-size:20px">$($p.ActiveTask)</div>
-    <div class="card-sub">Mode: $($p.Mode) | $($p.Progress)% <span class="$statusClass">*</span></div>
+  <div class="project-row" title="Projet : $($p.Name) | progression : $($p.Progress)%">
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span class="project-dot $($statusClass)"></span>
+      <span style="font-size:11px; font-weight:600; color:#f8fafc;">$($p.Name)</span>
+    </div>
+    <div style="font-size:10px; font-family:'JetBrains Mono',monospace;">
+      $activeTaskHtml
+    </div>
+    <div style="font-size:11px; font-weight:600; color:#cbd5e1;">$($p.Progress)%</div>
   </div>
 "@
 
