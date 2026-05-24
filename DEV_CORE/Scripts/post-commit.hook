@@ -69,8 +69,8 @@ else
     \$nextId = \"T-\$nextNum\"
     
     # Découper le message de commit en lignes
-    \$lines = @(\$cleanMsg -split '\r?\n') | ForEach-Object { \$_.Trim() } | Where-Object { \$_ }
-    \$taskTitle = \$lines[0]
+    \$lines = @( (\$cleanMsg -split '\r?\n') | ForEach-Object { \$_.Trim() } | Where-Object { \$_ } )
+    \$taskTitle = if (\$lines -is [string]) { \$lines } else { \$lines[0] }
     
     \$steps = @()
     if (\$lines.Count -gt 1) {
