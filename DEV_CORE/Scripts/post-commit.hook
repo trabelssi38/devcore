@@ -81,9 +81,6 @@ else
         worktree = 'main'
         details = \"**Tache creee de maniere autonome a partir du commit Git :**\`n- \$cleanMsg\"
         completed_at = (Get-Date -Format 'o')
-        steps = @(
-            [PSCustomObject]@{ id = 1; title = 'Execution et implementation'; done = \$true }
-        )
     }
     
     # Ajouter la tâche à la liste
