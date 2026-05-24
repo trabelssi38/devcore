@@ -1,4 +1,4 @@
-# missions.py — DEV_CORE v6
+# missions.py — DEV_CORE v7.3
 # Mission board Python interface
 
 from __future__ import annotations

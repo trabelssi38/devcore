@@ -18,6 +18,33 @@ def clean_task_id(text):
         return f"T-{int(match.group(1)):02d}"
     return None
 
+def parse_created_at(created_at_str):
+    if not created_at_str:
+        return None
+    s = created_at_str.replace("Z", "")
+    if "+" in s:
+        s = s.split("+")[0]
+    if "-" in s[10:]:
+        s = s[:10] + s[10:].split("-")[0]
+    
+    if "." in s:
+        parts = s.split(".")
+        main_part = parts[0]
+        frac_part = parts[1][:6].ljust(6, '0')
+        s = f"{main_part}.{frac_part}"
+        try:
+            return datetime.strptime(s, "%Y-%m-%dT%H:%M:%S.%f")
+        except ValueError:
+            pass
+            
+    try:
+        return datetime.strptime(s, "%Y-%m-%dT%H:%M:%S")
+    except ValueError:
+        try:
+            return datetime.strptime(s.split("T")[0], "%Y-%m-%d")
+        except ValueError:
+            return None
+
 def main():
     parser = argparse.ArgumentParser(description="Génère un rapport de tokens DEV_CORE ultra-premium avec répartition par projet, session et tâche.")
     parser.add_argument("--date", type=str, help="Date au format YYYY-MM-DD (par défaut aujourd'hui)")
@@ -33,6 +60,19 @@ def main():
 
     if not os.path.exists(reports_dir):
         os.makedirs(reports_dir)
+
+    # Détection dynamique des projets valides dans Memory
+    memory_path = r"C:\devcore\DEV_CORE_DATA\Memory"
+    valid_projects = ["devcore", "cea_dashboard", "job_tracker", "default"]
+    if os.path.exists(memory_path):
+        try:
+            for d in os.listdir(memory_path):
+                if os.path.isdir(os.path.join(memory_path, d)):
+                    d_lower = d.lower()
+                    if d_lower not in ["archive", "patterns", "scores", "default"] and d_lower not in valid_projects:
+                        valid_projects.append(d_lower)
+        except Exception:
+            pass
 
     # 1. Global Aggregation Metrics
     totals = {
@@ -53,9 +93,16 @@ def main():
             folder_path = os.path.join(brain_dir, folder_name)
             if not os.path.isdir(folder_path) or folder_name == "tempmediaStorage":
                 continue
-            
+            log_path = None
             overview_path = os.path.join(folder_path, ".system_generated", "logs", "overview.txt")
+            transcript_path = os.path.join(folder_path, ".system_generated", "logs", "transcript.jsonl")
+            
             if os.path.exists(overview_path):
+                log_path = overview_path
+            elif os.path.exists(transcript_path):
+                log_path = transcript_path
+
+            if log_path:
                 timestamps = []
                 user_turns = 0
                 model_turns = 0
@@ -68,72 +115,95 @@ def main():
                 session_task_tokens = {}
                 
                 try:
-                    with open(overview_path, "r", encoding="utf-8") as f:
+                    with open(log_path, "r", encoding="utf-8") as f:
                         for line in f:
-                            data = json.loads(line)
-                            created_at_str = data.get("created_at")
-                            if not created_at_str:
+                            if not line.strip():
                                 continue
-                            
-                            dt_utc = datetime.strptime(created_at_str, "%Y-%m-%dT%H:%M:%SZ")
-                            dt_local = dt_utc + timedelta(hours=1)
-                            timestamps.append(dt_local)
-                            
-                            content = data.get("content", "")
-                            source = data.get("source")
-                            type_ = data.get("type")
-                            tool_calls = data.get("tool_calls", [])
-                            
-                            is_user = (source == "USER_EXPLICIT" or type_ == "USER_INPUT")
-                            is_model = (source == "MODEL" and type_ == "PLANNER_RESPONSE")
-                            
-                            # A. Project identification
-                            for tc in tool_calls:
-                                tc_args = tc.get("args", {})
-                                if isinstance(tc_args, str):
-                                    args_str = tc_args.lower()
-                                else:
-                                    args_str = json.dumps(tc_args).lower()
+                            try:
+                                data = json.loads(line)
+                                created_at_str = data.get("created_at")
+                                if not created_at_str:
+                                    continue
+                                
+                                dt_utc = parse_created_at(created_at_str)
+                                if not dt_utc:
+                                    continue
+                                dt_local = dt_utc + timedelta(hours=1)
+                                timestamps.append(dt_local)
+                                
+                                content = data.get("content", "")
+                                source = data.get("source")
+                                type_ = data.get("type")
+                                tool_calls = data.get("tool_calls", [])
+                                
+                                is_user = (source == "USER_EXPLICIT" or type_ == "USER_INPUT")
+                                is_model = (source == "MODEL" and type_ == "PLANNER_RESPONSE")
+                                
+                                # A. Project identification
+                                for tc in tool_calls:
+                                    tc_args = tc.get("args", {})
+                                    if isinstance(tc_args, str):
+                                        args_str = tc_args.lower()
+                                    else:
+                                        args_str = json.dumps(tc_args).lower()
+                                        
+                                    # Recherche d'une mention directe de l'un des projets valides
+                                    found_project = None
+                                    for proj in valid_projects:
+                                        patterns = [
+                                            f"c:\\\\{proj}",
+                                            f"c:\\{proj}",
+                                            f"c:/{proj}"
+                                        ]
+                                        if any(pat in args_str for pat in patterns):
+                                            found_project = proj
+                                            break
                                     
-                                if "c:\\devcore" in args_str or "c:\\\\devcore" in args_str:
-                                    detected_project = "devcore"
-                                elif "c:\\" in args_str:
-                                    match = re.search(r'c:\\\\([a-z0-9_-]+)', args_str)
-                                    if not match:
-                                        match = re.search(r'c:\\([a-z0-9_-]+)', args_str)
-                                    if match and match.group(1) not in ["users", "windows", "program files", "devcore"]:
-                                        detected_project = match.group(1)
-                            
-                            # B. Task identification
-                            task_matches = re.findall(r'\bT-\d+\b', content, re.IGNORECASE)
-                            if task_matches:
-                                for tm in task_matches:
-                                    tid = clean_task_id(tm)
-                                    if tid:
-                                        current_task = tid
-                                        session_tasks.add(tid)
-                            
-                            if is_user:
-                                user_turns += 1
-                            elif is_model:
-                                model_turns += 1
-                                model_chars += len(content)
+                                    if found_project:
+                                        detected_project = found_project
+                                    elif "c:\\" in args_str:
+                                        # Recherche regex résiliente
+                                        match = re.search(r'c:\\\\([a-z0-9_-]+)(?:\\\\|/|[\"\'\s]|$)', args_str)
+                                        if not match:
+                                            match = re.search(r'c:\\([a-z0-9_-]+)(?:\\|/|[\"\'\s]|$)', args_str)
+                                        if match:
+                                            proj_candidate = match.group(1)
+                                            if proj_candidate not in ["users", "windows", "program files", "devcore", "n"]:
+                                                if proj_candidate in valid_projects or len(proj_candidate) > 2:
+                                                    detected_project = proj_candidate
                                 
-                                turn_in = 15000
-                                turn_cache = int(15000 * 0.85)
-                                turn_out = len(content) // 4
+                                # B. Task identification
+                                task_matches = re.findall(r'\bT-\d+\b', content, re.IGNORECASE)
+                                if task_matches:
+                                    for tm in task_matches:
+                                        tid = clean_task_id(tm)
+                                        if tid:
+                                            current_task = tid
+                                            session_tasks.add(tid)
                                 
-                                if current_task not in session_task_tokens:
-                                    session_task_tokens[current_task] = {
-                                        "tokens": 0,
-                                        "cache_hits": 0,
-                                        "output_tokens": 0,
-                                        "turns": 0
-                                    }
-                                session_task_tokens[current_task]["tokens"] += turn_in
-                                session_task_tokens[current_task]["cache_hits"] += turn_cache
-                                session_task_tokens[current_task]["output_tokens"] += turn_out
-                                session_task_tokens[current_task]["turns"] += 1
+                                if is_user:
+                                    user_turns += 1
+                                elif is_model:
+                                    model_turns += 1
+                                    model_chars += len(content)
+                                    
+                                    turn_in = 15000
+                                    turn_cache = int(15000 * 0.85)
+                                    turn_out = len(content) // 4
+                                    
+                                    if current_task not in session_task_tokens:
+                                        session_task_tokens[current_task] = {
+                                            "tokens": 0,
+                                            "cache_hits": 0,
+                                            "output_tokens": 0,
+                                            "turns": 0
+                                        }
+                                    session_task_tokens[current_task]["tokens"] += turn_in
+                                    session_task_tokens[current_task]["cache_hits"] += turn_cache
+                                    session_task_tokens[current_task]["output_tokens"] += turn_out
+                                    session_task_tokens[current_task]["turns"] += 1
+                            except Exception:
+                                continue
                 except Exception as e:
                     pass
 
@@ -609,7 +679,7 @@ def main():
 
         <footer>
             <span>Auto-généré par <code>endday.ps1</code> & <code>token_report.py</code></span>
-            <span class="footer-tag">DEV_CORE v6.6</span>
+            <span class="footer-tag">DEV_CORE v7.3</span>
         </footer>
     </div>
 </body>

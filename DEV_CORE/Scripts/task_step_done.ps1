@@ -1,4 +1,4 @@
-# task_step_done.ps1 -- DEV_CORE v6.2 -- Marquer une step individuelle
+# task_step_done.ps1 -- DEV_CORE v7.3 -- Marquer une step individuelle
 # Usage : dc step done [N]  ou  dc sd [N]
 # Si N=0 ou absent, marque la prochaine step non-faite
 param([int]$StepNumber = 0)

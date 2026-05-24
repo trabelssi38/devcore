@@ -1,4 +1,4 @@
-# toonify.ps1 -- DEV_CORE v6.1
+# toonify.ps1 -- DEV_CORE v7.3
 # Conversion JSON <-> TOON avec stats et fallback
 param(
     [Parameter(Mandatory=$true)]
@@ -19,7 +19,7 @@ function Write-Log {
 }
 
 Write-Host ""
-Write-Host "  DEV_CORE v6.1 -- TOONIFY" -ForegroundColor Cyan
+Write-Host "  DEV_CORE v7.3 -- TOONIFY" -ForegroundColor Cyan
 
 if (-not (Test-Path $InputFile)) {
     Write-Log "ERREUR: $InputFile introuvable" "Red"
@@ -42,7 +42,7 @@ if (-not $Decode) {
 
         # Syntaxe correcte : npx @toon-format/cli -e [INPUT] (pas 'encode --input')
         $toonOutput = & npx @toon-format/cli -e "$tempJson" 2>&1 |
-            Where-Object { $_ -notmatch 'ExperimentalWarning' -and $_ -notmatch 'CommonJS module' -and $_ -notmatch 'require\(\)' }
+            Where-Object { $_ -notmatch 'ExperimentalWarning' -and $_ -notmatch 'CommonJS module' -and $_ -notmatch 'require\(\)' -and $_ -notmatch '--trace-warnings' -and $_ -notmatch '^\(Use ' }
         $toonOutput = $toonOutput -join "`n"
         Remove-Item $tempJson -Force -ErrorAction SilentlyContinue
 
@@ -97,7 +97,7 @@ if (-not $Decode) {
 
         # Syntaxe correcte : npx @toon-format/cli -d [INPUT] (pas 'decode --input')
         $jsonOutput = & npx @toon-format/cli -d "$tempToon" 2>&1 |
-            Where-Object { $_ -notmatch 'ExperimentalWarning' -and $_ -notmatch 'CommonJS module' -and $_ -notmatch 'require\(\)' }
+            Where-Object { $_ -notmatch 'ExperimentalWarning' -and $_ -notmatch 'CommonJS module' -and $_ -notmatch 'require\(\)' -and $_ -notmatch '--trace-warnings' -and $_ -notmatch '^\(Use ' }
         $jsonOutput = $jsonOutput -join "`n"
         Remove-Item $tempToon -Force -ErrorAction SilentlyContinue
 

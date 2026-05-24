@@ -1,6 +1,5 @@
-# hermes-daemon.ps1 -- DEV_CORE v6.1 + Hermes Agent Daemon
+# hermes-daemon.ps1 -- DEV_CORE v7.3 + Hermes Standalone Daemon
 # Service Windows pour HERMES en daemon avec cron DEV_CORE
-# Option A: PowerShell Service
 
 param(
     [switch]$Install,
@@ -8,15 +7,16 @@ param(
     [switch]$Start,
     [switch]$Stop,
     [switch]$Status,
-    [switch]$Test
+    [switch]$Test,
+    [switch]$SyncJobs
 )
 
 $ErrorActionPreference = "Stop"
-$HERMES_HOME = "$env:USERPROFILE\.hermes"
+$HERMES_HOME  = "$env:USERPROFILE\.hermes"
 $DEVCORE_ROOT = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
-$HERMES_BIN   = if ($env:HERMES_BIN) { $env:HERMES_BIN } else { "C:\devcore\hermes_temp\.venv\Scripts\hermes.exe" }
-$LOG_DIR = "$DEVCORE_ROOT\Logs\hermes"
-$LOG_FILE = "$LOG_DIR\daemon_$(Get-Date -Format 'yyyy-MM-dd').log"
+$PYTHON_BIN   = "C:\devcore\hermes_temp\.venv\Scripts\python.exe"
+$LOG_DIR      = "$DEVCORE_ROOT\..\DEV_CORE_DATA\Logs\hermes"
+$LOG_FILE     = "$LOG_DIR\daemon_$(Get-Date -Format 'yyyy-MM-dd').log"
 
 # Creer dossier logs si absent
 if (-not (Test-Path $LOG_DIR)) {
@@ -37,30 +37,21 @@ function Write-Log {
     Write-Host "  $logLine" -ForegroundColor $color
 }
 
-function Get-ScheduledTaskStatus {
-    $tasks = @("DEV_CORE_Daily_Launch", "DEV_CORE_Daily_Endday", "DEV_CORE_Weekly_Maintenance", "HERMES_Daemon", "DEV_CORE_Event_Watcher", "DEV_CORE_Integrity_Check")
-    $status = @()
-    foreach ($taskName in $tasks) {
-        $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
-        if ($task) {
-            $info = Get-ScheduledTaskInfo -TaskName $taskName -ErrorAction SilentlyContinue
-            $status += [PSCustomObject]@{
-                Name = $taskName
-                State = $task.State
-                LastRun = $info.LastRunTime
-                NextRun = $info.NextRunTime
-            }
-        }
-    }
-    return $status
-}
-
 # ========== COMMANDS ==========
 
 function Do-Install {
-    Write-Log "Installation du daemon HERMES DEV_CORE" "INFO"
+    Write-Log "Installation du daemon HERMES DEV_CORE (Tick loop standalone)" "INFO"
 
-    # 1. HERMES daemon (tache planifiee qui lance hermes en background)
+    # Desinstaller les anciennes taches planifiees individuelles si presentes pour eviter les doublons
+    $oldTasks = @("DEV_CORE_Daily_Launch", "DEV_CORE_Daily_Endday", "DEV_CORE_Weekly_Maintenance", "DEV_CORE_Event_Watcher", "DEV_CORE_Integrity_Check")
+    foreach ($ot in $oldTasks) {
+        if (Get-ScheduledTask -TaskName $ot -ErrorAction SilentlyContinue) {
+            Unregister-ScheduledTask -TaskName $ot -Confirm:$false -ErrorAction SilentlyContinue
+            Write-Log "  Ancienne tache planifiee $ot supprimee (remplacee par Hermes)" "WARN"
+        }
+    }
+
+    # Unique scheduled task for starting the lightweight tick daemon at login
     $action = New-ScheduledTaskAction -Execute "powershell.exe" `
         -Argument "-NoProfile -WindowStyle Hidden -File `"$PSScriptRoot\hermes-daemon.ps1`" -Start"
 
@@ -69,64 +60,12 @@ function Do-Install {
 
     Register-ScheduledTask -TaskName "HERMES_Daemon" `
         -Action $action -Trigger $trigger -Settings $settings -Force | Out-Null
-    Write-Log "  Tache planifiee HERMES_Daemon creee" "SUCCESS"
+    Write-Log "  Unique Scheduled Task 'HERMES_Daemon' creee avec succes" "SUCCESS"
 
-    # 2. DEV_CORE cron tasks
-    $cronTasks = @(
-        @{
-            Name = "DEV_CORE_Daily_Launch"
-            Time = "10:00"
-            Script = "$DEVCORE_ROOT\Scripts\launch.ps1"
-            Desc = "Demarrage quotidien DEV_CORE - 10h"
-        },
-        @{
-            Name = "DEV_CORE_Daily_Endday"
-            Time = "04:00"
-            Script = "$DEVCORE_ROOT\Scripts\endday.ps1"
-            Desc = "Cloture quotidienne DEV_CORE - 4h"
-        },
-        @{
-            Name = "DEV_CORE_Weekly_Maintenance"
-            DayOfWeek = "Sunday"
-            Time = "05:00"
-            Script = "$DEVCORE_ROOT\Scripts\Auto\weekly_maintenance.ps1"
-            Desc = "Maintenance hebdomadaire DEV_CORE - Dimanche 5h"
-        },
-        @{
-            Name = "DEV_CORE_Event_Watcher"
-            RepetitionMinutes = 2
-            Script = "$DEVCORE_ROOT\Scripts\Auto\event_watcher.ps1"
-            Desc = "Traitement reactif des evenements du bus DEV_CORE (toutes les 2 min)"
-        },
-        @{
-            Name = "DEV_CORE_Integrity_Check"
-            Time = "12:00"
-            Script = "$DEVCORE_ROOT\Scripts\Auto\integrity_check.ps1"
-            Desc = "Verification d'integrite quotidienne des taches et encodages (midi)"
-        }
-    )
+    # Synchroniser les tâches cron config
+    Do-SyncJobs
 
-    foreach ($task in $cronTasks) {
-        $action = New-ScheduledTaskAction -Execute "powershell.exe" `
-            -Argument "-NoProfile -ExecutionPolicy Bypass -File `"$($task.Script)`""
-
-        if ($task.DayOfWeek) {
-            $trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek $task.DayOfWeek -At $task.Time
-        } elseif ($task.RepetitionMinutes) {
-            $trigger = New-ScheduledTaskTrigger -Daily -At "00:00" -RepetitionInterval (New-TimeSpan -Minutes $task.RepetitionMinutes)
-        } else {
-            $trigger = New-ScheduledTaskTrigger -Daily -At $task.Time
-        }
-
-        $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -RunOnlyIfNetworkAvailable
-
-        Register-ScheduledTask -TaskName $task.Name `
-            -Action $action -Trigger $trigger -Settings $settings -Force | Out-Null
-
-        Write-Log "  Tache planifiee $($task.Name) creee - $($task.Desc)" "SUCCESS"
-    }
-
-    Write-Log "Installation terminee" "SUCCESS"
+    Write-Log "Installation terminee. Le daemon s'exécutera au demarrage du PC." "SUCCESS"
 }
 
 function Do-Uninstall {
@@ -138,115 +77,135 @@ function Do-Uninstall {
         $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
         if ($task) {
             Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue
-            Write-Log "  Tache $taskName supprimee" "INFO"
+            Write-Log "  Tache planifiee $taskName supprimee" "INFO"
         }
     }
 
+    Do-Stop
     Write-Log "Desinstallation terminee" "SUCCESS"
 }
 
 function Do-Start {
-    Write-Log "Demarrage du daemon HERMES" "INFO"
+    Write-Log "Demarrage du daemon HERMES Tick Loop" "INFO"
 
-    # Lancer hermes en mode background (Gateway avec cron integre)
-    $hermesArgs = @("gateway", "run", "--accept-hooks")
+    # Verifier si deja running
+    $proc = Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'hermes_cron_tick.py' }
+    if ($proc) {
+        Write-Log "  Le daemon HERMES tourne deja (PID: $($proc.ProcessId))" "WARN"
+        return
+    }
 
     # Configurer les variables d'environnement
     $env:DEVCORE_PLATFORM_ROOT = "C:\devcore\DEV_CORE"
     $env:DEVCORE_DATA_ROOT = "C:\devcore\DEV_CORE_DATA"
 
-    # Lancer HERMES
-    if (Test-Path $HERMES_BIN) {
-        Start-Process -FilePath $HERMES_BIN -ArgumentList $hermesArgs -WindowStyle Hidden -PassThru
-        Write-Log "  HERMES lance en background (Gateway)" "SUCCESS"
+    # Lancer hermes_cron_tick.py en background (mode detache WMI)
+    if (Test-Path $PYTHON_BIN) {
+        $tickScript = "$DEVCORE_ROOT\Scripts\hermes_cron_tick.py"
+        Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = "$PYTHON_BIN $tickScript" } | Out-Null
+        Write-Log "  Daemon hermes_cron_tick.py lance avec succes en tâche de fond" "SUCCESS"
     } else {
-        Write-Log "  HERMES non trouve a $HERMES_BIN" "ERROR"
+        Write-Log "  Python binaire non trouve a $PYTHON_BIN" "ERROR"
     }
 }
 
 function Do-Stop {
-    Write-Log "Arret du daemon HERMES" "INFO"
+    Write-Log "Arret du daemon HERMES Tick Loop" "INFO"
 
-    # arreter tous les processus hermes
-    Get-Process -Name "hermes" -ErrorAction SilentlyContinue | Stop-Process -Force
-    Write-Log "  Processus HERMES arretes" "SUCCESS"
+    # Trouver et arreter la tache
+    $procs = Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'hermes_cron_tick.py' }
+    if ($procs) {
+        foreach ($p in $procs) {
+            Stop-Process -Id $p.ProcessId -Force
+            Write-Log "  Daemon arrete (PID: $($p.ProcessId))" "SUCCESS"
+        }
+    } else {
+        Write-Log "  Aucun daemon running trouve" "INFO"
+    }
 }
 
 function Do-Status {
     Write-Log "Status du daemon HERMES" "INFO"
 
-    # Status HERMES
-    $hermesProc = Get-Process -Name "hermes" -ErrorAction SilentlyContinue
-    if ($hermesProc) {
-        Write-Log "  HERMES: RUNNING (PID: $($hermesProc.Id))" "SUCCESS"
+    # Trouver le processus
+    $proc = Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'hermes_cron_tick.py' }
+    if ($proc) {
+        Write-Log "  Daemon Status: RUNNING (PID: $($proc.ProcessId))" "SUCCESS"
+        Write-Log "  Command line: $($proc.CommandLine)" "Gray"
     } else {
-        Write-Log "  HERMES: STOPPED" "WARN"
+        Write-Log "  Daemon Status: STOPPED" "WARN"
     }
 
-    # Status tache planifiee
-    Write-Log "" "INFO"
-    Write-Log "Taches planifiees DEV_CORE:" "INFO"
-    $status = Get-ScheduledTaskStatus
-    foreach ($s in $status) {
-        Write-Log "  $($s.Name): $($s.State) | Prochain: $($s.NextRun)" "INFO"
+    # Afficher l'etat des taches dans jobs.json
+    $jobsFile = "$HERMES_HOME\cron\jobs.json"
+    if (Test-Path $jobsFile) {
+        Write-Log "" "INFO"
+        Write-Log "Taches planifiees enregistrees dans Hermes (jobs.json):" "INFO"
+        try {
+            $jobs = Get-Content $jobsFile -Raw | ConvertFrom-Json
+            foreach ($j in $jobs.jobs) {
+                $statusColor = if ($j.enabled) { "SUCCESS" } else { "WARN" }
+                $lastStatus = if ($j.last_status) { $j.last_status } else { "never run" }
+                Write-Log "  - $($j.name) : $(if($j.enabled){'Actif'}else{'Desactive'}) | Schedule: $($j.schedule_display) | Dernier run: $lastStatus (Next: $($j.next_run_at))" $statusColor
+            }
+        } catch {
+            Write-Log "  Erreur de lecture de jobs.json" "ERROR"
+        }
     }
 }
 
-function Do-Test {
-    Write-Log "Test du daemon HERMES" "INFO"
-
-    # Test Hermes binaire
-    if (Test-Path $HERMES_BIN) {
-        $version = & $HERMES_BIN --version 2>&1
-        Write-Log "  Hermes binaire: OK ($version)" "SUCCESS"
+function Do-SyncJobs {
+    Write-Log "Synchronisation des tâches dans Hermes..." "INFO"
+    if (Test-Path $PYTHON_BIN) {
+        $syncScript = "$DEVCORE_ROOT\Scripts\Auto\sync_cron_jobs.py"
+        $result = subprocess_run -FilePath $PYTHON_BIN -ArgumentList $syncScript
+        Write-Log "  Jobs synchronises avec jobs.json avec succes." "SUCCESS"
     } else {
-        Write-Log "  Hermes binaire: NON TROUVE" "ERROR"
+        Write-Log "  Python binaire manquant" "ERROR"
     }
+}
 
-    # Test chemins
-    $paths = @(
-        "C:\devcore\DEV_CORE\Scripts",
-        "C:\devcore\DEV_CORE_DATA\Memory",
-        "C:\devcore\DEV_CORE_DATA\Vault",
-        "$HERMES_HOME\config.yaml"
-    )
-
-    Write-Log "" "INFO"
-    Write-Log "Chemins DEV_CORE:" "INFO"
-    foreach ($p in $paths) {
-        $exists = Test-Path $p
-        $color = if ($exists) { "SUCCESS" } else { "ERROR" }
-        Write-Log "  $p : $(if ($exists) { 'OK' } else { 'MANQUANT' })" $color
+# Helper pour executer de maniere synchrone sous powershell
+function subprocess_run {
+    param($FilePath, $ArgumentList)
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = $FilePath
+    $psi.Arguments = $ArgumentList
+    $psi.UseShellExecute = $false
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.CreateNoWindow = $true
+    
+    $p = [System.Diagnostics.Process]::Start($psi)
+    $p.WaitForExit()
+    $out = $p.StandardOutput.ReadToEnd()
+    $err = $p.StandardError.ReadToEnd()
+    if ($p.ExitCode -ne 0) {
+        throw "Script failed: $err"
     }
+    return $out
+}
 
-    # Test services
-    Write-Log "" "INFO"
-    Write-Log "Services:" "INFO"
-
-    # Qdrant
-    try {
-        $q = Invoke-RestMethod "http://localhost:6333/" -TimeoutSec 3
-        Write-Log "  Qdrant (6333): OK" "SUCCESS"
-    } catch {
-        Write-Log "  Qdrant (6333): NON ACCESSIBLE" "WARN"
+function Do-Test {
+    Write-Log "Test de la configuration du daemon" "INFO"
+    if (Test-Path $PYTHON_BIN) {
+        Write-Log "  Python binaire: OK" "SUCCESS"
+    } else {
+        Write-Log "  Python binaire: NON TROUVE" "ERROR"
     }
-
-    # Ollama
-    try {
-        $o = Invoke-RestMethod "http://localhost:11434/api/version" -TimeoutSec 3
-        Write-Log "  Ollama (11434): OK" "SUCCESS"
-    } catch {
-        Write-Log "  Ollama (11434): NON ACCESSIBLE" "WARN"
+    
+    $tickScript = "$DEVCORE_ROOT\Scripts\hermes_cron_tick.py"
+    if (Test-Path $tickScript) {
+        Write-Log "  Tick loop script: OK" "SUCCESS"
+    } else {
+        Write-Log "  Tick loop script: NON TROUVE" "ERROR"
     }
-
-    Write-Log "" "INFO"
-    Write-Log "Test termine" "SUCCESS"
 }
 
 # ========== MAIN ==========
 
 Write-Host ""
-Write-Host "  HERMES DEV_CORE Daemon v6.1" -ForegroundColor Cyan
+Write-Host "  HERMES DEV_CORE Daemon Manager v7.3" -ForegroundColor Cyan
 Write-Host "  ========================================" -ForegroundColor DarkGray
 Write-Host ""
 
@@ -257,15 +216,17 @@ switch ($true) {
     { $Stop }        { Do-Stop }
     { $Status }     { Do-Status }
     { $Test }       { Do-Test }
+    { $SyncJobs }   { Do-SyncJobs }
     default {
-        Write-Log "Usage: hermes-daemon.ps1 [-Install|-Uninstall|-Start|-Stop|-Status|-Test]" "WARN"
+        Write-Log "Usage: hermes-daemon.ps1 [-Install|-Uninstall|-Start|-Stop|-Status|-Test|-SyncJobs]" "WARN"
         Write-Log "" "INFO"
         Write-Log "Commands:" "INFO"
-        Write-Log "  -Install     Installe le daemon + tache planifiee Windows" "INFO"
-        Write-Log "  -Uninstall  Desinstalle le daemon" "INFO"
-        Write-Log "  -Start       Demarre HERMES en background" "INFO"
-        Write-Log "  -Stop        Arrete HERMES" "INFO"
-        Write-Log "  -Status      Affiche le status du daemon" "INFO"
+        Write-Log "  -Install     Installe le unique daemon + scheduled task" "INFO"
+        Write-Log "  -Uninstall  Desinstalle tout le daemon" "INFO"
+        Write-Log "  -Start       Demarre le daemon de tick en background" "INFO"
+        Write-Log "  -Stop        Arrete le daemon de tick" "INFO"
+        Write-Log "  -Status      Affiche le status du tick loop + jobs" "INFO"
+        Write-Log "  -SyncJobs    Force la synchronisation hermes_cron.yaml" "INFO"
         Write-Log "  -Test        Test la configuration" "INFO"
     }
 }

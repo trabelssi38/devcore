@@ -1,4 +1,4 @@
-﻿# obsidian_sync.ps1 -- DEV_CORE v6.1
+# obsidian_sync.ps1 -- DEV_CORE v7.3
 # Sync accomplishments vers Obsidian Daily Note
 
 $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
@@ -13,7 +13,7 @@ function Write-Log {
 }
 
 Write-Host ""
-Write-Host "  DEV_CORE v6.1 -- Obsidian Sync" -ForegroundColor Cyan
+Write-Host "  DEV_CORE v7.3 -- Obsidian Sync" -ForegroundColor Cyan
 
 # Create daily note if not exists
 if (-not (Test-Path $NOTE_PATH)) {

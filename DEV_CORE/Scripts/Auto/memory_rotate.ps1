@@ -1,4 +1,4 @@
-# memory_rotate.ps1 -- DEV_CORE v6 Auto layer
+# memory_rotate.ps1 -- DEV_CORE v7.3 Auto layer
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
 $TODAY         = Get-Date -Format "yyyy-MM-dd"
@@ -11,7 +11,7 @@ New-Item -ItemType Directory -Path $archDir -Force | Out-Null
 if (-not (Test-Path $memPath)) {
     # Creer MEMORY.md initial
     @"
-# MEMORY.md -- DEV_CORE v6
+# MEMORY.md -- DEV_CORE v7.3
 <!-- Auto-genere par memory_rotate.ps1 -->
 <!-- Score min inclusion : 0.5 | Max entrees : 50 -->
 

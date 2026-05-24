@@ -1,4 +1,4 @@
-﻿# gen_session_context.ps1 -- DEV_CORE v6.1
+# gen_session_context.ps1 -- DEV_CORE v7.3
 # Genere le fichier session_context.txt
 
 $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }

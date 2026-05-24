@@ -1,0 +1,52 @@
+[2026-05-18 01:53:43] [INFO] Status du daemon HERMES
+[2026-05-18 01:53:43] [WARN]   HERMES: STOPPED
+[2026-05-18 01:53:43] [INFO] 
+[2026-05-18 01:53:43] [INFO] Taches planifiees DEV_CORE:
+[2026-05-18 01:53:48] [INFO]   DEV_CORE_Daily_Launch: Ready | Prochain: 05/18/2026 10:00:00
+[2026-05-18 01:53:48] [INFO]   DEV_CORE_Daily_Endday: Ready | Prochain: 05/18/2026 04:00:00
+[2026-05-18 01:53:48] [INFO]   DEV_CORE_Weekly_Maintenance: Ready | Prochain: 05/24/2026 05:00:00
+[2026-05-18 01:53:48] [INFO]   HERMES_Daemon: Ready | Prochain: 
+[2026-05-18 01:53:52] [INFO] Test du daemon HERMES
+[2026-05-18 01:54:00] [SUCCESS]   Hermes binaire: OK (Hermes Agent v0.14.0 (2026.5.16) Project: C:\devcore\hermes_temp Python: 3.14.0 OpenAI SDK: 2.24.0 Update available: 11 commits behind Ù?¤ run 'hermes update')
+[2026-05-18 01:54:00] [INFO] 
+[2026-05-18 01:54:00] [INFO] Chemins DEV_CORE:
+[2026-05-18 01:54:00] [SUCCESS]   C:\devcore\DEV_CORE\Scripts : OK
+[2026-05-18 01:54:00] [SUCCESS]   C:\devcore\DEV_CORE_DATA\Memory : OK
+[2026-05-18 01:54:00] [SUCCESS]   C:\devcore\DEV_CORE_DATA\Vault : OK
+[2026-05-18 01:54:00] [SUCCESS]   C:\Users\trb_m\.hermes\config.yaml : OK
+[2026-05-18 01:54:00] [INFO] 
+[2026-05-18 01:54:00] [INFO] Services:
+[2026-05-18 01:54:00] [SUCCESS]   Qdrant (6333): OK
+[2026-05-18 01:54:02] [SUCCESS]   Ollama (11434): OK
+[2026-05-18 01:54:02] [INFO] 
+[2026-05-18 01:54:02] [SUCCESS] Test termine
+[2026-05-18 01:54:17] [INFO] Demarrage du daemon HERMES
+[2026-05-18 01:54:17] [SUCCESS]   HERMES lance en background
+[2026-05-18 01:54:21] [INFO] Status du daemon HERMES
+[2026-05-18 01:54:21] [SUCCESS]   HERMES: RUNNING (PID: 9856)
+[2026-05-18 01:54:21] [INFO] 
+[2026-05-18 01:54:21] [INFO] Taches planifiees DEV_CORE:
+[2026-05-18 01:54:25] [INFO]   DEV_CORE_Daily_Launch: Ready | Prochain: 05/18/2026 10:00:00
+[2026-05-18 01:54:25] [INFO]   DEV_CORE_Daily_Endday: Ready | Prochain: 05/18/2026 04:00:00
+[2026-05-18 01:54:25] [INFO]   DEV_CORE_Weekly_Maintenance: Ready | Prochain: 05/24/2026 05:00:00
+[2026-05-18 01:54:25] [INFO]   HERMES_Daemon: Ready | Prochain: 
+[2026-05-18 01:55:38] [INFO] Status du daemon HERMES
+[2026-05-18 01:55:38] [WARN]   HERMES: STOPPED
+[2026-05-18 01:55:38] [INFO] 
+[2026-05-18 01:55:38] [INFO] Taches planifiees DEV_CORE:
+[2026-05-18 01:55:44] [INFO]   DEV_CORE_Daily_Launch: Ready | Prochain: 05/18/2026 10:00:00
+[2026-05-18 01:55:44] [INFO]   DEV_CORE_Daily_Endday: Ready | Prochain: 05/18/2026 04:00:00
+[2026-05-18 01:55:44] [INFO]   DEV_CORE_Weekly_Maintenance: Ready | Prochain: 05/24/2026 05:00:00
+[2026-05-18 01:55:44] [INFO]   HERMES_Daemon: Ready | Prochain: 
+[2026-05-18 01:57:21] [INFO] Demarrage du daemon HERMES
+[2026-05-18 01:57:21] [SUCCESS]   HERMES lance en background (Gateway)
+[2026-05-18 01:57:25] [INFO] Status du daemon HERMES
+[2026-05-18 01:57:25] [SUCCESS]   HERMES: RUNNING (PID: 21532)
+[2026-05-18 01:57:25] [INFO] 
+[2026-05-18 01:57:25] [INFO] Taches planifiees DEV_CORE:
+[2026-05-18 01:57:29] [INFO]   DEV_CORE_Daily_Launch: Ready | Prochain: 05/18/2026 10:00:00
+[2026-05-18 01:57:29] [INFO]   DEV_CORE_Daily_Endday: Ready | Prochain: 05/18/2026 04:00:00
+[2026-05-18 01:57:29] [INFO]   DEV_CORE_Weekly_Maintenance: Ready | Prochain: 05/24/2026 05:00:00
+[2026-05-18 01:57:29] [INFO]   HERMES_Daemon: Ready | Prochain: 
+[2026-05-18 11:15:54] [INFO] Demarrage du daemon HERMES
+[2026-05-18 11:15:54] [SUCCESS]   HERMES lance en background (Gateway)

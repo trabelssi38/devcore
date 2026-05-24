@@ -1,4 +1,4 @@
-# task_add.ps1 -- DEV_CORE v6 single client
+# task_add.ps1 -- DEV_CORE v7.3 single client
 param(
     [Parameter(Mandatory=$true)][string]$Title,
     [ValidateSet("reasoning","coding","bulk")][string]$Mode = "coding",

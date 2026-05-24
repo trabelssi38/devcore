@@ -1,4 +1,4 @@
-# task_done.ps1 -- DEV_CORE v6 single client
+# task_done.ps1 -- DEV_CORE v7.3 single client
 param([switch]$Force)
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
@@ -37,7 +37,7 @@ $nextTask = $board.tasks | Where-Object {
 } | Select-Object -First 1
 $board | ConvertTo-Json -Depth 10 | Set-Content $tFile -Encoding UTF8
 
-Write-Host ""; Write-Host "  DEV_CORE v6 -- TASK DONE" -ForegroundColor Green; Write-Host ""
+Write-Host ""; Write-Host "  DEV_CORE v7.3 -- TASK DONE" -ForegroundColor Green; Write-Host ""
 Write-Host "  1/5 Lecons..." -ForegroundColor Cyan
 if (Test-Path "$AUTO\lesson_extractor.ps1") { & "$AUTO\lesson_extractor.ps1" }
 
@@ -61,7 +61,7 @@ try {
     $n = New-Object System.Windows.Forms.NotifyIcon
     $n.Icon = [System.Drawing.SystemIcons]::Information; $n.Visible = $true
     $nextInfo = if ($nextTask) { "Suivant : $($nextTask.id) [$($nextTask.mode)]" } else { "Projet termine !" }
-    $n.ShowBalloonTip(5000, "DEV_CORE v6", "$($current.id) done. $nextInfo", [System.Windows.Forms.ToolTipIcon]::Info)
+    $n.ShowBalloonTip(5000, "DEV_CORE v7.3", "$($current.id) done. $nextInfo", [System.Windows.Forms.ToolTipIcon]::Info)
     Start-Sleep -Seconds 1; $n.Dispose()
 } catch {}
 

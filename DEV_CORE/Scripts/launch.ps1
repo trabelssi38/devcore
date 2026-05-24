@@ -1,4 +1,4 @@
-﻿# launch.ps1 -- DEV_CORE v6
+# launch.ps1 -- DEV_CORE v7.3
 param(
     [string]$Client = "auto",
     [string]$Project = "",
@@ -13,7 +13,7 @@ $LOG           = "$DEV_CORE_DATA\Logs\scripts\launch_$TODAY.log"
 function Log { param($msg,$color="Gray"); $l="[$(Get-Date -f HH:mm:ss)] $msg"; Add-Content $LOG $l -ErrorAction SilentlyContinue; Write-Host "  $l" -ForegroundColor $color }
 
 Write-Host ""
-Write-Host "  DEV_CORE v6 - LAUNCH" -ForegroundColor Cyan
+Write-Host "  DEV_CORE v7.3 - LAUNCH" -ForegroundColor Cyan
 Write-Host "  =======================================" -ForegroundColor DarkGray
 
 # 1. Adapter le client
@@ -102,7 +102,7 @@ else { Log "  Pas de rapport pour $yesterday" "Gray" }
 $activeClient = Get-Content "$DEV_CORE\Config\active_client.txt" -ErrorAction SilentlyContinue
 Write-Host ""
 Write-Host "  ========================================" -ForegroundColor Green
-Write-Host "  ||  DEV_CORE v6 - PRET                 ||" -ForegroundColor Green
+Write-Host "  ||  DEV_CORE v7.3 - PRET               ||" -ForegroundColor Green
 Write-Host "  ========================================" -ForegroundColor Green
 Write-Host "  ||  Client : $($activeClient.PadRight(29))||" -ForegroundColor White
 Write-Host "  ||  Date   : $($TODAY.PadRight(29))||" -ForegroundColor White

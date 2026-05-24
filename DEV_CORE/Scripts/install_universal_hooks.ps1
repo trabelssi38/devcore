@@ -1,4 +1,4 @@
-# install_universal_hooks.ps1 -- DEV_CORE v6.1
+# install_universal_hooks.ps1 -- DEV_CORE v7.3
 # Installe les hooks pour tous les clients IA et tous les IDE (via PowerShell Profile)
 # Chaque client IA a ses propres noms d'evenements -- ce script les gere correctement.
 
@@ -7,7 +7,7 @@ $sessionStartScript = "$DEV_CORE\Scripts\session_start.ps1"
 $postToolScript     = "$DEV_CORE\Scripts\post_tool_hook.ps1"
 $sessionEndScript   = "$DEV_CORE\Scripts\session_end.ps1"
 
-Write-Host "  DEV_CORE v6.1 -- Integration Universelle" -ForegroundColor Cyan
+Write-Host "  DEV_CORE v7.3 -- Integration Universelle" -ForegroundColor Cyan
 Write-Host "  ========================================" -ForegroundColor DarkGray
 
 # Mapping des noms d'evenements par client

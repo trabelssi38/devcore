@@ -42,7 +42,11 @@
     "historiquez",
     "historiquer",
     "historiqué",
-    "details"
+    "details",
+    "optimisation",
+    "styledashboard",
+    "choredashboard",
+    "featdashboard"
   ],
   "reasoning": [
     "architecturer",
@@ -79,7 +83,10 @@
     "nettoyagé",
     "nettoyagez",
     "nettoyager",
-    "finalisation"
+    "finalisation",
+    "docs",
+    "restructuration",
+    "développement"
   ],
   "bulk": [
     "tester",
@@ -98,6 +105,7 @@
     "documenté",
     "optimisé",
     "déployé",
-    "tests"
+    "tests",
+    "feat"
   ]
 }

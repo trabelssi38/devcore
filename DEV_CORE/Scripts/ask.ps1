@@ -1,4 +1,4 @@
-﻿# ask.ps1 â€” DEV_CORE v6.2 (migre vers tasks.json)
+# ask.ps1 — DEV_CORE v7.3 (migre vers tasks.json)
 param([Parameter(Mandatory=$true)][string]$PromptFr)
 
 $ErrorActionPreference = 'Stop'

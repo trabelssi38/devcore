@@ -6,7 +6,7 @@ SCRIPTS="$PLATFORM_ROOT/Scripts"
 MSG=$(git log -1 --pretty=%B)
 TID=$(echo "$MSG" | grep -oP '\[T-\d+\]' | tr -d '[]' | head -1)
 
-# 1. Step increment et renommage immédiat (si tag présent)
+# 1. Step increment et renommage immédiat (si tag présent), sinon création autonome
 if [ -n "$TID" ]; then
     echo "  [DEV_CORE] Tag $TID detecte dans le commit"
     powershell.exe -NoProfile -ExecutionPolicy Bypass -NonInteractive -Command "
@@ -42,6 +42,67 @@ if [ -n "$TID" ]; then
         & '$SCRIPTS/task_done.ps1' -Force
     }
     "
+else
+    # Si aucun tag T-XX n'est présent, créer de manière autonome une tâche DONE à partir du commit
+    echo "  [DEV_CORE] Aucun tag detecte. Creation autonome d'une tache..."
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -NonInteractive -Command "
+    \$projName = & '$SCRIPTS/Get-ActiveProject.ps1'
+    \$f = \"$DATA_ROOT/Memory/\$projName/tasks.json\"
+    if(-not(Test-Path \$f)){exit 0}
+    \$b=Get-Content \$f -Raw -Encoding UTF8 | ConvertFrom-Json
+    
+    # Ignorer les messages trop courts ou de merge
+    \$cleanMsg = \"$MSG\".Trim()
+    if (\$cleanMsg.Length -lt 6 -or \$cleanMsg.StartsWith('Merge ')) {
+        exit 0
+    }
+    
+    # Trouver le prochain ID disponible
+    \$maxId = 0
+    foreach (\$task in \$b.tasks) {
+        if (\$task.id -match 'T-(\d+)') {
+            \$num = [int]\$Matches[1]
+            if (\$num -gt \$maxId) { \$maxId = \$num }
+        }
+    }
+    \$nextNum = \$maxId + 1
+    \$nextId = \"T-\$nextNum\"
+    
+    # Créer l'objet tâche
+    \$newTask = [PSCustomObject]@{
+        id = \$nextId
+        title = \$cleanMsg
+        mode = 'coding'
+        status = 'done'
+        steps_total = 1
+        steps_done = 1
+        depends_on = \$null
+        source = 'git'
+        worktree = 'main'
+        details = \"**Tache creee de maniere autonome a partir du commit Git :**\`n- \$cleanMsg\"
+        completed_at = (Get-Date -Format 'o')
+        steps = @(
+            [PSCustomObject]@{ id = 1; title = 'Execution et implementation'; done = \$true }
+        )
+    }
+    
+    # Ajouter la tâche à la liste
+    \$b.tasks += \$newTask
+    
+    # Ajouter à detected_from_git
+    if (\$b.PSObject.Properties['detected_from_git']) {
+        \$b.detected_from_git += \$nextId
+    } else {
+        \$b | Add-Member -NotePropertyName 'detected_from_git' -NotePropertyValue @(\$nextId) -Force
+    }
+    
+    # Sauvegarder tasks.json
+    \$b | ConvertTo-Json -Depth 10 | Set-Content \$f -Encoding UTF8
+    Write-Host \"  [DEV_CORE] Tache autonome \$nextId creee avec succes : \$cleanMsg\"
+    
+    # Régénérer le dashboard
+    & '$SCRIPTS/gen_dashboard.ps1' | Out-Null
+    "
 fi
 
 # 2. Émettre l'événement post-commit pour le bus d'événements (Hermes)
@@ -60,14 +121,10 @@ Set-Content \"\$evtDir/\$(Get-Date -Format 'yyyyMMdd_HHmmss')_commit.json\" \$ev
 $MSG
 EOF
 
-# 3. Lancer le Scan + Sync + Dashboard en arrière-plan (non-bloquant, asynchrone)
+# 3. Lancer le Scan + Sync + Dashboard en arrière-plan (non-bloquant, asynchrone et robuste)
 echo "  [DEV_CORE] Scan et synchronisation en fond..."
 powershell.exe -NoProfile -ExecutionPolicy Bypass -NonInteractive -Command "
-Start-Job -ScriptBlock {
-    param(\$scripts)
-    & \"\$scripts/task_scan.ps1\" 2>&1 | Out-Null
-    & \"\$scripts/task_sync.ps1\" 2>&1 | Out-Null
-} -ArgumentList '$SCRIPTS' | Out-Null
-" &
+Start-Process -FilePath 'powershell.exe' -ArgumentList '-NoProfile -ExecutionPolicy Bypass -NonInteractive -Command & \"$SCRIPTS/task_scan.ps1\"; & \"$SCRIPTS/task_sync.ps1\"' -WorkingDirectory 'C:/devcore' -WindowStyle Hidden
+"
 
 exit 0

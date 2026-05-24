@@ -21,14 +21,24 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
         super().end_headers()
 
     def do_OPTIONS(self):
-        self.send_response(200)
-        self.end_headers()
+        try:
+            self.send_response(200)
+            self.end_headers()
+        except ConnectionError:
+            pass
 
     def log_message(self, format, *args):
         # Silence standard HTTP logs in the background terminal unless needed
         pass
 
     def do_GET(self):
+        try:
+            self._handle_get()
+        except ConnectionError:
+            # Silence tracebacks if the client disconnected prematurely
+            pass
+
+    def _handle_get(self):
         parsed_url = urllib.parse.urlparse(self.path)
         path = parsed_url.path
         query = urllib.parse.parse_qs(parsed_url.query)
@@ -77,6 +87,9 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
                     self.wfile.write(html_content.encode("utf-8"))
                 else:
                     self.send_error_response("index.html not found after regeneration")
+            except ConnectionError:
+                # Connection was aborted by client; do not try to send an error response
+                pass
             except Exception as e:
                 self.send_error_response(str(e))
         else:
@@ -84,16 +97,22 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
 
     def send_success_response(self, message):
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json")
-        self.end_headers()
-        self.wfile.write(json.dumps({"success": True, "message": message}).encode("utf-8"))
+        try:
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"success": True, "message": message}).encode("utf-8"))
+        except ConnectionError:
+            pass
 
     def send_error_response(self, error):
-        self.send_response(400)
-        self.send_header("Content-Type", "application/json")
-        self.end_headers()
-        self.wfile.write(json.dumps({"success": False, "error": error}).encode("utf-8"))
+        try:
+            self.send_response(400)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"success": False, "error": error}).encode("utf-8"))
+        except ConnectionError:
+            pass
 
     def complete_task(self, project, task_id):
         tasks_file = Path(DATA_ROOT) / "Memory" / project / "tasks.json"

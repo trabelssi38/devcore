@@ -1,11 +1,11 @@
-# setup.ps1 -- DEV_CORE v6 -- Installation initiale (lancer UNE fois en admin)
+# setup.ps1 -- DEV_CORE v7.3 -- Installation initiale (lancer UNE fois en admin)
 # Usage : powershell -ExecutionPolicy Bypass -File C:\devcore\DEV_CORE\Scripts\setup.ps1
 
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
 
 Write-Host ""
-Write-Host "  DEV_CORE v6 -- Setup initial" -ForegroundColor Cyan
+Write-Host "  DEV_CORE v7.3 -- Setup initial" -ForegroundColor Cyan
 Write-Host "  -------------------------------------" -ForegroundColor DarkGray
 Write-Host ""
 
@@ -95,7 +95,7 @@ try { . $PROFILE } catch {}
 
 Write-Host ""
 Write-Host "  ============================================" -ForegroundColor Green
-Write-Host "  DEV_CORE v6.1 -- Setup termine             " -ForegroundColor Green
+Write-Host "  DEV_CORE v7.3 -- Setup termine             " -ForegroundColor Green
 Write-Host "  ============================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Prochaine etape : dc launch" -ForegroundColor Cyan

@@ -1,4 +1,4 @@
-﻿# test_autonomy.ps1 -- DEV_CORE v6.2 -- Test d'integration autonomie
+# test_autonomy.ps1 -- DEV_CORE v7.3 -- Test d'integration autonomie
 # Simule un cycle complet : projet -> tache -> steps -> done -> chainage
 # Usage : powershell -File test_autonomy.ps1
 
@@ -17,7 +17,7 @@ function Assert {
 }
 
 Write-Host ""
-Write-Host "  DEV_CORE v6.2 -- Test Autonomie" -ForegroundColor Cyan
+Write-Host "  DEV_CORE v7.3 -- Test Autonomie" -ForegroundColor Cyan
 Write-Host "  ================================" -ForegroundColor DarkGray
 Write-Host ""
 

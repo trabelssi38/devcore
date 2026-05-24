@@ -1,4 +1,4 @@
-# weekly_maintenance.ps1 — DEV_CORE v6 Auto layer
+# weekly_maintenance.ps1 — DEV_CORE v7.3 Auto layer
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
 $TODAY         = Get-Date -Format "yyyy-MM-dd"
@@ -46,7 +46,7 @@ $week = Get-Date -Format "yyyy-Www"
 <title>DEV_CORE Weekly $week</title>
 <style>body{font-family:system-ui;max-width:700px;margin:40px auto;color:#1e293b}h1{color:#6366f1;font-size:16px}</style>
 </head><body>
-<h1>DEV_CORE v6 — Weekly Report $week</h1>
+<h1>DEV_CORE v7.3 — Weekly Report $week</h1>
 <p>Généré : $(Get-Date -f 'yyyy-MM-dd HH:mm')</p>
 <ul>
 <li>MEMORY.md : $((Get-Content $memPath -ErrorAction SilentlyContinue).Count) lignes</li>

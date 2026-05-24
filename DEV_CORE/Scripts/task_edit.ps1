@@ -1,4 +1,4 @@
-﻿# task_edit.ps1 -- DEV_CORE v6 single client
+# task_edit.ps1 -- DEV_CORE v7.3 single client
 param(
     [Parameter(Mandatory=$true)][string]$Id,
     [string]$Title,
@@ -27,4 +27,4 @@ if ($updated) {
 }
 
 
-& " $PSScriptRoot\gen_dashboard.ps1\
+& "$PSScriptRoot\gen_dashboard.ps1"

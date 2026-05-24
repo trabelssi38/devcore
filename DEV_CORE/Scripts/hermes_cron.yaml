@@ -1,4 +1,4 @@
-# DEV_CORE v6.1 — Cron Configuration for Hermes Agent
+# DEV_CORE v7.3 — Cron Configuration for Hermes Active Agent
 # Emplacement: C:/devcore/DEV_CORE/Scripts/hermes_cron.yaml
 # Timezone: Europe/Paris
 
@@ -13,10 +13,9 @@ cron_tasks:
     timezone: "Europe/Paris"
     enabled: true
     catchup: true
-    command:
-      type: "powershell"
-      script: "C:/devcore/DEV_CORE/Scripts/launch.ps1"
-      args: []
+    script: "launch_wrapper.py"
+    no_agent: true
+    workdir: "C:/devcore"
 
   # Cloture quotidienne - 4h du matin
   - id: "daily_endday"
@@ -26,10 +25,9 @@ cron_tasks:
     timezone: "Europe/Paris"
     enabled: true
     catchup: false
-    command:
-      type: "powershell"
-      script: "C:/devcore/DEV_CORE/Scripts/endday.ps1"
-      args: ["-SkipBackup"]
+    script: "endday_wrapper.py"
+    no_agent: true
+    workdir: "C:/devcore"
 
   # Maintenance hebdomadaire - Dimanche 5h du matin
   - id: "weekly_maintenance"
@@ -39,12 +37,11 @@ cron_tasks:
     timezone: "Europe/Paris"
     enabled: true
     catchup: false
-    command:
-      type: "powershell"
-      script: "C:/devcore/DEV_CORE/Scripts/Auto/weekly_maintenance.ps1"
-      args: []
+    script: "weekly_maintenance_wrapper.py"
+    no_agent: true
+    workdir: "C:/devcore"
 
-  # NOUVEAU : Scan automatique des tâches — toutes les 10 minutes
+  # Scan automatique des tâches — toutes les 10 minutes
   - id: "periodic_task_scan"
     name: "DEV_CORE Periodic Task Scan"
     description: "Scan git + specs + prompts toutes les 10 min"
@@ -52,12 +49,11 @@ cron_tasks:
     timezone: "Europe/Paris"
     enabled: true
     catchup: false
-    command:
-      type: "powershell"
-      script: "C:/devcore/DEV_CORE/Scripts/task_scan.ps1"
-      args: []
+    script: "task_scan_wrapper.py"
+    no_agent: true
+    workdir: "C:/devcore"
 
-  # NOUVEAU : Sync + Dashboard — 5 minutes après chaque scan
+  # Sync + Dashboard — 5 minutes après chaque scan
   - id: "periodic_task_sync_dashboard"
     name: "DEV_CORE Periodic Sync & Dashboard"
     description: "Sync tâches et régénère le dashboard"
@@ -65,12 +61,11 @@ cron_tasks:
     timezone: "Europe/Paris"
     enabled: true
     catchup: false
-    command:
-      type: "powershell"
-      script: "C:/devcore/DEV_CORE/Scripts/task_sync.ps1"
-      args: []
+    script: "task_sync_wrapper.py"
+    no_agent: true
+    workdir: "C:/devcore"
 
-  # NOUVEAU : Event watcher — réactif aux événements bus
+  # Event watcher — réactif aux événements bus
   - id: "event_watcher"
     name: "DEV_CORE Event Watcher"
     description: "Traite les événements du bus (post-commit, etc.)"
@@ -78,10 +73,43 @@ cron_tasks:
     timezone: "Europe/Paris"
     enabled: true
     catchup: false
-    command:
-      type: "powershell"
-      script: "C:/devcore/DEV_CORE/Scripts/Auto/event_watcher.ps1"
-      args: []
+    script: "event_watcher_wrapper.py"
+    no_agent: true
+    workdir: "C:/devcore"
+
+  # 7. Agent Actif Autonome — s'exécute toutes les 5 minutes
+  - id: "active_agent_task_runner"
+    name: "DEV_CORE Active Agent Task Runner"
+    description: "Spawns AIAgent to autonomously execute the current active task if present"
+    schedule: "*/5 * * * *"
+    timezone: "Europe/Paris"
+    enabled: true
+    catchup: false
+    script: "check_active_task.py"
+    no_agent: false
+    workdir: "C:/devcore"
+    prompt: |
+      You are the DevCore Active Agent, an autonomous coding and reasoning assistant.
+      An active task has been assigned to you. Read the task details, title, and steps in the "Script Output" section above.
+
+      Your goal is to work systematically through the task steps, implement all required code changes, verify your changes, and record progress.
+
+      Guidelines for execution:
+      1. **Understand & Plan**: Check the existing codebase, read files, and plan your approach.
+      2. **Execute steps**:
+         - Work through each step defined in the task.
+         - You can mark steps as done by running: `powershell -ExecutionPolicy Bypass -File C:\devcore\DEV_CORE\Scripts\dc.ps1 step done [step_number]`
+         - Or you can edit files using filesystem tools.
+      3. **Commit often**: Make clean git commits for completed steps with clear messages (e.g. `feat(my-feature): implement step 1`).
+      4. **Timeout clean exit (CRITICAL)**:
+         - Keep track of your elapsed execution time. Schedulers usually enforce a maximum execution duration.
+         - If you have been running for more than 8 minutes (480 seconds) and there are still uncompleted steps, do not start new major tasks.
+         - Perform a clean commit of your current progress (e.g., `work(my-task): intermediate checkpoint before timeout`), keep the task status as 'active', and exit.
+         - The scheduler will automatically spin up a new session on the next tick (5 minutes later) to let you resume exactly where you left off.
+      5. **Complete the task**:
+         - Once all steps are complete, mark the task as done by running: `powershell -ExecutionPolicy Bypass -File C:\devcore\DEV_CORE\Scripts\dc.ps1 task done`
+         - This command will automatically run memory extraction, Qdrant sync, Obsidian sync, and refresh the dashboard.
+      6. **No Placeholders**: Never write placeholder code or comments. Implement fully working code.
 
 # Notification settings
 notifications:
@@ -90,14 +118,9 @@ notifications:
   delivery:
     - type: "log"
       path: "C:/devcore/DEV_CORE_DATA/Logs/hermes/cron.log"
-    # Ajouter Telegram/Discord ici si configure
-    # - type: "telegram"
-    #   token: "${TELEGRAM_BOT_TOKEN}"
-    #   chat_id: "${TELEGRAM_CHAT_ID}"
 
-# Persistence settings (pour Daytona/Modal si utilise)
+# Persistence settings
 persistence:
   enabled: true
-  backend: "daytona"  # ou "modal", "local"
-  hibernate_timeout: 3600  # 1h idle avant hibernation
-
+  backend: "local"
+  hibernate_timeout: 3600
