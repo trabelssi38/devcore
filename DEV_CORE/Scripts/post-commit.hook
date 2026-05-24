@@ -68,19 +68,54 @@ else
     \$nextNum = \$maxId + 1
     \$nextId = \"T-\$nextNum\"
     
+    # Découper le message de commit en lignes
+    \$lines = \$cleanMsg -split '\r?\n' | ForEach-Object { \$_.Trim() } | Where-Object { \$_ }
+    \$taskTitle = \$lines[0]
+    
+    \$steps = @()
+    if (\$lines.Count -gt 1) {
+        \$stepId = 1
+        for (\$i = 1; \$i -lt \$lines.Count; \$i++) {
+            \$line = \$lines[\$i]
+            if (\$line -match '^[\-\*\+\s]+(.+)') {
+                \$stepTitle = \$Matches[1].Trim()
+            } else {
+                \$stepTitle = \$line
+            }
+            if (\$stepTitle) {
+                \$steps += [PSCustomObject]@{
+                    id = \$stepId
+                    title = \$stepTitle
+                    done = \$true
+                }
+                \$stepId++
+            }
+        }
+    }
+    
+    if (\$steps.Count -eq 0) {
+        \$steps = @(
+            [PSCustomObject]@{ id = 1; title = \$taskTitle; done = \$true }
+        )
+    }
+    
+    \$stepsTotal = \$steps.Count
+    \$stepsDone = \$steps.Count
+    
     # Créer l'objet tâche
     \$newTask = [PSCustomObject]@{
         id = \$nextId
-        title = \$cleanMsg
+        title = \$taskTitle
         mode = 'coding'
         status = 'done'
-        steps_total = 1
-        steps_done = 1
+        steps_total = \$stepsTotal
+        steps_done = \$stepsDone
         depends_on = \$null
         source = 'git'
         worktree = 'main'
         details = \"**Tache creee de maniere autonome a partir du commit Git :**\`n- \$cleanMsg\"
         completed_at = (Get-Date -Format 'o')
+        steps = \$steps
     }
     
     # Ajouter la tâche à la liste
