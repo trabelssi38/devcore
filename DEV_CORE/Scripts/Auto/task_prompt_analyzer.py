@@ -281,6 +281,14 @@ def main():
         
         modified_files = set()
         accomplishments = []
+        user_tasks = []
+        
+        task_creation_patterns = [
+            r"(?i)(?:c'est\s+)?(?:une?\s+)?(?:nouvelle?|nouveau?|nouvel)\s+(?:tâche|tache|task)\s*[:\-,]?\s*(.+)",
+            r"(?i)cr[ée]er?\s+(?:une?|un?|des?)\s+(?:nouvelle?|nouveau?|nouvel)\s+(?:tâche|tache|task)\s*[:\-,]?\s*(.+)",
+            r"(?i)(?:it's\s+a\s+)?new\s+task\s*[:\-,]?\s*(.+)",
+            r"(?i)create\s+(?:a\s+)?new\s+task\s*[:\-,]?\s*(.+)"
+        ]
         
         try:
             with open(overview_path, "r", encoding="utf-8") as f:
@@ -339,50 +347,91 @@ def main():
                                             low = cleaned.lower()
                                             if not any(x in low for x in ["j'ai lu", "j'ai vérifié", "i checked", "i read", "i verified", "j'ai vu"]):
                                                 accomplishments.append(cleaned)
+                                                
+                        # Capture explicit user task creation requests
+                        if source == "USER_EXPLICIT" and type_ == "USER_INPUT" and content:
+                            for pattern in task_creation_patterns:
+                                match = re.search(pattern, content)
+                                if match:
+                                    raw_title = match.group(1).strip()
+                                    cleaned_title = raw_title.strip().rstrip(".?!,;*:\n").strip()
+                                    cleaned_title = re.sub(r'^\s*["\'`]+|["\'`]+\s*$', '', cleaned_title)
+                                    cleaned_title = cleaned_title.strip()
+                                    
+                                    if cleaned_title and len(cleaned_title) >= 5:
+                                        task_mode = "coding"
+                                        mode_test = cleaned_title.lower()
+                                        if any(x in mode_test for x in ["plan", "analyse", "recherche", "investig", "document"]):
+                                            task_mode = "reasoning"
+                                        elif any(x in mode_test for x in ["test", "optimis", "déploy"]):
+                                            task_mode = "bulk"
+                                            
+                                        user_tasks.append({
+                                            "title": cleaned_title,
+                                            "details": f"**Tâche créée à partir de la demande utilisateur :**\n- \"{content}\"",
+                                            "mode": task_mode,
+                                            "status": "todo",
+                                            "steps_total": 1,
+                                            "steps_done": 0,
+                                            "source": s_id,
+                                            "source_type": "user_prompt_detected",
+                                            "detected": today_str,
+                                            "started_at": None,
+                                            "completed_at": None
+                                        })
+                                        log(f"Detected explicit user task request: [{task_mode}] {cleaned_title}", "USERTASK")
+                                    break
                     except:
                         pass
         except Exception as e:
             log(f"Error reading session {s_id}: {e}", "ERROR")
             continue
             
-        if not modified_files and not accomplishments:
-            log(f"No actions or accomplishments in session {s_id}", "SKIP")
+        if not modified_files and not accomplishments and not user_tasks:
+            log(f"No actions, accomplishments or user tasks in session {s_id}", "SKIP")
             continue
             
-        files_list = sorted(list(modified_files))
-        title = choose_title_for_session(accomplishments, files_list)
-        details = formulate_details(accomplishments, files_list)
-        
-        # Decide mode based on title/details content
-        mode = "coding"
-        mode_test_str = (title + " " + details).lower()
-        if any(x in mode_test_str for x in ["plan", "analyse", "recherche", "investig", "document"]):
-            mode = "reasoning"
+        if modified_files or accomplishments:
+            files_list = sorted(list(modified_files))
+            title = choose_title_for_session(accomplishments, files_list)
+            details = formulate_details(accomplishments, files_list)
             
-        # Compute dynamic start and completed times from session folder modification time
-        from datetime import timedelta
-        dt_comp = datetime.fromtimestamp(s_mtime).astimezone()
-        dt_start = dt_comp - timedelta(hours=1)
-        z = dt_comp.strftime('%z')
-        z_fmt = f"{z[:3]}:{z[3:]}" if z else "+01:00"
-        
-        started_at = dt_start.strftime('%Y-%m-%dT%H:%M:%S') + f".{dt_start.microsecond:06d}0" + z_fmt
-        completed_at = dt_comp.strftime('%Y-%m-%dT%H:%M:%S') + f".{dt_comp.microsecond:06d}0" + z_fmt
+            # Decide mode based on title/details content
+            mode = "coding"
+            mode_test_str = (title + " " + details).lower()
+            if any(x in mode_test_str for x in ["plan", "analyse", "recherche", "investig", "document"]):
+                mode = "reasoning"
+            elif any(x in mode_test_str for x in ["test", "optimis", "déploy"]):
+                mode = "bulk"
+                
+            # Compute dynamic start and completed times from session folder modification time
+            from datetime import timedelta
+            dt_comp = datetime.fromtimestamp(s_mtime).astimezone()
+            dt_start = dt_comp - timedelta(hours=1)
+            z = dt_comp.strftime('%z')
+            z_fmt = f"{z[:3]}:{z[3:]}" if z else "+01:00"
+            
+            started_at = dt_start.strftime('%Y-%m-%dT%H:%M:%S') + f".{dt_start.microsecond:06d}0" + z_fmt
+            completed_at = dt_comp.strftime('%Y-%m-%dT%H:%M:%S') + f".{dt_comp.microsecond:06d}0" + z_fmt
 
-        candidates.append({
-            "title": title,
-            "details": details,
-            "mode": mode,
-            "status": "done",
-            "steps_total": 1,
-            "steps_done": 1,
-            "source": s_id,
-            "source_type": "agent_action_detected",
-            "detected": today_str,
-            "started_at": started_at,
-            "completed_at": completed_at
-        })
-        log(f"Formulated task: [{mode}] {title}", "FORMULATION")
+            candidates.append({
+                "title": title,
+                "details": details,
+                "mode": mode,
+                "status": "done",
+                "steps_total": 1,
+                "steps_done": 1,
+                "source": s_id,
+                "source_type": "agent_action_detected",
+                "detected": today_str,
+                "started_at": started_at,
+                "completed_at": completed_at
+            })
+            log(f"Formulated task: [{mode}] {title}", "FORMULATION")
+            
+        if user_tasks:
+            for ut in user_tasks:
+                candidates.append(ut)
 
     # Save to queue (with deduplication)
     if candidates:
