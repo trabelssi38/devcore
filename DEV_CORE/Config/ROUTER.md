@@ -2,29 +2,31 @@
 # Single client · Mode-based routing · Model-agnostic
 # DEV_CORE detecte le mode -- Headroom compresse -- 9Router choisit le modele
 
-## Architecture
+## Architecture de routage & Offloading (DevCore v8.0)
 
 ```
-Requete utilisateur
-      |
-      v
-DEV_CORE detecte le mode (reasoning / coding / bulk)
-      |
-      v
-Headroom Proxy (Port 8787) -- compression auto (JSON, Code, Logs)
-      |
-      v
-Signal mode -> 9Router combo "devcore-always-on"
-      |
-      +-- reasoning -> Tier 1 (claude-opus, o3, kimi-k2-thinking...)
-      +-- coding    -> Tier 2 (codex, sonnet, glm-coder...)
-      +-- bulk      -> Tier 3 (gemini-flash, qwen, glm...)
-      +-- fallback  -> Tier 4 (kiro gratuit illimite)
+                       Requete Utilisateur (DEV_CORE)
+                                     |
+                                     v
+                       [TencentDB Agent Memory Canvas] (Offloading L0-L3)
+                                     |
+                                     v
+                       [Headroom Proxy] (Port 8787) (Compression KV)
+                                     |
+                                     v
+                       [Gemini Router] (Port 20129) (Primary / Retries 429)
+                                     |
+             +-----------------------+-----------------------+
+             | (Si Succes)                                   | (Si Echec / Fallback)
+             v                                               v
+     [Google Gemini API]                             [9Router] (Port 20128)
+  (gemini-2.5-pro / flash)                            (Tier 1 / 2 / 3 / 4)
 ```
 
-DEV_CORE ne connait pas les noms de modeles.
-9Router gere les quotas, fallbacks et couts.
-Headroom gere l'optimisation transparente du contexte (KV cache, compression).
+- **TencentDB Agent Memory Canvas** : Décharge de contexte symbolique hiérarchique (L0-L3 via Mermaid et SQLite FTS5) pour préserver le contexte de l'agent.
+- **Headroom Proxy (Port 8787)** : Compression de jetons transparente (JSON, Code, Logs) et gestion de cache.
+- **Gemini Router (Port 20129)** : Proxy de communication avec l'API Google Gemini, gérant le Rate-Limiting (HTTP 429) par retries avec backoff exponentiel, et redirigeant vers **9Router (Port 20128)** en secours ultime.
+
 
 ---
 
