@@ -49,10 +49,12 @@ After these 4 steps: start task work immediately. No confirmation needed.
 
 ---
 
-## MEMORY (absolute priority)
+## MEMORY (absolute priority - L0-L3 hierarchy)
 
-- Check MEMORY.md before any potentially known topic.
-- Query Qdrant (collections: decisions/lessons/patterns).
+- Check L3 `C:\devcore\DEV_CORE_DATA\Memory\persona.md` (always loaded, always relevant).
+- Check L2 `C:\devcore\DEV_CORE_DATA\Memory\Scenarios\{task_type}.md` based on active task type.
+- Query L1 Qdrant if L2 is insufficient.
+- Query L0 SQLite (FTS5 search fallback via `memory_hierarchy.ps1 -Action Query`) if Qdrant yields no hits.
 - Score > 0.75: use result without regenerating.
 - Load only skills relevant to the current task.
 
@@ -67,11 +69,34 @@ After these 4 steps: start task work immediately. No confirmation needed.
 
 ---
 
-## TOKENS
+## TOKENS & CONTEXT OFFLOADING (TencentDB Canvas)
 
-- Structured summaries > long prose.
-- Do not repeat context already provided.
-- Default budget: 8k tokens. Alert if likely exceeded.
+- **CRITICAL**: If a tool output, log file, build result, or file contents is very large (>500 lines or >10k characters), **DO NOT show it raw** in your dialogue or context.
+- Instead, offload it using the script:
+  `powershell -File "C:\devcore\DEV_CORE\Scripts\canvas_manager.ps1" -Action Offload -Content "OUTPUT_CONTENT" -TaskId "T-XX" -Type "log|code"`
+- Use the returned node ID (e.g., `T02_log_e4c3`) in your response and Mermaid canvas.
+- Write structured summaries and code first. No long prose.
+
+---
+
+## TASKS (v8.0)
+
+- Single Client Mode : pas de handoffs multi-agents
+- Modes : reasoning (32k), coding (8k), bulk (16k)
+- Headroom Proxy (Port 8787) handles automatic transparent token compression.
+- Tags git : [T-XX]
+- Auto-detection via task_scan (git+spec+prompts)
+
+---
+
+## ROUTING
+
+- Follow ROUTER.md for engine choice and token budget.
+- All requests are routed through Headroom Proxy (Port 8787) which forwards to 9Router.
+- mode=reasoning -> 9Router routes to Tier 1 automatically.
+- mode=coding    -> 9Router routes to Tier 2 automatically.
+- mode=bulk      -> 9Router routes to Tier 3 automatically.
+- No handoffs. Single client. 9Router handles model selection.
 
 ---
 

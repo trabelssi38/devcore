@@ -1,9 +1,9 @@
 # adapt_client.ps1 -- DEV_CORE v7.3
 # Expose DEV_CORE au client actif : liens skills + injection boot
-# Usage : adapt_client.ps1 -Client claude|codex|gemini|qwen|auto
+# Usage : adapt_client.ps1 -Client claude|codex|gemini|antigravity|qwen|auto
 
 param(
-    [ValidateSet("claude","codex","gemini","qwen","auto")]
+    [ValidateSet("claude","codex","gemini","antigravity","qwen","auto")]
     [string]$Client = "auto",
     [switch]$Verbose,
     [switch]$DryRun
@@ -21,31 +21,34 @@ $ACTIVE_FILE   = "$CONFIG_DIR\active_client.txt"
 # GEMINI.md  -> Gemini CLI / Antigravity
 # BOOT.md    -> Qwen
 $CLIENT_BOOT_SRC = @{
-    claude = "$CONFIG_DIR\CLAUDE.md"
-    codex  = "$CONFIG_DIR\AGENTS.md"
-    gemini = "$CONFIG_DIR\CLAUDE.md"   # meme directives, format universel
-    qwen   = "$CONFIG_DIR\CLAUDE.md"
+    claude      = "$CONFIG_DIR\CLAUDE.md"
+    codex       = "$CONFIG_DIR\AGENTS.md"
+    gemini      = "$CONFIG_DIR\CLAUDE.md"   # meme directives, format universel
+    antigravity = "$CONFIG_DIR\CLAUDE.md"
+    qwen        = "$CONFIG_DIR\CLAUDE.md"
 }
 
 # -- Destination boot par client (fichier lu par chaque client au demarrage)
 $CLIENT_BOOT_DST = @{
-    claude = "$env:USERPROFILE\.claude\CLAUDE.md"
-    codex  = "$env:USERPROFILE\.codex\AGENTS.md"
-    gemini = "$env:USERPROFILE\.gemini\GEMINI.md"
-    qwen   = "$env:USERPROFILE\.qwen\BOOT.md"
+    claude      = "$env:USERPROFILE\.claude\CLAUDE.md"
+    codex       = "$env:USERPROFILE\.codex\AGENTS.md"
+    gemini      = "$env:USERPROFILE\.gemini\GEMINI.md"
+    antigravity = "$env:USERPROFILE\.gemini\antigravity\GEMINI.md"
+    qwen        = "$env:USERPROFILE\.qwen\BOOT.md"
 }
 
 # -- Dossier skills par client
 $CLIENT_SKILLS = @{
-    claude = "$env:USERPROFILE\.claude\skills"
-    codex  = "$env:USERPROFILE\.codex\skills"
-    gemini = "$env:USERPROFILE\.gemini\skills"
-    qwen   = "$env:USERPROFILE\.qwen\skills"
+    claude      = "$env:USERPROFILE\.claude\skills"
+    codex       = "$env:USERPROFILE\.codex\skills"
+    gemini      = "$env:USERPROFILE\.gemini\skills"
+    antigravity = "$env:USERPROFILE\.gemini\config\skills"
+    qwen        = "$env:USERPROFILE\.qwen\skills"
 }
 
 # -- Detection auto du client actif
 function Detect-Client {
-    foreach ($c in @("claude","codex","gemini","qwen")) {
+    foreach ($c in @("antigravity","claude","codex","gemini","qwen")) {
         if (Get-Process -Name $c -ErrorAction SilentlyContinue) { return $c }
     }
     if (Test-Path $ACTIVE_FILE) { return (Get-Content $ACTIVE_FILE -Raw).Trim() }

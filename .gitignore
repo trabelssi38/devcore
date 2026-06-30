@@ -40,3 +40,9 @@ desktop.ini
 .vscode/
 .idea/
 *.swp
+
+# Credentials
+DEV_CORE/Config/gemini_api_key.txt
+
+# Temp / Local scripts
+qc

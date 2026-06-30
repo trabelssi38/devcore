@@ -215,8 +215,8 @@ function Check-Port {
     param([int]$Port)
     try {
         $tcp = New-Object System.Net.Sockets.TcpClient
-        $result = $tcp.BeginConnect("127.0.0.1", $Port, $null, $null)
-        $success = $result.AsyncWaitHandle.WaitOne(200, $true)
+        $result = $tcp.BeginConnect([System.Net.IPAddress]::Loopback, $Port, $null, $null)
+        $success = $result.AsyncWaitHandle.WaitOne(1000, $true)
         if ($success) { $tcp.EndConnect($result) }
         $tcp.Close()
         return $success
@@ -276,11 +276,12 @@ if (Test-Path $tickLog) {
         $isDaemonRunning = $true
     }
 }
-$infraHtml += Get-StatusHTML "Hermes Agent" "Port 20128" (Check-Port 20128)
+$infraHtml += Get-StatusHTML "Gemini Router (Primary)" "Port 20129" (Check-Port 20129)
+$infraHtml += Get-StatusHTML "9Router (Fallback)" "Port 20128" (Check-Port 20128)
+$infraHtml += Get-StatusHTML "Headroom Proxy" "Port 8787" (Check-Port 8787)
 $infraHtml += Get-StatusHTML "Hermes Cron Daemon" "Standalone Tick Loop" $isDaemonRunning
-$infraHtml += Get-StatusHTML "Dashboard API Server" "Port 20129" (Check-Port 20129)
 $infraHtml += Get-StatusHTML "Qdrant Vector DB" "Port 6333" (Check-Port 6333)
-$infraHtml += Get-StatusHTML "Ollama Embeddings" "Port 11434" (Check-Port 11434)
+$infraHtml += Get-StatusHTML "Ollama Embeddings" "Port 11434 (Desactive)" (Check-Port 11434)
 
 $infraHtml += "<h2>Hermes Background Jobs</h2>`n"
 $jobsFile = "$env:USERPROFILE\.hermes\cron\jobs.json"

@@ -56,6 +56,9 @@ if ($active.steps_done -ge $active.steps_total) {
         New-Item -ItemType File -Path $flagFile -Force | Out-Null
         & "$DEV_CORE\Scripts\task_done.ps1" -Force
     }
+} else {
+    # Mettre à jour le canvas pour la progression des steps
+    & "$DEV_CORE\Scripts\canvas_manager.ps1" -Action Update
 }
 
 

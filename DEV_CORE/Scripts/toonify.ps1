@@ -1,5 +1,8 @@
 # toonify.ps1 -- DEV_CORE v7.3
+# DEPRECATED in v8.0 -- Remplacé par le proxy de compression Headroom SmartCrusher
 # Conversion JSON <-> TOON avec stats et fallback
+Write-Host "  [TOON] [DEPRECATED] Ce script est déprécié. Headroom SmartCrusher gère maintenant la compression JSON." -ForegroundColor Yellow
+
 param(
     [Parameter(Mandatory=$true)]
     [string]$InputFile,

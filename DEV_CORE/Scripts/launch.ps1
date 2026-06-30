@@ -20,12 +20,118 @@ Write-Host "  =======================================" -ForegroundColor DarkGray
 Log "1/8 Adaptation client ($Client)" "Cyan"
 & "$DEV_CORE\Scripts\adapt_client.ps1" -Client $Client
 
-# 2. Qdrant check
-Log "2/8 Qdrant" "Cyan"
-try {
-    $q = Invoke-RestMethod "http://localhost:6333/collections" -TimeoutSec 3
-    Log "  Qdrant OK - $($q.result.collections.Count) collections" "Green"
-} catch { Log "  Qdrant non disponible (docker run -p 6333:6333 -v C:/devcore/DEV_CORE_DATA/qdrant_storage:/qdrant/storage qdrant/qdrant)" "Yellow" }
+# 2. Services check & launch (Qdrant, 9Router)
+Log "2/8 Verification des services (Qdrant, 9Router)" "Cyan"
+
+function Check-Port {
+    param([int]$Port)
+    try {
+        $tcp = New-Object System.Net.Sockets.TcpClient
+        $result = $tcp.BeginConnect("127.0.0.1", $Port, $null, $null)
+        $success = $result.AsyncWaitHandle.WaitOne(200, $true)
+        if ($success) { $tcp.EndConnect($result) }
+        $tcp.Close()
+        return $success
+    } catch {
+        return $false
+    }
+}
+
+# 2.1 Qdrant / Docker
+if (-not (Check-Port 6333)) {
+    Log "  Qdrant (Port 6333) est hors-ligne. Tentative de demarrage..." "Yellow"
+    $dockerInfo = docker info 2>$null
+    if ($LASTEXITCODE -ne 0 -or -not $dockerInfo) {
+        Log "  [WARN] Docker Desktop ne semble pas etre demarre. Veuillez le lancer." "Yellow"
+    } else {
+        $qdrantContainers = docker ps -a --filter "ancestor=qdrant/qdrant" --format "{{.ID}} {{.Names}} {{.Status}}"
+        if ($qdrantContainers) {
+            $cId = ($qdrantContainers | Select-Object -First 1).Split(" ")[0]
+            $cName = ($qdrantContainers | Select-Object -First 1).Split(" ")[1]
+            Log "  Conteneur Qdrant existant trouve : $cName ($cId). Demarrage..." "Gray"
+            docker start $cId | Out-Null
+            Start-Sleep -Seconds 3
+        } else {
+            Log "  Aucun conteneur Qdrant trouve. Lancement d'un nouveau conteneur..." "Gray"
+            docker run -d -p 6333:6333 -v C:/devcore/DEV_CORE_DATA/qdrant_storage:/qdrant/storage qdrant/qdrant | Out-Null
+            Start-Sleep -Seconds 5
+        }
+    }
+}
+
+if (Check-Port 6333) {
+    try {
+        $q = Invoke-RestMethod "http://localhost:6333/collections" -TimeoutSec 3
+        Log "  Qdrant OK - $($q.result.collections.Count) collections" "Green"
+    } catch {
+        Log "  Qdrant disponible mais erreur lors du chargement des collections" "Yellow"
+    }
+} else {
+    Log "  Qdrant non disponible" "Red"
+}
+
+# 2.2 9Router (Port 20128) - Fallback
+if (-not (Check-Port 20128)) {
+    Log "  9Router (Port 20128) est hors-ligne. Tentative de demarrage..." "Yellow"
+    if (Test-Path "C:\src\9router") {
+        Log "  Demarrage de 9Router..." "Gray"
+        Start-Process -FilePath "npm" -ArgumentList "run dev" -WorkingDirectory "C:\src\9router" -WindowStyle Hidden -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds 5
+        if (Check-Port 20128) {
+            Log "  9Router lance avec succes sur le port 20128" "Green"
+        } else {
+            Log "  [WARN] 9Router lance mais le port 20128 reste ferme." "Yellow"
+        }
+    } else {
+        Log "  [WARN] Dossier C:\src\9router introuvable." "Yellow"
+    }
+} else {
+    Log "  9Router OK (Port 20128 actif)" "Green"
+}
+
+# 2.2.5 Gemini Router (Port 20129) - Primary
+if (-not (Check-Port 20129)) {
+    Log "  Gemini Router (Port 20129) est hors-ligne. Tentative de demarrage..." "Yellow"
+    if (Test-Path "$DEV_CORE\Scripts\gemini_router.py") {
+        Log "  Demarrage de Gemini Router..." "Gray"
+        $logOut = "$DEV_CORE_DATA\Logs\scripts\gemini_router.log"
+        $logErr = "$DEV_CORE_DATA\Logs\scripts\gemini_router_err.log"
+        Start-Process -FilePath "python" -ArgumentList "$DEV_CORE\Scripts\gemini_router.py" -WorkingDirectory "C:\devcore" -WindowStyle Hidden -RedirectStandardOutput $logOut -RedirectStandardError $logErr -ErrorAction SilentlyContinue
+        
+        # Attendre que le port s'ouvre (timeout 10s)
+        $routerOpen = $false
+        for ($i = 0; $i -lt 20; $i++) {
+            Start-Sleep -Milliseconds 500
+            if (Check-Port 20129) {
+                $routerOpen = $true
+                break
+            }
+        }
+        
+        if ($routerOpen) {
+            Log "  Gemini Router lance avec succes sur le port 20129" "Green"
+        } else {
+            Log "  [WARN] Gemini Router lance mais le port 20129 reste ferme." "Yellow"
+        }
+    } else {
+        Log "  [WARN] Script gemini_router.py introuvable." "Yellow"
+    }
+} else {
+    Log "  Gemini Router OK (Port 20129 actif)" "Green"
+}
+
+# 2.3 Headroom Proxy
+if (-not (Check-Port 8787)) {
+    Log "  Headroom Proxy (Port 8787) est hors-ligne. Tentative de demarrage..." "Yellow"
+    & "$DEV_CORE\Scripts\headroom_start.ps1"
+    if (Check-Port 8787) {
+        Log "  Headroom Proxy lance avec succes" "Green"
+    } else {
+        Log "  [WARN] Impossible de lancer Headroom Proxy. Fallback direct sur 9Router." "Yellow"
+    }
+} else {
+    Log "  Headroom Proxy OK (Port 8787 actif)" "Green"
+}
 
 # 3. Memory
 Log "3/8 Memoire" "Cyan"

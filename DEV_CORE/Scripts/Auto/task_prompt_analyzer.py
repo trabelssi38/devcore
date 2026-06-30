@@ -202,6 +202,109 @@ def formulate_details(accomplishments, files):
             details_lines.append(f"- `{f}`")
     return "\n".join(details_lines)
 
+def parse_task_md(file_path):
+    tasks = []
+    if not os.path.exists(file_path):
+        return tasks
+        
+    try:
+        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+            lines = f.readlines()
+    except Exception as e:
+        return tasks
+
+    current_task = None
+    
+    for line in lines:
+        stripped = line.strip()
+        match = re.match(r'^(\s*)-\s*\[\s*([ xX/])\s*\]\s*(.+)', line)
+        if not match:
+            continue
+            
+        indent = len(match.group(1))
+        status_char = match.group(2).lower()
+        content = match.group(3).strip()
+        
+        content = re.sub(r'^\*\*+(.*?)\*\*+$', r'\1', content)
+        content = re.sub(r'^#+\s*', '', content)
+        content = re.sub(r'^\d+(\.\d+)*\s*[\.\-:]?\s*', '', content)
+        content = content.strip()
+        
+        status = "done" if status_char == 'x' else "todo"
+        
+        if indent < 2:
+            current_task = {
+                "title": content,
+                "status": status,
+                "steps": [],
+                "steps_total": 0,
+                "steps_done": 0,
+                "details": f"**Planifié dans la checklist de session :**\n- {content}"
+            }
+            tasks.append(current_task)
+        else:
+            step = {
+                "title": content,
+                "done": status == "done"
+            }
+            if current_task is not None:
+                step["id"] = len(current_task["steps"]) + 1
+                current_task["steps"].append(step)
+                current_task["steps_total"] += 1
+                if step["done"]:
+                    current_task["steps_done"] += 1
+            else:
+                tasks.append({
+                    "title": content,
+                    "status": status,
+                    "steps": [],
+                    "steps_total": 1,
+                    "steps_done": 1 if status == "done" else 0,
+                    "details": f"**Planifié dans la checklist de session :**\n- {content}"
+                })
+                
+    for t in tasks:
+        if t["steps"]:
+            if t["steps_done"] == t["steps_total"]:
+                t["status"] = "done"
+            else:
+                t["status"] = "todo"
+        else:
+            t["steps"] = None
+            t["steps_total"] = 1
+            t["steps_done"] = 1 if t["status"] == "done" else 0
+            
+    return tasks
+
+def parse_implementation_plan_md(file_path):
+    tasks = []
+    if not os.path.exists(file_path):
+        return tasks
+        
+    try:
+        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+            content = f.read()
+    except Exception as e:
+        return tasks
+        
+    pattern = r'####\s*\[\s*(MODIFY|NEW|DELETE)\s*\]\s*\[\s*([^\]]+)\s*\]\s*\(\s*([^\)]+)\s*\)'
+    matches = re.findall(pattern, content, re.IGNORECASE)
+    
+    for action, filename, link in matches:
+        action = action.upper()
+        title = f"{action}: {filename}"
+        details = f"**Modification planifiée dans le plan d'implémentation :**\n- Action: {action}\n- Fichier: `{filename}`\n- Lien: [{filename}]({link})"
+        tasks.append({
+            "title": title,
+            "status": "todo",
+            "steps": None,
+            "steps_total": 1,
+            "steps_done": 0,
+            "details": details
+        })
+        
+    return tasks
+
 def main():
     dev_core = os.environ.get("DEVCORE_PLATFORM_ROOT", "C:\\devcore\\DEV_CORE")
     dev_core_data = os.environ.get("DEVCORE_DATA_ROOT", "C:\\devcore\\DEV_CORE_DATA")
@@ -233,8 +336,9 @@ def main():
 
     log(f"Starting Dynamic Agent-Action Analyzer for project: '{active_proj}'", "INIT")
 
-    # Read existing sources from tasks.json to avoid duplicates
+    # Read existing sources and titles from tasks.json to avoid duplicates
     existing_sources = set()
+    existing_titles = set()
     tasks_file = os.path.join(queue_dir, "tasks.json")
     if os.path.exists(tasks_file):
         try:
@@ -244,7 +348,10 @@ def main():
                     src = t.get("source")
                     if src:
                         existing_sources.add(src)
-            log(f"Loaded {len(existing_sources)} existing task sources to prevent duplicates.", "INIT")
+                    title = t.get("title")
+                    if title:
+                        existing_titles.add(title.lower().strip())
+            log(f"Loaded {len(existing_sources)} existing task sources and {len(existing_titles)} titles to prevent duplicates.", "INIT")
         except Exception as e:
             log(f"Error reading tasks.json to deduplicate: {e}", "WARNING")
 
@@ -253,14 +360,25 @@ def main():
         log(f"Brain folder not found: {brain_dir}", "WARNING")
         return
 
-    # Find top 3 most recently modified session folders
+    # Find top 3 most recently modified session folders, considering overview.txt, task.md, and implementation_plan.md
     sessions = []
     for d in os.listdir(brain_dir):
         path = os.path.join(brain_dir, d)
         if os.path.isdir(path) and d != "tempmediaStorage":
             overview_path = os.path.join(path, ".system_generated", "logs", "overview.txt")
+            task_path = os.path.join(path, "task.md")
+            plan_path = os.path.join(path, "implementation_plan.md")
+            
+            mtimes = []
             if os.path.exists(overview_path):
-                sessions.append((path, os.path.getmtime(overview_path), d))
+                mtimes.append(os.path.getmtime(overview_path))
+            if os.path.exists(task_path):
+                mtimes.append(os.path.getmtime(task_path))
+            if os.path.exists(plan_path):
+                mtimes.append(os.path.getmtime(plan_path))
+                
+            if mtimes:
+                sessions.append((path, max(mtimes), d))
 
     sessions.sort(key=lambda x: x[1], reverse=True)
     recent_sessions = sessions[:3]
@@ -273,16 +391,110 @@ def main():
 
     for s_path, s_mtime, s_id in recent_sessions:
         if s_id in existing_sources:
-            log(f"Session {s_id} already exists in tasks.json. Skipping scan.", "SKIP")
+            log(f"Session {s_id} has already been registered in tasks.json. Skipping to avoid duplicate suggestions.", "SKIP")
+            continue
+
+        overview_path = os.path.join(s_path, ".system_generated", "logs", "overview.txt")
+        task_path = os.path.join(s_path, "task.md")
+        plan_path = os.path.join(s_path, "implementation_plan.md")
+        
+        # Read files to check for project name and security isolation
+        session_text = ""
+        for fp in [overview_path, task_path, plan_path]:
+            if os.path.exists(fp):
+                try:
+                    with open(fp, "r", encoding="utf-8", errors="ignore") as f:
+                        session_text += f.read()
+                except:
+                    pass
+                    
+        # Check if this session contains references to our active project
+        if active_proj.lower() not in session_text.lower():
+            log(f"Session {s_id} does not refer to active project '{active_proj}'. Skipping to avoid cross-contamination.", "SKIP")
             continue
             
-        overview_path = os.path.join(s_path, ".system_generated", "logs", "overview.txt")
-        log(f"Scanning active session accomplishments: {s_id}", "SCAN")
+        # If active_proj is "devcore" or "default", verify that no more specific project name appears in the text
+        if active_proj.lower() in ["devcore", "default"]:
+            other_projects = []
+            try:
+                for d in os.listdir(os.path.join(dev_core_data, "Memory")):
+                    if os.path.isdir(os.path.join(dev_core_data, "Memory", d)) and d.lower() != active_proj.lower():
+                        other_projects.append(d.lower())
+            except:
+                pass
+                
+            has_more_specific = False
+            for op in other_projects:
+                if op in session_text.lower():
+                    has_more_specific = True
+                    break
+            if has_more_specific:
+                log(f"Session {s_id} refers to a more specific project than '{active_proj}'. Skipping to avoid cross-contamination.", "SKIP")
+                continue
+
+        log(f"Scanning active session plans and checklists: {s_id}", "SCAN")
         
-        modified_files = set()
-        accomplishments = []
+        session_candidates = []
+        from datetime import timedelta
+        
+        # Attempt to parse task.md (checklist)
+        checklist_tasks = parse_task_md(task_path)
+        if checklist_tasks:
+            log(f"Extracted {len(checklist_tasks)} tasks from task.md checklist", "CHECKLIST")
+            for t in checklist_tasks:
+                mode_test_str = (t["title"] + " " + (t["details"] or "")).lower()
+                mode = "coding"
+                if any(x in mode_test_str for x in ["plan", "analyse", "recherche", "investig", "document"]):
+                    mode = "reasoning"
+                elif any(x in mode_test_str for x in ["test", "optimis", "déploy", "build"]):
+                    mode = "bulk"
+                    
+                dt_comp = datetime.fromtimestamp(s_mtime).astimezone()
+                dt_start = dt_comp - timedelta(hours=1)
+                z = dt_comp.strftime('%z')
+                z_fmt = f"{z[:3]}:{z[3:]}" if z else "+01:00"
+                
+                started_at = dt_start.strftime('%Y-%m-%dT%H:%M:%S') + f".0000000" + z_fmt
+                completed_at = dt_comp.strftime('%Y-%m-%dT%H:%M:%S') + f".0000000" + z_fmt
+                
+                session_candidates.append({
+                    "title": t["title"],
+                    "details": t["details"],
+                    "mode": mode,
+                    "status": t["status"],
+                    "steps_total": t["steps_total"],
+                    "steps_done": t["steps_done"],
+                    "source": s_id,
+                    "source_type": "plan_checklist_extracted",
+                    "detected": today_str,
+                    "started_at": None if t["status"] == "todo" else started_at,
+                    "completed_at": None if t["status"] == "todo" else completed_at,
+                    "steps": t["steps"]
+                })
+        
+        # Fallback to implementation_plan.md if no checklist tasks found
+        if not session_candidates:
+            plan_tasks = parse_implementation_plan_md(plan_path)
+            if plan_tasks:
+                log(f"Extracted {len(plan_tasks)} tasks from implementation_plan.md proposed changes", "PLAN")
+                for t in plan_tasks:
+                    session_candidates.append({
+                        "title": t["title"],
+                        "details": t["details"],
+                        "mode": "coding",
+                        "status": "todo",
+                        "steps_total": 1,
+                        "steps_done": 0,
+                        "source": s_id,
+                        "source_type": "plan_proposed_changes_extracted",
+                        "detected": today_str,
+                        "started_at": None,
+                        "completed_at": None,
+                        "steps": None
+                    })
+                    
+        # Extract explicit user task creation requests (always check)
         user_tasks = []
-        
         task_creation_patterns = [
             r"(?i)(?:c'est\s+)?(?:une?\s+)?(?:nouvelle?|nouveau?|nouvel)\s+(?:tâche|tache|task)\s*[:\-,]?\s*(.+)",
             r"(?i)cr[ée]er?\s+(?:une?|un?|des?)\s+(?:nouvelle?|nouveau?|nouvel)\s+(?:tâche|tache|task)\s*[:\-,]?\s*(.+)",
@@ -290,156 +502,167 @@ def main():
             r"(?i)create\s+(?:a\s+)?new\s+task\s*[:\-,]?\s*(.+)"
         ]
         
-        try:
-            with open(overview_path, "r", encoding="utf-8") as f:
-                for line in f:
-                    try:
-                        data = json.loads(line)
-                        source = data.get("source")
-                        type_ = data.get("type")
-                        content = data.get("content", "")
-                        tool_calls = data.get("tool_calls", [])
-                        
-                        # Capture modified files from tool calls
-                        for tc in tool_calls:
-                            name = tc.get("name")
-                            if name in ["write_to_file", "replace_file_content", "multi_replace_file_content"]:
-                                args = tc.get("args", {})
-                                if isinstance(args, str):
-                                    try:
-                                        args = json.loads(args)
-                                    except:
-                                        match = re.search(r'"TargetFile"\s*:\s*"([^"]+)"', args)
-                                        if match:
-                                            args = {"TargetFile": match.group(1)}
-                                        else:
-                                            args = {}
-                                            
-                                target_file = args.get("TargetFile")
-                                if target_file:
-                                    target_file = target_file.replace("\\\\", "\\").replace('"', '')
-                                    if target_file.lower().startswith("c:\\devcore"):
-                                        rel = os.path.relpath(target_file, "C:\\devcore")
-                                        if not any(x in rel.lower() for x in [".git", "scratch", "logs", ".gemini", "tempmediastorage"]):
-                                            modified_files.add(rel)
-                                            
-                        # Capture accomplishments by splitting on sentence boundaries
-                        if source == "MODEL" and type_ == "PLANNER_RESPONSE" and content:
-                            sentences = re.split(r'[.!?\n]+', content)
-                            for sent in sentences:
-                                sent = sent.strip()
-                                if not sent:
-                                    continue
-                                # Find starting pronoun/verb
-                                match = re.search(r'(?i)\b(j\'ai|nous\s+avons|i\s+have|we\s+have)\b', sent)
-                                if match:
-                                    start_idx = match.start()
-                                    accomplishment = sent[start_idx:].strip()
-                                    if len(accomplishment) >= 15:
-                                        # Truncate at space boundary if very long
-                                        if len(accomplishment) > 120:
-                                            accomplishment = accomplishment[:117].rstrip()
-                                            accomplishment = re.sub(r'\s+\S+$', '', accomplishment)
-                                            accomplishment += "..."
-                                            
-                                        cleaned = clean_accomplishment(accomplishment)
-                                        if cleaned and cleaned not in accomplishments:
-                                            low = cleaned.lower()
-                                            if not any(x in low for x in ["j'ai lu", "j'ai vérifié", "i checked", "i read", "i verified", "j'ai vu"]):
-                                                accomplishments.append(cleaned)
+        if os.path.exists(overview_path):
+            try:
+                with open(overview_path, "r", encoding="utf-8") as f:
+                    for line in f:
+                        try:
+                            data = json.loads(line)
+                            source = data.get("source")
+                            type_ = data.get("type")
+                            content = data.get("content", "")
+                            
+                            if source == "USER_EXPLICIT" and type_ == "USER_INPUT" and content:
+                                for pattern in task_creation_patterns:
+                                    match = re.search(pattern, content)
+                                    if match:
+                                        raw_title = match.group(1).strip()
+                                        cleaned_title = raw_title.strip().rstrip(".?!,;*:\n").strip()
+                                        cleaned_title = re.sub(r'^\s*["\'`]+|["\'`]+\s*$', '', cleaned_title)
+                                        cleaned_title = cleaned_title.strip()
+                                        
+                                        if cleaned_title and len(cleaned_title) >= 5:
+                                            task_mode = "coding"
+                                            mode_test = cleaned_title.lower()
+                                            if any(x in mode_test for x in ["plan", "analyse", "recherche", "investig", "document"]):
+                                                task_mode = "reasoning"
+                                            elif any(x in mode_test for x in ["test", "optimis", "déploy"]):
+                                                task_mode = "bulk"
                                                 
-                        # Capture explicit user task creation requests
-                        if source == "USER_EXPLICIT" and type_ == "USER_INPUT" and content:
-                            for pattern in task_creation_patterns:
-                                match = re.search(pattern, content)
-                                if match:
-                                    raw_title = match.group(1).strip()
-                                    cleaned_title = raw_title.strip().rstrip(".?!,;*:\n").strip()
-                                    cleaned_title = re.sub(r'^\s*["\'`]+|["\'`]+\s*$', '', cleaned_title)
-                                    cleaned_title = cleaned_title.strip()
-                                    
-                                    if cleaned_title and len(cleaned_title) >= 5:
-                                        task_mode = "coding"
-                                        mode_test = cleaned_title.lower()
-                                        if any(x in mode_test for x in ["plan", "analyse", "recherche", "investig", "document"]):
-                                            task_mode = "reasoning"
-                                        elif any(x in mode_test for x in ["test", "optimis", "déploy"]):
-                                            task_mode = "bulk"
-                                            
-                                        user_tasks.append({
-                                            "title": cleaned_title,
-                                            "details": f"**Tâche créée à partir de la demande utilisateur :**\n- \"{content}\"",
-                                            "mode": task_mode,
-                                            "status": "todo",
-                                            "steps_total": 1,
-                                            "steps_done": 0,
-                                            "source": s_id,
-                                            "source_type": "user_prompt_detected",
-                                            "detected": today_str,
-                                            "started_at": None,
-                                            "completed_at": None
-                                        })
-                                        log(f"Detected explicit user task request: [{task_mode}] {cleaned_title}", "USERTASK")
-                                    break
-                    except:
-                        pass
-        except Exception as e:
-            log(f"Error reading session {s_id}: {e}", "ERROR")
-            continue
-            
-        if not modified_files and not accomplishments and not user_tasks:
-            log(f"No actions, accomplishments or user tasks in session {s_id}", "SKIP")
-            continue
-            
-        if modified_files or accomplishments:
-            files_list = sorted(list(modified_files))
-            title = choose_title_for_session(accomplishments, files_list)
-            details = formulate_details(accomplishments, files_list)
-            
-            # Decide mode based on title/details content
-            mode = "coding"
-            mode_test_str = (title + " " + details).lower()
-            if any(x in mode_test_str for x in ["plan", "analyse", "recherche", "investig", "document"]):
-                mode = "reasoning"
-            elif any(x in mode_test_str for x in ["test", "optimis", "déploy"]):
-                mode = "bulk"
+                                            user_tasks.append({
+                                                "title": cleaned_title,
+                                                "details": f"**Tâche créée à partir de la demande utilisateur :**\n- \"{content}\"",
+                                                "mode": task_mode,
+                                                "status": "todo",
+                                                "steps_total": 1,
+                                                "steps_done": 0,
+                                                "source": s_id,
+                                                "source_type": "user_prompt_detected",
+                                                "detected": today_str,
+                                                "started_at": None,
+                                                "completed_at": None,
+                                                "steps": None
+                                            })
+                                            log(f"Detected explicit user task request: [{task_mode}] {cleaned_title}", "USERTASK")
+                                        break
+                        except:
+                            pass
+            except Exception as e:
+                pass
                 
-            # Compute dynamic start and completed times from session folder modification time
-            from datetime import timedelta
-            dt_comp = datetime.fromtimestamp(s_mtime).astimezone()
-            dt_start = dt_comp - timedelta(hours=1)
-            z = dt_comp.strftime('%z')
-            z_fmt = f"{z[:3]}:{z[3:]}" if z else "+01:00"
+        # If neither checklist nor plan was found, fallback to default agent accomplishments scan
+        if not session_candidates:
+            modified_files = set()
+            accomplishments = []
             
-            started_at = dt_start.strftime('%Y-%m-%dT%H:%M:%S') + f".{dt_start.microsecond:06d}0" + z_fmt
-            completed_at = dt_comp.strftime('%Y-%m-%dT%H:%M:%S') + f".{dt_comp.microsecond:06d}0" + z_fmt
-
-            candidates.append({
-                "title": title,
-                "details": details,
-                "mode": mode,
-                "status": "done",
-                "steps_total": 1,
-                "steps_done": 1,
-                "source": s_id,
-                "source_type": "agent_action_detected",
-                "detected": today_str,
-                "started_at": started_at,
-                "completed_at": completed_at
-            })
-            log(f"Formulated task: [{mode}] {title}", "FORMULATION")
-            
-        if user_tasks:
-            for ut in user_tasks:
-                candidates.append(ut)
+            if os.path.exists(overview_path):
+                try:
+                    with open(overview_path, "r", encoding="utf-8") as f:
+                        for line in f:
+                            try:
+                                data = json.loads(line)
+                                source = data.get("source")
+                                type_ = data.get("type")
+                                content = data.get("content", "")
+                                tool_calls = data.get("tool_calls", [])
+                                
+                                for tc in tool_calls:
+                                    name = tc.get("name")
+                                    if name in ["write_to_file", "replace_file_content", "multi_replace_file_content"]:
+                                        args = tc.get("args", {})
+                                        if isinstance(args, str):
+                                            try:
+                                                args = json.loads(args)
+                                            except:
+                                                match = re.search(r'"TargetFile"\s*:\s*"([^"]+)"', args)
+                                                if match:
+                                                    args = {"TargetFile": match.group(1)}
+                                                else:
+                                                    args = {}
+                                                    
+                                        target_file = args.get("TargetFile")
+                                        if target_file:
+                                            target_file = target_file.replace("\\\\", "\\").replace('"', '')
+                                            if target_file.lower().startswith("c:\\devcore"):
+                                                rel = os.path.relpath(target_file, "C:\\devcore")
+                                                if not any(x in rel.lower() for x in [".git", "scratch", "logs", ".gemini", "tempmediastorage"]):
+                                                    modified_files.add(rel)
+                                                    
+                                for source_mod, type_mod, content_mod in [(data.get("source"), data.get("type"), data.get("content", ""))]:
+                                    if source_mod == "MODEL" and type_mod == "PLANNER_RESPONSE" and content_mod:
+                                        sentences = re.split(r'[.!?\n]+', content_mod)
+                                        for sent in sentences:
+                                            sent = sent.strip()
+                                            if not sent:
+                                                continue
+                                            match = re.search(r'(?i)\b(j\'ai|nous\s+avons|i\s+have|we\s+have)\b', sent)
+                                            if match:
+                                                start_idx = match.start()
+                                                accomplishment = sent[start_idx:].strip()
+                                                if len(accomplishment) >= 15:
+                                                    if len(accomplishment) > 120:
+                                                        accomplishment = accomplishment[:117].rstrip()
+                                                        accomplishment = re.sub(r'\s+\S+$', '', accomplishment)
+                                                        accomplishment += "..."
+                                                        
+                                                    cleaned = clean_accomplishment(accomplishment)
+                                                    if cleaned and cleaned not in accomplishments:
+                                                        low = cleaned.lower()
+                                                        if not any(x in low for x in ["j'ai lu", "j'ai vérifié", "i checked", "i read", "i verified", "j'ai vu"]):
+                                                            accomplishments.append(cleaned)
+                            except:
+                                pass
+                except Exception as e:
+                    pass
+                    
+            if modified_files or accomplishments:
+                files_list = sorted(list(modified_files))
+                title = choose_title_for_session(accomplishments, files_list)
+                details = formulate_details(accomplishments, files_list)
+                
+                mode = "coding"
+                mode_test_str = (title + " " + details).lower()
+                if any(x in mode_test_str for x in ["plan", "analyse", "recherche", "investig", "document"]):
+                    mode = "reasoning"
+                elif any(x in mode_test_str for x in ["test", "optimis", "déploy"]):
+                    mode = "bulk"
+                    
+                dt_comp = datetime.fromtimestamp(s_mtime).astimezone()
+                dt_start = dt_comp - timedelta(hours=1)
+                z = dt_comp.strftime('%z')
+                z_fmt = f"{z[:3]}:{z[3:]}" if z else "+01:00"
+                
+                started_at = dt_start.strftime('%Y-%m-%dT%H:%M:%S') + f".0000000" + z_fmt
+                completed_at = dt_comp.strftime('%Y-%m-%dT%H:%M:%S') + f".0000000" + z_fmt
+                
+                session_candidates.append({
+                    "title": title,
+                    "details": details,
+                    "mode": mode,
+                    "status": "done",
+                    "steps_total": 1,
+                    "steps_done": 1,
+                    "source": s_id,
+                    "source_type": "agent_action_detected",
+                    "detected": today_str,
+                    "started_at": started_at,
+                    "completed_at": completed_at,
+                    "steps": None
+                })
+                
+        # Append all parsed tasks and user tasks for this session to global candidates
+        for sc in session_candidates:
+            candidates.append(sc)
+        for ut in user_tasks:
+            candidates.append(ut)
 
     # Save to queue (with deduplication)
     if candidates:
         seen = set()
         unique_candidates = []
         for c in candidates:
-            k = c["title"].lower()
-            if k not in seen:
+            k = c["title"].lower().strip()
+            if k not in seen and k not in existing_titles:
                 seen.add(k)
                 unique_candidates.append(c)
                 

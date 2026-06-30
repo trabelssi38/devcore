@@ -47,13 +47,21 @@ if (Test-Path "$DEV_CORE\Scripts\qdrant_sync.ps1") { & "$DEV_CORE\Scripts\qdrant
 Write-Host "  3/5 Obsidian..." -ForegroundColor Cyan
 if (Test-Path "$DEV_CORE\Scripts\obsidian_sync.ps1") { & "$DEV_CORE\Scripts\obsidian_sync.ps1" }
 
-Write-Host "  4/5 Memoire + TOON..." -ForegroundColor Cyan
+Write-Host "  4/5 Memoire + Refs..." -ForegroundColor Cyan
 if (Test-Path "$AUTO\memory_rotate.ps1") { & "$AUTO\memory_rotate.ps1" }
-# Regenerer tasks.toon via toonify.ps1 (chemin projet résolu via $tFile)
-try {
-    & "$DEV_CORE\Scripts\toonify.ps1" -InputFile $tFile 2>$null | Out-Null
-    Write-Host "    [TOON] tasks.toon regenere" -ForegroundColor DarkGray
-} catch { Write-Host "    [TOON] toonify.ps1 absent" -ForegroundColor DarkGray }
+
+# Archiver les refs de la tâche terminée
+$projName = & "$DEV_CORE\Scripts\Get-ActiveProject.ps1"
+$refsTaskDir = "$DEV_CORE_DATA\Refs\$projName\$($current.id)"
+if (Test-Path $refsTaskDir) {
+    $archiveDir = "$DEV_CORE_DATA\Refs\$projName\_archive"
+    if (-not (Test-Path $archiveDir)) { New-Item -ItemType Directory -Path $archiveDir -Force | Out-Null }
+    Move-Item $refsTaskDir "$archiveDir\$($current.id)" -Force -ErrorAction SilentlyContinue
+    Write-Host "    [Refs] Fichiers déchargés archivés dans _archive/$($current.id)" -ForegroundColor DarkGray
+}
+
+# Mettre à jour le canvas du projet
+& "$DEV_CORE\Scripts\canvas_manager.ps1" -Action Update
 
 Write-Host "  5/5 Notification..." -ForegroundColor Cyan
 try {

@@ -31,15 +31,9 @@ try {
     exit 0
 }
 
-# Check Ollama
+# Check Ollama (DISABLED FOR NOW)
 $ollamaOk = $false
-try {
-    Invoke-RestMethod "$OLLAMA_URL/api/tags" -TimeoutSec 3 | Out-Null
-    $ollamaOk = $true
-    Write-Log "Ollama connected" "Green"
-} catch {
-    Write-Log "Ollama unavailable - sync en mode sans embedding" "Yellow"
-}
+Write-Log "Ollama desactive pour le moment" "Yellow"
 
 # Get embedding from Ollama
 function Get-OllamaEmbedding {
@@ -47,8 +41,8 @@ function Get-OllamaEmbedding {
     if (-not $ollamaOk) { return $null }
     try {
         $escapedText = $text -replace '\\', '\\\\' -replace '"', '\"' -replace "`r", '' -replace "`n", '\n'
-        # Tronquer a 8000 chars pour eviter les timeouts
-        if ($escapedText.Length -gt 8000) { $escapedText = $escapedText.Substring(0, 8000) }
+        # Tronquer a 4000 chars pour eviter les timeouts
+        if ($escapedText.Length -gt 4000) { $escapedText = $escapedText.Substring(0, 4000) }
         $body = '{"model":"nomic-embed-text","prompt":"' + $escapedText + '"}'
 
         $tempFile = "$env:TEMP\ollama_embed_$(Get-Date -Format 'yyyyMMddHHmmss').json"
@@ -64,6 +58,39 @@ function Get-OllamaEmbedding {
         throw "No embedding in response"
     } catch {
         Write-Log "Ollama embedding failed: $_" "Red"
+        return $null
+    }
+}
+
+# Get embedding from 9Router (Fallback)
+function Get-9RouterEmbedding {
+    param([string]$text)
+    try {
+        # Clean text
+        $cleanText = $text -replace "`r", "" -replace "`n", " "
+        if ($cleanText.Length -gt 8000) { $cleanText = $cleanText.Substring(0, 8000) }
+
+        # Get API key from env or fallback
+        $apiKey = if ($env:NINEROUTER_API_KEY) { $env:NINEROUTER_API_KEY } else { "sk-60c873dfaa73a810-kfwd8f-6f9cfc28" }
+        $bodyObj = @{
+            model = "text-embedding-3-small"
+            input = $cleanText
+        }
+        $bodyJson = $bodyObj | ConvertTo-Json
+
+        $headers = @{
+            "Authorization" = "Bearer $apiKey"
+            "Content-Type" = "application/json"
+        }
+
+        # Query Gemini Router (Port 20129)
+        $response = Invoke-RestMethod -Uri "http://127.0.0.1:20129/v1/embeddings" -Method Post -Body $bodyJson -ContentType "application/json" -Headers $headers -TimeoutSec 15
+        if ($response -and $response.data -and $response.data.Count -gt 0 -and $response.data[0].embedding) {
+            return $response.data[0].embedding
+        }
+        throw "No embedding found in 9Router response"
+    } catch {
+        Write-Log "9Router embedding fallback failed: $_" "Red"
         return $null
     }
 }
@@ -154,20 +181,26 @@ function Sync-MarkdownToCollection {
     
     Write-Log "Syncing $type..." "Cyan"
     $embedding = Get-OllamaEmbedding $content
-    if ($embedding) {
-        $preview = ($content -replace "`n", " " -replace "\s+", " ").Substring(0, [Math]::Min(200, $content.Length))
-        $payload = @{
-            source = (Split-Path $filePath -Leaf)
-            date = $TODAY
-            type = $type
-            preview = $preview
-            title = (Split-Path $filePath -Leaf)
-        }
-        if (Add-ToQdrant $collection "${type}_$TODAY" $embedding $payload) {
-            Write-Log "$type upserted to Qdrant" "Green"
-        }
-    } else {
-        Write-Log "$type : pas d'embedding (Ollama down ?)" "Yellow"
+    if (-not $embedding) {
+        Write-Log "Ollama embedding failed for $type, trying 9Router fallback..." "Yellow"
+        $embedding = Get-9RouterEmbedding $content
+    }
+
+    if (-not $embedding) {
+        Write-Log "CRITICAL ERROR: Failed to get embedding for $type from both Ollama and 9Router. Terminating script." "Red"
+        exit 1
+    }
+
+    $preview = ($content -replace "`n", " " -replace "\s+", " ").Substring(0, [Math]::Min(200, $content.Length))
+    $payload = @{
+        source = (Split-Path $filePath -Leaf)
+        date = $TODAY
+        type = $type
+        preview = $preview
+        title = (Split-Path $filePath -Leaf)
+    }
+    if (Add-ToQdrant $collection "${type}_$TODAY" $embedding $payload) {
+        Write-Log "$type upserted to Qdrant" "Green"
     }
 }
 
@@ -243,23 +276,29 @@ $indexPath = "$DEV_CORE_DATA\Memory\CODEBASE_INDEX.md"
 $codebaseIndex | Set-Content $indexPath -Encoding UTF8
 
 $embedding = Get-OllamaEmbedding $codebaseIndex
-if ($embedding) {
-    $preview = ($codebaseIndex -replace "`n", " " -replace "\s+", " ").Substring(0, [Math]::Min(200, $codebaseIndex.Length))
-    $payload = @{
-        source = "CODEBASE_INDEX.md"
-        date = $TODAY
-        type = "codebase"
-        preview = $preview
-        title = "CODEBASE_INDEX.md"
-        scripts_count = $scripts.Count.ToString()
-        modules_count = $pyModules.Count.ToString()
-        skills_count = $skillDirs.Count.ToString()
-    }
-    if (Add-ToQdrant "codebase" "codebase_$TODAY" $embedding $payload) {
-        Write-Log "Codebase index upserted to Qdrant" "Green"
-    }
-} else {
-    Write-Log "Codebase : pas d'embedding (Ollama down ?)" "Yellow"
+if (-not $embedding) {
+    Write-Log "Ollama embedding failed for codebase index, trying 9Router fallback..." "Yellow"
+    $embedding = Get-9RouterEmbedding $codebaseIndex
+}
+
+if (-not $embedding) {
+    Write-Log "CRITICAL ERROR: Failed to get embedding for codebase index from both Ollama and 9Router. Terminating script." "Red"
+    exit 1
+}
+
+$preview = ($codebaseIndex -replace "`n", " " -replace "\s+", " ").Substring(0, [Math]::Min(200, $codebaseIndex.Length))
+$payload = @{
+    source = "CODEBASE_INDEX.md"
+    date = $TODAY
+    type = "codebase"
+    preview = $preview
+    title = "CODEBASE_INDEX.md"
+    scripts_count = $scripts.Count.ToString()
+    modules_count = $pyModules.Count.ToString()
+    skills_count = $skillDirs.Count.ToString()
+}
+if (Add-ToQdrant "codebase" "codebase_$TODAY" $embedding $payload) {
+    Write-Log "Codebase index upserted to Qdrant" "Green"
 }
 
 # ===========================
@@ -275,6 +314,14 @@ foreach ($c in $collections) {
     } catch {
         Write-Host "    $($c.PadRight(12)) : erreur" -ForegroundColor Red
     }
+}
+
+# Agréger les atomes L1 en scénarios L2 et mettre à jour le persona L3
+try {
+    Write-Log "Agrégation de la mémoire hiérarchique L1 -> L2/L3..." "Cyan"
+    & "$DEV_CORE\Scripts\memory_hierarchy.ps1" -Action Aggregate
+} catch {
+    Write-Log "Erreur d'agrégation de la mémoire : $_" "Yellow"
 }
 
 Write-Log "Qdrant sync complete (4 collections)" "Green"

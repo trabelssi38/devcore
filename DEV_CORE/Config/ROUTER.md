@@ -1,6 +1,6 @@
-# ROUTER.md v2 -- DEV_CORE v6
+# ROUTER.md v3 -- DEV_CORE v8.0
 # Single client · Mode-based routing · Model-agnostic
-# DEV_CORE detecte le mode -- 9Router choisit le modele
+# DEV_CORE detecte le mode -- Headroom compresse -- 9Router choisit le modele
 
 ## Architecture
 
@@ -9,6 +9,9 @@ Requete utilisateur
       |
       v
 DEV_CORE detecte le mode (reasoning / coding / bulk)
+      |
+      v
+Headroom Proxy (Port 8787) -- compression auto (JSON, Code, Logs)
       |
       v
 Signal mode -> 9Router combo "devcore-always-on"
@@ -21,6 +24,7 @@ Signal mode -> 9Router combo "devcore-always-on"
 
 DEV_CORE ne connait pas les noms de modeles.
 9Router gere les quotas, fallbacks et couts.
+Headroom gere l'optimisation transparente du contexte (KV cache, compression).
 
 ---
 

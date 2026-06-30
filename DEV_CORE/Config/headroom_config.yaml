@@ -1,0 +1,20 @@
+proxy:
+  port: 8787
+  upstream: "http://127.0.0.1:20128"  # 9Router
+  
+compression:
+  json: true          # SmartCrusher pour JSON (remplace TOON)
+  code: true          # CodeCompressor AST-aware
+  logs: true          # LogCompressor (remplace RTK)
+  prose: true         # Kompress-base
+
+cache_aligner:
+  enabled: true       # Stabilise les préfixes pour KV cache
+  
+ccr:
+  enabled: true       # Reversible compression
+  cache_dir: "C:/devcore/DEV_CORE_DATA/Cache/headroom"
+
+stats:
+  enabled: true
+  output: "C:/devcore/DEV_CORE_DATA/Metrics/headroom_stats.json"

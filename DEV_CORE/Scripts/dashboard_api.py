@@ -120,7 +120,7 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
             return False, f"Project board not found: {tasks_file}"
 
         try:
-            with open(tasks_file, "r", encoding="utf-8") as f:
+            with open(tasks_file, "r", encoding="utf-8-sig") as f:
                 board = json.load(f)
 
             task_found = False
@@ -163,7 +163,7 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
             return False, f"Project board not found: {tasks_file}"
 
         try:
-            with open(tasks_file, "r", encoding="utf-8") as f:
+            with open(tasks_file, "r", encoding="utf-8-sig") as f:
                 board = json.load(f)
 
             original_count = len(board.get("tasks", []))

@@ -62,5 +62,18 @@ $content = @"
 "@
 
 $content | Set-Content $CONTEXT_FILE -Encoding UTF8
+
+# Mettre à jour et ajouter le canvas symbolique (Mermaid)
+$projName = & "$DEV_CORE\Scripts\Get-ActiveProject.ps1"
+if ($projName) {
+    & "$DEV_CORE\Scripts\canvas_manager.ps1" -Action Update
+    $canvasPath = "$DEV_CORE_DATA\Refs\$projName\canvas.md"
+    if (Test-Path $canvasPath) {
+        $canvas = Get-Content $canvasPath -Raw
+        $canvasContent = "`n[DEV_CORE] Context Canvas (Mermaid):`n" + $canvas
+        $canvasContent | Add-Content $CONTEXT_FILE -Encoding UTF8
+    }
+}
+
 Write-Host "  [DEV_CORE] Session context genere: $($active.id) - $($active.mode)" -ForegroundColor Green
 

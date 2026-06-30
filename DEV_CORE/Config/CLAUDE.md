@@ -39,11 +39,12 @@ Ne jamais mentionner de noms de modeles -- utiliser uniquement les modes.
 
 ---
 
-## Memoire (priorite absolue)
+## Memoire (priorite absolue - L0-L3 hierarchie)
 
-- Consulter MEMORY.md avant tout sujet potentiellement connu.
-- Interroger Qdrant (collections decisions/lessons/patterns).
-- Score > 0.75 : utiliser sans re-generer.
+- Consulter L3 `C:\devcore\DEV_CORE_DATA\Memory\persona.md` (toujours charge).
+- Consulter L2 `C:\devcore\DEV_CORE_DATA\Memory\Scenarios\{task_type}.md` selon le type de tache.
+- Interroger L1 Qdrant (decisions/lessons/patterns) si L2 est insuffisant (score > 0.75).
+- Interroger L0 SQLite (recherche plein texte via `memory_hierarchy.ps1 -Action Query`) en dernier recours.
 - Charger uniquement les skills pertinents a la tache.
 
 ---
@@ -57,12 +58,43 @@ Ne jamais mentionner de noms de modeles -- utiliser uniquement les modes.
 
 ---
 
-## Tokens
+## Tokens & Offloading (TencentDB Canvas)
 
 - Resumes structures > prose longue.
-- Ne pas repeter le contexte deja fourni.
+- **CRITICAL**: Si un output d'outil, log, compilation ou contenu est volumineux (>500 lignes ou >10k caracteres), **NE PAS l'afficher en brut**.
+- Le decharger avec :
+  `powershell -File "C:\devcore\DEV_CORE\Scripts\canvas_manager.ps1" -Action Offload -Content "CONTENU" -TaskId "T-XX" -Type "log|code"`
+- Utiliser le symbole genere (ex: `T02_log_e4c3`) dans ta reponse et ton canvas Mermaid.
 - Respecter le budget du mode actif.
 - Alerter si depassement previsible.
+
+---
+
+## Discipline de code (Karpathy rules)
+
+### 1. Penser avant de coder
+- Enoncer les hypotheses explicitement. Si incertain, demander.
+- Si plusieurs interpretations existent, les presenter -- ne pas choisir silencieusement.
+- Si une approche plus simple existe, la proposer. Pousser en arriere si justifie.
+- Si quelque chose est flou, stopper. Nommer ce qui est confus. Demander.
+
+### 2. Simplicite d'abord
+- Minimum de code qui resout le probleme. Rien de speculatif.
+- Pas de features au-dela de ce qui est demande.
+- Pas d'abstractions pour du code a usage unique.
+- Pas de "flexibilite" ou "configurabilite" non requise.
+- Si tu ecris 200 lignes et que 50 suffisent : réécrire.
+
+### 3. Changements chirurgicaux
+- Toucher uniquement ce qui est necessaire.
+- Ne pas "ameliorer" le code adjacent, les commentaires ou le formatage.
+- Ne pas refactoriser ce qui ne pose pas de probleme.
+- Correspondre au style existant.
+
+### 4. Execution orientee objectif
+- Definir des criteres de succes verifiables avant de commencer.
+- Boucler jusqu'a ce que le but soit verifie (tests, demo).
+- Ne pas declarer "termine" avant verification.
 
 ---
 
@@ -96,7 +128,8 @@ Executer avant de terminer :
 
 ## Routing
 
-- Suivre ROUTER.md v2 pour la detection du mode.
+- Suivre ROUTER.md v3 pour la detection du mode.
+- Toutes les requetes passent par Headroom Proxy (Port 8787).
 - Ne jamais choisir un modele par nom -- utiliser reasoning/coding/bulk.
 
 ---

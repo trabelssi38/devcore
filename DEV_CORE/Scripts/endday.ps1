@@ -20,6 +20,12 @@ Log "1/8 Extraction leçons"   ; Run "lesson_extractor.ps1"  "lesson_extractor"
 if (-not $SkipQdrant) { Log "2/8 Sync Qdrant"; Run "qdrant_sync.ps1" "qdrant_sync" } else { Log "2/8 Qdrant SKIP" "Gray" }
 Log "3/8 Sync Obsidian"       ; Run "obsidian_sync.ps1"     "obsidian_sync"
 Log "4/8 Rotation mémoire"    ; Run "memory_rotate.ps1"     "memory_rotate"
+Log "4.5/8 Consolidation mémoire hiérarchique L1 -> L2/L3"
+try {
+    & "$DEV_CORE\Scripts\memory_hierarchy.ps1" -Action Aggregate
+} catch {
+    Log "  [WARN] Échec de la consolidation de la mémoire : $_" "Yellow"
+}
 Log "5/8 Détection skills & Auto-Apprentissage" ; Run "auto_skills_detector.ps1" "auto_skills"
 try {
     python "$DEV_CORE\Scripts\Auto\intent_learner.py"
