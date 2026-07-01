@@ -1,4 +1,4 @@
-# router.py — DEV_CORE v7.3
+# router.py — DEV_CORE v9.0
 # Routing IA avec scoring + mission awareness + skills routing
 
 from devcore.contracts import validate_contract

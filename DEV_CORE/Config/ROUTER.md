@@ -1,8 +1,8 @@
-# ROUTER.md v3 -- DEV_CORE v8.0
+# ROUTER.md v3 -- DEV_CORE v9.0
 # Single client · Mode-based routing · Model-agnostic
 # DEV_CORE detecte le mode -- Headroom compresse -- 9Router choisit le modele
 
-## Architecture de routage & Offloading (DevCore v8.0)
+## Architecture de routage & Offloading (DevCore v9.0)
 
 ```
                        Requete Utilisateur (DEV_CORE)

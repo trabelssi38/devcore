@@ -1,4 +1,4 @@
-# adapt_client.ps1 -- DEV_CORE v7.3
+# adapt_client.ps1 -- DEV_CORE v9.0
 # Expose DEV_CORE au client actif : liens skills + injection boot
 # Usage : adapt_client.ps1 -Client claude|codex|gemini|antigravity|qwen|auto
 
@@ -127,7 +127,7 @@ Action : dc task done quand steps_done = steps_total
 }
 
 # Header + mission + boot content
-$header = "<!-- DEV_CORE v7.3 -- genere par adapt_client.ps1 le $(Get-Date -f 'yyyy-MM-dd HH:mm') -->`n"
+$header = "<!-- DEV_CORE v9.0 -- genere par adapt_client.ps1 le $(Get-Date -f 'yyyy-MM-dd HH:mm') -->`n"
 $final  = $header + $missionBlock + $bootContent
 
 if (-not $DryRun) {

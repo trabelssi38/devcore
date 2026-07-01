@@ -1,4 +1,4 @@
-# graphify_setup.ps1 -- DEV_CORE v7.3
+# graphify_setup.ps1 -- DEV_CORE v9.0
 # Installe graphify + integre dans DEV_CORE
 # Usage : powershell -ExecutionPolicy Bypass -File C:\DEV_CORE\Skills\graphify\graphify_setup.ps1
 
@@ -6,7 +6,7 @@ $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } 
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\DEV_CORE_DATA" }
 
 Write-Host ""
-Write-Host "  DEV_CORE v7.3 -- Graphify Setup" -ForegroundColor Cyan
+Write-Host "  DEV_CORE v9.0 -- Graphify Setup" -ForegroundColor Cyan
 Write-Host "  -------------------------------------" -ForegroundColor DarkGray
 Write-Host ""
 
@@ -143,7 +143,7 @@ if (Test-Path $bootPath) {
 # Resume final
 Write-Host ""
 Write-Host "  ============================================" -ForegroundColor Green
-Write-Host "  [OK] Graphify installe dans DEV_CORE v7.3  " -ForegroundColor Green
+Write-Host "  [OK] Graphify installe dans DEV_CORE v9.0  " -ForegroundColor Green
 Write-Host "  ============================================" -ForegroundColor Green
 Write-Host ""
 Write-Host "  Skill  : $DEV_CORE\Skills\graphify\" -ForegroundColor White

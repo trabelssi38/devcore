@@ -1,4 +1,4 @@
-# gemini_router.py -- DEV_CORE v8.0
+# gemini_router.py -- DEV_CORE v9.0
 # Léger proxy de complétion pour remplacer 9Router et utiliser Gemini en direct
 # Port : 20129 (Amont de Headroom Proxy, avec fallback sur 9Router port 20128)
 

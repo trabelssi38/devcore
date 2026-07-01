@@ -1,4 +1,4 @@
-# session_end.ps1 -- DEV_CORE v7.3
+# session_end.ps1 -- DEV_CORE v9.0
 # Execute a la fin de session Claude Code
 # 1. Sync Qdrant
 # 2. Sync Obsidian
@@ -19,7 +19,7 @@ function Log {
 }
 
 Write-Host ""
-Log "DEV_CORE v7.3 -- Session End" "Cyan"
+Log "DEV_CORE v9.0 -- Session End" "Cyan"
 Log "========================================" "DarkGray"
 Log "Date: $TODAY" "White"
 Write-Host ""

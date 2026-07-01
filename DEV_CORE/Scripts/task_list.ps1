@@ -1,4 +1,4 @@
-# task_list.ps1 -- DEV_CORE v7.3 single client
+# task_list.ps1 -- DEV_CORE v9.0 single client
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
 $tFile = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
 if (-not (Test-Path $tFile)) { Write-Host "  Aucun tasks.json." -ForegroundColor Yellow; exit 0 }
@@ -7,7 +7,7 @@ $board = Get-Content $tFile -Raw | ConvertFrom-Json
 $todos = $board.tasks | Where-Object { $_.status -in @("todo","active","paused") }
 
 Write-Host ""
-Write-Host "  DEV_CORE v7.3 -- Backlog (todo)" -ForegroundColor Cyan
+Write-Host "  DEV_CORE v9.0 -- Backlog (todo)" -ForegroundColor Cyan
 Write-Host "  -------------------------------------------------------" -ForegroundColor DarkGray
 Write-Host ("  {0,-6} {1,-12} {2,-10} {3}" -f "ID","Mode","Status","Titre") -ForegroundColor DarkGray
 Write-Host "  -------------------------------------------------------" -ForegroundColor DarkGray

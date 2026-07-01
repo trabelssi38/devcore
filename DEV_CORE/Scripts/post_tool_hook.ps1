@@ -1,4 +1,4 @@
-# post_tool_hook.ps1 -- DEV_CORE v7.3 -- Full Autonomy
+# post_tool_hook.ps1 -- DEV_CORE v9.0 -- Full Autonomy
 # Declenche par le hook PostToolUse(Bash) / AfterTool(Gemini)
 # 1. Verifie si la tache active est complete
 # 2. Detecte les commits [T-XX] pour auto-incrementer steps

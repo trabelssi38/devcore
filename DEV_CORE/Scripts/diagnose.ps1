@@ -1,4 +1,4 @@
-# diagnose.ps1 -- DEV_CORE v7.3 -- Auto-reparation
+# diagnose.ps1 -- DEV_CORE v9.0 -- Auto-reparation
 # Usage : dc check        (diagnostic seul)
 #         dc check --fix   (diagnostic + reparation automatique)
 param([switch]$Fix)
@@ -9,7 +9,7 @@ $CLAUDE_DIR    = "$env:USERPROFILE\.claude"
 $GEMINI_DIR    = "$env:USERPROFILE\.gemini"
 
 Write-Host ""
-Write-Host "  DEV_CORE v7.3 -- Diagnostic autonomie" -ForegroundColor Cyan
+Write-Host "  DEV_CORE v9.0 -- Diagnostic autonomie" -ForegroundColor Cyan
 if ($Fix) { Write-Host "  MODE AUTO-FIX ACTIVE" -ForegroundColor Yellow }
 Write-Host "  =======================================" -ForegroundColor DarkGray
 Write-Host ""

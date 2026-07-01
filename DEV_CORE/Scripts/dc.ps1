@@ -1,4 +1,4 @@
-# dc.ps1 -- DEV_CORE v7.3 -- Single client -- ASCII safe
+# dc.ps1 -- DEV_CORE v9.0 -- Single client -- ASCII safe
 # Alias : Set-Alias dc 'C:\devcore\DEV_CORE\Scripts\dc.ps1'
 param([Parameter(ValueFromRemainingArguments=$true)][string[]]$Args)
 
@@ -89,7 +89,7 @@ switch -Regex ($cmd) {
     # -- HELP
     "^help$|^h$" {
         Write-Host ""
-        Write-Host "  DEV_CORE v7.3 -- Single Client Mode" -ForegroundColor Cyan
+        Write-Host "  DEV_CORE v9.0 -- Single Client Mode" -ForegroundColor Cyan
         Write-Host "  -------------------------------------------" -ForegroundColor DarkGray
         Write-Host "  TACHES" -ForegroundColor White
         Write-Host "  dc next task (nt)              Prochaine tache + mode auto" -ForegroundColor Gray

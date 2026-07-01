@@ -1,4 +1,4 @@
-# task_pause.ps1 -- DEV_CORE v7.3 single client
+# task_pause.ps1 -- DEV_CORE v9.0 single client
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
 $tFile = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
 

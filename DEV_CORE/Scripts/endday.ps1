@@ -1,4 +1,4 @@
-# endday.ps1 — DEV_CORE v7.3
+# endday.ps1 — DEV_CORE v9.0
 param([switch]$SkipBackup, [switch]$SkipQdrant)
 
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
@@ -13,7 +13,7 @@ function Run { param($script,$label)
     if (Test-Path $p) { Log "→ $label" "Cyan"; & $p } else { Log "SKIP $script" "Yellow" }
 }
 
-Write-Host ""; Write-Host "  DEV_CORE v7.3 — END OF DAY" -ForegroundColor Cyan
+Write-Host ""; Write-Host "  DEV_CORE v9.0 — END OF DAY" -ForegroundColor Cyan
 Write-Host "  ─────────────────────────────────────" -ForegroundColor DarkGray; Write-Host ""
 
 Log "1/8 Extraction leçons"   ; Run "lesson_extractor.ps1"  "lesson_extractor"
@@ -65,11 +65,11 @@ h1{{font-size:16px;color:#6366f1}}.m{{display:inline-block;padding:10px 18px;
 background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin:6px;text-align:center}}
 .v{{font-size:24px;font-weight:600}}.l{{font-size:11px;color:#64748b;margin-top:3px}}</style>
 </head><body>
-<h1>DEV_CORE v7.3 — Token Report $TODAY</h1>
+<h1>DEV_CORE v9.0 — Token Report $TODAY</h1>
 <div class="m"><div class="v">—</div><div class="l">Total tokens</div></div>
 <div class="m"><div class="v">—</div><div class="l">Cache hits</div></div>
 <div class="m"><div class="v">—</div><div class="l">Sessions</div></div>
-<p style="color:#94a3b8;font-size:12px;margin-top:20px">Auto-généré par endday.ps1 · DEV_CORE v7.3</p>
+<p style="color:#94a3b8;font-size:12px;margin-top:20px">Auto-généré par endday.ps1 · DEV_CORE v9.0</p>
 </body></html>
 "@
     [System.IO.File]::WriteAllText($rpt, $html, [System.Text.Encoding]::UTF8)

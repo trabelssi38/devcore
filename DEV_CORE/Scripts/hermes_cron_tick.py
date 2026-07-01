@@ -31,7 +31,7 @@ logging.basicConfig(
 logger = logging.getLogger("HermesCronDaemon")
 
 def main():
-    logger.info("Starting Standalone Hermes Cron Scheduler Daemon v7.3...")
+    logger.info("Starting Standalone Hermes Cron Scheduler Daemon v9.0...")
     logger.info(f"Logging to {LOG_FILE}")
     
     try:

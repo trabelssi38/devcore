@@ -1,4 +1,4 @@
-# task_edit.ps1 -- DEV_CORE v7.3 single client
+# task_edit.ps1 -- DEV_CORE v9.0 single client
 param(
     [Parameter(Mandatory=$true)][string]$Id,
     [string]$Title,

@@ -1,4 +1,4 @@
-# endday_check.ps1 -- DEV_CORE v7.3
+# endday_check.ps1 -- DEV_CORE v9.0
 # Verifie si endday.ps1 a ete execute aujourd'hui
 # Si non -> lance endday.ps1
 
@@ -14,7 +14,7 @@ function Write-Log {
 }
 
 Write-Host ""
-Write-Host "  DEV_CORE v7.3 -- Endday Check" -ForegroundColor Cyan
+Write-Host "  DEV_CORE v9.0 -- Endday Check" -ForegroundColor Cyan
 Write-Host "  ========================================" -ForegroundColor DarkGray
 
 if (Test-Path $FLAG) {

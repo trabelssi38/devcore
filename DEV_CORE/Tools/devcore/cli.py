@@ -1,4 +1,4 @@
-# cli.py — DEV_CORE v7.3
+# cli.py — DEV_CORE v9.0
 # Main entry point — préserve toute la logique existante + mission awareness
 
 import argparse

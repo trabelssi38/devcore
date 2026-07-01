@@ -1,11 +1,11 @@
-# lesson_extractor.ps1 -- DEV_CORE v7.3 Auto layer
+# lesson_extractor.ps1 -- DEV_CORE v9.0 Auto layer
 # Extrait les lecons depuis : git log, tasks done, MEMORY.md
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
 $TODAY         = Get-Date -Format "yyyy-MM-dd"
 $LOG           = "$DEV_CORE_DATA\Logs\scripts\lesson_extractor_$TODAY.log"
   function Log { param($msg,$color="Gray"); $l="[$(Get-Date -f HH:mm:ss)] $msg"; Add-Content $LOG $l -ErrorAction SilentlyContinue; Write-Host "    $l" -ForegroundColor $color }
-Log "lesson_extractor v7.3 -- extraction multi-source" "Cyan"
+Log "lesson_extractor v9.0 -- extraction multi-source" "Cyan"
 
 $lessonsFile = "$DEV_CORE_DATA\Memory\LESSONS.md"
 $tFile       = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\..\Get-ActiveProject.ps1")\tasks.json"
@@ -14,7 +14,7 @@ $existed     = Test-Path $lessonsFile
 # 1. Creer LESSONS.md si absent
 if (-not $existed) {
     @"
-# LESSONS.md — DEV_CORE v7.3
+# LESSONS.md — DEV_CORE v9.0
 <!-- Auto-genere par lesson_extractor.ps1 -->
 <!-- Score min inclusion : 0.5 | Derniere maj : $TODAY -->
 

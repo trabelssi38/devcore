@@ -1,4 +1,4 @@
-# memory_hierarchy.ps1 -- DEV_CORE v8.0
+# memory_hierarchy.ps1 -- DEV_CORE v9.0
 # Gère la hiérarchie de mémoire L0-L3 (Persona, Scenarios, Qdrant, SQLite)
 # Usage : & "memory_hierarchy.ps1" -Action Query -Query "JWT auth" -TaskType "auth"
 #         & "memory_hierarchy.ps1" -Action Aggregate

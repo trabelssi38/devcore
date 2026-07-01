@@ -1,4 +1,4 @@
-# hermes-daemon.ps1 -- DEV_CORE v7.3 + Hermes Standalone Daemon
+# hermes-daemon.ps1 -- DEV_CORE v9.0 + Hermes Standalone Daemon
 # Service Windows pour HERMES en daemon avec cron DEV_CORE
 
 param(
@@ -205,7 +205,7 @@ function Do-Test {
 # ========== MAIN ==========
 
 Write-Host ""
-Write-Host "  HERMES DEV_CORE Daemon Manager v7.3" -ForegroundColor Cyan
+Write-Host "  HERMES DEV_CORE Daemon Manager v9.0" -ForegroundColor Cyan
 Write-Host "  ========================================" -ForegroundColor DarkGray
 Write-Host ""
 

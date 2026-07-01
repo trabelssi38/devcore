@@ -1,4 +1,4 @@
-# headroom_start.ps1 -- DEV_CORE v8.0
+# headroom_start.ps1 -- DEV_CORE v9.0
 # Démarre le proxy Headroom si disponible
 # Usage : & "headroom_start.ps1"
 

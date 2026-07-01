@@ -1,4 +1,4 @@
-# task_git_scanner.ps1 -- DEV_CORE v7.3 Auto layer
+# task_git_scanner.ps1 -- DEV_CORE v9.0 Auto layer
 # Scan git commits pour detecter les tags [T-XX] manquants
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8

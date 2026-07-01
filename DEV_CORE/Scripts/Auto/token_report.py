@@ -679,7 +679,7 @@ def main():
 
         <footer>
             <span>Auto-généré par <code>endday.ps1</code> & <code>token_report.py</code></span>
-            <span class="footer-tag">DEV_CORE v7.3</span>
+            <span class="footer-tag">DEV_CORE v9.0</span>
         </footer>
     </div>
 </body>

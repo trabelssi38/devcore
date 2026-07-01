@@ -1,4 +1,4 @@
-# task_sync.ps1 -- DEV_CORE v7.3 -- Synchronise les suggestions dans tasks.json
+# task_sync.ps1 -- DEV_CORE v9.0 -- Synchronise les suggestions dans tasks.json
 param([int]$MaxPerSource = 30)
 
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
@@ -13,7 +13,7 @@ function Log { param($msg,$color="Gray")
 }
 
 Write-Host ""
-Write-Host "  DEV_CORE v7.3 -- TASK SYNC" -ForegroundColor Cyan
+Write-Host "  DEV_CORE v9.0 -- TASK SYNC" -ForegroundColor Cyan
 Write-Host "  ========================================" -ForegroundColor DarkGray
 Write-Host ""
 

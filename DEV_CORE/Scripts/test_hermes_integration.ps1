@@ -1,4 +1,4 @@
-# test_hermes_integration.ps1 -- DEV_CORE v7.3 + Hermes Integration Tests
+# test_hermes_integration.ps1 -- DEV_CORE v9.0 + Hermes Integration Tests
 
 param(
     [switch]$All,
@@ -234,7 +234,7 @@ function Test-Scripts {
 # ========== MAIN ==========
 
 Write-Host ""
-Write-Host "  DEV_CORE v7.3 + HERMES INTEGRATION TEST" -ForegroundColor Cyan
+Write-Host "  DEV_CORE v9.0 + HERMES INTEGRATION TEST" -ForegroundColor Cyan
 Write-Host "  ========================================" -ForegroundColor DarkGray
 Write-Host "  Date: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor DarkGray
 Write-Host ""

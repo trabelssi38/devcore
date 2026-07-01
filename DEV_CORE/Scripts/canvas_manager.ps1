@@ -1,4 +1,4 @@
-# canvas_manager.ps1 -- DEV_CORE v8.0
+# canvas_manager.ps1 -- DEV_CORE v9.0
 # Gere le canvas symbolique (Mermaid) et le dechargement de contexte (Refs)
 # Usage : & "canvas_manager.ps1" -Action Update
 #         & "canvas_manager.ps1" -Action Offload -Content "..." -TaskId "T-02" -Type "log"

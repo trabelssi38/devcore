@@ -79,7 +79,7 @@ After these 4 steps: start task work immediately. No confirmation needed.
 
 ---
 
-## TASKS (v8.0)
+## TASKS (v9.0)
 
 - Single Client Mode : pas de handoffs multi-agents
 - Modes : reasoning (32k), coding (8k), bulk (16k)

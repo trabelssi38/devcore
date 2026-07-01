@@ -1,4 +1,4 @@
-# gen_metrics.ps1 -- DEV_CORE v7.3
+# gen_metrics.ps1 -- DEV_CORE v9.0
 # Genere les metriques de session
 
 $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }

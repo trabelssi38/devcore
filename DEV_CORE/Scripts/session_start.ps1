@@ -1,4 +1,4 @@
-# session_start.ps1 -- DEV_CORE v7.3 -- Single client -- ASCII safe
+# session_start.ps1 -- DEV_CORE v9.0 -- Single client -- ASCII safe
 # Declenche par hook UserPromptSubmit de Claude Code
 # Ne relance pas si deja execute aujourd'hui
 

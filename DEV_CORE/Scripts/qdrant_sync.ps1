@@ -1,4 +1,4 @@
-# qdrant_sync.ps1 -- DEV_CORE v7.3
+# qdrant_sync.ps1 -- DEV_CORE v9.0
 # Sync des 4 collections Qdrant : decisions, lessons, patterns, codebase
 # Sources : DECISIONS.md, LESSONS.md, PATTERNS.md, codebase scan
 
@@ -20,7 +20,7 @@ function Write-Log {
 }
 
 Write-Host ""
-Write-Host "  DEV_CORE v7.3 -- Qdrant Sync (4 collections)" -ForegroundColor Cyan
+Write-Host "  DEV_CORE v9.0 -- Qdrant Sync (4 collections)" -ForegroundColor Cyan
 
 # Check Qdrant
 try {

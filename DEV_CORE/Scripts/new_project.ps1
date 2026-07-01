@@ -1,4 +1,4 @@
-# new_project.ps1 -- DEV_CORE v7.3 single client
+# new_project.ps1 -- DEV_CORE v9.0 single client
 param(
     [Parameter(Mandatory=$true)][string]$Name,
     [string]$Stack = "generic",
@@ -12,7 +12,7 @@ if (-not $Path) {
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
 
 Write-Host ""
-Write-Host "  DEV_CORE v7.3 -- Initialisation Projet" -ForegroundColor Cyan
+Write-Host "  DEV_CORE v9.0 -- Initialisation Projet" -ForegroundColor Cyan
 Write-Host "  ====================================" -ForegroundColor DarkGray
 Write-Host ""
 
@@ -37,7 +37,7 @@ if (-not (Test-Path $claudeMd)) {
 # $Name
 
 Stack: $Stack
-Initialise avec DEV_CORE v7.3.
+Initialise avec DEV_CORE v9.0.
 
 ## Commandes utiles
 - \`dc next task\` : charger prochaine tache

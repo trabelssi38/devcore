@@ -1,5 +1,5 @@
-# toonify.ps1 -- DEV_CORE v7.3
-# DEPRECATED in v8.0 -- Remplacé par le proxy de compression Headroom SmartCrusher
+# toonify.ps1 -- DEV_CORE v9.0
+# DEPRECATED in v9.0 -- Remplacé par le proxy de compression Headroom SmartCrusher
 # Conversion JSON <-> TOON avec stats et fallback
 Write-Host "  [TOON] [DEPRECATED] Ce script est déprécié. Headroom SmartCrusher gère maintenant la compression JSON." -ForegroundColor Yellow
 
@@ -22,7 +22,7 @@ function Write-Log {
 }
 
 Write-Host ""
-Write-Host "  DEV_CORE v7.3 -- TOONIFY" -ForegroundColor Cyan
+Write-Host "  DEV_CORE v9.0 -- TOONIFY" -ForegroundColor Cyan
 
 if (-not (Test-Path $InputFile)) {
     Write-Log "ERREUR: $InputFile introuvable" "Red"

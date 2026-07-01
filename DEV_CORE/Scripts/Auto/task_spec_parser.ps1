@@ -1,4 +1,4 @@
-# task_spec_parser.ps1 -- DEV_CORE v7.3 Auto layer
+# task_spec_parser.ps1 -- DEV_CORE v9.0 Auto layer
 # Parser les fichiers de spec pour extraire des taches candidates
 
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }

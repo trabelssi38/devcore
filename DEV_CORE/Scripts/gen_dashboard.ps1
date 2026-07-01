@@ -1,4 +1,4 @@
-# gen_dashboard.ps1 -- DEV_CORE v7.3 Multi-Projet
+# gen_dashboard.ps1 -- DEV_CORE v9.0 Multi-Projet
 # Genere le fichier index.html du dashboard dynamiquement
 
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }

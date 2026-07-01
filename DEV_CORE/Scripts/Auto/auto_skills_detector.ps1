@@ -1,4 +1,4 @@
-# auto_skills_detector.ps1 -- DEV_CORE v7.3 Auto layer
+# auto_skills_detector.ps1 -- DEV_CORE v9.0 Auto layer
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
 $TODAY         = Get-Date -Format "yyyy-MM-dd"
