@@ -1,9 +1,9 @@
-# DEV_CORE v7 — README
+# DEV_CORE v9 — README
 
 **Single Client Mode** — Plateforme d'orchestration IA pour le développement logiciel
 
-Version : 7.3.0  
-Updated : 2026-05-24  
+Version : 9.0.0  
+Updated : 2026-07-01  
 Mode : Single Client (pas de handoffs multi-agents)
 
 ---
@@ -93,12 +93,13 @@ C:\devcore\
 
 ## 📊 Dashboard
 
-Ouvrir dans un navigateur :
+Ouvrir dans un navigateur (Recommandé pour éviter les restrictions CORS) :
 ```
-file:///C:/devcore/DEV_CORE/Dashboard/index.html
+http://127.0.0.1:20129/
 ```
+*(Alternative locale hors-ligne : `file:///C:/devcore/DEV_CORE/Dashboard/index.html`)*
 
-Auto-refresh 30s — Affiche :
+Auto-refresh 15s — Affiche :
 - Multi-projets : Cards récapitulatives par projet
 - Worktrees : Tags [worktree] dans la pipeline
 - Infrastructure Temps Réel : Monitoring ports (Qdrant, Ollama, Hermes)
@@ -145,7 +146,14 @@ Voir : `C:\devcore\DEV_CORE\docs\PLATFORM_DOCUMENTATION.md`
 
 ---
 
-## 🔄 Changelog v7
+## 🔄 Changelog v9
+
+### 2026-07-01 — v9.0 Port Separation, CORS Resolution & HTTP Cockpit Server
+
+- ✅ **Résolution du conflit de port 20129** : Séparation définitive des ports de communication. Le serveur de routage intelligent `gemini_router.py` a été déplacé sur le port **`20130`** (avec mise à jour de toutes ses dépendances, notamment `headroom_start.ps1`, `qdrant_sync.ps1`, `memory_hierarchy.ps1`), libérant ainsi le port **`20129`** pour le serveur API Dashboard (`dashboard_api.py`).
+- ✅ **Boutons d'Actions & Bégaiement CORS** : Remplacement des appels AJAX vers `localhost` par `127.0.0.1` pour contourner les comportements capricieux de résolution IPv6 sous Windows.
+- ✅ **Cockpit disponible en HTTP** : Mise à jour de `dashboard_api.py` pour servir directement la page HTML du Cockpit sur l'URL racine `GET /`. Cela permet de charger le Cockpit via `http://127.0.0.1:20129/` au lieu du protocole local `file://`, évitant ainsi le blocage des requêtes AJAX dynamiques par les politiques de sécurité (CORS) des navigateurs modernes.
+- ✅ **Nettoyage automatique** : Ajustement de `launch.ps1` pour purger automatiquement les anciens processus orphelins (notamment sur le port `8787` pour Headroom Proxy) lors du démarrage de la plateforme.
 
 ### 2026-05-24 — v9.0 Detached Daemon & Resilient API
 
