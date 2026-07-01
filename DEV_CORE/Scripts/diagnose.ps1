@@ -167,14 +167,14 @@ try {
     }
 }
 
-# 7.2 Gemini Router (Port 20129) - Primary
+# 7.2 Gemini Router (Port 20130) - Primary
 try {
     $tcp = New-Object System.Net.Sockets.TcpClient
-    $result = $tcp.BeginConnect([System.Net.IPAddress]::Loopback, 20129, $null, $null)
+    $result = $tcp.BeginConnect([System.Net.IPAddress]::Loopback, 20130, $null, $null)
     $success = $result.AsyncWaitHandle.WaitOne(1000, $true)
     if ($success) {
         $tcp.EndConnect($result)
-        Check "Gemini Router OK (Port 20129)" "OK"
+        Check "Gemini Router OK (Port 20130)" "OK"
     } else {
         throw "Timeout"
     }
@@ -185,6 +185,43 @@ try {
         $logOut = "$DEV_CORE_DATA\Logs\scripts\gemini_router.log"
         $logErr = "$DEV_CORE_DATA\Logs\scripts\gemini_router_err.log"
         Start-Process -FilePath "python" -ArgumentList "$DEV_CORE\Scripts\gemini_router.py" -WorkingDirectory "C:\devcore" -WindowStyle Hidden -RedirectStandardOutput $logOut -RedirectStandardError $logErr -ErrorAction SilentlyContinue
+        
+        # Attendre que le port s'ouvre (timeout 10s)
+        for ($i = 0; $i -lt 20; $i++) {
+            Start-Sleep -Milliseconds 500
+            try {
+                $tcp = New-Object System.Net.Sockets.TcpClient
+                $res = $tcp.BeginConnect([System.Net.IPAddress]::Loopback, 20130, $null, $null)
+                $suc = $res.AsyncWaitHandle.WaitOne(100, $true)
+                if ($suc) {
+                    $tcp.EndConnect($res)
+                    $tcp.Close()
+                    break
+                }
+                $tcp.Close()
+            } catch {}
+        }
+    }
+}
+
+# 7.2.5 Dashboard API Server (Port 20129)
+try {
+    $tcp = New-Object System.Net.Sockets.TcpClient
+    $result = $tcp.BeginConnect([System.Net.IPAddress]::Loopback, 20129, $null, $null)
+    $success = $result.AsyncWaitHandle.WaitOne(1000, $true)
+    if ($success) {
+        $tcp.EndConnect($result)
+        Check "Dashboard API Server OK (Port 20129)" "OK"
+    } else {
+        throw "Timeout"
+    }
+    $tcp.Close()
+} catch {
+    Check "Dashboard API Server non disponible" "WARN" "dc launch"
+    AutoFix "Demarrer Dashboard API Server" {
+        $logOut = "$DEV_CORE_DATA\Logs\scripts\dashboard_api.log"
+        $logErr = "$DEV_CORE_DATA\Logs\scripts\dashboard_api_err.log"
+        Start-Process -FilePath "python" -ArgumentList "$DEV_CORE\Scripts\dashboard_api.py" -WorkingDirectory "C:\devcore" -WindowStyle Hidden -RedirectStandardOutput $logOut -RedirectStandardError $logErr -ErrorAction SilentlyContinue
         
         # Attendre que le port s'ouvre (timeout 10s)
         for ($i = 0; $i -lt 20; $i++) {

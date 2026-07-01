@@ -14,7 +14,7 @@
                        [Headroom Proxy] (Port 8787) (Compression KV)
                                      |
                                      v
-                       [Gemini Router] (Port 20129) (Primary / Retries 429)
+                       [Gemini Router] (Port 20130) (Primary / Retries 429)
                                      |
              +-----------------------+-----------------------+
              | (Si Succes)                                   | (Si Echec / Fallback)
@@ -25,7 +25,7 @@
 
 - **TencentDB Agent Memory Canvas** : Décharge de contexte symbolique hiérarchique (L0-L3 via Mermaid et SQLite FTS5) pour préserver le contexte de l'agent.
 - **Headroom Proxy (Port 8787)** : Compression de jetons transparente (JSON, Code, Logs) et gestion de cache.
-- **Gemini Router (Port 20129)** : Proxy de communication avec l'API Google Gemini, gérant le Rate-Limiting (HTTP 429) par retries avec backoff exponentiel, et redirigeant vers **9Router (Port 20128)** en secours ultime.
+- **Gemini Router (Port 20130)** : Proxy de communication avec l'API Google Gemini, gérant le Rate-Limiting (HTTP 429) par retries avec backoff exponentiel, et redirigeant vers **9Router (Port 20128)** en secours ultime.
 
 
 ---

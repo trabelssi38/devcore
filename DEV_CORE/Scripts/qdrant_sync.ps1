@@ -83,8 +83,8 @@ function Get-9RouterEmbedding {
             "Content-Type" = "application/json"
         }
 
-        # Query Gemini Router (Port 20129)
-        $response = Invoke-RestMethod -Uri "http://127.0.0.1:20129/v1/embeddings" -Method Post -Body $bodyJson -ContentType "application/json" -Headers $headers -TimeoutSec 15
+        # Query Gemini Router (Port 20130)
+        $response = Invoke-RestMethod -Uri "http://127.0.0.1:20130/v1/embeddings" -Method Post -Body $bodyJson -ContentType "application/json" -Headers $headers -TimeoutSec 15
         if ($response -and $response.data -and $response.data.Count -gt 0 -and $response.data[0].embedding) {
             return $response.data[0].embedding
         }

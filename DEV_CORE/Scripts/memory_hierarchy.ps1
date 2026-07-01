@@ -62,7 +62,7 @@ switch ($Action) {
         
         $hasVectorResult = $false
         
-        # On obtient l'embedding via Gemini Router (Port 20129)
+        # On obtient l'embedding via Gemini Router (Port 20130)
         try {
             $bodyObj = @{
                 model = "gemini-embedding-001"
@@ -74,7 +74,7 @@ switch ($Action) {
                 "Authorization" = "Bearer $apiKey"
                 "Content-Type" = "application/json"
             }
-            $embedRes = Invoke-RestMethod -Uri "http://127.0.0.1:20129/v1/embeddings" -Method Post -Body $bodyJson -ContentType "application/json" -Headers $headers -TimeoutSec 10
+            $embedRes = Invoke-RestMethod -Uri "http://127.0.0.1:20130/v1/embeddings" -Method Post -Body $bodyJson -ContentType "application/json" -Headers $headers -TimeoutSec 10
             
             if ($embedRes -and $embedRes.data -and $embedRes.data.Count -gt 0 -and $embedRes.data[0].embedding) {
                 $vector = $embedRes.data[0].embedding

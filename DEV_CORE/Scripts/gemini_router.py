@@ -1,6 +1,6 @@
 # gemini_router.py -- DEV_CORE v9.0
 # Léger proxy de complétion pour remplacer 9Router et utiliser Gemini en direct
-# Port : 20129 (Amont de Headroom Proxy, avec fallback sur 9Router port 20128)
+# Port : 20130 (Amont de Headroom Proxy, avec fallback sur 9Router port 20128)
 
 import uvicorn
 from fastapi import FastAPI, Request, Response
@@ -184,5 +184,5 @@ async def list_models():
     }
 
 if __name__ == "__main__":
-    print(f"Demarrage du Gemini Router sur le port 20129 (Fallback vers 9Router sur 20128)...")
-    uvicorn.run(app, host="127.0.0.1", port=20129)
+    print(f"Demarrage du Gemini Router sur le port 20130 (Fallback vers 9Router sur 20128)...")
+    uvicorn.run(app, host="127.0.0.1", port=20130)

@@ -64,7 +64,7 @@ foreach ($p in $customPaths) {
 try {
     Log "  Lancement du processus Headroom Proxy via $headroomPath..." "Gray"
     
-    $proc = Start-Process -FilePath $headroomPath -ArgumentList "proxy", "--port", "8787", "--openai-api-url", "http://127.0.0.1:20129/v1" -WorkingDirectory "C:\devcore" -WindowStyle Hidden -PassThru -ErrorAction SilentlyContinue
+    $proc = Start-Process -FilePath $headroomPath -ArgumentList "proxy", "--port", "8787", "--openai-api-url", "http://127.0.0.1:20130/v1" -WorkingDirectory "C:\devcore" -WindowStyle Hidden -PassThru -ErrorAction SilentlyContinue
 
     # Attendre que le port soit ouvert (timeout 15s)
     $portOpen = $false

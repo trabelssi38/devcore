@@ -89,9 +89,9 @@ if (-not (Check-Port 20128)) {
     Log "  9Router OK (Port 20128 actif)" "Green"
 }
 
-# 2.2.5 Gemini Router (Port 20129) - Primary
-if (-not (Check-Port 20129)) {
-    Log "  Gemini Router (Port 20129) est hors-ligne. Tentative de demarrage..." "Yellow"
+# 2.2.5 Gemini Router (Port 20130) - Primary
+if (-not (Check-Port 20130)) {
+    Log "  Gemini Router (Port 20130) est hors-ligne. Tentative de demarrage..." "Yellow"
     if (Test-Path "$DEV_CORE\Scripts\gemini_router.py") {
         Log "  Demarrage de Gemini Router..." "Gray"
         $logOut = "$DEV_CORE_DATA\Logs\scripts\gemini_router.log"
@@ -102,22 +102,53 @@ if (-not (Check-Port 20129)) {
         $routerOpen = $false
         for ($i = 0; $i -lt 20; $i++) {
             Start-Sleep -Milliseconds 500
-            if (Check-Port 20129) {
+            if (Check-Port 20130) {
                 $routerOpen = $true
                 break
             }
         }
         
         if ($routerOpen) {
-            Log "  Gemini Router lance avec succes sur le port 20129" "Green"
+            Log "  Gemini Router lance avec succes sur le port 20130" "Green"
         } else {
-            Log "  [WARN] Gemini Router lance mais le port 20129 reste ferme." "Yellow"
+            Log "  [WARN] Gemini Router lance mais le port 20130 reste ferme." "Yellow"
         }
     } else {
         Log "  [WARN] Script gemini_router.py introuvable." "Yellow"
     }
 } else {
-    Log "  Gemini Router OK (Port 20129 actif)" "Green"
+    Log "  Gemini Router OK (Port 20130 actif)" "Green"
+}
+
+# 2.2.6 Dashboard API Server (Port 20129)
+if (-not (Check-Port 20129)) {
+    Log "  Dashboard API Server (Port 20129) est hors-ligne. Tentative de demarrage..." "Yellow"
+    if (Test-Path "$DEV_CORE\Scripts\dashboard_api.py") {
+        Log "  Demarrage de Dashboard API Server..." "Gray"
+        $logOut = "$DEV_CORE_DATA\Logs\scripts\dashboard_api.log"
+        $logErr = "$DEV_CORE_DATA\Logs\scripts\dashboard_api_err.log"
+        Start-Process -FilePath "python" -ArgumentList "$DEV_CORE\Scripts\dashboard_api.py" -WorkingDirectory "C:\devcore" -WindowStyle Hidden -RedirectStandardOutput $logOut -RedirectStandardError $logErr -ErrorAction SilentlyContinue
+        
+        # Attendre que le port s'ouvre (timeout 10s)
+        $apiOpen = $false
+        for ($i = 0; $i -lt 20; $i++) {
+            Start-Sleep -Milliseconds 500
+            if (Check-Port 20129) {
+                $apiOpen = $true
+                break
+            }
+        }
+        
+        if ($apiOpen) {
+            Log "  Dashboard API Server lance avec succes sur le port 20129" "Green"
+        } else {
+            Log "  [WARN] Dashboard API Server lance mais le port 20129 reste ferme." "Yellow"
+        }
+    } else {
+        Log "  [WARN] Script dashboard_api.py introuvable." "Yellow"
+    }
+} else {
+    Log "  Dashboard API Server OK (Port 20129 actif)" "Green"
 }
 
 # 2.3 Headroom Proxy
