@@ -520,13 +520,15 @@ function handleConfirmClick() {
   closeConfirmModal();
 }
 
+const API_BASE = window.location.protocol === 'file:' ? 'http://127.0.0.1:20129' : '';
+
 function completeTask(project, id) {
   showConfirmModal(
     "Clôture de tâche",
     `Voulez-vous clôturer la tâche <b>${id}</b> du projet <b>${project}</b> ?`,
     false,
     function() {
-      fetch(`http://127.0.0.1:20129/api/done?project=${encodeURIComponent(project)}&id=${encodeURIComponent(id)}`)
+      fetch(`${API_BASE}/api/done?project=${encodeURIComponent(project)}&id=${encodeURIComponent(id)}`)
         .then(r => r.json())
         .then(data => {
           if (data.success) {
@@ -546,7 +548,7 @@ function deleteTask(project, id) {
     `Êtes-vous sûr de vouloir supprimer la tâche <b>${id}</b> du projet <b>${project}</b> ?<br/><span style="color:#f87171;font-size:11px;margin-top:8px;display:block;">Cette action est irréversible.</span>`,
     true,
     function() {
-      fetch(`http://127.0.0.1:20129/api/delete?project=${encodeURIComponent(project)}&id=${encodeURIComponent(id)}`)
+      fetch(`${API_BASE}/api/delete?project=${encodeURIComponent(project)}&id=${encodeURIComponent(id)}`)
         .then(r => r.json())
         .then(data => {
           if (data.success) {
@@ -568,7 +570,7 @@ function refreshDashboard() {
     indicator.style.opacity = '1';
   }
 
-  fetch('http://127.0.0.1:20129/api/refresh')
+  fetch(`${API_BASE}/api/refresh`)
     .then(response => {
       if (!response.ok) throw new Error('API server returned error status');
       return response.text();

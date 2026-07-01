@@ -69,6 +69,22 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
             else:
                 self.send_error_response(msg)
 
+        elif path in ["/", "/index.html"]:
+            try:
+                index_path = Path(PLATFORM_ROOT) / "Dashboard" / "index.html"
+                if index_path.exists():
+                    with open(index_path, "r", encoding="utf-8") as f:
+                        html_content = f.read()
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/html; charset=utf-8")
+                    self.end_headers()
+                    self.wfile.write(html_content.encode("utf-8"))
+                else:
+                    self.send_error_response("index.html not found")
+            except ConnectionError:
+                pass
+            except Exception as e:
+                self.send_error_response(str(e))
         elif path == "/api/status":
             self.send_success_response("API Server Active")
         elif path == "/api/refresh":
