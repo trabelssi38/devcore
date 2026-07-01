@@ -75,7 +75,7 @@ if (-not (Check-Port 20128)) {
     Log "  9Router (Port 20128) est hors-ligne. Tentative de demarrage..." "Yellow"
     if (Test-Path "C:\src\9router") {
         Log "  Demarrage de 9Router..." "Gray"
-        Start-Process -FilePath "npm" -ArgumentList "run dev" -WorkingDirectory "C:\src\9router" -WindowStyle Hidden -ErrorAction SilentlyContinue
+        Start-Process -FilePath "npm.cmd" -ArgumentList "run dev" -WorkingDirectory "C:\src\9router" -WindowStyle Hidden -ErrorAction SilentlyContinue
         Start-Sleep -Seconds 5
         if (Check-Port 20128) {
             Log "  9Router lance avec succes sur le port 20128" "Green"
