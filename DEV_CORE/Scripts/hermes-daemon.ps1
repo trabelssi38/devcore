@@ -99,6 +99,15 @@ function Do-Start {
     $env:DEVCORE_PLATFORM_ROOT = "C:\devcore\DEV_CORE"
     $env:DEVCORE_DATA_ROOT = "C:\devcore\DEV_CORE_DATA"
 
+    # Lancer les services DEV_CORE (launch.ps1) en arrière-plan au démarrage
+    $launchScript = "$DEVCORE_ROOT\Scripts\launch.ps1"
+    if (Test-Path $launchScript) {
+        Write-Log "  Lancement des services DEV_CORE (launch.ps1) en arriere-plan..." "INFO"
+        Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$launchScript`"" } | Out-Null
+    } else {
+        Write-Log "  Script de lancement non trouve a $launchScript" "WARN"
+    }
+
     # Lancer hermes_cron_tick.py en background (mode detache WMI)
     if (Test-Path $PYTHON_BIN) {
         $tickScript = "$DEVCORE_ROOT\Scripts\hermes_cron_tick.py"
