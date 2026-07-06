@@ -41,9 +41,29 @@ function Check-Port {
 if (-not (Check-Port 6333)) {
     Log "  Qdrant (Port 6333) est hors-ligne. Tentative de demarrage..." "Yellow"
     $dockerInfo = docker info 2>$null
-    if ($LASTEXITCODE -ne 0 -or -not $dockerInfo) {
-        Log "  [WARN] Docker Desktop ne semble pas etre demarre. Veuillez le lancer." "Yellow"
-    } else {
+    $dockerOk = ($LASTEXITCODE -eq 0 -and $dockerInfo)
+    
+    if (-not $dockerOk) {
+        Log "  Docker Desktop ne semble pas etre demarre. Tentative de lancement..." "Yellow"
+        $dockerPath = "C:\Program Files\Docker\Docker\Docker Desktop.exe"
+        if (Test-Path $dockerPath) {
+            Start-Process -FilePath $dockerPath -ErrorAction SilentlyContinue
+            Log "  Docker Desktop lance. Attente du demarrage (max 60s)..." "Gray"
+            for ($attempt = 1; $attempt -le 30; $attempt++) {
+                Start-Sleep -Seconds 2
+                $dockerInfo = docker info 2>$null
+                if ($LASTEXITCODE -eq 0 -and $dockerInfo) {
+                    $dockerOk = $true
+                    Log "  Docker Desktop demarre avec succes." "Green"
+                    break
+                }
+            }
+        } else {
+            Log "  [WARN] Impossible de trouver l'executable Docker Desktop a l'emplacement par defaut." "Yellow"
+        }
+    }
+    
+    if ($dockerOk) {
         $qdrantContainers = docker ps -a --filter "ancestor=qdrant/qdrant" --format "{{.ID}} {{.Names}} {{.Status}}"
         if ($qdrantContainers) {
             $cId = ($qdrantContainers | Select-Object -First 1).Split(" ")[0]
@@ -56,6 +76,8 @@ if (-not (Check-Port 6333)) {
             docker run -d -p 6333:6333 -v C:/devcore/DEV_CORE_DATA/qdrant_storage:/qdrant/storage qdrant/qdrant | Out-Null
             Start-Sleep -Seconds 5
         }
+    } else {
+        Log "  [ERROR] Docker Desktop n'est pas actif. Impossible de demarrer Qdrant." "Red"
     }
 }
 
