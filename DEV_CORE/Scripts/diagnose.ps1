@@ -241,28 +241,6 @@ try {
     }
 }
 
-# 7.3 9Router (Port 20128) - Fallback
-try {
-    $tcp = New-Object System.Net.Sockets.TcpClient
-    $result = $tcp.BeginConnect([System.Net.IPAddress]::Loopback, 20128, $null, $null)
-    $success = $result.AsyncWaitHandle.WaitOne(1000, $true)
-    if ($success) {
-        $tcp.EndConnect($result)
-        Check "9Router OK (Port 20128)" "OK"
-    } else {
-        throw "Timeout"
-    }
-    $tcp.Close()
-} catch {
-    Check "9Router non disponible" "WARN" "dc launch"
-    AutoFix "Demarrer 9Router" {
-        if (Test-Path "C:\src\9router") {
-            Start-Process -FilePath "npm" -ArgumentList "run dev" -WorkingDirectory "C:\src\9router" -WindowStyle Hidden -ErrorAction SilentlyContinue
-            Start-Sleep 5
-        }
-    }
-}
-
 
 # 7.5 Headroom Proxy
 try {

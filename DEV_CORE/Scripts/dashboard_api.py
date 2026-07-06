@@ -7,11 +7,48 @@ from pathlib import Path
 import os
 import sys
 from datetime import datetime
-
+import time
+import random
 
 PORT = 20129
 PLATFORM_ROOT = os.getenv("DEVCORE_PLATFORM_ROOT", "C:/devcore/DEV_CORE")
 DATA_ROOT = os.getenv("DEVCORE_DATA_ROOT", "C:/devcore/DEV_CORE_DATA")
+
+def read_json_with_retry(file_path, retries=5, delay=0.05):
+    for attempt in range(retries):
+        try:
+            with open(file_path, "r", encoding="utf-8-sig") as f:
+                return json.load(f)
+        except (IOError, PermissionError) as e:
+            print(f"[DashboardAPI] Read attempt {attempt+1}/{retries} failed for {file_path}: {e}")
+            if attempt < retries - 1:
+                time.sleep(delay + random.uniform(0.01, 0.05))
+            else:
+                raise
+        except json.JSONDecodeError as e:
+            print(f"[DashboardAPI] JSON decode failed: {e}")
+            if attempt < retries - 1:
+                time.sleep(delay + random.uniform(0.01, 0.05))
+            else:
+                raise
+
+def write_json_with_retry(file_path, data, retries=5, delay=0.05):
+    for attempt in range(retries):
+        try:
+            temp_path = Path(file_path).with_suffix(".tmp")
+            with open(temp_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=4, ensure_ascii=False)
+            if Path(file_path).exists():
+                os.replace(str(temp_path), str(file_path))
+            else:
+                temp_path.rename(file_path)
+            return
+        except (IOError, PermissionError, OSError) as e:
+            print(f"[DashboardAPI] Write attempt {attempt+1}/{retries} failed for {file_path}: {e}")
+            if attempt < retries - 1:
+                time.sleep(delay + random.uniform(0.01, 0.05))
+            else:
+                raise
 
 class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
     def end_headers(self):
@@ -91,7 +128,8 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
             try:
                 cmd = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", 
                        f"{PLATFORM_ROOT}/Scripts/gen_dashboard.ps1"]
-                subprocess.run(cmd, capture_output=True)
+                print(f"[DashboardAPI] Running gen_dashboard.ps1 (timeout=15s)...")
+                subprocess.run(cmd, capture_output=True, timeout=15.0)
                 
                 index_path = Path(PLATFORM_ROOT) / "Dashboard" / "index.html"
                 if index_path.exists():
@@ -106,6 +144,9 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
             except ConnectionError:
                 # Connection was aborted by client; do not try to send an error response
                 pass
+            except subprocess.TimeoutExpired as te:
+                print(f"[DashboardAPI] Timeout calling gen_dashboard.ps1: {te}")
+                self.send_error_response("Dashboard regeneration timed out after 15s")
             except Exception as e:
                 self.send_error_response(str(e))
         else:
@@ -136,8 +177,8 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
             return False, f"Project board not found: {tasks_file}"
 
         try:
-            with open(tasks_file, "r", encoding="utf-8-sig") as f:
-                board = json.load(f)
+            print(f"[DashboardAPI] Completing task {task_id} on project {project}...")
+            board = read_json_with_retry(tasks_file)
 
             task_found = False
             is_active = False
@@ -153,24 +194,30 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
             if not task_found:
                 return False, f"Task {task_id} not found in project {project}"
 
-            # Write the file first
-            with open(tasks_file, "w", encoding="utf-8") as f:
-                json.dump(board, f, indent=4, ensure_ascii=False)
+            # Write the file first with retries
+            write_json_with_retry(tasks_file, board)
+            print(f"[DashboardAPI] Successfully saved completed task status in tasks.json.")
 
             # If it was the active task, run the official task_done.ps1 to execute hooks
             if is_active:
                 cmd = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", 
                        f"{PLATFORM_ROOT}/Scripts/task_done.ps1", "-Force"]
-                subprocess.run(cmd, capture_output=True)
+                print(f"[DashboardAPI] Running task_done.ps1 for active task completion (timeout=15s)...")
+                subprocess.run(cmd, capture_output=True, timeout=15.0)
                 return True, f"Active task {task_id} completed successfully via task_done.ps1"
             else:
                 # Regenerate the dashboard
                 cmd = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", 
                        f"{PLATFORM_ROOT}/Scripts/gen_dashboard.ps1"]
-                subprocess.run(cmd, capture_output=True)
+                print(f"[DashboardAPI] Running gen_dashboard.ps1 for dashboard refresh (timeout=15s)...")
+                subprocess.run(cmd, capture_output=True, timeout=15.0)
                 return True, f"Task {task_id} completed successfully"
 
+        except subprocess.TimeoutExpired as te:
+            print(f"[DashboardAPI] Timeout expired executing completion script: {te}")
+            return True, f"Task {task_id} completed but post-completion command timed out"
         except Exception as e:
+            print(f"[DashboardAPI] Error completing task: {e}")
             return False, str(e)
 
     def delete_task(self, project, task_id):
@@ -179,8 +226,8 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
             return False, f"Project board not found: {tasks_file}"
 
         try:
-            with open(tasks_file, "r", encoding="utf-8-sig") as f:
-                board = json.load(f)
+            print(f"[DashboardAPI] Deleting task {task_id} on project {project}...")
+            board = read_json_with_retry(tasks_file)
 
             original_count = len(board.get("tasks", []))
             board["tasks"] = [t for t in board.get("tasks", []) if t.get("id") != task_id]
@@ -191,16 +238,21 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
             if board.get("current_task") == task_id:
                 board["current_task"] = None
 
-            with open(tasks_file, "w", encoding="utf-8") as f:
-                json.dump(board, f, indent=4, ensure_ascii=False)
+            write_json_with_retry(tasks_file, board)
+            print(f"[DashboardAPI] Successfully saved deleted task in tasks.json.")
 
             # Regenerate the dashboard
             cmd = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", 
                    f"{PLATFORM_ROOT}/Scripts/gen_dashboard.ps1"]
-            subprocess.run(cmd, capture_output=True)
+            print(f"[DashboardAPI] Running gen_dashboard.ps1 for dashboard refresh (timeout=15s)...")
+            subprocess.run(cmd, capture_output=True, timeout=15.0)
             return True, f"Task {task_id} deleted successfully"
 
+        except subprocess.TimeoutExpired as te:
+            print(f"[DashboardAPI] Timeout expired executing delete refresh script: {te}")
+            return True, f"Task {task_id} deleted but dashboard refresh timed out"
         except Exception as e:
+            print(f"[DashboardAPI] Error deleting task: {e}")
             return False, str(e)
 
 def main():

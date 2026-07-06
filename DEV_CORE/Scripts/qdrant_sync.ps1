@@ -8,7 +8,6 @@
 $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
 $QDRANT_URL = if ($env:QDRANT_URL) { $env:QDRANT_URL } else { "http://localhost:6333" }
-$OLLAMA_URL = if ($env:OLLAMA_URL) { $env:OLLAMA_URL } else { "http://localhost:11434" }
 $TODAY = Get-Date -Format "yyyy-MM-dd"
 $LOG = "$DEV_CORE_DATA\Logs\scripts\qdrant_sync_$TODAY.log"
 
@@ -31,68 +30,47 @@ try {
     exit 0
 }
 
-# Check Ollama (DISABLED FOR NOW)
-$ollamaOk = $false
-Write-Log "Ollama desactive pour le moment" "Yellow"
-
-# Get embedding from Ollama
-function Get-OllamaEmbedding {
+# Get embedding from Gemini Router (Direct gateway to Gemini API)
+function Get-GeminiEmbedding {
     param([string]$text)
-    if (-not $ollamaOk) { return $null }
-    try {
-        $escapedText = $text -replace '\\', '\\\\' -replace '"', '\"' -replace "`r", '' -replace "`n", '\n'
-        # Tronquer a 4000 chars pour eviter les timeouts
-        if ($escapedText.Length -gt 4000) { $escapedText = $escapedText.Substring(0, 4000) }
-        $body = '{"model":"nomic-embed-text","prompt":"' + $escapedText + '"}'
+    
+    $maxAttempts = 3
+    for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+        try {
+            Write-Log "Retrieving embedding from Gemini Router (attempt $attempt/$maxAttempts)..." "Gray"
+            # Clean text
+            $cleanText = $text -replace "`r", "" -replace "`n", " "
+            if ($cleanText.Length -gt 8000) { $cleanText = $cleanText.Substring(0, 8000) }
 
-        $tempFile = "$env:TEMP\ollama_embed_$(Get-Date -Format 'yyyyMMddHHmmss').json"
-        Set-Content -Path $tempFile -Value $body -Encoding ASCII -NoNewline
+            # Get API key from env or fallback
+            $apiKey = if ($env:NINEROUTER_API_KEY) { $env:NINEROUTER_API_KEY } else { "sk-60c873dfaa73a810-kfwd8f-6f9cfc28" }
+            $bodyObj = @{
+                model = "text-embedding-3-small"
+                input = $cleanText
+            }
+            $jsonStr = $bodyObj | ConvertTo-Json
+            $bodyJson = [System.Text.Encoding]::UTF8.GetBytes($jsonStr)
 
-        $result = & curl.exe -s -X POST "$OLLAMA_URL/api/embeddings" -H 'Content-Type: application/json' --data-binary "@$tempFile"
-        Remove-Item $tempFile -Force -ErrorAction SilentlyContinue
+            $headers = @{
+                "Authorization" = "Bearer $apiKey"
+            }
 
-        $jsonResult = $result | ConvertFrom-Json
-        if ($jsonResult.embedding) {
-            return $jsonResult.embedding
+            # Query Gemini Router (Port 20130)
+            $response = Invoke-RestMethod -Uri "http://127.0.0.1:20130/v1/embeddings" -Method Post -Body $bodyJson -ContentType "application/json; charset=utf-8" -Headers $headers -TimeoutSec 15
+            if ($response -and $response.data -and $response.data.Count -gt 0 -and $response.data[0].embedding) {
+                Write-Log "Gemini embedding retrieved successfully (vector size: $($response.data[0].embedding.Count))" "Green"
+                return $response.data[0].embedding
+            }
+            throw "No embedding found in response"
+        } catch {
+            Write-Log "Gemini embedding attempt $attempt/$maxAttempts failed: $_" "Yellow"
+            if ($attempt -lt $maxAttempts) {
+                Start-Sleep -Seconds 2
+            }
         }
-        throw "No embedding in response"
-    } catch {
-        Write-Log "Ollama embedding failed: $_" "Red"
-        return $null
     }
-}
-
-# Get embedding from 9Router (Fallback)
-function Get-9RouterEmbedding {
-    param([string]$text)
-    try {
-        # Clean text
-        $cleanText = $text -replace "`r", "" -replace "`n", " "
-        if ($cleanText.Length -gt 8000) { $cleanText = $cleanText.Substring(0, 8000) }
-
-        # Get API key from env or fallback
-        $apiKey = if ($env:NINEROUTER_API_KEY) { $env:NINEROUTER_API_KEY } else { "sk-60c873dfaa73a810-kfwd8f-6f9cfc28" }
-        $bodyObj = @{
-            model = "text-embedding-3-small"
-            input = $cleanText
-        }
-        $bodyJson = $bodyObj | ConvertTo-Json
-
-        $headers = @{
-            "Authorization" = "Bearer $apiKey"
-            "Content-Type" = "application/json"
-        }
-
-        # Query Gemini Router (Port 20130)
-        $response = Invoke-RestMethod -Uri "http://127.0.0.1:20130/v1/embeddings" -Method Post -Body $bodyJson -ContentType "application/json" -Headers $headers -TimeoutSec 15
-        if ($response -and $response.data -and $response.data.Count -gt 0 -and $response.data[0].embedding) {
-            return $response.data[0].embedding
-        }
-        throw "No embedding found in 9Router response"
-    } catch {
-        Write-Log "9Router embedding fallback failed: $_" "Red"
-        return $null
-    }
+    Write-Log "All $maxAttempts attempts for Gemini embedding failed." "Red"
+    return $null
 }
 
 # Upsert to Qdrant
@@ -126,19 +104,23 @@ function Add-ToQdrant {
         "`n  }]" +
         "`n}"
 
-    $jsonFile = "$env:TEMP\qdrant_$(Get-Date -Format 'yyyyMMddHHmmss').json"
-    $Utf8NoBomEncoding = New-Object System.Text.UTF8Encoding $False
-    [System.IO.File]::WriteAllText($jsonFile, $json, $Utf8NoBomEncoding)
+    $maxAttempts = 3
+    for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+        try {
+            Write-Log "Upserting to Qdrant collection '$collection' (attempt $attempt/$maxAttempts)..." "Gray"
+            $jsonFile = "$env:TEMP\qdrant_$(Get-Date -Format 'yyyyMMddHHmmss').json"
+            $Utf8NoBomEncoding = New-Object System.Text.UTF8Encoding $False
+            [System.IO.File]::WriteAllText($jsonFile, $json, $Utf8NoBomEncoding)
 
-    $pyFile = "$env:TEMP\qdrant_call_$(Get-Date -Format 'yyyyMMddHHmmss').py"
-    $pyContent = @"
+            $pyFile = "$env:TEMP\qdrant_call_$(Get-Date -Format 'yyyyMMddHHmmss').py"
+            $pyContent = @"
 import subprocess, json, sys
 json_file = r'$jsonFile'
 url = '$QDRANT_URL/collections/$collection/points'
 with open(json_file, 'r') as f:
     data = f.read()
 result = subprocess.run(
-    ['curl', '-s', '-X', 'PUT', url, '-H', 'Content-Type: application/json', '-d', data],
+    ['curl', '--max-time', '15', '-s', '-X', 'PUT', url, '-H', 'Content-Type: application/json', '-d', data],
     capture_output=True, text=True
 )
 try:
@@ -149,16 +131,27 @@ try:
     else:
         print('ERROR:', resp.get('status'))
         sys.exit(1)
-except:
-    print('ERROR: Failed to parse response')
+except Exception as ex:
+    print('ERROR: Failed to parse response -', str(ex))
     sys.exit(1)
 "@
-    Set-Content -Path $pyFile -Value $pyContent -Encoding UTF8
-    $result = & python.exe $pyFile 2>&1
-    Remove-Item $jsonFile, $pyFile -Force -ErrorAction SilentlyContinue
+            Set-Content -Path $pyFile -Value $pyContent -Encoding UTF8
+            $result = & python.exe $pyFile 2>&1
+            Remove-Item $jsonFile, $pyFile -Force -ErrorAction SilentlyContinue
 
-    if ($result -match 'OK') { return $true }
-    Write-Log "Qdrant upsert failed: $result" "Red"
+            if ($result -match 'OK') {
+                Write-Log "Qdrant upsert success on attempt $attempt" "Green"
+                return $true
+            }
+            throw "Qdrant upsert failed with result: $result"
+        } catch {
+            Write-Log "Qdrant upsert attempt $attempt/$maxAttempts failed: $_" "Yellow"
+            if ($attempt -lt $maxAttempts) {
+                Start-Sleep -Seconds 2
+            }
+        }
+    }
+    Write-Log "All $maxAttempts attempts for Qdrant upsert failed." "Red"
     return $false
 }
 
@@ -180,14 +173,9 @@ function Sync-MarkdownToCollection {
     }
     
     Write-Log "Syncing $type..." "Cyan"
-    $embedding = Get-OllamaEmbedding $content
+    $embedding = Get-GeminiEmbedding $content
     if (-not $embedding) {
-        Write-Log "Ollama embedding failed for $type, trying 9Router fallback..." "Yellow"
-        $embedding = Get-9RouterEmbedding $content
-    }
-
-    if (-not $embedding) {
-        Write-Log "CRITICAL ERROR: Failed to get embedding for $type from both Ollama and 9Router. Terminating script." "Red"
+        Write-Log "CRITICAL ERROR: Failed to get embedding for $type from Gemini Router. Terminating script." "Red"
         exit 1
     }
 
@@ -275,14 +263,9 @@ foreach ($d in $skillDirs) {
 $indexPath = "$DEV_CORE_DATA\Memory\CODEBASE_INDEX.md"
 $codebaseIndex | Set-Content $indexPath -Encoding UTF8
 
-$embedding = Get-OllamaEmbedding $codebaseIndex
+$embedding = Get-GeminiEmbedding $codebaseIndex
 if (-not $embedding) {
-    Write-Log "Ollama embedding failed for codebase index, trying 9Router fallback..." "Yellow"
-    $embedding = Get-9RouterEmbedding $codebaseIndex
-}
-
-if (-not $embedding) {
-    Write-Log "CRITICAL ERROR: Failed to get embedding for codebase index from both Ollama and 9Router. Terminating script." "Red"
+    Write-Log "CRITICAL ERROR: Failed to get embedding for codebase index from Gemini Router. Terminating script." "Red"
     exit 1
 }
 

@@ -154,13 +154,6 @@ function Test-Services {
         Test-Item "Qdrant (6333)" $false "Non accessible"
     }
 
-    # Ollama
-    try {
-        $o = Invoke-RestMethod "http://localhost:11434/api/version" -TimeoutSec 3
-        Test-Item "Ollama (11434)" $true
-    } catch {
-        Test-Item "Ollama (11434)" $false "Non accessible"
-    }
 }
 
 # ========== SKILLS TESTS ==========

@@ -12,6 +12,58 @@ function Log { param($msg,$color="Gray")
     Write-Host "    $l" -ForegroundColor $color
 }
 
+function Get-ContentWithRetry {
+    param(
+        [string]$Path,
+        [switch]$Raw,
+        [int]$MaxAttempts = 5,
+        [int]$DelayMs = 100
+    )
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        try {
+            if ($Raw) {
+                return Get-Content $Path -Raw -Encoding UTF8 -ErrorAction Stop
+            } else {
+                return @(Get-Content $Path -Encoding UTF8 -ErrorAction Stop)
+            }
+        } catch {
+            Log "Read attempt $attempt/$MaxAttempts failed for ${Path}: $_" "Yellow"
+            if ($attempt -lt $MaxAttempts) {
+                Start-Sleep -Milliseconds $DelayMs
+            } else {
+                throw
+            }
+        }
+    }
+}
+
+function Set-ContentWithRetry {
+    param(
+        [string]$Path,
+        [string]$Value,
+        [int]$MaxAttempts = 5,
+        [int]$DelayMs = 100
+    )
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        try {
+            $tempPath = "$Path.tmp"
+            $Utf8NoBomEncoding = New-Object System.Text.UTF8Encoding $False
+            [System.IO.File]::WriteAllText($tempPath, $Value, $Utf8NoBomEncoding)
+            Copy-Item $tempPath $Path -Force -ErrorAction Stop
+            Remove-Item $tempPath -Force -ErrorAction SilentlyContinue
+            return
+        } catch {
+            Log "Write attempt $attempt/$MaxAttempts failed for ${Path}: $_" "Yellow"
+            if (Test-Path "$Path.tmp") { Remove-Item "$Path.tmp" -Force -ErrorAction SilentlyContinue }
+            if ($attempt -lt $MaxAttempts) {
+                Start-Sleep -Milliseconds $DelayMs
+            } else {
+                throw
+            }
+        }
+    }
+}
+
 Write-Host ""
 Write-Host "  DEV_CORE v9.0 -- TASK SYNC" -ForegroundColor Cyan
 Write-Host "  ========================================" -ForegroundColor DarkGray
@@ -30,7 +82,7 @@ $suggestions = @()
 foreach ($src in $queues.Keys) {
     $path = $queues[$src]
     if (Test-Path $path) {
-        $lines = @(Get-Content $path -Encoding UTF8 -ErrorAction SilentlyContinue)
+        $lines = Get-ContentWithRetry -Path $path
         $selectedLines = $lines | Select-Object -First $MaxPerSource
         foreach ($line in $selectedLines) {
             try {
@@ -67,14 +119,15 @@ if ($suggestions.Count -gt $MAX_ADD) {
 # Lire tasks.json
 $tFile = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
 if (-not (Test-Path $tFile)) {
-    @{
+    $initBoard = @{
         project="auto-detected"
         current_task=$null
         tasks=@()
-    } | ConvertTo-Json -Depth 5 | Set-Content $tFile -Encoding UTF8
-    $board = Get-Content $tFile -Raw -Encoding UTF8 | ConvertFrom-Json
+    } | ConvertTo-Json -Depth 5
+    Set-ContentWithRetry -Path $tFile -Value $initBoard
+    $board = Get-ContentWithRetry -Path $tFile -Raw | ConvertFrom-Json
 } else {
-    $board = Get-Content $tFile -Raw -Encoding UTF8 | ConvertFrom-Json
+    $board = Get-ContentWithRetry -Path $tFile -Raw | ConvertFrom-Json
 }
 
 # Ajouter les suggestions comme taches
@@ -122,7 +175,8 @@ foreach ($s in $suggestions) {
 }
 
 # Sauvegarder
-$board | ConvertTo-Json -Depth 10 | Set-Content $tFile -Encoding UTF8
+$boardJsonStr = $board | ConvertTo-Json -Depth 10
+Set-ContentWithRetry -Path $tFile -Value $boardJsonStr
 
 # Nettoyer les queues
 foreach ($path in $queues.Values) {

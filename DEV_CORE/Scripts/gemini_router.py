@@ -1,6 +1,6 @@
 # gemini_router.py -- DEV_CORE v9.0
-# Léger proxy de complétion pour remplacer 9Router et utiliser Gemini en direct
-# Port : 20130 (Amont de Headroom Proxy, avec fallback sur 9Router port 20128)
+# Léger proxy de complétion pour utiliser Gemini en direct par defaut
+# Port : 20130 (Amont de Headroom Proxy)
 
 import uvicorn
 from fastapi import FastAPI, Request, Response
@@ -55,7 +55,8 @@ async def call_with_fallback(path: str, body: dict, headers: dict, is_chat: bool
     retries = 3
     delay = 1.0
     
-    # 1. Tenter l'appel direct vers Google Gemini avec Rate-Limiting retries
+    # Tenter l'appel direct vers Google Gemini avec Rate-Limiting retries
+    last_error = None
     for attempt in range(retries):
         try:
             gemini_body = map_for_gemini(body, is_chat)
@@ -80,22 +81,20 @@ async def call_with_fallback(path: str, body: dict, headers: dict, is_chat: bool
             r.raise_for_status()
             return Response(content=r.content, status_code=r.status_code, media_type="application/json")
         except Exception as e:
+            last_error = e
             print(f"[GeminiRouter] Echec appel direct Gemini (essai {attempt+1}/{retries}) : {e}")
-            if attempt == retries - 1:
-                break
-            await asyncio.sleep(delay)
-            delay *= 2
+            if attempt < retries - 1:
+                await asyncio.sleep(delay)
+                delay *= 2
             
-    # 2. En cas d'échec, fallback vers 9Router sur le port 20128
-    print(f"[GeminiRouter] Tous les essais directs Gemini ont echoue. Fallback sur 9Router (Port 20128)...")
-    fallback_url = f"http://127.0.0.1:20128/v1/{path}"
-    fallback_headers = {k: v for k, v in headers.items() if k.lower() != "host"}
-    try:
-        r = await client.post(fallback_url, json=body, headers=fallback_headers)
-        return Response(content=r.content, status_code=r.status_code, media_type="application/json")
-    except Exception as e:
-        print(f"[GeminiRouter] Echec critique : 9Router fallback injoignable : {e}")
-        return Response(content=json.dumps({"error": {"message": f"Gemini and Fallback failed: {e}", "type": "critical_error"}}), status_code=502, media_type="application/json")
+    # Echec critique sans fallback
+    print(f"[GeminiRouter] Tous les essais directs Gemini ont echoue.")
+    error_msg = f"Gemini API call failed after {retries} retries. Error: {last_error}"
+    return Response(
+        content=json.dumps({"error": {"message": error_msg, "type": "gemini_error"}}),
+        status_code=502,
+        media_type="application/json"
+    )
 
 @app.post("/v1/chat/completions")
 async def chat_completions(request: Request):
@@ -117,6 +116,7 @@ async def chat_completions(request: Request):
         success = False
         retries = 3
         delay = 1.0
+        last_error = None
         
         for attempt in range(retries):
             try:
@@ -143,28 +143,16 @@ async def chat_completions(request: Request):
                         yield chunk
                     break
             except Exception as e:
+                last_error = e
                 print(f"[GeminiRouter] Echec stream Gemini (essai {attempt+1}) : {e}")
-                if attempt == retries - 1:
-                    break
-                await asyncio.sleep(delay)
-                delay *= 2
+                if attempt < retries - 1:
+                    await asyncio.sleep(delay)
+                    delay *= 2
                 
         if not success:
-            print(f"[GeminiRouter] Stream Gemini echoue. Fallback sur 9Router stream...")
-            fallback_url = "http://127.0.0.1:20128/v1/chat/completions"
-            fallback_headers = {k: v for k, v in headers.items() if k.lower() != "host"}
-            try:
-                async with client.stream(
-                    "POST", 
-                    fallback_url, 
-                    json=body, 
-                    headers=fallback_headers
-                ) as r:
-                    async for chunk in r.aiter_bytes():
-                        yield chunk
-            except Exception as e:
-                print(f"[GeminiRouter] Echec critique : stream 9Router fallback inaccessible : {e}")
-                yield json.dumps({"error": {"message": f"Gemini and Fallback stream failed: {e}"}}).encode('utf-8')
+            print(f"[GeminiRouter] Stream Gemini echoue.")
+            error_msg = f"Gemini stream failed after {retries} retries. Error: {last_error}"
+            yield json.dumps({"error": {"message": error_msg}}).encode('utf-8')
                 
     return StreamingResponse(stream_generator(), media_type="text/event-stream")
 
@@ -184,5 +172,5 @@ async def list_models():
     }
 
 if __name__ == "__main__":
-    print(f"Demarrage du Gemini Router sur le port 20130 (Fallback vers 9Router sur 20128)...")
+    print(f"Demarrage du Gemini Router sur le port 20130...")
     uvicorn.run(app, host="127.0.0.1", port=20130)

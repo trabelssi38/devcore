@@ -20,6 +20,16 @@ $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } 
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
 $TODAY         = Get-Date -Format "yyyy-MM-dd"
 $DB_PATH       = "$DEV_CORE_DATA\Memory\conversations.db"
+$LOG           = "$DEV_CORE_DATA\Logs\scripts\memory_hierarchy_$TODAY.log"
+
+function Log {
+    param([string]$msg, [string]$color="Gray")
+    $l = "[$(Get-Date -f HH:mm:ss)] [$Action] $msg"
+    Add-Content $LOG $l -ErrorAction SilentlyContinue
+    if ($Action -ne "Query") {
+        Write-Host "  $l" -ForegroundColor $color
+    }
+}
 
 $projName = & "$DEV_CORE\Scripts\Get-ActiveProject.ps1"
 
@@ -58,53 +68,78 @@ switch ($Action) {
         # Note: on utilise les scripts existants ou curl pour chercher dans décisions/lessons/patterns
         # On va tenter une recherche Qdrant rapide
         $qdrantUrl = "http://localhost:6333"
-        $ollamaUrl = "http://localhost:11434"
         
         $hasVectorResult = $false
         
         # On obtient l'embedding via Gemini Router (Port 20130)
-        try {
-            $bodyObj = @{
-                model = "gemini-embedding-001"
-                input = $Query
+        $maxAttempts = 3
+        $vector = $null
+        for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+            try {
+                Log "Attempting to get query embedding (attempt $attempt/$maxAttempts)..." "Gray"
+                $bodyObj = @{
+                    model = "gemini-embedding-001"
+                    input = $Query
+                }
+                $jsonStr = $bodyObj | ConvertTo-Json
+                $bodyJson = [System.Text.Encoding]::UTF8.GetBytes($jsonStr)
+                $apiKey = "dummy_key"
+                $headers = @{
+                    "Authorization" = "Bearer $apiKey"
+                }
+                $embedRes = Invoke-RestMethod -Uri "http://127.0.0.1:20130/v1/embeddings" -Method Post -Body $bodyJson -ContentType "application/json; charset=utf-8" -Headers $headers -TimeoutSec 10
+                
+                if ($embedRes -and $embedRes.data -and $embedRes.data.Count -gt 0 -and $embedRes.data[0].embedding) {
+                    $vector = $embedRes.data[0].embedding
+                    Log "Query embedding retrieved successfully (vector size: $($vector.Count))" "Green"
+                    break
+                }
+                throw "No embedding found in response"
+            } catch {
+                Log "Embedding query failed on attempt ${attempt}: $_" "Yellow"
+                if ($attempt -lt $maxAttempts) {
+                    Start-Sleep -Seconds 1
+                }
             }
-            $bodyJson = $bodyObj | ConvertTo-Json
-            $apiKey = "dummy_key"
-            $headers = @{
-                "Authorization" = "Bearer $apiKey"
-                "Content-Type" = "application/json"
-            }
-            $embedRes = Invoke-RestMethod -Uri "http://127.0.0.1:20130/v1/embeddings" -Method Post -Body $bodyJson -ContentType "application/json" -Headers $headers -TimeoutSec 10
-            
-            if ($embedRes -and $embedRes.data -and $embedRes.data.Count -gt 0 -and $embedRes.data[0].embedding) {
-                $vector = $embedRes.data[0].embedding
+        }
+        
+        if ($vector) {
+            try {
                 $roundedVector = $vector | ForEach-Object { "{0:F6}" -f [double]$_ }
                 $vectorStr = $roundedVector -join ','
                 
                 # Chercher dans la collection "decisions" et "lessons"
                 foreach ($col in @("decisions", "lessons", "patterns")) {
+                    Log "Searching collection '$col' in Qdrant..." "Gray"
                     $searchJson = '{"vector":[' + $vectorStr + '],"limit":3,"with_payload":true}'
                     $tempSearchFile = "$env:TEMP\qdrant_search_$(Get-Date -Format 'yyyyMMddHHmmss').json"
                     $Utf8NoBom = New-Object System.Text.UTF8Encoding $False
                     [System.IO.File]::WriteAllText($tempSearchFile, $searchJson, $Utf8NoBom)
                     
-                    $searchRes = & curl.exe -s -X POST "$qdrantUrl/collections/$col/points/search" -H 'Content-Type: application/json' --data-binary "@$tempSearchFile"
+                    $searchRes = & curl.exe --max-time 10 -s -X POST "$qdrantUrl/collections/$col/points/search" -H 'Content-Type: application/json' --data-binary "@$tempSearchFile"
                     Remove-Item $tempSearchFile -Force -ErrorAction SilentlyContinue
                     
                     $searchObj = $searchRes | ConvertFrom-Json
                     if ($searchObj.result) {
+                        $matchCount = 0
                         foreach ($point in $searchObj.result) {
                             if ($point.score -gt 0.75) {
                                 $results += "`n[L1 Atom: $col (Score: $($point.score))]"
                                 $results += $point.payload.preview
                                 $hasVectorResult = $true
+                                $matchCount++
                             }
                         }
+                        Log "Found $matchCount matches with score > 0.75 in collection '$col'" "Green"
+                    } else {
+                        Log "No results returned for collection '$col'" "Yellow"
                     }
                 }
+            } catch {
+                Log "Qdrant search query failed: $_" "Red"
             }
-        } catch {
-            # Qdrant ou Ollama down, pas grave on passe
+        } else {
+            Log "Skipping Qdrant vector search due to missing embedding." "Yellow"
         }
         
         # 4. L0: SQLite full-text search fallback (si aucun résultat Qdrant satisfaisant)
@@ -151,7 +186,7 @@ conn.close()
     }
     
     "Aggregate" {
-        Write-Host "Agrégation de la mémoire hiérarchique L1 -> L2..."
+        Log "Agrégation de la mémoire hiérarchique L1 -> L2..." "Cyan"
         # Ce script agrège les décisions, leçons et patterns récents
         # dans les fichiers de Scenarios correspondants.
         
@@ -200,7 +235,7 @@ conn.close()
         
         # Mettre à jour le persona.md en y injectant les 5 derniers patterns
         $personaPath = "$DEV_CORE_DATA\Memory\persona.md"
-        if (Test-Path $personaPath -and (Test-Path $patternsFile)) {
+        if ((Test-Path $personaPath) -and (Test-Path $patternsFile)) {
             $patterns = Get-Content $patternsFile | Select-Object -Last 5
             if ($patterns) {
                 $persona = Get-Content $personaPath -Raw
@@ -223,31 +258,51 @@ conn.close()
             exit 1
         }
         
-        try {
-            $escContent = $Content -replace '"', '\"' -replace "`n", '\n' -replace "`r", ""
-            $escRole = $Role -replace '"', '\"'
-            $escProj = $projName -replace '"', '\"'
-            $escTaskId = if ($TaskId) { $TaskId } else { "None" }
-            
-            # Insérer dans SQLite
-            $pyInsert = @"
-import sqlite3
-conn = sqlite3.connect(r'$DB_PATH')
-c = conn.cursor()
-c.execute(
-    "INSERT INTO conversations (session_date, project, task_id, role, content, tokens_estimate) VALUES (?, ?, ?, ?, ?, ?)",
-    ('$TODAY', '$escProj', '$escTaskId', '$escRole', """$escContent""", len('$escContent')//4)
-)
-conn.commit()
-conn.close()
+        $maxAttempts = 3
+        for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+            try {
+                Log "Logging conversation to SQLite (attempt $attempt/$maxAttempts)..." "Gray"
+                $escContent = $Content -replace '"', '\"' -replace "`n", '\n' -replace "`r", ""
+                $escRole = $Role -replace '"', '\"'
+                $escProj = $projName -replace '"', '\"'
+                $escTaskId = if ($TaskId) { $TaskId } else { "None" }
+                
+                # Insérer dans SQLite
+                $pyInsert = @"
+import sqlite3, sys
+try:
+    conn = sqlite3.connect(r'$DB_PATH', timeout=10.0)
+    c = conn.cursor()
+    c.execute(
+        "INSERT INTO conversations (session_date, project, task_id, role, content, tokens_estimate) VALUES (?, ?, ?, ?, ?, ?)",
+        ('$TODAY', '$escProj', '$escTaskId', '$escRole', """$escContent""", len('$escContent')//4)
+    )
+    conn.commit()
+    conn.close()
+    print("OK")
+    sys.exit(0)
+except Exception as e:
+    print("ERROR:", str(e))
+    sys.exit(1)
 "@
-            $tempPy = "$env:TEMP\sqlite_insert_$(Get-Date -Format 'yyyyMMddHHmmss').py"
-            $pyInsert | Set-Content $tempPy -Encoding UTF8
-            python.exe $tempPy 2>$null
-            Remove-Item $tempPy -Force -ErrorAction SilentlyContinue
-            Write-Host "Log conversation enregistré dans SQLite."
-        } catch {
-            Write-Warning "Impossible d'enregistrer la conversation dans SQLite: $_"
+                $tempPy = "$env:TEMP\sqlite_insert_$(Get-Date -Format 'yyyyMMddHHmmss').py"
+                $pyInsert | Set-Content $tempPy -Encoding UTF8
+                $result = & python.exe $tempPy 2>&1
+                Remove-Item $tempPy -Force -ErrorAction SilentlyContinue
+                
+                if ($result -match "OK") {
+                    Log "Log conversation enregistré dans SQLite avec succès." "Green"
+                    break
+                }
+                throw "SQLite insert failed: $result"
+            } catch {
+                Log "SQLite insert attempt $attempt/$maxAttempts failed: $_" "Yellow"
+                if ($attempt -lt $maxAttempts) {
+                    Start-Sleep -Seconds 1
+                } else {
+                    Write-Warning "Impossible d'enregistrer la conversation dans SQLite."
+                }
+            }
         }
     }
     

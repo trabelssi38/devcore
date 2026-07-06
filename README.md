@@ -17,8 +17,6 @@ cd C:\devcore\DEV_CORE\Scripts
 
 # 2. Démarrer les services
 docker run -d -p 6333:6333 qdrant/qdrant
-ollama serve
-ollama pull nomic-embed-text
 
 # 3. Lancer DEV_CORE
 dc launch
@@ -50,15 +48,15 @@ dc task status
 
 ---
 
-## 🎯 Modes cognitifs (9Router)
+## 🎯 Modes cognitifs
 
 | Mode | Usage | Budget | Modèles |
 |------|-------|--------|---------|
-| **reasoning** | Architecture, spec, décisions | 32k | Opus, o3 |
-| **coding** | Implémentation, TDD, patches | 8k | Sonnet, Codex |
-| **bulk** | Génération masse, docs, tests | 16k | Haiku, Flash |
+| **reasoning** | Architecture, spec, décisions | 32k | Gemini 2.5 Pro |
+| **coding** | Implémentation, TDD, patches | 8k | Gemini 2.5 Pro |
+| **bulk** | Génération masse, docs, tests | 16k | Gemini 2.5 Flash |
 
-Le mode est détecté automatiquement par 9Router selon les mots-clés.
+Le mode est géré par Gemini Router pour le choix du modèle optimal.
 
 ---
 
@@ -102,7 +100,7 @@ http://127.0.0.1:20129/
 Auto-refresh 15s — Affiche :
 - Multi-projets : Cards récapitulatives par projet
 - Worktrees : Tags [worktree] dans la pipeline
-- Infrastructure Temps Réel : Monitoring ports (Qdrant, Ollama, Hermes)
+- Infrastructure Temps Réel : Monitoring ports (Qdrant, Gemini Router, API Dashboard, Headroom)
 - Automation Hooks : Horodatage réel des dernières exécutions
 - Pipeline tasks globale (T-01 → T-04)
 
@@ -122,7 +120,7 @@ Obsidian Vault (notes structurées)
 ### Workflow
 1. Consulter Qdrant (score > 0.75 = réutiliser)
 2. Créer nouvelle décision/pattern/lesson
-3. Embedder via nomic-embed-text
+3. Embedder via text-embedding-3-small
 4. Stocker dans Qdrant + Obsidian + MEMORY.md
 
 ---
@@ -147,6 +145,12 @@ Voir : `C:\devcore\DEV_CORE\docs\PLATFORM_DOCUMENTATION.md`
 ---
 
 ## 🔄 Changelog v9
+
+### 2026-07-06 — v9.1 Ollama & 9Router Removal & Direct Gemini Routing
+
+- ✅ **Désactivation de 9Router & Ollama** : Suppression totale des dépendances et du processus 9Router (Port 20128) ainsi que d'Ollama (Port 11434) de l'orchestration, du diagnostic sémantique et du tableau de bord.
+- ✅ **Completions et Embeddings en direct via Gemini** : Configuration par défaut de Gemini Router (`gemini_router.py` sur le port **`20130`**) pour appeler l'API Google Gemini directement.
+- ✅ **Correction de la collision de headers** : Résolution du bogue `WebException` sous PowerShell 5.1 lors des requêtes d'embeddings en éliminant la déclaration redondante du header `Content-Type`.
 
 ### 2026-07-01 — v9.0 Port Separation, CORS Resolution & HTTP Cockpit Server
 
@@ -218,8 +222,8 @@ Voir : `C:\devcore\DEV_CORE\docs\PLATFORM_DOCUMENTATION.md`
 - ✅ **Robustesse des Chemins des Hooks** : Correction des chemins relatifs de `gen_dashboard.ps1` via `$PSScriptRoot` dans les scripts de transition de tâche (`task_done`, `task_step_done`, `task_pause`, `task_edit`) pour garantir un rafraîchissement immédiat et sans erreur du tableau de bord.
 
 **Avant** : Multi-client (claude → codex → antigravity)  
-**Après** : Single client (claude + 9Router)  
-**Gain** : Simplicité, pas de handoffs, routing automatique
+**Après** : Single client (claude + Gemini Router)  
+**Gain** : Simplicité, pas de handoffs, routing direct Gemini
 
 ---
 

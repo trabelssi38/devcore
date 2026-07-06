@@ -278,11 +278,9 @@ if (Test-Path $tickLog) {
 }
 $infraHtml += Get-StatusHTML "Gemini Router (Primary)" "Port 20130" (Check-Port 20130)
 $infraHtml += Get-StatusHTML "Dashboard API Server" "Port 20129" (Check-Port 20129)
-$infraHtml += Get-StatusHTML "9Router (Fallback)" "Port 20128" (Check-Port 20128)
 $infraHtml += Get-StatusHTML "Headroom Proxy" "Port 8787" (Check-Port 8787)
 $infraHtml += Get-StatusHTML "Hermes Cron Daemon" "Standalone Tick Loop" $isDaemonRunning
 $infraHtml += Get-StatusHTML "Qdrant Vector DB" "Port 6333" (Check-Port 6333)
-$infraHtml += Get-StatusHTML "Ollama Embeddings" "Port 11434 (Desactive)" (Check-Port 11434)
 
 $infraHtml += "<h2>Hermes Background Jobs</h2>`n"
 $jobsFile = "$env:USERPROFILE\.hermes\cron\jobs.json"

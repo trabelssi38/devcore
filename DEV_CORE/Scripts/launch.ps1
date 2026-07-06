@@ -20,8 +20,8 @@ Write-Host "  =======================================" -ForegroundColor DarkGray
 Log "1/8 Adaptation client ($Client)" "Cyan"
 & "$DEV_CORE\Scripts\adapt_client.ps1" -Client $Client
 
-# 2. Services check & launch (Qdrant, 9Router)
-Log "2/8 Verification des services (Qdrant, 9Router)" "Cyan"
+# 2. Services check & launch (Qdrant, Gemini Router)
+Log "2/8 Verification des services (Qdrant, Gemini Router)" "Cyan"
 
 function Check-Port {
     param([int]$Port)
@@ -70,48 +70,46 @@ if (Check-Port 6333) {
     Log "  Qdrant non disponible" "Red"
 }
 
-# 2.2 9Router (Port 20128) - Fallback
-if (-not (Check-Port 20128)) {
-    Log "  9Router (Port 20128) est hors-ligne. Tentative de demarrage..." "Yellow"
-    if (Test-Path "C:\src\9router") {
-        Log "  Demarrage de 9Router..." "Gray"
-        Start-Process -FilePath "npm.cmd" -ArgumentList "run dev" -WorkingDirectory "C:\src\9router" -WindowStyle Hidden -ErrorAction SilentlyContinue
-        Start-Sleep -Seconds 5
-        if (Check-Port 20128) {
-            Log "  9Router lance avec succes sur le port 20128" "Green"
-        } else {
-            Log "  [WARN] 9Router lance mais le port 20128 reste ferme." "Yellow"
-        }
-    } else {
-        Log "  [WARN] Dossier C:\src\9router introuvable." "Yellow"
-    }
-} else {
-    Log "  9Router OK (Port 20128 actif)" "Green"
-}
 
 # 2.2.5 Gemini Router (Port 20130) - Primary
 if (-not (Check-Port 20130)) {
     Log "  Gemini Router (Port 20130) est hors-ligne. Tentative de demarrage..." "Yellow"
     if (Test-Path "$DEV_CORE\Scripts\gemini_router.py") {
-        Log "  Demarrage de Gemini Router..." "Gray"
-        $logOut = "$DEV_CORE_DATA\Logs\scripts\gemini_router.log"
-        $logErr = "$DEV_CORE_DATA\Logs\scripts\gemini_router_err.log"
-        Start-Process -FilePath "python" -ArgumentList "$DEV_CORE\Scripts\gemini_router.py" -WorkingDirectory "C:\devcore" -WindowStyle Hidden -RedirectStandardOutput $logOut -RedirectStandardError $logErr -ErrorAction SilentlyContinue
-        
-        # Attendre que le port s'ouvre (timeout 10s)
+        $maxStartAttempts = 2
         $routerOpen = $false
-        for ($i = 0; $i -lt 20; $i++) {
-            Start-Sleep -Milliseconds 500
-            if (Check-Port 20130) {
-                $routerOpen = $true
+        for ($attempt = 1; $attempt -le $maxStartAttempts; $attempt++) {
+            Log "  Demarrage de Gemini Router (tentative $attempt/$maxStartAttempts)..." "Gray"
+            $logOut = "$DEV_CORE_DATA\Logs\scripts\gemini_router.log"
+            $logErr = "$DEV_CORE_DATA\Logs\scripts\gemini_router_err.log"
+            
+            $proc = Start-Process -FilePath "python" -ArgumentList "$DEV_CORE\Scripts\gemini_router.py" -WorkingDirectory "C:\devcore" -WindowStyle Hidden -RedirectStandardOutput $logOut -RedirectStandardError $logErr -PassThru -ErrorAction SilentlyContinue
+            
+            # Attendre que le port s'ouvre (timeout 10s)
+            for ($i = 0; $i -lt 20; $i++) {
+                Start-Sleep -Milliseconds 500
+                if (Check-Port 20130) {
+                    $routerOpen = $true
+                    break
+                }
+            }
+            
+            if ($routerOpen) {
+                Log "  Gemini Router lance avec succes sur le port 20130" "Green"
                 break
+            } else {
+                Log "  [WARN] Gemini Router n'a pas repondu sur le port 20130 apres 10s. Fermeture du processus orphelin..." "Yellow"
+                try {
+                    if ($proc -and -not $proc.HasExited) {
+                        $proc.Kill()
+                        Start-Sleep -Seconds 1
+                    }
+                } catch {
+                    Log "  [WARN] Erreur lors de l'arret du processus orphelin: $_" "Yellow"
+                }
             }
         }
-        
-        if ($routerOpen) {
-            Log "  Gemini Router lance avec succes sur le port 20130" "Green"
-        } else {
-            Log "  [WARN] Gemini Router lance mais le port 20130 reste ferme." "Yellow"
+        if (-not $routerOpen) {
+            Log "  [ERROR] Impossible de demarrer Gemini Router apres $maxStartAttempts tentatives." "Red"
         }
     } else {
         Log "  [WARN] Script gemini_router.py introuvable." "Yellow"
@@ -124,25 +122,41 @@ if (-not (Check-Port 20130)) {
 if (-not (Check-Port 20129)) {
     Log "  Dashboard API Server (Port 20129) est hors-ligne. Tentative de demarrage..." "Yellow"
     if (Test-Path "$DEV_CORE\Scripts\dashboard_api.py") {
-        Log "  Demarrage de Dashboard API Server..." "Gray"
-        $logOut = "$DEV_CORE_DATA\Logs\scripts\dashboard_api.log"
-        $logErr = "$DEV_CORE_DATA\Logs\scripts\dashboard_api_err.log"
-        Start-Process -FilePath "python" -ArgumentList "$DEV_CORE\Scripts\dashboard_api.py" -WorkingDirectory "C:\devcore" -WindowStyle Hidden -RedirectStandardOutput $logOut -RedirectStandardError $logErr -ErrorAction SilentlyContinue
-        
-        # Attendre que le port s'ouvre (timeout 10s)
+        $maxStartAttempts = 2
         $apiOpen = $false
-        for ($i = 0; $i -lt 20; $i++) {
-            Start-Sleep -Milliseconds 500
-            if (Check-Port 20129) {
-                $apiOpen = $true
+        for ($attempt = 1; $attempt -le $maxStartAttempts; $attempt++) {
+            Log "  Demarrage de Dashboard API Server (tentative $attempt/$maxStartAttempts)..." "Gray"
+            $logOut = "$DEV_CORE_DATA\Logs\scripts\dashboard_api.log"
+            $logErr = "$DEV_CORE_DATA\Logs\scripts\dashboard_api_err.log"
+            
+            $proc = Start-Process -FilePath "python" -ArgumentList "$DEV_CORE\Scripts\dashboard_api.py" -WorkingDirectory "C:\devcore" -WindowStyle Hidden -RedirectStandardOutput $logOut -RedirectStandardError $logErr -PassThru -ErrorAction SilentlyContinue
+            
+            # Attendre que le port s'ouvre (timeout 10s)
+            for ($i = 0; $i -lt 20; $i++) {
+                Start-Sleep -Milliseconds 500
+                if (Check-Port 20129) {
+                    $apiOpen = $true
+                    break
+                }
+            }
+            
+            if ($apiOpen) {
+                Log "  Dashboard API Server lance avec succes sur le port 20129" "Green"
                 break
+            } else {
+                Log "  [WARN] Dashboard API Server n'a pas repondu sur le port 20129 apres 10s. Fermeture du processus orphelin..." "Yellow"
+                try {
+                    if ($proc -and -not $proc.HasExited) {
+                        $proc.Kill()
+                        Start-Sleep -Seconds 1
+                    }
+                } catch {
+                    Log "  [WARN] Erreur lors de l'arret du processus orphelin: $_" "Yellow"
+                }
             }
         }
-        
-        if ($apiOpen) {
-            Log "  Dashboard API Server lance avec succes sur le port 20129" "Green"
-        } else {
-            Log "  [WARN] Dashboard API Server lance mais le port 20129 reste ferme." "Yellow"
+        if (-not $apiOpen) {
+            Log "  [ERROR] Impossible de demarrer Dashboard API Server apres $maxStartAttempts tentatives." "Red"
         }
     } else {
         Log "  [WARN] Script dashboard_api.py introuvable." "Yellow"
@@ -158,7 +172,7 @@ if (-not (Check-Port 8787)) {
     if (Check-Port 8787) {
         Log "  Headroom Proxy lance avec succes" "Green"
     } else {
-        Log "  [WARN] Impossible de lancer Headroom Proxy. Fallback direct sur 9Router." "Yellow"
+        Log "  [WARN] Impossible de lancer Headroom Proxy. Fallback direct sur Gemini Router." "Yellow"
     }
 } else {
     Log "  Headroom Proxy OK (Port 8787 actif)" "Green"

@@ -3,6 +3,42 @@ import json
 import re
 import subprocess
 from datetime import datetime
+import time
+import random
+
+def read_file_with_retry(file_path, errors="ignore", retries=5, delay=0.05):
+    for attempt in range(retries):
+        try:
+            with open(file_path, "r", encoding="utf-8-sig", errors=errors) as f:
+                return f.read()
+        except (IOError, PermissionError) as e:
+            if attempt < retries - 1:
+                time.sleep(delay + random.uniform(0.01, 0.05))
+            else:
+                raise
+
+def read_lines_with_retry(file_path, errors="ignore", retries=5, delay=0.05):
+    for attempt in range(retries):
+        try:
+            with open(file_path, "r", encoding="utf-8-sig", errors=errors) as f:
+                return f.readlines()
+        except (IOError, PermissionError) as e:
+            if attempt < retries - 1:
+                time.sleep(delay + random.uniform(0.01, 0.05))
+            else:
+                raise
+
+def write_file_with_retry(file_path, content, mode="w", retries=5, delay=0.05):
+    for attempt in range(retries):
+        try:
+            with open(file_path, mode, encoding="utf-8") as f:
+                f.write(content)
+            return
+        except (IOError, PermissionError) as e:
+            if attempt < retries - 1:
+                time.sleep(delay + random.uniform(0.01, 0.05))
+            else:
+                raise
 
 def get_active_project(dev_core, dev_core_data):
     system_dirs = {"documents", "desktop", "downloads", "onedrive", "system32", "users", "windows", "temp", "appdata", "local"}
@@ -208,8 +244,7 @@ def parse_task_md(file_path):
         return tasks
         
     try:
-        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-            lines = f.readlines()
+        lines = read_lines_with_retry(file_path, errors="ignore")
     except Exception as e:
         return tasks
 
@@ -282,8 +317,7 @@ def parse_implementation_plan_md(file_path):
         return tasks
         
     try:
-        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-            content = f.read()
+        content = read_file_with_retry(file_path, errors="ignore")
     except Exception as e:
         return tasks
         
@@ -340,20 +374,19 @@ def main():
     existing_sources = set()
     existing_titles = set()
     tasks_file = os.path.join(queue_dir, "tasks.json")
-    if os.path.exists(tasks_file):
-        try:
-            with open(tasks_file, "r", encoding="utf-8-sig") as tf:
-                board = json.load(tf)
-                for t in board.get("tasks", []):
-                    src = t.get("source")
-                    if src:
-                        existing_sources.add(src)
-                    title = t.get("title")
-                    if title:
-                        existing_titles.add(title.lower().strip())
-            log(f"Loaded {len(existing_sources)} existing task sources and {len(existing_titles)} titles to prevent duplicates.", "INIT")
-        except Exception as e:
-            log(f"Error reading tasks.json to deduplicate: {e}", "WARNING")
+    try:
+        content = read_file_with_retry(tasks_file, errors="ignore")
+        board = json.loads(content)
+        for t in board.get("tasks", []):
+            src = t.get("source")
+            if src:
+                existing_sources.add(src)
+            title = t.get("title")
+            if title:
+                existing_titles.add(title.lower().strip())
+        log(f"Loaded {len(existing_sources)} existing task sources and {len(existing_titles)} titles to prevent duplicates.", "INIT")
+    except Exception as e:
+        log(f"Error reading tasks.json to deduplicate: {e}", "WARNING")
 
     brain_dir = r"C:\Users\trb_m\.gemini\antigravity\brain"
     if not os.path.exists(brain_dir):
@@ -403,8 +436,7 @@ def main():
         for fp in [overview_path, task_path, plan_path]:
             if os.path.exists(fp):
                 try:
-                    with open(fp, "r", encoding="utf-8", errors="ignore") as f:
-                        session_text += f.read()
+                    session_text += read_file_with_retry(fp, errors="ignore")
                 except:
                     pass
                     
@@ -504,8 +536,8 @@ def main():
         
         if os.path.exists(overview_path):
             try:
-                with open(overview_path, "r", encoding="utf-8") as f:
-                    for line in f:
+                lines = read_lines_with_retry(overview_path, errors="ignore")
+                for line in lines:
                         try:
                             data = json.loads(line)
                             source = data.get("source")
@@ -557,8 +589,8 @@ def main():
             
             if os.path.exists(overview_path):
                 try:
-                    with open(overview_path, "r", encoding="utf-8") as f:
-                        for line in f:
+                    lines = read_lines_with_retry(overview_path, errors="ignore")
+                    for line in lines:
                             try:
                                 data = json.loads(line)
                                 source = data.get("source")
@@ -666,10 +698,13 @@ def main():
                 seen.add(k)
                 unique_candidates.append(c)
                 
-        with open(queue_path, "w", encoding="utf-8") as q:
+        try:
+            content = "".join(json.dumps(uc, ensure_ascii=False) + "\n" for uc in unique_candidates)
+            write_file_with_retry(queue_path, content, mode="w")
             for uc in unique_candidates:
-                q.write(json.dumps(uc, ensure_ascii=False) + "\n")
                 log(f"Registered agent-action task suggestion: {uc['title']}", "AUTOTASK")
+        except Exception as e:
+            log(f"Error writing queue_path: {e}", "ERROR")
                 
         log(f"Successfully loaded {len(unique_candidates)} agent-action tasks into DevCore queue.", "SUCCESS")
     else:

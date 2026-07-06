@@ -1,6 +1,6 @@
 # ROUTER.md v3 -- DEV_CORE v9.0
 # Single client · Mode-based routing · Model-agnostic
-# DEV_CORE detecte le mode -- Headroom compresse -- 9Router choisit le modele
+# DEV_CORE detecte le mode -- Headroom compresse -- Gemini Router choisit le modele
 
 ## Architecture de routage & Offloading (DevCore v9.0)
 
@@ -16,16 +16,14 @@
                                      v
                        [Gemini Router] (Port 20130) (Primary / Retries 429)
                                      |
-             +-----------------------+-----------------------+
-             | (Si Succes)                                   | (Si Echec / Fallback)
-             v                                               v
-     [Google Gemini API]                             [9Router] (Port 20128)
-  (gemini-2.5-pro / flash)                            (Tier 1 / 2 / 3 / 4)
+                                     v
+                            [Google Gemini API]
+                         (gemini-2.5-pro / flash)
 ```
 
-- **TencentDB Agent Memory Canvas** : Décharge de contexte symbolique hiérarchique (L0-L3 via Mermaid et SQLite FTS5) pour préserver le contexte de l'agent.
+- **TencentDB Agent Memory Canvas** : Décharge de contexte sémantique hiérarchique (L0-L3 via Mermaid et SQLite FTS5) pour préserver le contexte de l'agent.
 - **Headroom Proxy (Port 8787)** : Compression de jetons transparente (JSON, Code, Logs) et gestion de cache.
-- **Gemini Router (Port 20130)** : Proxy de communication avec l'API Google Gemini, gérant le Rate-Limiting (HTTP 429) par retries avec backoff exponentiel, et redirigeant vers **9Router (Port 20128)** en secours ultime.
+- **Gemini Router (Port 20130)** : Proxy de communication directe avec l'API Google Gemini, gérant le Rate-Limiting (HTTP 429) par retries avec backoff exponentiel.
 
 
 ---
@@ -136,18 +134,18 @@ Design / UX                     coding        ui-ux
 
 ---
 
-## Signal mode vers 9Router
+## Signal mode vers Gemini Router
 
 Inclure dans chaque requete selon le contexte :
 
 ```
 # Dans CLAUDE.md -- l'agent ajoute ce parametre
-# Claude Code l'injecte dans les metadonnees de la requete
+# L'agent l'injecte dans les metadonnees de la requete
 
-mode=reasoning  -> 9Router route vers Tier 1
-mode=coding     -> 9Router route vers Tier 2
-mode=bulk       -> 9Router route vers Tier 3
-(vide)          -> 9Router utilise le Tier 1 par defaut
+mode=reasoning  -> Gemini Router utilise gemini-2.5-pro
+mode=coding     -> Gemini Router utilise gemini-2.5-pro
+mode=bulk       -> Gemini Router utilise gemini-2.5-flash
+(vide)          -> Gemini Router utilise gemini-2.5-pro par defaut
 ```
 
 ---
