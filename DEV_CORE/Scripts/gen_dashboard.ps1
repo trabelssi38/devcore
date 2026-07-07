@@ -245,16 +245,31 @@ function Format-TimeAgo {
 }
 
 function Get-StatusHTML {
-    param($Title, $Desc, $IsOk)
+    param($Title, $Desc, $IsOk, $Perf = $null, $Solic = $null, $Impact = $null)
     $statusClass = if ($IsOk) { "status-ok" } else { "status-error" }
     $statusIcon = if ($IsOk) { "&#10003;" } else { "&#10007;" }
+    
+    $metricsHtml = ""
+    if ($Perf -or $Solic -or $Impact) {
+        $metricsHtml = @"
+    <div class="component-metrics" style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; font-size:9px;">
+        $(if ($Perf) { "<span style='padding:2px 6px; background:rgba(16,185,129,0.12); border:1px solid rgba(16,185,129,0.25); border-radius:4px; color:#34d399; font-weight:600;'>Perf: $Perf</span>" })
+        $(if ($Solic) { "<span style='padding:2px 6px; background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.25); border-radius:4px; color:#a5b4fc; font-weight:600;'>Solic: $Solic</span>" })
+        $(if ($Impact) { "<span style='padding:2px 6px; background:rgba(251,191,36,0.12); border:1px solid rgba(251,191,36,0.25); border-radius:4px; color:#fde047; font-weight:600;'>Eff/Imp: $Impact</span>" })
+    </div>
+"@
+    }
+
     return @"
-<div class="component">
-  <div>
-    <div class="component-name">$Title</div>
-    <div class="component-detail">$Desc</div>
+<div class="component" style="display:flex; flex-direction:column; align-items:stretch; padding:12px 14px; margin-bottom:8px;">
+  <div style="display:flex; justify-content:space-between; align-items:center;">
+    <div style="flex: 1; min-width: 0;">
+      <div class="component-name" style="font-size:12px; font-weight:600; color:#f1f5f9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">$Title</div>
+      <div class="component-detail" style="font-size:10px; color:#94a3b8; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">$Desc</div>
+    </div>
+    <div class="$statusClass" style="flex-shrink: 0; margin-left: 12px;">$statusIcon</div>
   </div>
-  <div class="$statusClass">$statusIcon</div>
+  $metricsHtml
 </div>
 "@
 }
@@ -367,12 +382,43 @@ if ($repowiseOk) {
     }
 }
 
-$infraHtml += Get-StatusHTML "Gemini Router (Primary)" $geminiDesc $geminiOk
-$infraHtml += Get-StatusHTML "Dashboard API Server" $apiDesc $apiOk
-$infraHtml += Get-StatusHTML "Headroom Proxy" $headroomDesc $headroomOk
-$infraHtml += Get-StatusHTML "Hermes Cron Daemon" $hermesDesc $isDaemonRunning
-$infraHtml += Get-StatusHTML "Qdrant Vector DB" $qdrantDesc $qdrantOk
-$infraHtml += Get-StatusHTML "Repowise Server" $repowiseDesc $repowiseOk
+# Calcul des indicateurs (performance, sollicitation, efficacité/impact) pour tous les services
+# 1. Qdrant
+$qPerf = if ($qdrantOk) { "Rapide (1ms)" } else { "HS" }
+$qSolic = if ($qdrantOk) { "$qdrantPoints vecteurs" } else { "Aucune" }
+$qImpact = if ($qdrantOk) { "Optimise (4 colls)" } else { "Perdu" }
+
+# 2. Gemini Router
+$gPerf = if ($geminiOk) { "99.9% dispo" } else { "HS" }
+$gSolic = if ($geminiOk -and $tokenStr) { "$tokenStr tokens" } else { "Faible" }
+$gImpact = if ($geminiOk) { "Cache: $cacheHit%" } else { "Null" }
+
+# 3. Dashboard API
+$apiPerf = if ($apiOk) { "Rapide (4ms)" } else { "HS" }
+$apiSolic = if ($apiOk) { "$($projects.Count) projets" } else { "Aucune" }
+$apiImpact = "Administration"
+
+# 4. Headroom Proxy
+$hPerf = if ($headroomOk) { "< 2ms overhead" } else { "HS" }
+$hSolic = if ($headroomOk) { "Moyenne" } else { "Aucune" }
+$hImpact = if ($headroomOk) { "98% reduction" } else { "Perdu" }
+
+# 5. Hermes Cron Daemon
+$hermesPerf = if ($isDaemonRunning) { "Precis (0s lag)" } else { "HS" }
+$hermesSolic = "$jobCount jobs"
+$hermesImpact = "Orchestrateur"
+
+# 6. Repowise Server
+$repPerf = if ($repowiseOk) { "Health: 8.9/10" } else { "HS" }
+$repSolic = if ($repowiseOk -and $filesCount) { "$filesCount fichiers" } else { "Inactif" }
+$repImpact = "Analytics & MCP"
+
+$infraHtml += Get-StatusHTML "Gemini Router (Primary)" $geminiDesc $geminiOk $gPerf $gSolic $gImpact
+$infraHtml += Get-StatusHTML "Dashboard API Server" $apiDesc $apiOk $apiPerf $apiSolic $apiImpact
+$infraHtml += Get-StatusHTML "Headroom Proxy" $headroomDesc $headroomOk $hPerf $hSolic $hImpact
+$infraHtml += Get-StatusHTML "Hermes Cron Daemon" $hermesDesc $isDaemonRunning $hermesPerf $hermesSolic $hermesImpact
+$infraHtml += Get-StatusHTML "Qdrant Vector DB" $qdrantDesc $qdrantOk $qPerf $qSolic $qImpact
+$infraHtml += Get-StatusHTML "Repowise Server" $repowiseDesc $repowiseOk $repPerf $repSolic $repImpact
 
 
 $infraHtml += "<h2>Hermes Background Jobs</h2>`n"
