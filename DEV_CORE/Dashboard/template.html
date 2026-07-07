@@ -468,12 +468,12 @@ details{margin-bottom: 8px}
         
         <div style="margin-bottom: 16px;">
           <label style="display:block; font-size:10px; color:#64748b; text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; font-weight:600;">Cle API Gemini</label>
-          <input type="password" id="setting-gemini-key" style="width:100%; padding:8px; background:#0b0d12; border:1px solid #2d3148; border-radius:6px; color:#e2e8f0; font-family:monospace; font-size:12px; box-sizing:border-box; outline:none;" placeholder="Laisser vide pour ne pas modifier" />
+          <input type="password" id="setting-gemini-key" autocomplete="new-password" style="width:100%; padding:8px; background:#0b0d12; border:1px solid #2d3148; border-radius:6px; color:#e2e8f0; font-family:monospace; font-size:12px; box-sizing:border-box; outline:none;" placeholder="Laisser vide pour ne pas modifier" />
         </div>
 
         <div style="margin-bottom: 16px;">
           <label style="display:block; font-size:10px; color:#64748b; text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; font-weight:600;">Cle API Anthropic</label>
-          <input type="password" id="setting-anthropic-key" style="width:100%; padding:8px; background:#0b0d12; border:1px solid #2d3148; border-radius:6px; color:#e2e8f0; font-family:monospace; font-size:12px; box-sizing:border-box; outline:none;" placeholder="Laisser vide pour ne pas modifier" />
+          <input type="password" id="setting-anthropic-key" autocomplete="new-password" style="width:100%; padding:8px; background:#0b0d12; border:1px solid #2d3148; border-radius:6px; color:#e2e8f0; font-family:monospace; font-size:12px; box-sizing:border-box; outline:none;" placeholder="Laisser vide pour ne pas modifier" />
         </div>
 
         <div style="margin-bottom: 20px;">
@@ -695,17 +695,12 @@ function refreshDashboard() {
       }
 
       // 5. Mettre à jour la variable taskDetailsMap dans le scope global
-      const startMarker = 'const taskDetailsMap = ';
-      const startIndex = htmlText.indexOf(startMarker);
-      if (startIndex !== -1) {
-        const endIndex = htmlText.indexOf(';', startIndex);
-        if (endIndex !== -1) {
-          const jsonStr = htmlText.substring(startIndex + startMarker.length, endIndex);
-          try {
-            window.taskDetailsMap = JSON.parse(jsonStr);
-          } catch (e) {
-            console.error("Error parsing taskDetailsMap:", e);
-          }
+      const dataEl = newDoc.getElementById('task-details-data');
+      if (dataEl) {
+        try {
+          window.taskDetailsMap = JSON.parse(dataEl.textContent);
+        } catch (e) {
+          console.error("Error parsing taskDetailsMap:", e);
         }
       }
 
@@ -772,7 +767,7 @@ function toggleProjectFilter(rowEl, projectName) {
   }
 }
 
-const taskDetailsMap = {{TASK_DETAILS_MAP}};
+const taskDetailsMap = JSON.parse(document.getElementById('task-details-data').textContent);
 
 function showDetails(projectName, taskId, taskStatus, btnEl, event) {
   if (event) event.stopPropagation();
@@ -987,5 +982,6 @@ refreshDashboard();
     </div>
   </div>
 </div>
+<script id="task-details-data" type="application/json">{{TASK_DETAILS_MAP}}</script>
 </body>
 </html>
