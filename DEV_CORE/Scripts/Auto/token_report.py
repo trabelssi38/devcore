@@ -64,13 +64,27 @@ def main():
     # Détection dynamique des projets valides dans Memory
     memory_path = r"C:\devcore\DEV_CORE_DATA\Memory"
     valid_projects = ["devcore", "cea_dashboard", "job_tracker", "default"]
+    task_to_project = {}
     if os.path.exists(memory_path):
         try:
             for d in os.listdir(memory_path):
-                if os.path.isdir(os.path.join(memory_path, d)):
+                proj_dir = os.path.join(memory_path, d)
+                if os.path.isdir(proj_dir):
                     d_lower = d.lower()
                     if d_lower not in ["archive", "patterns", "scores", "default"] and d_lower not in valid_projects:
                         valid_projects.append(d_lower)
+                    
+                    tasks_file = os.path.join(proj_dir, "tasks.json")
+                    if os.path.exists(tasks_file):
+                        try:
+                            with open(tasks_file, "r", encoding="utf-8") as tf:
+                                board = json.load(tf)
+                                for t in board.get("tasks", []):
+                                    tid = t.get("id")
+                                    if tid:
+                                        task_to_project[tid.upper()] = d_lower
+                        except Exception:
+                            pass
         except Exception:
             pass
 
@@ -147,32 +161,21 @@ def main():
                                     else:
                                         args_str = json.dumps(tc_args).lower()
                                         
-                                    # Recherche d'une mention directe de l'un des projets valides
-                                    found_project = None
+                                    normalized_args = args_str.replace("\\\\", "/").replace("\\", "/")
+                                    best_project = None
+                                    max_idx = -1
                                     for proj in valid_projects:
-                                        patterns = [
-                                            f"c:\\\\{proj}",
-                                            f"c:\\{proj}",
-                                            f"c:/{proj}"
-                                        ]
-                                        if any(pat in args_str for pat in patterns):
-                                            found_project = proj
-                                            break
-                                    
-                                    if found_project:
-                                        detected_project = found_project
-                                    elif "c:\\" in args_str:
-                                        # Recherche regex résiliente
-                                        match = re.search(r'c:\\\\([a-z0-9_-]+)(?:\\\\|/|[\"\'\s]|$)', args_str)
-                                        if not match:
-                                            match = re.search(r'c:\\([a-z0-9_-]+)(?:\\|/|[\"\'\s]|$)', args_str)
-                                        if match:
-                                            proj_candidate = match.group(1)
-                                            if proj_candidate not in ["users", "windows", "program files", "devcore", "n"]:
-                                                if proj_candidate in valid_projects or len(proj_candidate) > 2:
-                                                    detected_project = proj_candidate
+                                        proj_lower = proj.lower()
+                                        if f"/{proj_lower}/" in normalized_args or normalized_args.endswith(f"/{proj_lower}") or f"/{proj_lower}\\" in normalized_args or proj_lower in normalized_args:
+                                            idx = normalized_args.rfind(proj_lower)
+                                            if idx > max_idx:
+                                                max_idx = idx
+                                                best_project = proj_lower
+                                                
+                                    if best_project:
+                                        detected_project = best_project
                                 
-                                # B. Task identification
+                                # B. Task identification & project extraction
                                 task_matches = re.findall(r'\bT-\d+\b', content, re.IGNORECASE)
                                 if task_matches:
                                     for tm in task_matches:
@@ -180,6 +183,10 @@ def main():
                                         if tid:
                                             current_task = tid
                                             session_tasks.add(tid)
+                                            # Fallback project association based on task ID mapping
+                                            tid_upper = tid.upper()
+                                            if tid_upper in task_to_project:
+                                                detected_project = task_to_project[tid_upper]
                                 
                                 if is_user:
                                     user_turns += 1
