@@ -382,6 +382,7 @@ details{margin-bottom: 8px}
 </head>
 <body>
 <script id="task-details-data" type="application/json">{{TASK_DETAILS_MAP}}</script>
+<script id="token-metrics-data" type="application/json">{{TOKEN_METRICS_JSON}}</script>
 <header>
   <div style="display:flex; align-items:center; gap:10px;">
     <h1>DEV_CORE v9.0 — Cockpit</h1>
@@ -705,6 +706,13 @@ function refreshDashboard() {
         }
       }
 
+      // 5.5 Mettre à jour le container de données de tokens
+      const tokenDataEl = document.getElementById('token-metrics-data');
+      const newTokenDataEl = newDoc.getElementById('token-metrics-data');
+      if (tokenDataEl && newTokenDataEl) {
+        tokenDataEl.textContent = newTokenDataEl.textContent;
+      }
+
       // 6. Restaurer le filtre actif par projet
       if (window.activeFilteredProject) {
         const row = document.querySelector(`.project-row[data-project="${window.activeFilteredProject}"]`);
@@ -720,6 +728,7 @@ function refreshDashboard() {
           }
         });
       }
+      updateTokenReport(window.activeFilteredProject);
 
       if (indicator) {
         indicator.style.background = '#22c55e';
@@ -738,6 +747,65 @@ function refreshDashboard() {
 }
 
 window.activeFilteredProject = null;
+
+function updateTokenReport(projectName) {
+  const dataEl = document.getElementById('token-metrics-data');
+  if (!dataEl) return;
+  let metrics = null;
+  try {
+    metrics = JSON.parse(dataEl.textContent);
+  } catch (e) {
+    console.error("Error parsing token metrics:", e);
+    return;
+  }
+  
+  let tokens = 0;
+  let cacheHits = 0;
+  let cost = 0;
+  
+  if (projectName) {
+    const projStats = metrics.projects[projectName.toLowerCase()];
+    if (projStats) {
+      tokens = projStats.tokens;
+      cacheHits = projStats.cache_hits;
+      cost = projStats.cost_usd;
+    }
+  } else {
+    tokens = metrics.totals.tokens;
+    cacheHits = metrics.totals.cache_hits;
+    cost = metrics.totals.cost_usd;
+  }
+  
+  const tokensStr = tokens > 1000000 ? (tokens / 1000000).toFixed(2) + 'M' : (tokens / 1000).toFixed(1) + 'K';
+  const cachePct = tokens > 0 ? Math.round((cacheHits / tokens) * 100) : 0;
+  const costStr = '$' + cost.toFixed(2);
+  
+  const tTokensEl = document.getElementById('token-report-total-tokens');
+  if (tTokensEl) tTokensEl.textContent = tokensStr;
+  const tCacheEl = document.getElementById('token-report-cache-hits');
+  if (tCacheEl) tCacheEl.textContent = cachePct + '%';
+  const tCostEl = document.getElementById('token-report-total-cost');
+  if (tCostEl) tCostEl.textContent = costStr;
+  
+  const headerCostEl = document.getElementById('token-report-header-cost');
+  if (headerCostEl) {
+    headerCostEl.textContent = `Coût total : ${costStr} USD`;
+  }
+  
+  const allocContainer = document.getElementById('token-report-alloc-container');
+  if (allocContainer) {
+    allocContainer.style.display = projectName ? 'none' : 'block';
+  }
+  
+  document.querySelectorAll('.session-row').forEach(row => {
+    const proj = row.getAttribute('data-project');
+    if (!projectName || (proj && proj.toLowerCase() === projectName.toLowerCase())) {
+      row.style.display = 'flex';
+    } else {
+      row.style.display = 'none';
+    }
+  });
+}
 
 function toggleProjectFilter(rowEl, projectName) {
   const isSelected = rowEl.classList.contains('selected');
@@ -766,6 +834,8 @@ function toggleProjectFilter(rowEl, projectName) {
       }
     });
   }
+  
+  updateTokenReport(window.activeFilteredProject);
 }
 
 const taskDetailsMap = JSON.parse(document.getElementById('task-details-data').textContent);

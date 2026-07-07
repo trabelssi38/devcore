@@ -543,7 +543,7 @@ if ($tokenSummary) {
             $tasksJoined = $s.tasks -join ", "
             
             $sessionsHtml += @"
-      <div style="background: rgba(30, 41, 59, 0.2); border: 1px solid rgba(255,255,255,0.03); border-radius: 6px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s; font-size: 11px; margin-bottom: 6px;">
+      <div class="session-row" data-project="$($s.project)" style="background: rgba(30, 41, 59, 0.2); border: 1px solid rgba(255,255,255,0.03); border-radius: 6px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s; font-size: 11px; margin-bottom: 6px;">
         <div style="flex: 1; min-width: 0; padding-right: 8px;">
           <div style="display: flex; align-items: center; gap: 8px;">
             <span style="width: 6px; height: 6px; border-radius: 50%; background: #6366f1; box-shadow: 0 0 6px #6366f1;"></span>
@@ -573,28 +573,30 @@ if ($tokenSummary) {
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
       Rapport de Consommation & Activit&eacute; Agent
     </span>
-    <span style="font-size: 11px; color: #cbd5e1; font-family: monospace;">Co&ucirc;t total : `$$totCostFormatted USD</span>
+    <span id="token-report-header-cost" style="font-size: 11px; color: #cbd5e1; font-family: monospace;">Co&ucirc;t total : `$$totCostFormatted USD</span>
   </summary>
   <div style="padding: 16px;">
     <!-- M&eacute;triques globales -->
     <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;">
       <div style="background: rgba(30, 41, 59, 0.4); border: 1px solid #2d3148; border-radius: 6px; padding: 10px; text-align: center;">
-        <div style="font-size: 9px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Tokens Totaux</div>
-        <div style="font-size: 16px; font-weight: 600; color: #f8fafc; font-family: 'JetBrains Mono', monospace; margin-top: 2px;">$totTokensStr</div>
+         <div style="font-size: 9px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Tokens Totaux</div>
+         <div id="token-report-total-tokens" style="font-size: 16px; font-weight: 600; color: #f8fafc; font-family: 'JetBrains Mono', monospace; margin-top: 2px;">$totTokensStr</div>
       </div>
       <div style="background: rgba(30, 41, 59, 0.4); border: 1px solid #2d3148; border-radius: 6px; padding: 10px; text-align: center;">
-        <div style="font-size: 9px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Cache Hits</div>
-        <div style="font-size: 16px; font-weight: 600; color: #10b981; font-family: 'JetBrains Mono', monospace; margin-top: 2px;">$totCachePct%</div>
+         <div style="font-size: 9px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Cache Hits</div>
+         <div id="token-report-cache-hits" style="font-size: 16px; font-weight: 600; color: #10b981; font-family: 'JetBrains Mono', monospace; margin-top: 2px;">$totCachePct%</div>
       </div>
       <div style="background: rgba(30, 41, 59, 0.4); border: 1px solid #2d3148; border-radius: 6px; padding: 10px; text-align: center;">
-        <div style="font-size: 9px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Co&ucirc;t Global</div>
-        <div style="font-size: 16px; font-weight: 600; color: #fbbf24; font-family: 'JetBrains Mono', monospace; margin-top: 2px;">`$$totCostFormatted</div>
+         <div style="font-size: 9px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Co&ucirc;t Global</div>
+         <div id="token-report-total-cost" style="font-size: 16px; font-weight: 600; color: #fbbf24; font-family: 'JetBrains Mono', monospace; margin-top: 2px;">`$$totCostFormatted</div>
       </div>
     </div>
     
-    <!-- R&eacute;partition par Projet -->
-    <h3 style="font-size: 10px; color: #94a3b8; text-transform: uppercase; margin: 12px 0 6px;">R&eacute;partition par Projet</h3>
-    $projectAllocHtml
+    <div id="token-report-alloc-container">
+      <!-- R&eacute;partition par Projet -->
+      <h3 style="font-size: 10px; color: #94a3b8; text-transform: uppercase; margin: 12px 0 6px;">R&eacute;partition par Projet</h3>
+      $projectAllocHtml
+    </div>
     
     <!-- Sessions Actives -->
     <h3 style="font-size: 10px; color: #94a3b8; text-transform: uppercase; margin: 16px 0 8px;">D&eacute;tail des Sessions</h3>
@@ -613,6 +615,8 @@ if (Test-Path $TEMPLATE_FILE) {
     } else {
         "{}"
     }
+    
+    $tokenMetricsJson = if (Test-Path $jsonPath) { Get-Content $jsonPath -Raw -Encoding UTF8 } else { "{}" }
 
     $template = Get-Content $TEMPLATE_FILE -Raw -Encoding UTF8
     $template = $template.Replace('{{PROJECT_CARDS}}', $cardsHtml)
@@ -621,6 +625,7 @@ if (Test-Path $TEMPLATE_FILE) {
     $template = $template.Replace('{{AUTOMATION_HOOKS}}', $hooksHtml)
     $template = $template.Replace('{{TOKEN_ACTIVITY_REPORT}}', $tokenReportHtml)
     $template = $template.Replace('{{TASK_DETAILS_MAP}}', $detailsJson)
+    $template = $template.Replace('{{TOKEN_METRICS_JSON}}', $tokenMetricsJson)
 
     $template | Set-Content $OUTPUT_FILE -Encoding UTF8
     Write-Host "Dashboard genere : $OUTPUT_FILE" -ForegroundColor Green
