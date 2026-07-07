@@ -261,6 +261,47 @@ try {
     }
 }
 
+# 7.6 Repowise Server
+try {
+    $tcp = New-Object System.Net.Sockets.TcpClient
+    $result = $tcp.BeginConnect([System.Net.IPAddress]::Loopback, 7337, $null, $null)
+    $success = $result.AsyncWaitHandle.WaitOne(1000, $true)
+    if ($success) {
+        $tcp.EndConnect($result)
+        Check "Repowise Server OK (Port 7337)" "OK"
+    } else {
+        throw "Timeout"
+    }
+    $tcp.Close()
+} catch {
+    Check "Repowise Server non disponible" "WARN" "repowise serve"
+    AutoFix "Demarrer Repowise Server" {
+        $repowisePath = "C:\Users\trb_m\AppData\Roaming\Python\Python313\Scripts\repowise.exe"
+        if (-not (Test-Path $repowisePath)) { $repowisePath = "repowise" }
+        $logOut = "$DEV_CORE_DATA\Logs\scripts\repowise.log"
+        $logErr = "$DEV_CORE_DATA\Logs\scripts\repowise_err.log"
+        $env:REPOWISE_EMBEDDER = "mock"
+        Start-Process -FilePath $repowisePath -ArgumentList "serve --ui-port 3100 --host localhost" -WorkingDirectory "C:\devcore" -WindowStyle Hidden -RedirectStandardOutput $logOut -RedirectStandardError $logErr -ErrorAction SilentlyContinue
+        
+        # Attendre que le port s'ouvre (timeout 10s)
+        for ($i = 0; $i -lt 20; $i++) {
+            Start-Sleep -Milliseconds 500
+            try {
+                $tcp = New-Object System.Net.Sockets.TcpClient
+                $res = $tcp.BeginConnect([System.Net.IPAddress]::Loopback, 7337, $null, $null)
+                $suc = $res.AsyncWaitHandle.WaitOne(100, $true)
+                if ($suc) {
+                    $tcp.EndConnect($res)
+                    $tcp.Close()
+                    break
+                }
+                $tcp.Close()
+            } catch {}
+        }
+    }
+}
+
+
 # 8. Post-commit hook
 $gitHooksDir = "$(Get-Location)\.git\hooks"
 if (Test-Path "$gitHooksDir\post-commit") { Check "Git post-commit hook installe" "OK" }

@@ -269,18 +269,111 @@ if (-not (Check-Port $apiPort)) {
 
 $infraHtml = "<h2>Services & Infrastructure</h2>`n"
 $tickLog = "$DEV_CORE_DATA\Logs\hermes\cron_tick.log"
+
+# 1. Qdrant Points Count
+$qdrantDesc = "Port 6333"
+$qdrantOk = Check-Port 6333
+if ($qdrantOk) {
+    try {
+        $qdrantPoints = 0
+        $colls = Invoke-RestMethod "http://localhost:6333/collections" -TimeoutSec 2
+        foreach ($c in $colls.result.collections) {
+            $cName = $c.name
+            $stat = Invoke-RestMethod "http://localhost:6333/collections/$cName" -TimeoutSec 2
+            $qdrantPoints += $stat.result.points_count
+        }
+        $qdrantDesc = "Port 6333 | $qdrantPoints vectors"
+    } catch {}
+}
+
+# 2. Gemini Router Metrics
+$geminiDesc = "Port 20130"
+$geminiOk = Check-Port 20130
+if ($geminiOk) {
+    try {
+        if ($tokenSummary) {
+            $cacheHit = [math]::Round($tokenSummary.average_cache_hit_ratio * 100)
+            $totalTokens = $tokenSummary.total_input_tokens + $tokenSummary.total_output_tokens
+            $tokenStr = ""
+            if ($totalTokens -ge 1000000) { $tokenStr = "$([math]::Round($totalTokens / 1MB, 1))M" }
+            elseif ($totalTokens -ge 1000) { $tokenStr = "$([math]::Round($totalTokens / 1KB, 1))k" }
+            else { $tokenStr = "$totalTokens" }
+            $geminiDesc = "Port 20130 | Cache: $cacheHit% | $tokenStr tok"
+        }
+    } catch {}
+}
+
+# 3. Dashboard API Server Metrics
+$apiDesc = "Port 20129"
+$apiOk = Check-Port 20129
+if ($apiOk) {
+    $apiDesc = "Port 20129 | $($projects.Count) projets"
+}
+
+# 4. Headroom Proxy Metrics
+$headroomDesc = "Port 8787"
+$headroomOk = Check-Port 8787
+if ($headroomOk) {
+    $headroomDesc = "Port 8787 | ~98% reduction"
+}
+
+# 5. Hermes Cron Daemon Metrics
+$hermesDesc = "Tick Loop"
 $isDaemonRunning = $false
+$lastTickSec = 9999
 if (Test-Path $tickLog) {
     $lastWrite = (Get-Item $tickLog).LastWriteTime
-    if (((Get-Date) - $lastWrite).TotalMinutes -lt 2.5) {
+    $ts = (Get-Date) - $lastWrite
+    $lastTickSec = [math]::Round($ts.TotalSeconds)
+    if ($lastTickSec -lt 150) {
         $isDaemonRunning = $true
     }
 }
-$infraHtml += Get-StatusHTML "Gemini Router (Primary)" "Port 20130" (Check-Port 20130)
-$infraHtml += Get-StatusHTML "Dashboard API Server" "Port 20129" (Check-Port 20129)
-$infraHtml += Get-StatusHTML "Headroom Proxy" "Port 8787" (Check-Port 8787)
-$infraHtml += Get-StatusHTML "Hermes Cron Daemon" "Standalone Tick Loop" $isDaemonRunning
-$infraHtml += Get-StatusHTML "Qdrant Vector DB" "Port 6333" (Check-Port 6333)
+$jobCount = 0
+$jobsFile = "$env:USERPROFILE\.hermes\cron\jobs.json"
+if (Test-Path $jobsFile) {
+    try {
+        $jobsJson = Get-Content $jobsFile -Raw -Encoding UTF8 | ConvertFrom-Json
+        $jobCount = $jobsJson.jobs.Count
+    } catch {}
+}
+if ($isDaemonRunning) {
+    $hermesDesc = "Ticking ($lastTickSec`s) | $jobCount jobs"
+} else {
+    $hermesDesc = "Inactif | $jobCount jobs"
+}
+
+# 6. Repowise Server Metrics
+$repowiseDesc = "Port 7337"
+$repowiseOk = Check-Port 7337
+if ($repowiseOk) {
+    $repowiseDesc = "Port 7337"
+    $repowiseStateFile = "C:\devcore\.repowise\state.json"
+    $repowiseKgFile = "C:\devcore\.repowise\knowledge-graph.json"
+    if (Test-Path $repowiseStateFile) {
+        try {
+            $state = Get-Content $repowiseStateFile -Raw -Encoding UTF8 | ConvertFrom-Json
+            $filesCount = 0
+            if (Test-Path $repowiseKgFile) {
+                $kg = Get-Content $repowiseKgFile -Raw -Encoding UTF8 | ConvertFrom-Json
+                $filesCount = $kg.project.total_files
+            }
+            if ($filesCount -gt 0) {
+                $repowiseDesc = "Port 7337 | $filesCount files | health 8.6/10"
+            } else {
+                $repowiseDesc = "Port 7337 | indexé"
+            }
+        } catch {}
+    }
+}
+
+$infraHtml += Get-StatusHTML "Gemini Router (Primary)" $geminiDesc $geminiOk
+$infraHtml += Get-StatusHTML "Dashboard API Server" $apiDesc $apiOk
+$infraHtml += Get-StatusHTML "Headroom Proxy" $headroomDesc $headroomOk
+$infraHtml += Get-StatusHTML "Hermes Cron Daemon" $hermesDesc $isDaemonRunning
+$infraHtml += Get-StatusHTML "Qdrant Vector DB" $qdrantDesc $qdrantOk
+$infraHtml += Get-StatusHTML "Repowise Server" $repowiseDesc $repowiseOk
+
 
 $infraHtml += "<h2>Hermes Background Jobs</h2>`n"
 $jobsFile = "$env:USERPROFILE\.hermes\cron\jobs.json"

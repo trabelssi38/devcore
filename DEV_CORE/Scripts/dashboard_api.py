@@ -68,6 +68,41 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
         # Silence standard HTTP logs in the background terminal unless needed
         pass
 
+    def get_settings(self):
+        settings_file = Path(PLATFORM_ROOT) / "Config" / "settings.json"
+        if not settings_file.exists():
+            defaults = {
+                "active_client": "antigravity",
+                "auto_refresh_seconds": 15,
+                "gemini_api_key": "",
+                "anthropic_api_key": "",
+                "services": {
+                    "qdrant": True,
+                    "gemini_router": True,
+                    "dashboard_api": True,
+                    "headroom": True,
+                    "hermes_daemon": True,
+                    "repowise": True
+                }
+            }
+            return defaults
+        try:
+            return read_json_with_retry(settings_file)
+        except Exception:
+            return {}
+
+    def save_settings(self, data):
+        settings_file = Path(PLATFORM_ROOT) / "Config" / "settings.json"
+        settings_file.parent.mkdir(parents=True, exist_ok=True)
+        write_json_with_retry(settings_file, data)
+        
+        # Sync active client file
+        active_client = data.get("active_client")
+        if active_client:
+            client_file = Path(PLATFORM_ROOT) / "Config" / "active_client.txt"
+            with open(client_file, "w", encoding="utf-8") as f:
+                f.write(active_client)
+
     def do_GET(self):
         try:
             self._handle_get()
@@ -79,6 +114,18 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
         parsed_url = urllib.parse.urlparse(self.path)
         path = parsed_url.path
         query = urllib.parse.parse_qs(parsed_url.query)
+
+        if path == "/api/settings":
+            try:
+                settings = self.get_settings()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps(settings, indent=4).encode("utf-8"))
+            except Exception as e:
+                self.send_error_response(str(e))
+            return
+
 
         if path == "/api/done":
             project = query.get("project", [""])[0]
@@ -147,6 +194,29 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
             except subprocess.TimeoutExpired as te:
                 print(f"[DashboardAPI] Timeout calling gen_dashboard.ps1: {te}")
                 self.send_error_response("Dashboard regeneration timed out after 15s")
+            except Exception as e:
+                self.send_error_response(str(e))
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+    def do_POST(self):
+        try:
+            self._handle_post()
+        except ConnectionError:
+            pass
+
+    def _handle_post(self):
+        parsed_url = urllib.parse.urlparse(self.path)
+        path = parsed_url.path
+
+        if path == "/api/settings":
+            content_length = int(self.headers.get('Content-Length', 0))
+            post_data = self.rfile.read(content_length)
+            try:
+                data = json.loads(post_data.decode('utf-8'))
+                self.save_settings(data)
+                self.send_success_response("Settings saved successfully")
             except Exception as e:
                 self.send_error_response(str(e))
         else:

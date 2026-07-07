@@ -46,3 +46,12 @@ DEV_CORE/Config/gemini_api_key.txt
 
 # Temp / Local scripts
 qc
+
+# Repowise Local files
+.repowise/
+.repowise-workspace.yaml
+.repowise-workspace/
+.mcp.json
+
+# Virtual Environment
+hermes_temp/

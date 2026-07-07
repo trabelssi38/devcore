@@ -424,19 +424,75 @@ details{margin-bottom: 8px}
   <!-- Colonne 2 : Pipeline (Sessions Actives) -->
   <div class="column">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px">
-      <h2>Taches & Sessions</h2>
-      <div class="filters">
+      <div style="display:flex; gap:16px; align-items:center;">
+        <h2 id="tab-tasks-title" class="tab-title" onclick="switchTab('tasks')" style="cursor:pointer; color:#6366f1; border-bottom: 2px solid #6366f1; padding-bottom: 4px; margin-bottom: 0; font-size:11px; text-transform:uppercase; letter-spacing:.05em;">Taches & Sessions</h2>
+        <h2 id="tab-settings-title" class="tab-title" onclick="switchTab('settings')" style="cursor:pointer; color:#475569; padding-bottom: 4px; margin-bottom: 0; font-size:11px; text-transform:uppercase; letter-spacing:.05em;">Configuration</h2>
+      </div>
+      <div class="filters" id="pipeline-filters">
         <button class="filter-btn active" onclick="applyFilter(this, 0)">All</button>
         <button class="filter-btn" onclick="applyFilter(this, 1)">1j</button>
         <button class="filter-btn" onclick="applyFilter(this, 7)">7j</button>
         <button class="filter-btn" onclick="applyFilter(this, 30)">Mois</button>
       </div>
     </div>
-    <div class="scroll-area" id="tasks-pipeline">
-      {{TASKS_PIPELINE}}
+    
+    <!-- Tab: Tasks Content -->
+    <div id="tab-tasks-content" style="display: flex; flex-direction: column; flex: 1; overflow: hidden;">
+      <div class="scroll-area" id="tasks-pipeline">
+        {{TASKS_PIPELINE}}
+      </div>
+      {{TOKEN_ACTIVITY_REPORT}}
     </div>
-    {{TOKEN_ACTIVITY_REPORT}}
-  </div>
+
+    <!-- Tab: Settings Content -->
+    <div id="tab-settings-content" style="display: none; flex-direction: column; flex: 1; overflow-y: auto; padding-right: 8px;">
+      <div class="card" style="padding: 16px; background:#1a1d27; border: 1px solid #2d3148; border-radius:8px;">
+        <div style="margin-bottom: 16px;">
+          <label style="display:block; font-size:10px; color:#64748b; text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; font-weight:600;">Client Actif</label>
+          <select id="setting-active-client" style="width:100%; padding:8px; background:#0b0d12; border:1px solid #2d3148; border-radius:6px; color:#e2e8f0; font-family:inherit; font-size:12px; outline:none;">
+            <option value="antigravity">Antigravity (default)</option>
+            <option value="claude-code">Claude Code</option>
+            <option value="hermes">Hermes Standalone</option>
+          </select>
+        </div>
+        
+        <div style="margin-bottom: 16px;">
+          <label style="display:block; font-size:10px; color:#64748b; text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; font-weight:600;">Rafraichissement (secondes)</label>
+          <select id="setting-refresh-rate" style="width:100%; padding:8px; background:#0b0d12; border:1px solid #2d3148; border-radius:6px; color:#e2e8f0; font-family:inherit; font-size:12px; outline:none;">
+            <option value="15">15 secondes (défaut)</option>
+            <option value="30">30 secondes</option>
+            <option value="60">60 secondes</option>
+            <option value="0">Désactivé</option>
+          </select>
+        </div>
+        
+        <div style="margin-bottom: 16px;">
+          <label style="display:block; font-size:10px; color:#64748b; text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; font-weight:600;">Cle API Gemini</label>
+          <input type="password" id="setting-gemini-key" style="width:100%; padding:8px; background:#0b0d12; border:1px solid #2d3148; border-radius:6px; color:#e2e8f0; font-family:monospace; font-size:12px; box-sizing:border-box; outline:none;" placeholder="Laisser vide pour ne pas modifier" />
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <label style="display:block; font-size:10px; color:#64748b; text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; font-weight:600;">Cle API Anthropic</label>
+          <input type="password" id="setting-anthropic-key" style="width:100%; padding:8px; background:#0b0d12; border:1px solid #2d3148; border-radius:6px; color:#e2e8f0; font-family:monospace; font-size:12px; box-sizing:border-box; outline:none;" placeholder="Laisser vide pour ne pas modifier" />
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <label style="display:block; font-size:10px; color:#64748b; text-transform:uppercase; letter-spacing:.05em; margin-bottom:10px; font-weight:600;">Services Actifs au Demarrage</label>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#cbd5e1; cursor:pointer;"><input type="checkbox" id="svc-qdrant" checked /> Qdrant DB (6333)</label>
+            <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#cbd5e1; cursor:pointer;"><input type="checkbox" id="svc-router" checked /> Gemini Router (20130)</label>
+            <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#cbd5e1; cursor:pointer;"><input type="checkbox" id="svc-api" checked /> Dashboard API (20129)</label>
+            <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#cbd5e1; cursor:pointer;"><input type="checkbox" id="svc-headroom" checked /> Headroom (8787)</label>
+            <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#cbd5e1; cursor:pointer;"><input type="checkbox" id="svc-hermes" checked /> Hermes Daemon</label>
+            <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#cbd5e1; cursor:pointer;"><input type="checkbox" id="svc-repowise" checked /> Repowise Server</label>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content: flex-end;">
+          <button onclick="saveSettings()" style="background:#6366f1; border:none; color:white; padding:8px 16px; border-radius:6px; font-weight:600; cursor:pointer; font-family:inherit; font-size:12px; transition: background .2s;" onmouseover="this.style.background='#4f46e5'" onmouseout="this.style.background='#6366f1'">Enregistrer</button>
+        </div>
+      </div>
+    </div>
 
   <!-- Colonne 3 : Infrastructure -->
   <div class="column" style="background:#0b0d12">
@@ -800,9 +856,117 @@ document.addEventListener('click', function(e) {
 updateTimestamp();
 setInterval(updateTimestamp, 1000);
 
-// Rafraîchir le tableau de bord immédiatement puis toutes les 15 secondes de façon fluide
+let currentTab = 'tasks';
+let refreshIntervalId = null;
+let currentRefreshRate = 15000;
+
+function switchTab(tab) {
+  currentTab = tab;
+  const tasksTitle = document.getElementById('tab-tasks-title');
+  const settingsTitle = document.getElementById('tab-settings-title');
+  const tasksContent = document.getElementById('tab-tasks-content');
+  const settingsContent = document.getElementById('tab-settings-content');
+  const filters = document.getElementById('pipeline-filters');
+
+  if (tab === 'tasks') {
+    tasksTitle.style.color = '#6366f1';
+    tasksTitle.style.borderBottom = '2px solid #6366f1';
+    settingsTitle.style.color = '#475569';
+    settingsTitle.style.borderBottom = 'none';
+    
+    tasksContent.style.display = 'flex';
+    settingsContent.style.display = 'none';
+    if (filters) filters.style.display = 'flex';
+    
+    refreshDashboard();
+  } else {
+    settingsTitle.style.color = '#6366f1';
+    settingsTitle.style.borderBottom = '2px solid #6366f1';
+    tasksTitle.style.color = '#475569';
+    tasksTitle.style.borderBottom = 'none';
+    
+    tasksContent.style.display = 'none';
+    settingsContent.style.display = 'flex';
+    if (filters) filters.style.display = 'none';
+    
+    loadSettings();
+  }
+}
+
+function loadSettings() {
+  fetch(`${API_BASE}/api/settings`)
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById('setting-active-client').value = data.active_client || 'antigravity';
+      document.getElementById('setting-refresh-rate').value = data.auto_refresh_seconds !== undefined ? data.auto_refresh_seconds : 15;
+      document.getElementById('setting-gemini-key').value = data.gemini_api_key || '';
+      document.getElementById('setting-anthropic-key').value = data.anthropic_api_key || '';
+      
+      const svcs = data.services || {};
+      document.getElementById('svc-qdrant').checked = svcs.qdrant !== false;
+      document.getElementById('svc-router').checked = svcs.gemini_router !== false;
+      document.getElementById('svc-api').checked = svcs.dashboard_api !== false;
+      document.getElementById('svc-headroom').checked = svcs.headroom !== false;
+      document.getElementById('svc-hermes').checked = svcs.hermes_daemon !== false;
+      document.getElementById('svc-repowise').checked = svcs.repowise !== false;
+    })
+    .catch(err => console.error("Error loading settings:", err));
+}
+
+function saveSettings() {
+  const settings = {
+    active_client: document.getElementById('setting-active-client').value,
+    auto_refresh_seconds: parseInt(document.getElementById('setting-refresh-rate').value),
+    gemini_api_key: document.getElementById('setting-gemini-key').value,
+    anthropic_api_key: document.getElementById('setting-anthropic-key').value,
+    services: {
+      qdrant: document.getElementById('svc-qdrant').checked,
+      gemini_router: document.getElementById('svc-router').checked,
+      dashboard_api: document.getElementById('svc-api').checked,
+      headroom: document.getElementById('svc-headroom').checked,
+      hermes_daemon: document.getElementById('svc-hermes').checked,
+      repowise: document.getElementById('svc-repowise').checked
+    }
+  };
+
+  fetch(`${API_BASE}/api/settings`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(settings)
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      alert("Paramètres enregistrés avec succès !");
+      setupRefresh(settings.auto_refresh_seconds * 1000);
+      switchTab('tasks');
+    } else {
+      alert("Erreur lors de la sauvegarde : " + data.error);
+    }
+  })
+  .catch(err => alert("Erreur de connexion au serveur API"));
+}
+
+function setupRefresh(rateMs) {
+  if (refreshIntervalId) {
+    clearInterval(refreshIntervalId);
+    refreshIntervalId = null;
+  }
+  currentRefreshRate = rateMs;
+  if (rateMs > 0) {
+    refreshIntervalId = setInterval(() => {
+      if (currentTab === 'tasks') {
+        refreshDashboard();
+      }
+    }, rateMs);
+  }
+}
+
+// Rafraîchir le tableau de bord immédiatement puis toutes les 15 secondes (ou le taux configuré)
+setupRefresh(15000);
 refreshDashboard();
-setInterval(refreshDashboard, 15000);
 </script>
 <div id="details-bubble"></div>
 

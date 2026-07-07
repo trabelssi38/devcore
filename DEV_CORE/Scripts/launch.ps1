@@ -200,6 +200,40 @@ if (-not (Check-Port 8787)) {
     Log "  Headroom Proxy OK (Port 8787 actif)" "Green"
 }
 
+# 2.4 Repowise Server (Port 7337)
+if (-not (Check-Port 7337)) {
+    Log "  Repowise Server (Port 7337) est hors-ligne. Tentative de demarrage..." "Yellow"
+    $repowisePath = "C:\Users\trb_m\AppData\Roaming\Python\Python313\Scripts\repowise.exe"
+    if (-not (Test-Path $repowisePath)) { $repowisePath = "repowise" }
+    
+    $logOut = "$DEV_CORE_DATA\Logs\scripts\repowise.log"
+    $logErr = "$DEV_CORE_DATA\Logs\scripts\repowise_err.log"
+    
+    # Set mock embedder env var to bypass prompting on serve
+    $env:REPOWISE_EMBEDDER = "mock"
+    
+    $proc = Start-Process -FilePath $repowisePath -ArgumentList "serve --ui-port 3100 --host localhost" -WorkingDirectory "C:\devcore" -WindowStyle Hidden -RedirectStandardOutput $logOut -RedirectStandardError $logErr -PassThru -ErrorAction SilentlyContinue
+    
+    # Attendre que le port s'ouvre (timeout 15s)
+    $repowiseOpen = $false
+    for ($i = 0; $i -lt 30; $i++) {
+        Start-Sleep -Milliseconds 500
+        if (Check-Port 7337) {
+            $repowiseOpen = $true
+            break
+        }
+    }
+    
+    if ($repowiseOpen) {
+        Log "  Repowise Server lance avec succes (API: 7337, UI: 3100)" "Green"
+    } else {
+        Log "  [WARN] Repowise Server n'a pas repondu sur le port 7337 apres 15s." "Yellow"
+    }
+} else {
+    Log "  Repowise Server OK (Port 7337 actif)" "Green"
+}
+
+
 # 3. Memory
 Log "3/8 Memoire" "Cyan"
 $memPath = "$DEV_CORE_DATA\Memory\MEMORY.md"
