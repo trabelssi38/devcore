@@ -284,8 +284,9 @@ def main():
 
                 # Task statistics
                 for tid, tdata in session_task_tokens.items():
-                    if tid not in tasks_data:
-                        tasks_data[tid] = {
+                    task_key = f"{detected_project}_{tid}"
+                    if task_key not in tasks_data:
+                        tasks_data[task_key] = {
                             "project": detected_project,
                             "tokens": 0,
                             "cache_hits": 0,
@@ -294,11 +295,11 @@ def main():
                             "cost_usd": 0.0
                         }
                     t_cost = ((tdata["tokens"] - tdata["cache_hits"]) * 0.000003) + (tdata["cache_hits"] * 0.00000045) + (tdata["output_tokens"] * 0.000015)
-                    tasks_data[tid]["tokens"] += tdata["tokens"]
-                    tasks_data[tid]["cache_hits"] += tdata["cache_hits"]
-                    tasks_data[tid]["output_tokens"] += tdata["output_tokens"]
-                    tasks_data[tid]["turns"] += tdata["turns"]
-                    tasks_data[tid]["cost_usd"] += t_cost
+                    tasks_data[task_key]["tokens"] += tdata["tokens"]
+                    tasks_data[task_key]["cache_hits"] += tdata["cache_hits"]
+                    tasks_data[task_key]["output_tokens"] += tdata["output_tokens"]
+                    tasks_data[task_key]["turns"] += tdata["turns"]
+                    tasks_data[task_key]["cost_usd"] += t_cost
 
     totals["duration_minutes"] = int(totals["duration_seconds"] // 60)
     totals["cost_usd"] = round(totals["cost_usd"], 4)

@@ -53,6 +53,16 @@ if (Test-Path $MEMORY_DIR) {
                 if ($d -and $d -gt $lastDate) { $lastDate = $d }
             }
 
+            $projTokensStr = ""
+            if ($tokenSummary -and $tokenSummary.projects -and $tokenSummary.projects.PSObject.Properties[$folder.Name]) {
+                $projStats = $tokenSummary.projects.PSObject.Properties[$folder.Name].Value
+                $pTokens = [double]$projStats.tokens
+                $pTokensStr = if ($pTokens -gt 1000000) { "$([math]::Round($pTokens/1000000, 2))M" } else { "$([math]::Round($pTokens/1000, 1))K" }
+                $pCost = [double]$projStats.cost_usd
+                $pCostFormatted = '{0:F2}' -f $pCost
+                $projTokensStr = "$pTokensStr tokens | `$$pCostFormatted"
+            }
+
             $projects += [PSCustomObject]@{
                 Name        = $folder.Name
                 ActiveTask  = $activeId
@@ -61,6 +71,7 @@ if (Test-Path $MEMORY_DIR) {
                 Steps       = $activeSteps
                 Tasks       = $board.tasks
                 LastDate    = $lastDate
+                Tokens      = $projTokensStr
             }
         }
     }
@@ -91,6 +102,7 @@ foreach ($p in $projects) {
       <div style="font-size:9.5px; font-family:'JetBrains Mono',monospace; color:#64748b; padding-left:16px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">
         $activeTaskHtml
       </div>
+      $(if ($p.Tokens) { "<div style='font-size:9px; color:#475569; padding-left:16px; margin-top:2px; font-family:''JetBrains Mono'',monospace;'>$($p.Tokens)</div>" })
     </div>
     <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0;">
       <div style="font-size:11px; font-weight:600; color:#cbd5e1; display:flex; align-items:center; gap:6px;">
@@ -129,8 +141,16 @@ foreach ($p in $projects) {
             # Badges de tokens et coûts pour la tâche
             $taskTokensStr = ""
             $taskCostStr = ""
-            if ($tokenSummary -and $tokenSummary.tasks -and $tokenSummary.tasks.PSObject.Properties[$t.id]) {
-                $taskStats = $tokenSummary.tasks.PSObject.Properties[$t.id].Value
+            $taskKey = "$($p.Name)_$($t.id)"
+            $taskStats = $null
+            if ($tokenSummary -and $tokenSummary.tasks) {
+                if ($tokenSummary.tasks.PSObject.Properties[$taskKey]) {
+                    $taskStats = $tokenSummary.tasks.PSObject.Properties[$taskKey].Value
+                } elseif ($tokenSummary.tasks.PSObject.Properties[$t.id]) {
+                    $taskStats = $tokenSummary.tasks.PSObject.Properties[$t.id].Value
+                }
+            }
+            if ($taskStats) {
                 $tTokens = [double]$taskStats.tokens
                 $tTokensStr = if ($tTokens -gt 1000000) { "$([math]::Round($tTokens/1000000, 2))M" } else { "$([math]::Round($tTokens/1000, 1))K" }
                 $tCost = [double]$taskStats.cost_usd
