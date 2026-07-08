@@ -15,6 +15,19 @@ function Log { param($msg,$color="Gray")
     Write-Host "    $l" -ForegroundColor $color
 }
 
+function Set-TaskProperty {
+    param(
+        [Parameter(Mandatory=$true)]$Task,
+        [Parameter(Mandatory=$true)][string]$Name,
+        $Value
+    )
+    if ($Task.PSObject.Properties[$Name]) {
+        $Task.$Name = $Value
+    } else {
+        $Task | Add-Member -NotePropertyName $Name -NotePropertyValue $Value -Force
+    }
+}
+
 Log "task_git_scanner -- analyse commits" "Cyan"
 
 # Résoudre le dépôt du projet actif (pas forcément C:\devcore)
@@ -102,6 +115,9 @@ try {
             }
             Log "TAG MANQUANT : $tag -> $($foundTags[$tag].title)" "Yellow"
         } else {
+            Set-TaskProperty -Task $exists -Name "source" -Value "git"
+            Set-TaskProperty -Task $exists -Name "commit_hash" -Value $foundTags[$tag].hash
+            Set-TaskProperty -Task $exists -Name "committed_at" -Value $foundTags[$tag].date
             # Si le titre est générique ou a changé, on le met à jour
             if ($exists.title -match "Session de travail auto" -or ($exists.title -ne $foundTags[$tag].title -and $foundTags[$tag].title -ne "")) {
                 $oldTitle = $exists.title
@@ -157,5 +173,3 @@ try {
 } finally {
     Pop-Location
 }
-
-

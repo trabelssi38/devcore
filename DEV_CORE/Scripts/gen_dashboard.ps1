@@ -9,6 +9,27 @@ $OUTPUT_FILE   = "$DASHBOARD_DIR\index.html"
 $MEMORY_DIR    = "$DEV_CORE_DATA\Memory"
 $inv           = [System.Globalization.CultureInfo]::InvariantCulture
 
+function Get-TaskDate {
+    param($Task)
+
+    foreach ($prop in @("committed_at", "completed_at", "started_at", "updated_at", "created_at")) {
+        if ($Task.PSObject.Properties[$prop] -and $Task.$prop) {
+            try { return ([datetimeoffset]::Parse($Task.$prop, $inv)).LocalDateTime } catch {}
+            try { return [datetime]::Parse($Task.$prop, $inv) } catch {}
+        }
+    }
+
+    return [datetime]::MinValue
+}
+
+function Get-TaskIdNumber {
+    param($Task)
+    if ($Task.id) {
+        try { return [int]($Task.id -replace "\D", "") } catch {}
+    }
+    return 0
+}
+
 # 0. Rafraîchir les métriques de tokens en temps réel
 try {
     & python "$DEV_CORE\Scripts\Auto\token_report.py" 2>&1 | Out-Null
@@ -47,9 +68,7 @@ if (Test-Path $MEMORY_DIR) {
 
             $lastDate = [datetime]::MinValue
             foreach ($t in $board.tasks) {
-                $d = $null
-                if ($t.PSObject.Properties["started_at"] -and $t.started_at) { try { $d = [datetime]::Parse($t.started_at) } catch {} }
-                if (-not $d -and $t.PSObject.Properties["completed_at"] -and $t.completed_at) { try { $d = [datetime]::Parse($t.completed_at) } catch {} }
+                $d = Get-TaskDate $t
                 if ($d -and $d -gt $lastDate) { $lastDate = $d }
             }
 
@@ -119,19 +138,20 @@ foreach ($p in $projects) {
     $tasksHtml += "<details open class='project-tasks-group' data-project='$($p.Name)'><summary><h2 style='color:#6366f1; cursor:pointer; padding:5px; background:#1a1d27; border-radius:4px;'>Projet : $($p.Name)</h2></summary><div style='padding: 10px 0;'>`n"
     
     $groups = $p.Tasks | Group-Object worktree | Sort-Object {
+        $maxDate = [datetime]::MinValue
         $maxId = 0
         foreach ($t in $_.Group) {
-            if ($t.id) {
-                $idNum = [int]($t.id -replace "\D", "")
-                if ($idNum -gt $maxId) { $maxId = $idNum }
-            }
+            $taskDateForSort = Get-TaskDate $t
+            if ($taskDateForSort -gt $maxDate) { $maxDate = $taskDateForSort }
+            $idNum = Get-TaskIdNumber $t
+            if ($idNum -gt $maxId) { $maxId = $idNum }
         }
-        $maxId
+        "{0:yyyyMMddHHmmssffff}_{1:D8}" -f $maxDate, $maxId
     } -Descending
     foreach ($group in $groups) {
         $tasksHtml += "<details open style='margin-left: 15px; margin-bottom: 10px; border-left: 2px solid #2d3148; padding-left: 12px;'><summary><h3 style='font-size:11px; color:#94a3b8; margin-bottom:8px;'>Worktree: $($group.Name)</h3></summary>`n"
         
-        $sortedTasks = $group.Group | Sort-Object { [int]($_.id -replace "\D", "") } -Descending
+        $sortedTasks = $group.Group | Sort-Object @{ Expression = { Get-TaskDate $_ }; Descending = $true }, @{ Expression = { Get-TaskIdNumber $_ }; Descending = $true }
         foreach ($t in $sortedTasks) {
             $badgeClass = switch ($t.status) { "done"{"done"}; "active"{"active"}; default{"todo"} }
             $badgeText  = $t.status.ToUpper()
@@ -180,20 +200,27 @@ foreach ($p in $projects) {
             }
 
             # Gestion de la date pour le filtrage JS
-            $taskDate = if ($t.PSObject.Properties["started_at"] -and $t.started_at) { $t.started_at } elseif ($t.PSObject.Properties["completed_at"] -and $t.completed_at) { $t.completed_at } else { (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss") }
+            $taskDateValue = Get-TaskDate $t
+            $taskDate = if ($taskDateValue -gt [datetime]::MinValue) { $taskDateValue.ToString("yyyy-MM-ddTHH:mm:ss") } else { (Get-Date).ToString("yyyy-MM-ddTHH:mm:ss") }
 
             # Formatage des dates pour l'affichage
             $datesHtml = ""
+            $commitDate = ""
             $startDate = ""
             $endDate = ""
+            if ($t.PSObject.Properties["committed_at"] -and $t.committed_at) {
+                try { $commitDate = "Commit: " + ([datetimeoffset]::Parse($t.committed_at, $inv)).LocalDateTime.ToString("yyyy-MM-dd HH:mm:ss") } catch { }
+            }
             if ($t.PSObject.Properties["started_at"] -and $t.started_at) {
                 try { $startDate = "Debut: " + [datetime]::Parse($t.started_at).ToString("yyyy-MM-dd HH:mm:ss") } catch { }
             }
             if ($t.PSObject.Properties["completed_at"] -and $t.completed_at) {
                 try { $endDate = "Fin: " + [datetime]::Parse($t.completed_at).ToString("yyyy-MM-dd HH:mm:ss") } catch { }
             }
-            if ($startDate -or $endDate) {
+            if ($commitDate -or $startDate -or $endDate) {
                 $datesHtml = "<div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>"
+                if ($commitDate) { $datesHtml += $commitDate }
+                if ($commitDate -and ($startDate -or $endDate)) { $datesHtml += " | " }
                 if ($startDate) { $datesHtml += $startDate }
                 if ($startDate -and $endDate) { $datesHtml += " | " }
                 if ($endDate) { $datesHtml += $endDate }
@@ -221,7 +248,7 @@ foreach ($p in $projects) {
       $datesHtml
     </div>
   </div>
-  $stepsDetailHtml
+$stepsDetailHtml
 </div>
 "@
         }
