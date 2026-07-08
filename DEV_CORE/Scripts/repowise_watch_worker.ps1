@@ -8,6 +8,7 @@ param(
 
 $ErrorActionPreference = "Continue"
 $env:PYTHONIOENCODING = if ($env:PYTHONIOENCODING) { $env:PYTHONIOENCODING } else { "utf-8" }
+$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 
 New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
 $safeName = $ProjectName -replace '[\\/:*?"<>| ]', '_'
@@ -29,6 +30,13 @@ try {
     }
 
     $env:REPOWISE_EMBEDDER = if ($env:REPOWISE_EMBEDDER) { $env:REPOWISE_EMBEDDER } else { "mock" }
+
+    $webLanguagesPatchPath = Join-Path $DEV_CORE "Scripts\ensure_repowise_web_languages.ps1"
+    if (Test-Path $webLanguagesPatchPath) {
+        Log "REGISTRY patch web languages"
+        & $webLanguagesPatchPath -Quiet *>> $logPath
+        Log "REGISTRY patch exit=$LASTEXITCODE"
+    }
 
     $statePath = Join-Path $resolvedProjectPath ".repowise\state.json"
     if (-not (Test-Path $statePath)) {

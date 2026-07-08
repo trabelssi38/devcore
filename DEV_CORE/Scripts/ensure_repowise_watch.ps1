@@ -15,6 +15,7 @@ $MemoryDir = Join-Path $DEV_CORE_DATA "Memory"
 $LogDir = Join-Path $DEV_CORE_DATA "Logs\scripts\repowise_watch"
 $StatePath = Join-Path $DEV_CORE_DATA "Logs\scripts\repowise_watch_state.json"
 $WorkerPath = Join-Path $DEV_CORE "Scripts\repowise_watch_worker.ps1"
+$WebLanguagesPatchPath = Join-Path $DEV_CORE "Scripts\ensure_repowise_web_languages.ps1"
 $ProjectRegistryPath = Join-Path $DEV_CORE "Config\projects.json"
 
 function Resolve-Repowise {
@@ -160,6 +161,15 @@ $resolvedRepowise = Resolve-Repowise -RequestedPath $RepowisePath
 if (-not $resolvedRepowise) {
     Write-Host "[DEV_CORE] Repowise watch ERROR -- repowise executable not found"
     exit 1
+}
+
+if (Test-Path $WebLanguagesPatchPath) {
+    try {
+        & $WebLanguagesPatchPath -Quiet
+        Write-Host "[DEV_CORE] Repowise registry OK -- web languages enabled"
+    } catch {
+        Write-Host "[DEV_CORE] Repowise registry WARN -- $($_.Exception.Message)"
+    }
 }
 
 $projectStates = @()

@@ -1,6 +1,7 @@
 # ensure_repowise_web_languages.ps1 -- add web/source passthrough languages to local Repowise
 param(
-    [string]$Python = "python"
+    [string]$Python = "python",
+    [switch]$Quiet
 )
 
 $ErrorActionPreference = "Stop"
@@ -76,8 +77,8 @@ from ..spec import LanguageSpec
 
 SPEC = LanguageSpec(
     tag="html",
-    display_name="HTML",
-    extensions=frozenset({".html", ".htm"}),
+    display_name="HTML / Web Markup",
+    extensions=frozenset({".html", ".htm", ".vue", ".svelte", ".astro"}),
     is_code=True,
     is_passthrough=True,
     entry_stems=("index", "app", "main"),
@@ -91,8 +92,8 @@ from ..spec import LanguageSpec
 
 SPEC = LanguageSpec(
     tag="css",
-    display_name="CSS",
-    extensions=frozenset({".css", ".scss", ".sass", ".less"}),
+    display_name="CSS / Stylesheets",
+    extensions=frozenset({".css", ".scss", ".sass", ".less", ".pcss", ".postcss"}),
     is_code=True,
     is_passthrough=True,
     color_hex="#563D7C",
@@ -146,13 +147,26 @@ Write-Utf8NoBom -Path $modelsPath -Content $models
 $verify = @"
 from repowise.core.ingestion.languages.registry import REGISTRY
 from repowise.core.ingestion.models import EXTENSION_TO_LANGUAGE
-required = {'.html': 'html', '.css': 'css', '.ps1': 'powershell'}
+required = {
+    '.html': 'html',
+    '.vue': 'html',
+    '.svelte': 'html',
+    '.astro': 'html',
+    '.css': 'css',
+    '.scss': 'css',
+    '.less': 'css',
+    '.ps1': 'powershell',
+}
 for ext, tag in required.items():
     assert REGISTRY.all_extensions().get(ext) == tag, (ext, REGISTRY.all_extensions().get(ext))
     assert EXTENSION_TO_LANGUAGE.get(ext) == tag, (ext, EXTENSION_TO_LANGUAGE.get(ext))
 print('Repowise web languages OK')
 "@
-& $Python -c $verify
+if ($Quiet) {
+    & $Python -c $verify | Out-Null
+} else {
+    & $Python -c $verify
+}
 if ($LASTEXITCODE -ne 0) {
     throw "Repowise web language verification failed"
 }

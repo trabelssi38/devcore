@@ -754,6 +754,20 @@ Le script écrit une entrée `repowise` dans :
 
 Le binaire Repowise est résolu via `REPOWISE_EXE`, puis via les chemins Python utilisateur connus, puis via `PATH`.
 
+### Couverture registry globale
+
+DEV_CORE execute `ensure_repowise_web_languages.ps1` avant le lancement des watchers Repowise. Le script enrichit l'installation Python Repowise locale, donc la couverture s'applique a tous les repos scannes avec ce meme binaire, pas seulement au repo `devcore`.
+
+Langages ajoutes en passthrough indexable :
+
+| Famille | Extensions |
+|---|---|
+| HTML / web markup | `.html`, `.htm`, `.vue`, `.svelte`, `.astro` |
+| CSS / stylesheets | `.css`, `.scss`, `.sass`, `.less`, `.pcss`, `.postcss` |
+| PowerShell | `.ps1`, `.psm1`, `.psd1` |
+
+Ces fichiers entrent dans le graphe, le git index, les metriques et les lectures MCP par plage (`get_symbol("path:line-line")`). Les reponses synthetiques `get_answer()` restent dependantes des pages wiki ; avec `--index-only --no-docs`, les pages LLM ne sont pas generees.
+
 ### Registre projets
 
 Les projets surveillés sont définis dans :

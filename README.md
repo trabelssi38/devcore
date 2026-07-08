@@ -150,6 +150,11 @@ Les clients déjà ouverts doivent être redémarrés pour charger le MCP.
 
 `launch.ps1` exécute aussi `ensure_repowise_watch.ps1`, qui démarre un watcher par projet déclaré dans `DEV_CORE\Config\projects.json`.
 
+Avant chaque scan, DEV_CORE exécute `ensure_repowise_web_languages.ps1`. Ce script enrichit la registry locale Repowise pour tous les repos scannés avec ce binaire :
+- HTML / web markup : `.html`, `.htm`, `.vue`, `.svelte`, `.astro`
+- CSS / stylesheets : `.css`, `.scss`, `.sass`, `.less`, `.pcss`, `.postcss`
+- PowerShell : `.ps1`, `.psm1`, `.psd1`
+
 Chaque worker :
 1. exécute un `repowise update --index-only --no-docs --no-workspace`;
 2. lance `repowise watch --no-workspace`;
