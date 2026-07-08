@@ -20,6 +20,7 @@ Write-Host "  =======================================" -ForegroundColor DarkGray
 Log "1/8 Adaptation client ($Client)" "Cyan"
 & "$DEV_CORE\Scripts\adapt_client.ps1" -Client $Client
 & "$DEV_CORE\Scripts\ensure_repowise_mcp.ps1" -RepoRoot "C:\devcore"
+& "$DEV_CORE\Scripts\ensure_repowise_web_languages.ps1"
 & "$DEV_CORE\Scripts\ensure_repowise_watch.ps1" -RepoRoot "C:\devcore"
 
 # 2. Services check & launch (Qdrant, Gemini Router)
@@ -319,4 +320,3 @@ if ($Project) { Write-Host "  ||  Projet : $($Project.PadRight(29))||" -Foregrou
 Write-Host "  ||  dc help pour la liste des commandes  ||" -ForegroundColor Gray
 Write-Host "  ========================================" -ForegroundColor Green
 Write-Host ""
-
