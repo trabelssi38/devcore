@@ -1,9 +1,9 @@
-# DEV_CORE v9 — README
+﻿# DEV_CORE v9 — README
 
 **Single Client Mode** — Plateforme d'orchestration IA pour le développement logiciel
 
-Version : 9.0.0  
-Updated : 2026-07-01  
+Version : 9.2.0
+Updated : 2026-07-08
 Mode : Single Client (pas de handoffs multi-agents)
 
 ---
@@ -87,6 +87,12 @@ C:\devcore\
 - `dc new project [nom] -stack [x]` — Init projet
 - `dc link project [nom]` — Lier projet existant
 
+### Repowise
+- `DEV_CORE\Scripts\ensure_repowise_mcp.ps1` — Configure Repowise MCP pour Codex, Claude Code, Gemini/Antigravity et opencode
+- `DEV_CORE\Scripts\ensure_repowise_watch.ps1` — Lance le scan continu Repowise des projets déclarés
+- `DEV_CORE\Scripts\ensure_repowise_watch.ps1 -StatusOnly` — Affiche les watchers actifs
+- `DEV_CORE\Scripts\ensure_repowise_watch.ps1 -Stop` — Arrête les watchers
+
 ---
 
 ## 📊 Dashboard
@@ -125,6 +131,34 @@ Obsidian Vault (notes structurées)
 
 ---
 
+## 🧭 Repowise
+
+DEV_CORE configure Repowise automatiquement au lancement pour exposer le MCP et maintenir l'index de code à jour.
+
+### MCP multi-client
+
+`launch.ps1` exécute `ensure_repowise_mcp.ps1`, qui écrit une entrée `repowise` dans les configurations de :
+- Codex global et projet
+- Claude Code
+- Gemini / Antigravity
+- opencode
+- `.mcp.json` projet
+
+Les clients déjà ouverts doivent être redémarrés pour charger le MCP.
+
+### Scan continu
+
+`launch.ps1` exécute aussi `ensure_repowise_watch.ps1`, qui démarre un watcher par projet déclaré dans `DEV_CORE\Config\projects.json`.
+
+Chaque worker :
+1. exécute un `repowise update --index-only --no-docs --no-workspace`;
+2. lance `repowise watch --no-workspace`;
+3. écrit ses logs dans `DEV_CORE_DATA\Logs\scripts\repowise_watch\`.
+
+Le démarrage est idempotent : relancer `dc launch` ne crée pas de doublons.
+
+---
+
 ## 🛠️ Skills
 
 **Core skills actifs** :
@@ -145,6 +179,13 @@ Voir : `C:\devcore\DEV_CORE\docs\PLATFORM_DOCUMENTATION.md`
 ---
 
 ## 🔄 Changelog v9
+
+### 2026-07-08 — v9.2 Repowise MCP & Continuous Watch
+
+- ✅ **MCP Repowise multi-client** : configuration automatique pour Codex, Claude Code, Gemini/Antigravity, opencode et `.mcp.json`.
+- ✅ **Watch continu des projets DEV_CORE** : démarrage idempotent de `repowise watch` pour chaque projet déclaré.
+- ✅ **Registre projets** : ajout de `DEV_CORE\Config\projects.json`, maintenu par `new_project.ps1`.
+- ✅ **Contrôle opérationnel** : scripts `ensure_repowise_watch.ps1` et `repowise_watch_worker.ps1` avec logs et statut.
 
 ### 2026-07-06 — v9.1 Ollama & 9Router Removal & Direct Gemini Routing
 
@@ -221,8 +262,8 @@ Voir : `C:\devcore\DEV_CORE\docs\PLATFORM_DOCUMENTATION.md`
 - ✅ **Tri Dynamique de l'Activité** : Tri automatique des projets du Cockpit par date de tâche la plus récente, mettant le projet actif et ses modifications récentes en premier lieu.
 - ✅ **Robustesse des Chemins des Hooks** : Correction des chemins relatifs de `gen_dashboard.ps1` via `$PSScriptRoot` dans les scripts de transition de tâche (`task_done`, `task_step_done`, `task_pause`, `task_edit`) pour garantir un rafraîchissement immédiat et sans erreur du tableau de bord.
 
-**Avant** : Multi-client (claude → codex → antigravity)  
-**Après** : Single client (claude + Gemini Router)  
+**Avant** : Multi-client (claude → codex → antigravity)
+**Après** : Single client (claude + Gemini Router)
 **Gain** : Simplicité, pas de handoffs, routing direct Gemini
 
 ---

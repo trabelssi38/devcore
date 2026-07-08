@@ -1,11 +1,11 @@
-# DEV_CORE v7 — Documentation Complète
+# DEV_CORE v9.2 — Documentation Complète
 
 > **Single Client Mode** — Plateforme d'orchestration IA pour le développement logiciel
 > 
 > Gère la mémoire persistante, le cycle de vie des tâches (Tasks), les modes cognitifs (reasoning/coding/bulk), et les compétences (skills) réutilisables.
 
-**Version** : 7.2
-**Updated** : 2026-05-22
+**Version** : 9.2
+**Updated** : 2026-07-08
 **Mode** : Single Client (Multi-Projets / Zero Switch)
 
 ---
@@ -24,8 +24,9 @@
 10. [Hermes Agent Integration](#10-hermes-agent-integration)
 11. [Dashboard](#11-dashboard)
 12. [Automation Hooks v6.1](#12-automation-hooks-v61)
-27. [Token Optimization Stack](#13-token-optimization-stack)
-28. [Architecture Multi-Projets](#14-architecture-multi-projets-zero-switch)
+13. [Token Optimization Stack](#13-token-optimization-stack)
+14. [Architecture Multi-Projets](#14-architecture-multi-projets-zero-switch)
+15. [Repowise MCP et scan continu](#15-repowise-mcp-et-scan-continu)
 
 ---
 
@@ -100,6 +101,7 @@ C:\devcore\
 │   ├── Config\                 # Configuration
 │   │   ├── CLAUDE.md           # Instructions Claude
 │   │   ├── ROUTER.md           # Détection modes
+│   │   ├── projects.json       # Registre projets DEV_CORE
 │   │   ├── PATHS.md            # Chemins de référence
 │   │   └── hermes_context.md   # Contexte Hermes
 │   ├── Dashboard\              # Dashboard HTML
@@ -209,6 +211,9 @@ T-01 (reasoning) → T-02 (coding) → T-03 (bulk) → T-04 (reasoning)
 | `task_sync.ps1` | `dc task sync` | Sync suggestions |
 | `diagnose.ps1` | `dc check` | Diagnostic complet |
 | `hermes-daemon.ps1` | `-Install|-Start|-Status` | Daemon Hermes |
+| `ensure_repowise_mcp.ps1` | launch | Configure Repowise MCP pour Codex, Claude, Gemini/Antigravity et opencode |
+| `ensure_repowise_watch.ps1` | launch / manuel | Démarre, vérifie ou arrête les watchers Repowise des projets déclarés |
+| `repowise_watch_worker.ps1` | interne | Worker long-running `repowise update` + `repowise watch` par projet |
 
 ### Scripts automatiques (Auto/)
 
@@ -722,7 +727,113 @@ DEV_CORE v6.3 introduit une architecture **Multi-Projets / Zero Config**, où ch
 
 ---
 
+## 15. Repowise MCP et scan continu
+
+### Objectif
+
+Repowise fournit l'intelligence codebase utilisée par les agents : wiki, symboles, graphes, risques, décisions, dead code et recherche enrichie. DEV_CORE garantit maintenant deux choses au lancement :
+
+1. le MCP Repowise est déclaré dans les clients utilisés avec DEV_CORE ;
+2. les projets déclarés sont scannés en continu par Repowise.
+
+### Configuration MCP multi-client
+
+`launch.ps1` exécute `ensure_repowise_mcp.ps1`.
+
+Le script écrit une entrée `repowise` dans :
+
+| Client | Fichier |
+|---|---|
+| Codex global | `C:\Users\trb_m\.codex\config.toml` |
+| Codex projet | `C:\devcore\.codex\config.toml` |
+| Claude Code | `C:\Users\trb_m\.claude\settings.json` |
+| MCP projet | `C:\devcore\.mcp.json` |
+| Gemini | `C:\Users\trb_m\.gemini\settings.json` |
+| Antigravity | `C:\Users\trb_m\.gemini\antigravity\settings.json` et `mcp_config.json` |
+| opencode | `C:\Users\trb_m\.config\opencode\opencode.json` |
+
+Le binaire Repowise est résolu via `REPOWISE_EXE`, puis via les chemins Python utilisateur connus, puis via `PATH`.
+
+### Registre projets
+
+Les projets surveillés sont définis dans :
+
+```text
+C:\devcore\DEV_CORE\Config\projects.json
+```
+
+Format :
+
+```json
+{
+  "projects": [
+    { "name": "devcore", "path": "C:/devcore" },
+    { "name": "job_tracker", "path": "C:/src/job_tracker" }
+  ]
+}
+```
+
+`new_project.ps1` écrit aussi le champ `path` dans `.devcore\project.json` et met à jour ce registre pour les nouveaux projets ou projets liés.
+
+### Scan continu
+
+`launch.ps1` exécute `ensure_repowise_watch.ps1`.
+
+Le script :
+
+1. lit les projets dans `DEV_CORE_DATA\Memory\<projet>\tasks.json`;
+2. résout leur chemin via `Config\projects.json`, `.devcore\project.json`, puis les racines candidates `C:\devcore` et `C:\src`;
+3. démarre un `repowise_watch_worker.ps1` par projet ;
+4. évite les doublons en inspectant les processus PowerShell déjà lancés ;
+5. écrit un état dans `DEV_CORE_DATA\Logs\scripts\repowise_watch_state.json`.
+
+Chaque worker exécute :
+
+```powershell
+repowise update --index-only --no-docs --no-workspace <project-path>
+repowise watch --no-workspace <project-path>
+```
+
+`--index-only` maintient le graphe, les symboles, l'historique git et le dead-code sans générer de documentation LLM. `--no-workspace` force un scope par projet déclaré et évite de scanner des sous-repos non déclarés.
+
+### Commandes opérationnelles
+
+```powershell
+# Statut watchers
+powershell -File C:\devcore\DEV_CORE\Scripts\ensure_repowise_watch.ps1 -StatusOnly
+
+# Arrêter tous les watchers
+powershell -File C:\devcore\DEV_CORE\Scripts\ensure_repowise_watch.ps1 -Stop
+
+# Relancer les watchers
+powershell -File C:\devcore\DEV_CORE\Scripts\ensure_repowise_watch.ps1
+```
+
+Logs :
+
+```text
+C:\devcore\DEV_CORE_DATA\Logs\scripts\repowise_watch\
+```
+
+### Comportement attendu
+
+- `dc launch` configure MCP + watchers.
+- Relancer `dc launch` ne crée pas de doublons.
+- Les clients déjà ouverts doivent être redémarrés pour charger le MCP Repowise.
+- Le scan continu met à jour l'index de code, pas les docs LLM.
+- Les docs Repowise complètes restent une action explicite : `repowise update --docs <repo>`.
+
+---
+
 ## Changelog v9
+
+### 2026-07-08 — v9.2 Repowise MCP & Continuous Watch
+
+- ✅ Configuration MCP Repowise automatique pour Codex, Claude Code, Gemini/Antigravity, opencode et `.mcp.json`.
+- ✅ Ajout du registre `DEV_CORE\Config\projects.json`.
+- ✅ Scan continu Repowise des projets déclarés via `ensure_repowise_watch.ps1`.
+- ✅ Démarrage idempotent des watchers depuis `launch.ps1`.
+- ✅ `new_project.ps1` persiste le chemin projet et met à jour le registre global.
 
 ### 2026-07-01 — v9.0 Port Separation, CORS Resolution & HTTP Cockpit Server
 

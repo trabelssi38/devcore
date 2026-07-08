@@ -1,0 +1,14 @@
+﻿{
+    "mcpServers":  {
+                       "repowise":  {
+                                        "command":  "C:\\Users\\trb_m\\AppData\\Roaming\\Python\\Python313\\Scripts\\repowise.exe",
+                                        "args":  [
+                                                     "mcp",
+                                                     "C:/devcore",
+                                                     "--transport",
+                                                     "stdio"
+                                                 ],
+                                        "description":  "repowise: codebase intelligence -- docs, graph, git signals, dead code, decisions"
+                                    }
+                   }
+}

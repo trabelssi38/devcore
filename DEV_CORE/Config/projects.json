@@ -1,0 +1,24 @@
+{
+  "projects": [
+    {
+      "name": "devcore",
+      "path": "C:/devcore"
+    },
+    {
+      "name": "cea_dashboard",
+      "path": "C:/src/cea_dashboard"
+    },
+    {
+      "name": "dashboard_recette_br",
+      "path": "C:/src/dashboard_recette_br"
+    },
+    {
+      "name": "job_tracker",
+      "path": "C:/src/job_tracker"
+    },
+    {
+      "name": "oracle_plsq_dependency_analyzer",
+      "path": "C:/src/oracle_legacy_intelligence_platform"
+    }
+  ]
+}
