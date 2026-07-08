@@ -14,16 +14,26 @@ app = FastAPI(title="Gemini Router with Fallback")
 
 DEV_CORE = os.environ.get("DEVCORE_PLATFORM_ROOT", "C:\\devcore\\DEV_CORE")
 DEV_CORE_DATA = os.environ.get("DEVCORE_DATA_ROOT", "C:\\devcore\\DEV_CORE_DATA")
-KEY_PATH = os.path.join(DEV_CORE, "Config", "gemini_api_key.txt")
+KEY_PATH = os.environ.get(
+    "GEMINI_API_KEY_FILE",
+    os.path.join(DEV_CORE, "Config", "gemini_api_key.txt"),
+)
 
-# Charger la clé API
-if os.path.exists(KEY_PATH):
-    with open(KEY_PATH, "r", encoding="utf-8") as f:
-        API_KEY = f.read().strip()
-else:
-    API_KEY = "AQ.Ab8RN6Le1duZfe6u_nI0ur6PXxzms8pFrEmbZlvmfoJ56ury2A" # Fallback key
+def load_api_key() -> str:
+    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    if api_key:
+        return api_key.strip()
+    if os.path.exists(KEY_PATH):
+        with open(KEY_PATH, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    return ""
 
-GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/v1"
+API_KEY = load_api_key()
+
+GEMINI_BASE_URL = os.environ.get(
+    "GEMINI_BASE_URL",
+    "https://generativelanguage.googleapis.com/v1beta/openai/v1",
+)
 
 # Client HTTP asynchrone
 client = httpx.AsyncClient(timeout=60.0)
@@ -52,6 +62,18 @@ def map_for_gemini(body: dict, is_chat: bool) -> dict:
     return mapped
 
 async def call_with_fallback(path: str, body: dict, headers: dict, is_chat: bool) -> Response:
+    if not API_KEY:
+        return Response(
+            content=json.dumps({
+                "error": {
+                    "message": "GEMINI_API_KEY or GEMINI_API_KEY_FILE is required",
+                    "type": "configuration_error"
+                }
+            }),
+            status_code=503,
+            media_type="application/json"
+        )
+
     retries = 3
     delay = 1.0
     
@@ -107,6 +129,21 @@ async def chat_completions(request: Request):
         
     # Streaming avec retries et fallback
     gemini_body = map_for_gemini(body, is_chat=True)
+    if not API_KEY:
+        async def missing_key_generator():
+            yield json.dumps({
+                "error": {
+                    "message": "GEMINI_API_KEY or GEMINI_API_KEY_FILE is required",
+                    "type": "configuration_error"
+                }
+            }).encode("utf-8")
+
+        return StreamingResponse(
+            missing_key_generator(),
+            status_code=503,
+            media_type="text/event-stream"
+        )
+
     gemini_headers = {
         "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json"

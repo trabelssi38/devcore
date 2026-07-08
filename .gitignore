@@ -42,7 +42,12 @@ desktop.ini
 *.swp
 
 # Credentials
+.env
+.env.*
+!.env.example
 DEV_CORE/Config/gemini_api_key.txt
+DEV_CORE/Config/*secret*.txt
+DEV_CORE/Config/*token*.txt
 DEV_CORE/Config/settings.json
 DEV_CORE/Config/active_client.txt
 

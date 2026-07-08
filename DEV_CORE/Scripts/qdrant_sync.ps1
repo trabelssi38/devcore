@@ -42,8 +42,6 @@ function Get-GeminiEmbedding {
             $cleanText = $text -replace "`r", "" -replace "`n", " "
             if ($cleanText.Length -gt 8000) { $cleanText = $cleanText.Substring(0, 8000) }
 
-            # Get API key from env or fallback
-            $apiKey = if ($env:NINEROUTER_API_KEY) { $env:NINEROUTER_API_KEY } else { "sk-60c873dfaa73a810-kfwd8f-6f9cfc28" }
             $bodyObj = @{
                 model = "text-embedding-3-small"
                 input = $cleanText
@@ -51,8 +49,10 @@ function Get-GeminiEmbedding {
             $jsonStr = $bodyObj | ConvertTo-Json
             $bodyJson = [System.Text.Encoding]::UTF8.GetBytes($jsonStr)
 
-            $headers = @{
-                "Authorization" = "Bearer $apiKey"
+            $apiKey = if ($env:NINEROUTER_API_KEY) { $env:NINEROUTER_API_KEY } elseif ($env:DEVCORE_ROUTER_TOKEN) { $env:DEVCORE_ROUTER_TOKEN } else { "" }
+            $headers = @{}
+            if ($apiKey) {
+                $headers["Authorization"] = "Bearer $apiKey"
             }
 
             # Query Gemini Router (Port 20130)

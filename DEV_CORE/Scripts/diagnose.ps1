@@ -106,6 +106,19 @@ foreach ($s in $scripts) {
     else { Check "Script $s MANQUANT" "FAIL" "Reinstaller DEV_CORE" }
 }
 
+# 4.5 Secrets dans fichiers suivis
+$secretScan = "$DEV_CORE\Scripts\secret_scan.ps1"
+if (Test-Path $secretScan) {
+    & powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $secretScan -Path (Get-Location).Path -Quiet
+    if ($LASTEXITCODE -eq 0) {
+        Check "Secrets hardcodes absents des fichiers suivis" "OK"
+    } else {
+        Check "Secrets hardcodes detectes dans les fichiers suivis" "FAIL" "powershell -File `"$secretScan`" -Path `"$((Get-Location).Path)`""
+    }
+} else {
+    Check "Secret scan indisponible" "FAIL" "Restaurer secret_scan.ps1"
+}
+
 # 5. Task active + integrite
 $tFile = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
 if (Test-Path $tFile) {
@@ -323,5 +336,4 @@ if ($fail -gt 0)      { Write-Host "  FAIL a corriger -- dc check --fix pour aut
 elseif ($warn -gt 0)  { Write-Host "  Quasi pret -- dc check --fix pour corriger les WARN" -ForegroundColor Yellow }
 else                  { Write-Host "  100% operationnel -- autonomie complete" -ForegroundColor Green }
 Write-Host ""
-
 

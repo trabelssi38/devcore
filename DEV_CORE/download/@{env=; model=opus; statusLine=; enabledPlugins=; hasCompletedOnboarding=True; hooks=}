@@ -1,7 +1,7 @@
 ﻿{
     "env":  {
                 "ANTHROPIC_BASE_URL":  "http://localhost:20128/v1",
-                "ANTHROPIC_AUTH_TOKEN":  "sk-60c873dfaa73a810-kfwd8f-6f9cfc28",
+                "ANTHROPIC_AUTH_TOKEN":  "<set ANTHROPIC_AUTH_TOKEN in environment>",
                 "ANTHROPIC_DEFAULT_OPUS_MODEL":  "gemini-3-pro-combo",
                 "ANTHROPIC_DEFAULT_SONNET_MODEL":  "claude-sonnet-4-6-combo",
                 "ANTHROPIC_DEFAULT_HAIKU_MODEL":  "gemini-3-flash-combo"
