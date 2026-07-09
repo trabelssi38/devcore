@@ -48,6 +48,21 @@ try {
     Assert-True ($queryText -match "L2:scenario:api") "memory_hierarchy query should include scored scenario id"
     Assert-True ($queryText -match "reason=") "memory_hierarchy query should display source justifications"
 
+    $smallBlockJson = powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $contextServiceScript -Action OffloadBlock -Content "short context" -TaskId T-116 -Type context -MaxChars 100 -Json | Out-String
+    $smallBlock = $smallBlockJson | ConvertFrom-Json
+    Assert-True ($smallBlock.offloaded -eq $false) "Small context blocks should stay inline"
+    Assert-True ($smallBlock.content -eq "short context") "Small context block content should be preserved"
+
+    $largeContent = "api contract " * 20
+    $largeBlockJson = powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $contextServiceScript -Action OffloadBlock -Content $largeContent -TaskId T-116 -Type context -MaxChars 80 -Json | Out-String
+    $largeBlock = $largeBlockJson | ConvertFrom-Json
+    Assert-True ($largeBlock.offloaded -eq $true) "Large context blocks should be offloaded"
+    Assert-True ($largeBlock.node_id -match "^T116_context_") "Large context offload should return a Canvas node id"
+    Assert-True ($largeBlock.content -match "OFFLOADED context block") "Large context output should be replaced by a compact marker"
+
+    $fetched = powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File (Join-Path $PSScriptRoot "canvas_manager.ps1") -Action Fetch -NodeId $largeBlock.node_id | Out-String
+    Assert-True ($fetched -match "api contract") "Offloaded context should be fetchable from Canvas refs"
+
     Write-Host "[OK] context service smoke tests passed" -ForegroundColor Green
 } finally {
     if ($null -eq $oldDataRoot) {

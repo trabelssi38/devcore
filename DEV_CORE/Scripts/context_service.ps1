@@ -1,11 +1,15 @@
 # context_service.ps1 -- DEV_CORE v10 -- Context Service adapter
 param(
     [Parameter(Mandatory=$true)]
-    [ValidateSet("ScoreSources")]
+    [ValidateSet("ScoreSources", "OffloadBlock")]
     [string]$Action,
     [string]$Query = "",
     [string]$TaskType = "devcore",
     [double]$IncludeThreshold = 0.5,
+    [string]$Content = "",
+    [string]$TaskId = "",
+    [string]$Type = "context",
+    [int]$MaxChars = 10000,
     [switch]$Json
 )
 
@@ -13,6 +17,7 @@ $ErrorActionPreference = "Stop"
 
 $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $MEMORY_SERVICE = Join-Path $DEV_CORE "Scripts\memory_service.ps1"
+$CANVAS_MANAGER = Join-Path $DEV_CORE "Scripts\canvas_manager.ps1"
 
 function Get-FreshnessScore {
     param([string]$Path)
@@ -120,6 +125,51 @@ function New-SourceScore {
 }
 
 switch ($Action) {
+    "OffloadBlock" {
+        if (-not $TaskId) {
+            Write-Error "TaskId is required for OffloadBlock."
+            exit 1
+        }
+        $charCount = if ($Content) { $Content.Length } else { 0 }
+        if ($charCount -le $MaxChars) {
+            $payload = [pscustomobject]@{
+                schema_version = 1
+                task_id = $TaskId
+                type = $Type
+                chars = $charCount
+                max_chars = $MaxChars
+                offloaded = $false
+                node_id = $null
+                content = $Content
+            }
+        } else {
+            $offloadOutput = & $CANVAS_MANAGER -Action Offload -Content $Content -TaskId $TaskId -Type $Type 6>$null | Out-String
+            if ($offloadOutput -notmatch "OFFLOAD_SUCCESS:\s+([A-Za-z0-9_]+)") {
+                Write-Error "Canvas offload failed: $offloadOutput"
+                exit 1
+            }
+            $nodeId = $Matches[1]
+            $marker = "[OFFLOADED $Type block: $nodeId | chars=$charCount | restore: canvas_manager.ps1 -Action Fetch -NodeId $nodeId]"
+            $payload = [pscustomobject]@{
+                schema_version = 1
+                task_id = $TaskId
+                type = $Type
+                chars = $charCount
+                max_chars = $MaxChars
+                offloaded = $true
+                node_id = $nodeId
+                content = $marker
+            }
+        }
+
+        if ($Json) {
+            $payload | ConvertTo-Json -Depth 6
+        } else {
+            $payload.content
+        }
+        exit 0
+    }
+
     "ScoreSources" {
         $personaPath = & $MEMORY_SERVICE -Action Path -Name PERSONA
         $scenarioPath = & $MEMORY_SERVICE -Action Path -Name SCENARIO -TaskType $TaskType

@@ -4,6 +4,23 @@
 $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
 $CONTEXT_FILE = "$DEV_CORE_DATA\Logs\scripts\session_context.txt"
+$CONTEXT_BLOCK_MAX_CHARS = if ($env:DEVCORE_CONTEXT_BLOCK_MAX_CHARS) { [int]$env:DEVCORE_CONTEXT_BLOCK_MAX_CHARS } else { 10000 }
+
+function Resolve-ContextBlock {
+    param(
+        [string]$Content,
+        [string]$TaskId,
+        [string]$Type = "context"
+    )
+
+    if (-not $Content -or $Content.Length -le $CONTEXT_BLOCK_MAX_CHARS) {
+        return $Content
+    }
+
+    $offloadJson = & "$DEV_CORE\Scripts\context_service.ps1" -Action OffloadBlock -Content $Content -TaskId $TaskId -Type $Type -MaxChars $CONTEXT_BLOCK_MAX_CHARS -Json | Out-String
+    $offload = $offloadJson | ConvertFrom-Json
+    return $offload.content
+}
 
 $tFile = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
 if (-not (Test-Path $tFile)) {
@@ -71,9 +88,9 @@ if ($projName) {
     if (Test-Path $canvasPath) {
         $canvas = Get-Content $canvasPath -Raw
         $canvasContent = "`n[DEV_CORE] Context Canvas (Mermaid):`n" + $canvas
+        $canvasContent = Resolve-ContextBlock -Content $canvasContent -TaskId $active.id -Type "context"
         $canvasContent | Add-Content $CONTEXT_FILE -Encoding UTF8
     }
 }
 
 Write-Host "  [DEV_CORE] Session context genere: $($active.id) - $($active.mode)" -ForegroundColor Green
-
