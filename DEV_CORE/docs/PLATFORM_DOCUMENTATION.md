@@ -212,6 +212,7 @@ T-01 (reasoning) → T-02 (coding) → T-03 (bulk) → T-04 (reasoning)
 | `task_scan.ps1` | `dc task scan` | Scan git+spec+prompts |
 | `task_sync.ps1` | `dc task sync` | Sync suggestions |
 | `task_service.ps1` | `Path`, `Read`, `Add`, `Next`, `Complete`, `Step`, `Edit`, `Pause`, `Skip`, `Sync` | Service central pour lecture, mutation et transitions de taches |
+| `memory_service.ps1` | `Path`, `ReadText`, `WriteText`, `AppendText`, `EnsureMemory`, `RotateMemory` | Service central pour chemins et fichiers memoire L2/L3 |
 | `gateway.ps1` | `dc check*`, `dc health*` | Gateway typée pour commandes validées |
 | `diagnose.ps1` | `dc check`, `dc check --gate`, `dc check --fix --dry-run` | Diagnostic complet, gate release locale et simulation de reparations |
 | `health_report.ps1` | `dc health`, `dc health --json` | Rapport court services, secrets, task board et memoire |
@@ -282,6 +283,19 @@ Obsidian Vault (notes structurées)
 3. **Embedder** : nomic-embed-text via Ollama
 4. **Stocker** : Qdrant + Obsidian + MEMORY.md
 5. **Rotate** : Score < 0.5 archivé (weekly_maintenance)
+
+### Memory Service
+
+`memory_service.ps1` centralise les premiers contrats de fichiers memoire :
+
+- `-Action Path` : resout les chemins `MEMORY`, `DECISIONS`, `LESSONS`, `PATTERNS`, `PERSONA` et `SCENARIO`.
+- `-Action ReadText` : lit un fichier memoire en UTF-8.
+- `-Action WriteText` : ecrit un fichier memoire en creant le repertoire parent.
+- `-Action AppendText` : ajoute une entree textuelle a un fichier memoire.
+- `-Action EnsureMemory` : initialise `MEMORY.md` si absent.
+- `-Action RotateMemory` : archive puis tronque `MEMORY.md` selon `-MaxLines` et `-KeepLines`.
+
+`memory_rotate.ps1` est maintenant un adaptateur vers `memory_service.ps1`. `memory_hierarchy.ps1` utilise le service pour les chemins et fichiers L2/L3, tandis que SQLite L0 et Qdrant L1 restent dans le script d'orchestration.
 
 ### Collections Qdrant
 

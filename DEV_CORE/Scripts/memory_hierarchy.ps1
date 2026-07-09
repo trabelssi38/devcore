@@ -21,6 +21,7 @@ $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     
 $TODAY         = Get-Date -Format "yyyy-MM-dd"
 $DB_PATH       = "$DEV_CORE_DATA\Memory\conversations.db"
 $LOG           = "$DEV_CORE_DATA\Logs\scripts\memory_hierarchy_$TODAY.log"
+$MEMORY_SERVICE = "$DEV_CORE\Scripts\memory_service.ps1"
 
 function Log {
     param([string]$msg, [string]$color="Gray")
@@ -44,23 +45,23 @@ switch ($Action) {
         $results += "=== MEMORY HIERARCHY SEARCH RESULTS ==="
         
         # 1. L3: Persona (Toujours chargé)
-        $personaPath = "$DEV_CORE_DATA\Memory\persona.md"
+        $personaPath = & $MEMORY_SERVICE -Action Path -Name PERSONA
         if (Test-Path $personaPath) {
             $results += "`n[L3 Persona]"
-            $results += Get-Content $personaPath -Raw
+            $results += (& $MEMORY_SERVICE -Action ReadText -Name PERSONA | Out-String).TrimEnd()
         }
         
         # 2. L2: Scenarios (Filtré par TaskType)
-        $scenarioFile = "$DEV_CORE_DATA\Memory\Scenarios\${TaskType}.md"
+        $scenarioFile = & $MEMORY_SERVICE -Action Path -Name SCENARIO -TaskType $TaskType
         if (Test-Path $scenarioFile) {
             $results += "`n[L2 Scenario: $TaskType]"
-            $results += Get-Content $scenarioFile -Raw
+            $results += (& $MEMORY_SERVICE -Action ReadText -Name SCENARIO -TaskType $TaskType | Out-String).TrimEnd()
         } else {
             # Fallback sur general
-            $generalScenario = "$DEV_CORE_DATA\Memory\Scenarios\devcore.md"
+            $generalScenario = & $MEMORY_SERVICE -Action Path -Name SCENARIO -TaskType "devcore"
             if (Test-Path $generalScenario) {
                 $results += "`n[L2 Scenario: devcore]"
-                $results += Get-Content $generalScenario -Raw
+                $results += (& $MEMORY_SERVICE -Action ReadText -Name SCENARIO -TaskType "devcore" | Out-String).TrimEnd()
             }
         }
         
@@ -191,26 +192,22 @@ conn.close()
         # dans les fichiers de Scenarios correspondants.
         
         # Créer scenarios si absents
-        $scenariosDir = "$DEV_CORE_DATA\Memory\Scenarios"
-        if (-not (Test-Path $scenariosDir)) {
-            New-Item -ItemType Directory -Path $scenariosDir -Force | Out-Null
-        }
+        & $MEMORY_SERVICE -Action Path -Name SCENARIO -TaskType "devcore" | Out-Null
         
         # Lister les fichiers sources
-        $decisionsFile = "$DEV_CORE_DATA\Memory\DECISIONS.md"
-        $lessonsFile = "$DEV_CORE_DATA\Memory\LESSONS.md"
-        $patternsFile = "$DEV_CORE_DATA\Memory\PATTERNS.md"
+        $decisionsFile = & $MEMORY_SERVICE -Action Path -Name DECISIONS
+        $lessonsFile = & $MEMORY_SERVICE -Action Path -Name LESSONS
+        $patternsFile = & $MEMORY_SERVICE -Action Path -Name PATTERNS
         
         # Types de tâches cibles
         $types = @("auth", "api", "ui", "deploy", "debug", "devcore")
         
         foreach ($t in $types) {
-            $scenarioPath = "$scenariosDir\${t}.md"
             $content = "# Scenario: " + $t.ToUpper() + "`n`n"
             
             # 1. Decisions
             if (Test-Path $decisionsFile) {
-                $decisions = Get-Content $decisionsFile | Where-Object { $_ -match $t }
+                $decisions = ((& $MEMORY_SERVICE -Action ReadText -Name DECISIONS | Out-String) -split "\r?\n") | Where-Object { $_ -match $t }
                 if ($decisions) {
                     $content += "## Decisions`n"
                     $content += ($decisions -join "`n") + "`n`n"
@@ -219,7 +216,7 @@ conn.close()
             
             # 2. Lessons
             if (Test-Path $lessonsFile) {
-                $lessons = Get-Content $lessonsFile | Where-Object { $_ -match $t }
+                $lessons = ((& $MEMORY_SERVICE -Action ReadText -Name LESSONS | Out-String) -split "\r?\n") | Where-Object { $_ -match $t }
                 if ($lessons) {
                     $content += "## Lessons`n"
                     $content += ($lessons -join "`n") + "`n`n"
@@ -228,17 +225,17 @@ conn.close()
             
             # Enregistrer le scénario s'il contient des infos, sinon écrire un squelette
             if ($content.Length -gt 50) {
-                $content | Set-Content $scenarioPath -Encoding UTF8
+                & $MEMORY_SERVICE -Action WriteText -Name SCENARIO -TaskType $t -Content $content | Out-Null
                 Write-Host "  Scénario mis à jour : $t" -ForegroundColor Green
             }
         }
         
         # Mettre à jour le persona.md en y injectant les 5 derniers patterns
-        $personaPath = "$DEV_CORE_DATA\Memory\persona.md"
+        $personaPath = & $MEMORY_SERVICE -Action Path -Name PERSONA
         if ((Test-Path $personaPath) -and (Test-Path $patternsFile)) {
-            $patterns = Get-Content $patternsFile | Select-Object -Last 5
+            $patterns = ((& $MEMORY_SERVICE -Action ReadText -Name PATTERNS | Out-String) -split "\r?\n") | Select-Object -Last 5
             if ($patterns) {
-                $persona = Get-Content $personaPath -Raw
+                $persona = (& $MEMORY_SERVICE -Action ReadText -Name PERSONA | Out-String).TrimEnd()
                 # Remplacer la section Patterns récurrents
                 $newPatterns = "## Patterns récurrents`n" + ($patterns -join "`n")
                 if ($persona -match "## Patterns récurrents[\s\S]*") {
@@ -246,7 +243,7 @@ conn.close()
                 } else {
                     $persona += "`n`n" + $newPatterns
                 }
-                $persona | Set-Content $personaPath -Encoding UTF8
+                & $MEMORY_SERVICE -Action WriteText -Name PERSONA -Content $persona | Out-Null
                 Write-Host "  Persona.md mis à jour avec les derniers patterns." -ForegroundColor Green
             }
         }
