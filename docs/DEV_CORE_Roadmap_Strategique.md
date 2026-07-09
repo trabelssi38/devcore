@@ -462,7 +462,7 @@ Livrable : DEV_CORE v12 Cognitive Platform.
 
 ## Sprint 3 -- Service Layer minimal
 
-- [ ] Introduire Gateway.
+- [x] Introduire Gateway.
 - [ ] Extraire Task Service.
 - [ ] Encapsuler accès mémoire dans Memory Service.
 - [ ] Faire lire le dashboard via API stable.

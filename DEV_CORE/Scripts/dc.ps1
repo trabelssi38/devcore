@@ -135,14 +135,7 @@ switch -Regex ($cmd) {
     "^weekly$"  { & "$SCRIPTS\Auto\weekly_maintenance.ps1"; break }
 
     # -- DIAGNOSTIC
-    "^check --gate$" { & "$SCRIPTS\diagnose.ps1" -Gate; break }
-    "^check --fix --gate$|^check --gate --fix$" { & "$SCRIPTS\diagnose.ps1" -Fix -Gate; break }
-    "^check --fix --dry-run$|^check --dry-run --fix$" { & "$SCRIPTS\diagnose.ps1" -Fix -DryRun; break }
-    "^check --fix --gate --dry-run$|^check --fix --dry-run --gate$|^check --gate --fix --dry-run$|^check --gate --dry-run --fix$|^check --dry-run --fix --gate$|^check --dry-run --gate --fix$" { & "$SCRIPTS\diagnose.ps1" -Fix -Gate -DryRun; break }
-    "^check --fix$"  { & "$SCRIPTS\diagnose.ps1" -Fix; break }
-    "^check$"        { & "$SCRIPTS\diagnose.ps1"; break }
-    "^health$"       { & "$SCRIPTS\health_report.ps1"; break }
-    "^health --json$" { & "$SCRIPTS\health_report.ps1" -Json; break }
+    "^check($|\s+.*)|^health($|\s+.*)" { & "$SCRIPTS\gateway.ps1" -Command $cmd; break }
 
     # -- ASK (routing mode auto)
     "^ask (.+)$" { & "$SCRIPTS\ask.ps1" -PromptFr $Matches[1]; break }

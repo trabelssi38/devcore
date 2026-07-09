@@ -28,6 +28,7 @@
 14. [Architecture Multi-Projets](#14-architecture-multi-projets-zero-switch)
 15. [Repowise MCP et scan continu](#15-repowise-mcp-et-scan-continu)
 16. [Stabilisation v10](#16-stabilisation-v10)
+17. [Service Layer v10.1](#17-service-layer-v101)
 
 ---
 
@@ -210,6 +211,7 @@ T-01 (reasoning) → T-02 (coding) → T-03 (bulk) → T-04 (reasoning)
 | `task_status.ps1` | `dc task status` | Dashboard tâches |
 | `task_scan.ps1` | `dc task scan` | Scan git+spec+prompts |
 | `task_sync.ps1` | `dc task sync` | Sync suggestions |
+| `gateway.ps1` | `dc check*`, `dc health*` | Gateway typée pour commandes validées |
 | `diagnose.ps1` | `dc check`, `dc check --gate`, `dc check --fix --dry-run` | Diagnostic complet, gate release locale et simulation de reparations |
 | `health_report.ps1` | `dc health`, `dc health --json` | Rapport court services, secrets, task board et memoire |
 | `hermes-daemon.ps1` | `-Install|-Start|-Status` | Daemon Hermes |
@@ -871,6 +873,30 @@ dc health --json
 - `.env.example` remplace les fallbacks secrets hardcodes.
 - Repowise MCP et watchers restent configures au lancement pour les clients DEV_CORE.
 - Les task boards sont isolees par projet dans `DEV_CORE_DATA\Memory\<project>\tasks.json`.
+
+## 17. Service Layer v10.1
+
+### Gateway
+
+`gateway.ps1` introduit le premier adaptateur de Service Layer. Le script expose un registre de commandes typées et refuse les variantes inconnues avant d'appeler les scripts existants.
+
+```powershell
+powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List
+powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
+```
+
+### Couverture actuelle
+
+- `dc check`
+- `dc check --fix`
+- `dc check --gate`
+- `dc check --fix --gate`
+- `dc check --fix --dry-run`
+- `dc check --fix --gate --dry-run`
+- `dc health`
+- `dc health --json`
+
+`dc.ps1` reste l'interface utilisateur, mais délègue ces commandes au Gateway pour centraliser validation et dispatch.
 
 ## Changelog v9
 
