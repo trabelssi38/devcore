@@ -1,11 +1,11 @@
-# DEV_CORE v9.2 — Documentation Complète
+# DEV_CORE v10.0 - Documentation Complete
 
 > **Single Client Mode** — Plateforme d'orchestration IA pour le développement logiciel
 > 
 > Gère la mémoire persistante, le cycle de vie des tâches (Tasks), les modes cognitifs (reasoning/coding/bulk), et les compétences (skills) réutilisables.
 
-**Version** : 9.2
-**Updated** : 2026-07-08
+**Version** : 10.0
+**Updated** : 2026-07-09
 **Mode** : Single Client (Multi-Projets / Zero Switch)
 
 ---
@@ -27,6 +27,7 @@
 13. [Token Optimization Stack](#13-token-optimization-stack)
 14. [Architecture Multi-Projets](#14-architecture-multi-projets-zero-switch)
 15. [Repowise MCP et scan continu](#15-repowise-mcp-et-scan-continu)
+16. [Stabilisation v10](#16-stabilisation-v10)
 
 ---
 
@@ -209,7 +210,8 @@ T-01 (reasoning) → T-02 (coding) → T-03 (bulk) → T-04 (reasoning)
 | `task_status.ps1` | `dc task status` | Dashboard tâches |
 | `task_scan.ps1` | `dc task scan` | Scan git+spec+prompts |
 | `task_sync.ps1` | `dc task sync` | Sync suggestions |
-| `diagnose.ps1` | `dc check` | Diagnostic complet |
+| `diagnose.ps1` | `dc check`, `dc check --gate` | Diagnostic complet et gate release locale |
+| `health_report.ps1` | `dc health`, `dc health --json` | Rapport court services, secrets, task board et memoire |
 | `hermes-daemon.ps1` | `-Install|-Start|-Status` | Daemon Hermes |
 | `ensure_repowise_mcp.ps1` | launch | Configure Repowise MCP pour Codex, Claude, Gemini/Antigravity et opencode |
 | `ensure_repowise_watch.ps1` | launch / manuel | Démarre, vérifie ou arrête les watchers Repowise des projets déclarés |
@@ -838,6 +840,35 @@ C:\devcore\DEV_CORE_DATA\Logs\scripts\repowise_watch\
 - Les docs Repowise complètes restent une action explicite : `repowise update --docs <repo>`.
 
 ---
+
+## 16. Stabilisation v10
+
+### Objectif
+
+DEV_CORE v10 stabilise le noyau avant la couche services : configuration propre, diagnostic exploitable, secrets gates et commandes observables.
+
+### Commandes de controle
+
+```powershell
+dc check
+dc check --gate
+dc health
+dc health --json
+```
+
+### Gates locales
+
+- `dc check --gate` retourne `1` si `diagnose.ps1` detecte au moins un `FAIL`.
+- Les `WARN` restent visibles mais ne bloquent pas la gate.
+- `dc health --json` expose `overall`, `ok`, `warn`, `fail`, `duration_ms` et la liste des checks.
+- `diagnose.ps1` integre le scan de secrets des fichiers suivis par Git.
+
+### Etat v10.0
+
+- Aucun `Invoke-Expression` dans le chemin principal du CLI.
+- `.env.example` remplace les fallbacks secrets hardcodes.
+- Repowise MCP et watchers restent configures au lancement pour les clients DEV_CORE.
+- Les task boards sont isolees par projet dans `DEV_CORE_DATA\Memory\<project>\tasks.json`.
 
 ## Changelog v9
 

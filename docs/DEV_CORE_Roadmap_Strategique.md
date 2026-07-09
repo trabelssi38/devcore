@@ -447,17 +447,17 @@ Livrable : DEV_CORE v12 Cognitive Platform.
 
 ## Sprint 1 -- Sécurité et confiance
 
-- [ ] Supprimer les clés hardcodées et fallbacks secrets.
-- [ ] Ajouter `.env.example` sans secret.
-- [ ] Ajouter check secrets dans `diagnose.ps1`.
-- [ ] Remplacer `Invoke-Expression` dans `dc.ps1`.
-- [ ] Ajouter tests smoke CLI.
+- [x] Supprimer les clés hardcodées et fallbacks secrets.
+- [x] Ajouter `.env.example` sans secret.
+- [x] Ajouter check secrets dans `diagnose.ps1`.
+- [x] Remplacer `Invoke-Expression` dans `dc.ps1`.
+- [x] Ajouter tests smoke CLI.
 
 ## Sprint 2 -- Diagnostic et docs
 
-- [ ] Normaliser logs et codes de sortie.
-- [ ] Ajouter health report.
-- [ ] Mettre README, PLATFORM_DOCUMENTATION, AGENTS et roadmap au même niveau v10.
+- [x] Normaliser logs et codes de sortie.
+- [x] Ajouter health report.
+- [x] Mettre README, PLATFORM_DOCUMENTATION, AGENTS et roadmap au même niveau v10.
 - [ ] Ajouter mode `-DryRun` aux scripts sensibles.
 
 ## Sprint 3 -- Service Layer minimal

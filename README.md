@@ -1,9 +1,9 @@
-﻿# DEV_CORE v9 — README
+﻿# DEV_CORE v10 - README
 
 **Single Client Mode** — Plateforme d'orchestration IA pour le développement logiciel
 
-Version : 9.2.0
-Updated : 2026-07-08
+Version : 10.0.0
+Updated : 2026-07-09
 Mode : Single Client (pas de handoffs multi-agents)
 
 ---
@@ -23,6 +23,8 @@ dc launch
 
 # 4. Vérifier
 dc check
+dc health
+dc check --gate
 ```
 
 ---
@@ -82,6 +84,9 @@ C:\devcore\
 - `dc launch` — Démarrage journée
 - `dc endday` — Clôture + sync
 - `dc check` — Diagnostic complet
+- `dc check --gate` — Diagnostic release gate avec code de sortie
+- `dc health` — Rapport court services, secrets, mémoire et task board
+- `dc health --json` — Rapport health exploitable par scripts
 
 ### Projet
 - `dc new project [nom] -stack [x]` — Init projet
@@ -183,6 +188,16 @@ Voir : `C:\devcore\DEV_CORE\docs\PLATFORM_DOCUMENTATION.md`
 
 ---
 
+## 🔄 Changelog v10+
+
+### 2026-07-09 — v10.0 Core Stabilization
+
+- ✅ **CLI durci** : suppression de `Invoke-Expression` du dispatcher principal `dc.ps1` et dispatch par commandes validées.
+- ✅ **Secrets gate** : `.env.example`, scanner `secret_scan.ps1` et intégration dans `diagnose.ps1`.
+- ✅ **Health report** : `dc health` et `dc health --json` couvrent chemins, services, secrets, task board et mémoire.
+- ✅ **Release gate locale** : `dc check --gate` retourne un code non nul sur erreur critique.
+- ✅ **Token reports multi-clients** : détection automatique Codex, Claude Code, Antigravity, Gemini et opencode.
+
 ## 🔄 Changelog v9
 
 ### 2026-07-08 — v9.2 Repowise MCP & Continuous Watch
@@ -276,6 +291,8 @@ Voir : `C:\devcore\DEV_CORE\docs\PLATFORM_DOCUMENTATION.md`
 ## 🆘 Support
 
 - **Diagnostic** : `dc check`
+- **Gate release** : `dc check --gate`
+- **Health** : `dc health`
 - **Logs** : `C:\devcore\DEV_CORE_DATA\Logs\`
 - **Dashboard** : `C:\devcore\DEV_CORE\Dashboard\index.html`
 - **Issues** : GitHub repo

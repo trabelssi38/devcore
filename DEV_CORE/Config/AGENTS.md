@@ -1,9 +1,9 @@
-# AGENTS.md -- DEV_CORE v6.1
+# AGENTS.md -- DEV_CORE v10.0
 # Emplacement : C:\devcore\DEV_CORE\Config\AGENTS.md
 # Auto-injecte dans ~/.codex/AGENTS.md par adapt_client.ps1
 # Compatible : Codex Desktop · Codex CLI
 
-## Hermes Agent Integration (v6.1)
+## Hermes Agent Integration (v10.0)
 
 Hermes Agent (Nous Research) fonctionne en daemon avec MCP :
 - MCP server `devcore-scripts` : launch, endday, task_*, diagnose
@@ -104,14 +104,14 @@ After these 4 steps: start task work immediately. No confirmation needed.
 
 ### After each validated step (tests passing)
 Read task ID:
-shell: powershell -NonInteractive -Command "(Get-Content 'C:\devcore\DEV_CORE_DATA\Memory\tasks.json' -Raw | ConvertFrom-Json).current_task"
+shell: powershell -NonInteractive -Command "$p=& 'C:\devcore\DEV_CORE\Scripts\Get-ActiveProject.ps1'; (Get-Content \"C:\devcore\DEV_CORE_DATA\Memory\$p\tasks.json\" -Raw | ConvertFrom-Json).current_task"
 
 Commit with tag:
 shell: git add -A
 shell: git commit -m "feat: [step description] [T-XX]"
 
 ### Check if task is complete (after every commit)
-shell: powershell -NonInteractive -Command "$b=Get-Content 'C:\devcore\DEV_CORE_DATA\Memory\tasks.json' -Raw|ConvertFrom-Json;$t=$b.tasks|Where-Object{$_.status -eq 'active'}|Select-Object -First 1;if($t -and $t.steps_done -ge $t.steps_total){Write-Host 'TASK_COMPLETE'}"
+shell: powershell -NonInteractive -Command "$p=& 'C:\devcore\DEV_CORE\Scripts\Get-ActiveProject.ps1'; $b=Get-Content \"C:\devcore\DEV_CORE_DATA\Memory\$p\tasks.json\" -Raw|ConvertFrom-Json;$t=$b.tasks|Where-Object{$_.status -eq 'active'}|Select-Object -First 1;if($t -and $t.steps_done -ge $t.steps_total){Write-Host 'TASK_COMPLETE'}"
 
 If TASK_COMPLETE -> run automatically:
 shell: powershell -NonInteractive -File "C:\devcore\DEV_CORE\Scripts\task_done.ps1" -Force
@@ -119,13 +119,14 @@ shell: powershell -NonInteractive -File "C:\devcore\DEV_CORE\Scripts\dc.ps1" "ne
 
 ---
 
-## TASKS (v6.1)
+## TASKS (v10.0)
 
 - Single Client Mode : pas de handoffs multi-agents
 - Modes : reasoning (32k), coding (8k), bulk (16k)
 - Detection auto via 9Router
 - Tags git : [T-XX]
 - Auto-detection via task_scan (git+spec+prompts)
+- Task board par projet : `C:\devcore\DEV_CORE_DATA\Memory\<project>\tasks.json`
 
 ---
 
