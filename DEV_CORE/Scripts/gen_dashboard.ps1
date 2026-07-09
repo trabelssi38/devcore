@@ -9,6 +9,11 @@ $OUTPUT_FILE   = "$DASHBOARD_DIR\index.html"
 $MEMORY_DIR    = "$DEV_CORE_DATA\Memory"
 $inv           = [System.Globalization.CultureInfo]::InvariantCulture
 
+if ($env:DEVCORE_SKIP_DASHBOARD -eq "1") {
+    Write-Host "Dashboard generation skipped (DEVCORE_SKIP_DASHBOARD=1)"
+    exit 0
+}
+
 function Get-TaskDate {
     param($Task)
 

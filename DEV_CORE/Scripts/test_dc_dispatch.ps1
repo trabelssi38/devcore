@@ -28,6 +28,7 @@ $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("devcore-dc-dispatch-" 
 $projectMemory = Join-Path $tempRoot "Memory\devcore"
 $oldDataRoot = $env:DEVCORE_DATA_ROOT
 $oldWorktree = $env:DEVCORE_ACTIVE_WORKTREE_NAME
+$oldSkipDashboard = $env:DEVCORE_SKIP_DASHBOARD
 $dashboardBackup = $null
 $hadDashboard = Test-Path $dashboardIndex
 
@@ -48,6 +49,7 @@ try {
 
     $env:DEVCORE_DATA_ROOT = $tempRoot
     $env:DEVCORE_ACTIVE_WORKTREE_NAME = "test"
+    $env:DEVCORE_SKIP_DASHBOARD = "1"
 
     Invoke-DcSmoke "new task Smoke Task -coding"
 
@@ -79,6 +81,12 @@ try {
         Remove-Item Env:\DEVCORE_ACTIVE_WORKTREE_NAME -ErrorAction SilentlyContinue
     } else {
         $env:DEVCORE_ACTIVE_WORKTREE_NAME = $oldWorktree
+    }
+
+    if ($null -eq $oldSkipDashboard) {
+        Remove-Item Env:\DEVCORE_SKIP_DASHBOARD -ErrorAction SilentlyContinue
+    } else {
+        $env:DEVCORE_SKIP_DASHBOARD = $oldSkipDashboard
     }
 
     if ($hadDashboard) {
