@@ -466,6 +466,7 @@ Livrable : DEV_CORE v12 Cognitive Platform.
 - [ ] Extraire Task Service.
   - [x] v1 : `Path`, `Read`, `Add` et adaptateur `task_add.ps1`.
   - [x] v2 : `Next` et adaptateur `task_next.ps1`.
+  - [x] v3 : `Complete` et adaptateur `task_done.ps1`.
 - [ ] Encapsuler accès mémoire dans Memory Service.
 - [ ] Faire lire le dashboard via API stable.
 

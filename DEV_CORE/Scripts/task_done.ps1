@@ -23,19 +23,18 @@ if ($stepsDone -lt $stepsTotal -and -not $Force) {
 # Garde d'integrite (si force)
 if ($current.steps_done -lt $current.steps_total) {
     Write-Host "  [WARN] $($current.id) force done : steps_done corrige $($current.steps_done) -> $($current.steps_total)" -ForegroundColor Yellow
-    $current.steps_done = $current.steps_total
 }
 
-# Marquer done
-$current.status = "done"
-$current | Add-Member -NotePropertyName "completed_at" -NotePropertyValue (Get-Date -Format "o") -Force
-$done_ids = ($board.tasks | Where-Object { $_.status -eq "done" }).id
-$nextTask = $board.tasks | Where-Object {
-    $_.status -eq "todo" -and (
-        -not $_.depends_on -or $done_ids -contains $_.depends_on
-    )
-} | Select-Object -First 1
-$board | ConvertTo-Json -Depth 10 | Set-Content $tFile -Encoding UTF8
+$completeJson = & "$PSScriptRoot\task_service.ps1" -Action Complete -Force -Json
+$completeResult = if ($completeJson -and (($completeJson -join "`n").Trim()) -ne "null") {
+    ($completeJson | Out-String) | ConvertFrom-Json
+} else {
+    $null
+}
+if (-not $completeResult) { Write-Host "  Aucune tache active -- dc next task" -ForegroundColor Yellow; exit 0 }
+$current = $completeResult.completed
+$nextTask = $completeResult.next
+$board = Get-Content $tFile -Raw -Encoding UTF8 | ConvertFrom-Json
 
 Write-Host ""; Write-Host "  DEV_CORE v9.0 -- TASK DONE" -ForegroundColor Green; Write-Host ""
 Write-Host "  1/5 Lecons..." -ForegroundColor Cyan

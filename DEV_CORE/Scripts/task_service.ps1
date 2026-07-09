@@ -1,12 +1,13 @@
 # task_service.ps1 -- DEV_CORE v10 -- Task Service adapter
 param(
     [Parameter(Mandatory=$true)]
-    [ValidateSet("Path", "Read", "Add", "Next")]
+    [ValidateSet("Path", "Read", "Add", "Next", "Complete")]
     [string]$Action,
     [string]$Title = "",
     [ValidateSet("reasoning", "coding", "bulk")]
     [string]$Mode = "coding",
     [string]$DependsOn = "",
+    [switch]$Force,
     [switch]$Json
 )
 
@@ -123,6 +124,44 @@ function Get-NextTask {
     return $current
 }
 
+function Complete-Task {
+    param([switch]$ForceComplete)
+
+    $board = Read-TaskBoard
+    $current = $board.tasks | Where-Object { $_.status -eq "active" } | Select-Object -First 1
+    if (-not $current) {
+        return $null
+    }
+
+    $stepsTotal = if ($current.PSObject.Properties["steps_total"]) { [int]$current.steps_total } else { 1 }
+    $stepsDone = if ($current.PSObject.Properties["steps_done"]) { [int]$current.steps_done } else { 1 }
+    if ($stepsDone -lt $stepsTotal -and -not $ForceComplete) {
+        Write-Host "  Task Service: $stepsDone/$stepsTotal etapes completees" -ForegroundColor Yellow
+        exit 65
+    }
+
+    if ($stepsDone -lt $stepsTotal) {
+        $current.steps_done = $stepsTotal
+    }
+
+    $current.status = "done"
+    $current | Add-Member -NotePropertyName "completed_at" -NotePropertyValue (Get-Date -Format "o") -Force
+
+    $doneIds = ($board.tasks | Where-Object { $_.status -eq "done" }).id
+    $nextTask = $board.tasks | Where-Object {
+        $_.status -eq "todo" -and (
+            -not $_.depends_on -or $doneIds -contains $_.depends_on
+        )
+    } | Select-Object -First 1
+
+    Write-TaskBoard -Board $board
+
+    return [pscustomobject]@{
+        completed = $current
+        next = $nextTask
+    }
+}
+
 switch ($Action) {
     "Path" {
         $boardPath = Get-TaskBoardPath
@@ -153,6 +192,18 @@ switch ($Action) {
             Write-Host "  [OK] Tache active : $($task.id) [$($task.mode)] -- $($task.title)" -ForegroundColor Green
         } else {
             Write-Host "  Aucune tache disponible." -ForegroundColor Yellow
+        }
+        exit 0
+    }
+    "Complete" {
+        $result = Complete-Task -ForceComplete:$Force
+        if ($Json) {
+            if ($result) { $result | ConvertTo-Json -Depth 8 }
+            else { "null" }
+        } elseif ($result) {
+            Write-Host "  [OK] Tache terminee : $($result.completed.id)" -ForegroundColor Green
+        } else {
+            Write-Host "  Aucune tache active -- dc next task" -ForegroundColor Yellow
         }
         exit 0
     }

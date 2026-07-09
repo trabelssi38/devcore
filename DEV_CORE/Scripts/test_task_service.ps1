@@ -55,6 +55,16 @@ try {
     Assert-True ($board.tasks[0].status -eq "active") "Task Service next should persist active status"
     Assert-True ($board.tasks[2].status -eq "todo") "Task Service next should not activate blocked dependencies"
 
+    $completeJson = powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $taskServiceScript -Action Complete -Force -Json | Out-String
+    $completed = $completeJson | ConvertFrom-Json
+    Assert-True ($completed.completed.id -eq "T-01") "Task Service complete should return completed task"
+    Assert-True ($completed.next.id -eq "T-02") "Task Service complete should return next eligible task"
+
+    $board = Get-Content $boardPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    Assert-True ($board.tasks[0].status -eq "done") "Task Service complete should persist done status"
+    Assert-True ($board.tasks[0].steps_done -eq $board.tasks[0].steps_total) "Task Service complete -Force should correct incomplete steps"
+    Assert-True (-not [string]::IsNullOrWhiteSpace([string]$board.tasks[0].completed_at)) "Task Service complete should set completed_at"
+
     Write-Host "[OK] task service smoke tests passed" -ForegroundColor Green
 } finally {
     if ($null -eq $oldDataRoot) {
