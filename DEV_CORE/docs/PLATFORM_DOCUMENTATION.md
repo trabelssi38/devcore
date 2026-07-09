@@ -213,6 +213,7 @@ T-01 (reasoning) → T-02 (coding) → T-03 (bulk) → T-04 (reasoning)
 | `task_sync.ps1` | `dc task sync` | Sync suggestions |
 | `task_service.ps1` | `Path`, `Read`, `Add`, `Next`, `Complete`, `Step`, `Edit`, `Pause`, `Skip`, `Sync` | Service central pour lecture, mutation et transitions de taches |
 | `memory_service.ps1` | `Path`, `ReadText`, `WriteText`, `AppendText`, `EnsureMemory`, `RotateMemory` | Service central pour chemins et fichiers memoire L2/L3 |
+| `context_service.ps1` | `ScoreSources` | Service central pour scorer les sources de contexte |
 | `gateway.ps1` | `dc check*`, `dc health*` | Gateway typée pour commandes validées |
 | `diagnose.ps1` | `dc check`, `dc check --gate`, `dc check --fix --dry-run` | Diagnostic complet, gate release locale et simulation de reparations |
 | `health_report.ps1` | `dc health`, `dc health --json` | Rapport court services, secrets, task board et memoire |
@@ -945,6 +946,19 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - `token_metrics` : metriques tokens parsees depuis `token_metrics_summary.json`.
 
 `gen_dashboard.ps1 -Json` produit ce contrat. `template.html` lit maintenant `/api/dashboard` pour les rafraichissements dynamiques, au lieu de parser le HTML complet retourne par `/api/refresh`. L'ancien endpoint `/api/refresh` reste disponible en compatibilite.
+
+### Context Service
+
+`context_service.ps1` demarre le Context Engine v1 avec `-Action ScoreSources`.
+
+Le contrat retourne :
+
+- `schema_version` : version du contrat, actuellement `1`.
+- `query` et `task_type` : demande courante.
+- `include_threshold` : seuil d'inclusion.
+- `sources[]` : sources triees par `score`, avec `tier`, `type`, `path`, `relevance`, `freshness`, `authority` et `included`.
+
+Le score combine pertinence, fraicheur et autorite de source. `memory_hierarchy.ps1 -Action Query` affiche les sources incluses dans un bloc `CONTEXT SOURCE SCORES` avant les contenus L3/L2/L1/L0.
 
 ## Changelog v9
 

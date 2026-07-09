@@ -22,6 +22,7 @@ $TODAY         = Get-Date -Format "yyyy-MM-dd"
 $DB_PATH       = "$DEV_CORE_DATA\Memory\conversations.db"
 $LOG           = "$DEV_CORE_DATA\Logs\scripts\memory_hierarchy_$TODAY.log"
 $MEMORY_SERVICE = "$DEV_CORE\Scripts\memory_service.ps1"
+$CONTEXT_SERVICE = "$DEV_CORE\Scripts\context_service.ps1"
 
 function Log {
     param([string]$msg, [string]$color="Gray")
@@ -43,6 +44,18 @@ switch ($Action) {
         
         $results = @()
         $results += "=== MEMORY HIERARCHY SEARCH RESULTS ==="
+
+        if (Test-Path $CONTEXT_SERVICE) {
+            try {
+                $scorePayload = & $CONTEXT_SERVICE -Action ScoreSources -Query $Query -TaskType $TaskType -Json | Out-String | ConvertFrom-Json
+                $results += "`n=== CONTEXT SOURCE SCORES ==="
+                foreach ($source in @($scorePayload.sources | Where-Object { $_.included })) {
+                    $results += ("- {0} score={1} relevance={2} freshness={3} authority={4}" -f $source.id, $source.score, $source.relevance, $source.freshness, $source.authority)
+                }
+            } catch {
+                Log "Context source scoring failed: $_" "Yellow"
+            }
+        }
         
         # 1. L3: Persona (Toujours chargé)
         $personaPath = & $MEMORY_SERVICE -Action Path -Name PERSONA
