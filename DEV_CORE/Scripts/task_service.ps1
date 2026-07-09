@@ -1,13 +1,14 @@
 # task_service.ps1 -- DEV_CORE v10 -- Task Service adapter
 param(
     [Parameter(Mandatory=$true)]
-    [ValidateSet("Path", "Read", "Add", "Next", "Complete", "Step", "Edit")]
+    [ValidateSet("Path", "Read", "Add", "Next", "Complete", "Step", "Edit", "Pause", "Skip")]
     [string]$Action,
     [string]$Id = "",
     [string]$Title = "",
     [ValidateSet("reasoning", "coding", "bulk")]
     [string]$Mode = "coding",
     [string]$DependsOn = "",
+    [string]$Reason = "",
     [int]$Steps = 0,
     [int]$StepNumber = 0,
     [switch]$Force,
@@ -264,6 +265,46 @@ function Edit-Task {
     }
 }
 
+function Pause-Task {
+    $board = Read-TaskBoard
+    $current = $board.tasks | Where-Object { $_.status -eq "active" } | Select-Object -First 1
+    if (-not $current) {
+        return $null
+    }
+
+    $current.status = "paused"
+    $current | Add-Member -NotePropertyName "paused_at" -NotePropertyValue (Get-Date -Format "o") -Force
+    $board.current_task = $null
+    Write-TaskBoard -Board $board
+
+    return [pscustomobject]@{
+        task = $current
+    }
+}
+
+function Skip-Task {
+    param([string]$SkipReason = "")
+
+    $board = Read-TaskBoard
+    $current = $board.tasks | Where-Object { $_.status -eq "active" } | Select-Object -First 1
+    if (-not $current) {
+        return $null
+    }
+
+    $current.status = "skipped"
+    $current | Add-Member -NotePropertyName "skipped_at" -NotePropertyValue (Get-Date -Format "o") -Force
+    if (-not [string]::IsNullOrWhiteSpace($SkipReason)) {
+        $current | Add-Member -NotePropertyName "skipped_reason" -NotePropertyValue $SkipReason -Force
+    }
+
+    $board.current_task = $null
+    Write-TaskBoard -Board $board
+
+    return [pscustomobject]@{
+        task = $current
+    }
+}
+
 switch ($Action) {
     "Path" {
         $boardPath = Get-TaskBoardPath
@@ -337,6 +378,30 @@ switch ($Action) {
             Write-Host "  [OK] Tache $Id mise a jour." -ForegroundColor Green
         } else {
             Write-Host "  Aucune modification specifiee. Exemple: dc task edit T-05 -Mode bulk -Steps 5" -ForegroundColor Yellow
+        }
+        exit 0
+    }
+    "Pause" {
+        $result = Pause-Task
+        if ($Json) {
+            if ($result) { $result | ConvertTo-Json -Depth 8 }
+            else { "null" }
+        } elseif ($result) {
+            Write-Host "  [OK] Tache $($result.task.id) mise en pause -- dc next task pour reprendre" -ForegroundColor Green
+        } else {
+            Write-Host "  Aucune tache active a mettre en pause." -ForegroundColor Yellow
+        }
+        exit 0
+    }
+    "Skip" {
+        $result = Skip-Task -SkipReason $Reason
+        if ($Json) {
+            if ($result) { $result | ConvertTo-Json -Depth 8 }
+            else { "null" }
+        } elseif ($result) {
+            Write-Host "  [OK] Tache $($result.task.id) passee (skipped)." -ForegroundColor Green
+        } else {
+            Write-Host "  Aucune tache active a passer." -ForegroundColor Yellow
         }
         exit 0
     }

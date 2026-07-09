@@ -4,6 +4,8 @@ $ErrorActionPreference = "Stop"
 $taskServiceScript = Join-Path $PSScriptRoot "task_service.ps1"
 $taskAddScript = Join-Path $PSScriptRoot "task_add.ps1"
 $taskEditScript = Join-Path $PSScriptRoot "task_edit.ps1"
+$taskPauseScript = Join-Path $PSScriptRoot "task_pause.ps1"
+$taskSkipScript = Join-Path $PSScriptRoot "task_skip.ps1"
 
 function Assert-True {
     param(
@@ -88,6 +90,35 @@ try {
     $board = Get-Content $boardPath -Raw -Encoding UTF8 | ConvertFrom-Json
     Assert-True ($board.tasks[1].mode -eq "bulk") "task_edit adapter should delegate mode update to Task Service"
     Assert-True ($board.tasks[1].steps_total -eq 4) "task_edit adapter should delegate steps update to Task Service"
+
+    $pauseJson = powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $taskServiceScript -Action Pause -Json | Out-String
+    $pauseResult = $pauseJson | ConvertFrom-Json
+    Assert-True ($pauseResult.task.id -eq "T-02") "Task Service pause should return paused task"
+    Assert-True ($pauseResult.task.status -eq "paused") "Task Service pause should update status"
+
+    $board = Get-Content $boardPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    Assert-True ($board.current_task -eq $null) "Task Service pause should clear current_task"
+    Assert-True (-not [string]::IsNullOrWhiteSpace([string]$board.tasks[1].paused_at)) "Task Service pause should set paused_at"
+
+    powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $taskServiceScript -Action Add -Title "Skip Service Task" -Mode coding | Out-Null
+    powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $taskServiceScript -Action Next -Json | Out-Null
+    $skipJson = powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $taskServiceScript -Action Skip -Reason "not needed" -Json | Out-String
+    $skipResult = $skipJson | ConvertFrom-Json
+    Assert-True ($skipResult.task.status -eq "skipped") "Task Service skip should update status"
+    Assert-True ($skipResult.task.skipped_reason -eq "not needed") "Task Service skip should preserve reason"
+
+    powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $taskServiceScript -Action Add -Title "Pause Adapter Task" -Mode coding | Out-Null
+    powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $taskServiceScript -Action Next -Json | Out-Null
+    powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $taskPauseScript | Out-Null
+    $board = Get-Content $boardPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    Assert-True ($board.tasks[4].status -eq "paused") "task_pause adapter should delegate to Task Service"
+
+    powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $taskServiceScript -Action Add -Title "Skip Adapter Task" -Mode coding | Out-Null
+    powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $taskServiceScript -Action Next -Json | Out-Null
+    powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $taskSkipScript -Reason "adapter skip" | Out-Null
+    $board = Get-Content $boardPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    Assert-True ($board.tasks[5].status -eq "skipped") "task_skip adapter should delegate to Task Service"
+    Assert-True ($board.tasks[5].skipped_reason -eq "adapter skip") "task_skip adapter should preserve reason"
 
     Write-Host "[OK] task service smoke tests passed" -ForegroundColor Green
 } finally {
