@@ -137,6 +137,8 @@ switch -Regex ($cmd) {
     # -- DIAGNOSTIC
     "^check --gate$" { & "$SCRIPTS\diagnose.ps1" -Gate; break }
     "^check --fix --gate$|^check --gate --fix$" { & "$SCRIPTS\diagnose.ps1" -Fix -Gate; break }
+    "^check --fix --dry-run$|^check --dry-run --fix$" { & "$SCRIPTS\diagnose.ps1" -Fix -DryRun; break }
+    "^check --fix --gate --dry-run$|^check --fix --dry-run --gate$|^check --gate --fix --dry-run$|^check --gate --dry-run --fix$|^check --dry-run --fix --gate$|^check --dry-run --gate --fix$" { & "$SCRIPTS\diagnose.ps1" -Fix -Gate -DryRun; break }
     "^check --fix$"  { & "$SCRIPTS\diagnose.ps1" -Fix; break }
     "^check$"        { & "$SCRIPTS\diagnose.ps1"; break }
     "^health$"       { & "$SCRIPTS\health_report.ps1"; break }
@@ -190,6 +192,7 @@ switch -Regex ($cmd) {
         Write-Host "  dc weekly                       Maintenance hebdo" -ForegroundColor Gray
         Write-Host "  dc check                        Diagnostic complet" -ForegroundColor Gray
         Write-Host "  dc check --gate                 Diagnostic release gate (exit code)" -ForegroundColor Gray
+        Write-Host "  dc check --fix --dry-run        Simule les reparations du diagnostic" -ForegroundColor Gray
         Write-Host "  dc health                       Rapport health v10 court" -ForegroundColor Gray
         Write-Host "  dc health --json                Rapport health v10 JSON" -ForegroundColor Gray
         Write-Host "  dc ask [prompt]                 Routing mode auto" -ForegroundColor Gray

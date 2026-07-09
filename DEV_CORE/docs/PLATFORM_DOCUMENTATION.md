@@ -210,7 +210,7 @@ T-01 (reasoning) → T-02 (coding) → T-03 (bulk) → T-04 (reasoning)
 | `task_status.ps1` | `dc task status` | Dashboard tâches |
 | `task_scan.ps1` | `dc task scan` | Scan git+spec+prompts |
 | `task_sync.ps1` | `dc task sync` | Sync suggestions |
-| `diagnose.ps1` | `dc check`, `dc check --gate` | Diagnostic complet et gate release locale |
+| `diagnose.ps1` | `dc check`, `dc check --gate`, `dc check --fix --dry-run` | Diagnostic complet, gate release locale et simulation de reparations |
 | `health_report.ps1` | `dc health`, `dc health --json` | Rapport court services, secrets, task board et memoire |
 | `hermes-daemon.ps1` | `-Install|-Start|-Status` | Daemon Hermes |
 | `ensure_repowise_mcp.ps1` | launch | Configure Repowise MCP pour Codex, Claude, Gemini/Antigravity et opencode |
@@ -852,6 +852,7 @@ DEV_CORE v10 stabilise le noyau avant la couche services : configuration propre,
 ```powershell
 dc check
 dc check --gate
+dc check --fix --dry-run
 dc health
 dc health --json
 ```
@@ -859,6 +860,7 @@ dc health --json
 ### Gates locales
 
 - `dc check --gate` retourne `1` si `diagnose.ps1` detecte au moins un `FAIL`.
+- `dc check --fix --dry-run` affiche les reparations `AutoFix` sans executer d'ecriture.
 - Les `WARN` restent visibles mais ne bloquent pas la gate.
 - `dc health --json` expose `overall`, `ok`, `warn`, `fail`, `duration_ms` et la liste des checks.
 - `diagnose.ps1` integre le scan de secrets des fichiers suivis par Git.

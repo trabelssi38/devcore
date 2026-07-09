@@ -458,7 +458,7 @@ Livrable : DEV_CORE v12 Cognitive Platform.
 - [x] Normaliser logs et codes de sortie.
 - [x] Ajouter health report.
 - [x] Mettre README, PLATFORM_DOCUMENTATION, AGENTS et roadmap au même niveau v10.
-- [ ] Ajouter mode `-DryRun` aux scripts sensibles.
+- [x] Ajouter mode `-DryRun` aux scripts sensibles.
 
 ## Sprint 3 -- Service Layer minimal
 

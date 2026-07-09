@@ -85,6 +85,7 @@ C:\devcore\
 - `dc endday` — Clôture + sync
 - `dc check` — Diagnostic complet
 - `dc check --gate` — Diagnostic release gate avec code de sortie
+- `dc check --fix --dry-run` — Simulation des réparations sans écriture
 - `dc health` — Rapport court services, secrets, mémoire et task board
 - `dc health --json` — Rapport health exploitable par scripts
 
@@ -196,6 +197,7 @@ Voir : `C:\devcore\DEV_CORE\docs\PLATFORM_DOCUMENTATION.md`
 - ✅ **Secrets gate** : `.env.example`, scanner `secret_scan.ps1` et intégration dans `diagnose.ps1`.
 - ✅ **Health report** : `dc health` et `dc health --json` couvrent chemins, services, secrets, task board et mémoire.
 - ✅ **Release gate locale** : `dc check --gate` retourne un code non nul sur erreur critique.
+- ✅ **Dry-run diagnostic** : `dc check --fix --dry-run` affiche les réparations sans les exécuter.
 - ✅ **Token reports multi-clients** : détection automatique Codex, Claude Code, Antigravity, Gemini et opencode.
 
 ## 🔄 Changelog v9
@@ -292,6 +294,7 @@ Voir : `C:\devcore\DEV_CORE\docs\PLATFORM_DOCUMENTATION.md`
 
 - **Diagnostic** : `dc check`
 - **Gate release** : `dc check --gate`
+- **Dry-run diagnostic** : `dc check --fix --dry-run`
 - **Health** : `dc health`
 - **Logs** : `C:\devcore\DEV_CORE_DATA\Logs\`
 - **Dashboard** : `C:\devcore\DEV_CORE\Dashboard\index.html`
