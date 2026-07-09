@@ -1,9 +1,17 @@
-import os
-import sys
-import json
-import re
 import argparse
+import json
+import os
+import re
 from datetime import datetime, timedelta
+from pathlib import Path
+
+
+INPUT_TOKEN_PRICE = 0.000003
+CACHED_INPUT_TOKEN_PRICE = 0.00000045
+OUTPUT_TOKEN_PRICE = 0.000015
+ESTIMATED_INPUT_PER_MODEL_TURN = 15000
+ESTIMATED_CACHE_RATIO = 0.85
+
 
 def format_duration(seconds):
     h = int(seconds // 3600)
@@ -12,701 +20,486 @@ def format_duration(seconds):
         return f"{h}h {m}m"
     return f"{m}m"
 
+
 def clean_task_id(text):
-    match = re.search(r'\bT-(\d+)\b', text, re.IGNORECASE)
+    match = re.search(r"\bT-(\d+)\b", text or "", re.IGNORECASE)
     if match:
         return f"T-{int(match.group(1)):02d}"
     return None
 
+
+def task_ids_from_text(text):
+    return sorted({clean_task_id(match) for match in re.findall(r"\bT-\d+\b", text or "", re.IGNORECASE) if clean_task_id(match)})
+
+
 def parse_created_at(created_at_str):
     if not created_at_str:
         return None
-    s = created_at_str.replace("Z", "")
+    s = str(created_at_str).replace("Z", "")
     if "+" in s:
         s = s.split("+")[0]
     if "-" in s[10:]:
         s = s[:10] + s[10:].split("-")[0]
-    
+
     if "." in s:
-        parts = s.split(".")
-        main_part = parts[0]
-        frac_part = parts[1][:6].ljust(6, '0')
-        s = f"{main_part}.{frac_part}"
+        main_part, frac_part = s.split(".", 1)
+        frac_part = frac_part[:6].ljust(6, "0")
         try:
-            return datetime.strptime(s, "%Y-%m-%dT%H:%M:%S.%f")
+            return datetime.strptime(f"{main_part}.{frac_part}", "%Y-%m-%dT%H:%M:%S.%f")
         except ValueError:
             pass
-            
-    try:
-        return datetime.strptime(s, "%Y-%m-%dT%H:%M:%S")
-    except ValueError:
+
+    for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
         try:
-            return datetime.strptime(s.split("T")[0], "%Y-%m-%d")
+            return datetime.strptime(s.split("+")[0], fmt)
         except ValueError:
-            return None
+            continue
+    return None
 
-def main():
-    parser = argparse.ArgumentParser(description="Génère un rapport de tokens DEV_CORE ultra-premium avec répartition par projet, session et tâche.")
-    parser.add_argument("--date", type=str, help="Date au format YYYY-MM-DD (par défaut aujourd'hui)")
-    args = parser.parse_args()
 
-    if args.date:
-        tdate = args.date
-    else:
-        tdate = datetime.now().strftime("%Y-%m-%d")
+def read_jsonl(path):
+    try:
+        with open(path, "r", encoding="utf-8", errors="ignore") as handle:
+            for line in handle:
+                if not line.strip():
+                    continue
+                try:
+                    yield json.loads(line)
+                except Exception:
+                    continue
+    except Exception:
+        return
 
-    brain_dir = r"C:\Users\trb_m\.gemini\antigravity\brain"
-    reports_dir = r"C:\devcore\DEV_CORE_DATA\Logs\token_reports"
 
-    if not os.path.exists(reports_dir):
-        os.makedirs(reports_dir)
+def as_text(value):
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        parts = []
+        for item in value:
+            if isinstance(item, dict):
+                parts.append(as_text(item.get("text") or item.get("content") or item.get("output") or item.get("input")))
+            else:
+                parts.append(as_text(item))
+        return "\n".join(part for part in parts if part)
+    if isinstance(value, dict):
+        if "text" in value:
+            return as_text(value.get("text"))
+        if "content" in value:
+            return as_text(value.get("content"))
+        return json.dumps(value, ensure_ascii=False)
+    return str(value)
 
-    # Détection dynamique des projets valides dans Memory
-    memory_path = r"C:\devcore\DEV_CORE_DATA\Memory"
+
+def calculate_cost(tokens, cache_hits, output_tokens):
+    normal_in = max(tokens - cache_hits - output_tokens, 0)
+    return (
+        normal_in * INPUT_TOKEN_PRICE
+        + cache_hits * CACHED_INPUT_TOKEN_PRICE
+        + output_tokens * OUTPUT_TOKEN_PRICE
+    )
+
+
+def usage_from_payload(payload):
+    usage = payload.get("token_usage") or payload.get("usage") or {}
+    if not isinstance(usage, dict):
+        return None
+
+    input_tokens = int(
+        usage.get("input_tokens")
+        or usage.get("prompt_tokens")
+        or usage.get("total_input_tokens")
+        or 0
+    )
+    cache_hits = int(
+        usage.get("cached_input_tokens")
+        or usage.get("cache_read_input_tokens")
+        or usage.get("cache_hits")
+        or 0
+    )
+    output_tokens = int(
+        usage.get("output_tokens")
+        or usage.get("completion_tokens")
+        or usage.get("total_output_tokens")
+        or 0
+    )
+    total_tokens = int(usage.get("total_tokens") or input_tokens + output_tokens)
+
+    if total_tokens <= 0 and input_tokens <= 0 and output_tokens <= 0:
+        return None
+
+    if input_tokens <= 0:
+        input_tokens = max(total_tokens - output_tokens, 0)
+
+    return {
+        "tokens": max(total_tokens, input_tokens + output_tokens),
+        "cache_hits": cache_hits,
+        "output_tokens": output_tokens,
+        "turns": 1,
+        "estimated": False,
+    }
+
+
+def estimated_usage_from_text(text):
+    output_tokens = max(len(text or "") // 4, 0)
+    input_tokens = ESTIMATED_INPUT_PER_MODEL_TURN
+    return {
+        "tokens": input_tokens + output_tokens,
+        "cache_hits": int(input_tokens * ESTIMATED_CACHE_RATIO),
+        "output_tokens": output_tokens,
+        "turns": 1,
+        "estimated": True,
+    }
+
+
+def add_usage(left, right):
+    left["tokens"] += int(right.get("tokens", 0))
+    left["cache_hits"] += int(right.get("cache_hits", 0))
+    left["output_tokens"] += int(right.get("output_tokens", 0))
+    left["turns"] += int(right.get("turns", 0))
+    left["cost_usd"] += calculate_cost(
+        int(right.get("tokens", 0)),
+        int(right.get("cache_hits", 0)),
+        int(right.get("output_tokens", 0)),
+    )
+
+
+def empty_bucket():
+    return {"tokens": 0, "cache_hits": 0, "output_tokens": 0, "turns": 0, "cost_usd": 0.0}
+
+
+def discover_projects(memory_path):
     valid_projects = ["devcore", "cea_dashboard", "job_tracker", "default"]
     task_to_project = {}
-    if os.path.exists(memory_path):
-        try:
-            for d in os.listdir(memory_path):
-                proj_dir = os.path.join(memory_path, d)
-                if os.path.isdir(proj_dir):
-                    d_lower = d.lower()
-                    if d_lower not in ["archive", "patterns", "scores", "default"] and d_lower not in valid_projects:
-                        valid_projects.append(d_lower)
-                    
-                    tasks_file = os.path.join(proj_dir, "tasks.json")
-                    if os.path.exists(tasks_file):
-                        try:
-                            with open(tasks_file, "r", encoding="utf-8") as tf:
-                                board = json.load(tf)
-                                for t in board.get("tasks", []):
-                                    tid = t.get("id")
-                                    if tid:
-                                        task_to_project[tid.upper()] = d_lower
-                        except Exception:
-                            pass
-        except Exception:
-            pass
+    memory_root = Path(memory_path)
+    if not memory_root.exists():
+        return valid_projects, task_to_project
 
-    # 1. Global Aggregation Metrics
-    totals = {
-        "tokens": 0,
-        "cache_hits": 0,
-        "output_tokens": 0,
-        "duration_seconds": 0,
-        "sessions_count": 0,
-        "cost_usd": 0.0
+    for project_dir in memory_root.iterdir():
+        if not project_dir.is_dir():
+            continue
+        name = project_dir.name.lower()
+        if name not in ["archive", "patterns", "scores", "default"] and name not in valid_projects:
+            valid_projects.append(name)
+
+        tasks_file = project_dir / "tasks.json"
+        if not tasks_file.exists():
+            continue
+        try:
+            board = json.loads(tasks_file.read_text(encoding="utf-8"))
+            for task in board.get("tasks", []):
+                tid = task.get("id")
+                if tid:
+                    task_to_project[tid.upper()] = name
+        except Exception:
+            continue
+
+    return valid_projects, task_to_project
+
+
+def detect_project(text, valid_projects, fallback="devcore"):
+    normalized = (text or "").replace("\\\\", "/").replace("\\", "/").lower()
+    best_project = fallback
+    best_idx = -1
+    for project in valid_projects:
+        project_lower = project.lower()
+        if f"/{project_lower}/" in normalized or normalized.endswith(f"/{project_lower}") or project_lower in normalized:
+            idx = normalized.rfind(project_lower)
+            if idx > best_idx:
+                best_idx = idx
+                best_project = project_lower
+    return best_project
+
+
+def discover_sources(userprofile):
+    home = Path(userprofile)
+    sources = []
+
+    antigravity_brain = home / ".gemini" / "antigravity" / "brain"
+    if antigravity_brain.exists():
+        for folder in antigravity_brain.iterdir():
+            if not folder.is_dir() or folder.name == "tempmediaStorage":
+                continue
+            overview = folder / ".system_generated" / "logs" / "overview.txt"
+            transcript = folder / ".system_generated" / "logs" / "transcript.jsonl"
+            if overview.exists():
+                sources.append({"client": "antigravity", "app": "antigravity", "session_id": folder.name, "path": overview})
+            elif transcript.exists():
+                sources.append({"client": "antigravity", "app": "antigravity", "session_id": folder.name, "path": transcript})
+
+    codex_sessions = home / ".codex" / "sessions"
+    if codex_sessions.exists():
+        for path in codex_sessions.rglob("*.jsonl"):
+            sources.append({"client": "codex", "app": "codex", "session_id": path.stem, "path": path})
+
+    claude_projects = home / ".claude" / "projects"
+    if claude_projects.exists():
+        for path in claude_projects.rglob("*.jsonl"):
+            if "\\subagents\\" in str(path).lower() or "/subagents/" in str(path).lower():
+                continue
+            sources.append({"client": "claude", "app": "claude-code", "session_id": path.stem, "path": path})
+
+    opencode_home = Path(os.environ.get("OPENCODE_HOME", home / ".config" / "opencode"))
+    if opencode_home.exists():
+        for path in opencode_home.rglob("*.jsonl"):
+            if "node_modules" in [part.lower() for part in path.parts]:
+                continue
+            sources.append({"client": "opencode", "app": "opencode", "session_id": path.stem, "path": path})
+
+    return sources
+
+
+def parse_source(source, valid_projects, task_to_project):
+    client = source["client"]
+    session_id = source["session_id"]
+    app = source.get("app", client)
+    timestamps = []
+    user_turns = 0
+    model_turns = 0
+    session_tasks = set()
+    current_task = "Sans tache"
+    detected_project = "devcore"
+    task_tokens = {}
+    cwd_hint = ""
+
+    for row in read_jsonl(source["path"]):
+        payload = row.get("payload") if isinstance(row.get("payload"), dict) else row
+
+        if client == "codex" and row.get("type") == "session_meta":
+            session_id = payload.get("session_id") or payload.get("id") or session_id
+            app = payload.get("originator") or payload.get("source") or app
+            cwd_hint = payload.get("cwd") or cwd_hint
+            detected_project = detect_project(cwd_hint, valid_projects, detected_project)
+            ts = parse_created_at(payload.get("timestamp") or row.get("timestamp"))
+            if ts:
+                timestamps.append(ts + timedelta(hours=1))
+            continue
+
+        ts = parse_created_at(row.get("created_at") or row.get("timestamp") or payload.get("timestamp"))
+        if ts:
+            timestamps.append(ts + timedelta(hours=1))
+
+        content = "\n".join(
+            part
+            for part in [
+                as_text(payload.get("content")),
+                as_text(payload.get("message", {}).get("content") if isinstance(payload.get("message"), dict) else ""),
+                as_text(payload.get("arguments")),
+                as_text(payload.get("output")),
+                as_text(payload.get("tool_calls")),
+                cwd_hint,
+                str(source["path"]),
+            ]
+            if part
+        )
+
+        detected_project = detect_project(content, valid_projects, detected_project)
+        task_ids = task_ids_from_text(content)
+        if task_ids:
+            for task_id in task_ids:
+                current_task = task_id
+                session_tasks.add(task_id)
+                mapped_project = task_to_project.get(task_id.upper())
+                if mapped_project:
+                    detected_project = mapped_project
+
+        role = payload.get("role") or payload.get("source") or payload.get("type") or row.get("type")
+        role_text = str(role).lower()
+        is_user = "user" in role_text
+        is_model = any(marker in role_text for marker in ["assistant", "model", "planner_response"]) or (
+            client == "codex" and payload.get("type") == "message" and payload.get("role") == "assistant"
+        )
+
+        if is_user:
+            user_turns += 1
+
+        usage = usage_from_payload(payload)
+        if not usage and is_model:
+            usage = estimated_usage_from_text(content)
+
+        if usage:
+            model_turns += usage["turns"]
+            targets = task_ids or ([current_task] if current_task else ["Sans tache"])
+            share = max(len(targets), 1)
+            for task_id in targets:
+                if task_id not in task_tokens:
+                    task_tokens[task_id] = {"tokens": 0, "cache_hits": 0, "output_tokens": 0, "turns": 0}
+                task_tokens[task_id]["tokens"] += usage["tokens"] // share
+                task_tokens[task_id]["cache_hits"] += usage["cache_hits"] // share
+                task_tokens[task_id]["output_tokens"] += usage["output_tokens"] // share
+                task_tokens[task_id]["turns"] += max(usage["turns"] // share, 1)
+
+    if not timestamps or not task_tokens:
+        return None
+
+    min_dt = min(timestamps)
+    max_dt = max(timestamps)
+    duration_sec = max((max_dt - min_dt).total_seconds(), 60)
+    session_usage = empty_bucket()
+    for usage in task_tokens.values():
+        add_usage(session_usage, usage)
+
+    return {
+        "id": session_id,
+        "client": client,
+        "app": app,
+        "project": detected_project,
+        "tasks": sorted(session_tasks) if session_tasks else ["Sans tache"],
+        "date": min_dt.strftime("%Y-%m-%d"),
+        "start_time": min_dt.strftime("%H:%M:%S"),
+        "end_time": max_dt.strftime("%H:%M:%S"),
+        "duration": format_duration(duration_sec),
+        "tokens": session_usage["tokens"],
+        "cache_hits": session_usage["cache_hits"],
+        "output_tokens": session_usage["output_tokens"],
+        "turns": model_turns + user_turns,
+        "cost_usd": round(session_usage["cost_usd"], 4),
+        "_task_tokens": task_tokens,
     }
-    
+
+
+def aggregate_sessions(sessions):
+    totals = {"tokens": 0, "cache_hits": 0, "output_tokens": 0, "duration_seconds": 0, "sessions_count": 0, "cost_usd": 0.0}
     projects_data = {}
     tasks_data = {}
-    sessions_data = []
+    clients_data = {}
+    public_sessions = []
 
-    if os.path.exists(brain_dir):
-        for folder_name in os.listdir(brain_dir):
-            folder_path = os.path.join(brain_dir, folder_name)
-            if not os.path.isdir(folder_path) or folder_name == "tempmediaStorage":
-                continue
-            log_path = None
-            overview_path = os.path.join(folder_path, ".system_generated", "logs", "overview.txt")
-            transcript_path = os.path.join(folder_path, ".system_generated", "logs", "transcript.jsonl")
-            
-            if os.path.exists(overview_path):
-                log_path = overview_path
-            elif os.path.exists(transcript_path):
-                log_path = transcript_path
+    for session in sessions:
+        totals["tokens"] += session["tokens"]
+        totals["cache_hits"] += session["cache_hits"]
+        totals["output_tokens"] += session["output_tokens"]
+        totals["sessions_count"] += 1
+        totals["cost_usd"] += session["cost_usd"]
 
-            if log_path:
-                timestamps = []
-                user_turns = 0
-                model_turns = 0
-                model_chars = 0
-                
-                session_tasks = set()
-                detected_project = "devcore" # Default fallback
-                
-                current_task = "Sans tâche"
-                session_task_tokens = {}
-                
-                try:
-                    with open(log_path, "r", encoding="utf-8") as f:
-                        for line in f:
-                            if not line.strip():
-                                continue
-                            try:
-                                data = json.loads(line)
-                                created_at_str = data.get("created_at")
-                                if not created_at_str:
-                                    continue
-                                
-                                dt_utc = parse_created_at(created_at_str)
-                                if not dt_utc:
-                                    continue
-                                dt_local = dt_utc + timedelta(hours=1)
-                                timestamps.append(dt_local)
-                                
-                                content = data.get("content", "")
-                                source = data.get("source")
-                                type_ = data.get("type")
-                                tool_calls = data.get("tool_calls", [])
-                                
-                                is_user = (source == "USER_EXPLICIT" or type_ == "USER_INPUT")
-                                is_model = (source == "MODEL" and type_ == "PLANNER_RESPONSE")
-                                
-                                # A. Project identification
-                                for tc in tool_calls:
-                                    tc_args = tc.get("args", {})
-                                    if isinstance(tc_args, str):
-                                        args_str = tc_args.lower()
-                                    else:
-                                        args_str = json.dumps(tc_args).lower()
-                                        
-                                    normalized_args = args_str.replace("\\\\", "/").replace("\\", "/")
-                                    best_project = None
-                                    max_idx = -1
-                                    for proj in valid_projects:
-                                        proj_lower = proj.lower()
-                                        if f"/{proj_lower}/" in normalized_args or normalized_args.endswith(f"/{proj_lower}") or f"/{proj_lower}\\" in normalized_args or proj_lower in normalized_args:
-                                            idx = normalized_args.rfind(proj_lower)
-                                            if idx > max_idx:
-                                                max_idx = idx
-                                                best_project = proj_lower
-                                                
-                                    if best_project:
-                                        detected_project = best_project
-                                
-                                # B. Task identification & project extraction
-                                task_matches = re.findall(r'\bT-\d+\b', content, re.IGNORECASE)
-                                if task_matches:
-                                    for tm in task_matches:
-                                        tid = clean_task_id(tm)
-                                        if tid:
-                                            current_task = tid
-                                            session_tasks.add(tid)
-                                            # Fallback project association based on task ID mapping
-                                            tid_upper = tid.upper()
-                                            if tid_upper in task_to_project:
-                                                detected_project = task_to_project[tid_upper]
-                                
-                                if is_user:
-                                    user_turns += 1
-                                elif is_model:
-                                    model_turns += 1
-                                    model_chars += len(content)
-                                    
-                                    turn_in = 15000
-                                    turn_cache = int(15000 * 0.85)
-                                    turn_out = len(content) // 4
-                                    
-                                    if current_task not in session_task_tokens:
-                                        session_task_tokens[current_task] = {
-                                            "tokens": 0,
-                                            "cache_hits": 0,
-                                            "output_tokens": 0,
-                                            "turns": 0
-                                        }
-                                    session_task_tokens[current_task]["tokens"] += turn_in
-                                    session_task_tokens[current_task]["cache_hits"] += turn_cache
-                                    session_task_tokens[current_task]["output_tokens"] += turn_out
-                                    session_task_tokens[current_task]["turns"] += 1
-                            except Exception:
-                                continue
-                except Exception as e:
-                    pass
+        project = session["project"]
+        if project not in projects_data:
+            projects_data[project] = {"tokens": 0, "cache_hits": 0, "output_tokens": 0, "sessions": 0, "cost_usd": 0.0}
+        projects_data[project]["tokens"] += session["tokens"]
+        projects_data[project]["cache_hits"] += session["cache_hits"]
+        projects_data[project]["output_tokens"] += session["output_tokens"]
+        projects_data[project]["sessions"] += 1
+        projects_data[project]["cost_usd"] += session["cost_usd"]
 
-                if not timestamps:
-                    continue
+        client = session["client"]
+        if client not in clients_data:
+            clients_data[client] = {"tokens": 0, "cache_hits": 0, "output_tokens": 0, "sessions": 0, "cost_usd": 0.0}
+        clients_data[client]["tokens"] += session["tokens"]
+        clients_data[client]["cache_hits"] += session["cache_hits"]
+        clients_data[client]["output_tokens"] += session["output_tokens"]
+        clients_data[client]["sessions"] += 1
+        clients_data[client]["cost_usd"] += session["cost_usd"]
 
-                min_dt = min(timestamps)
-                max_dt = max(timestamps)
-                duration_sec = (max_dt - min_dt).total_seconds()
-                if duration_sec < 60:
-                    duration_sec = 60
+        for tid, usage in session["_task_tokens"].items():
+            task_key = f"{project}_{tid}"
+            if task_key not in tasks_data:
+                tasks_data[task_key] = {"project": project, "tokens": 0, "cache_hits": 0, "output_tokens": 0, "turns": 0, "cost_usd": 0.0}
+            add_usage(tasks_data[task_key], usage)
 
-                session_in = model_turns * 15000
-                session_cache = int(session_in * 0.85)
-                session_out = model_chars // 4
-                
-                # Input normal: $3/M, Input cached: $0.45/M, Output: $15/M
-                normal_in = session_in - session_cache
-                session_cost = (normal_in * 0.000003) + (session_cache * 0.00000045) + (session_out * 0.000015)
+        public_session = {k: v for k, v in session.items() if not k.startswith("_")}
+        public_sessions.append(public_session)
 
-                if not session_task_tokens and session_tasks:
-                    share_in = session_in // len(session_tasks)
-                    share_cache = session_cache // len(session_tasks)
-                    share_out = session_out // len(session_tasks)
-                    for t in session_tasks:
-                        session_task_tokens[t] = {
-                            "tokens": share_in,
-                            "cache_hits": share_cache,
-                            "output_tokens": share_out,
-                            "turns": model_turns // len(session_tasks) or 1
-                        }
-                elif not session_task_tokens:
-                    session_task_tokens["Sans tâche"] = {
-                        "tokens": session_in,
-                        "cache_hits": session_cache,
-                        "output_tokens": session_out,
-                        "turns": model_turns
-                    }
-
-                session_info = {
-                    "id": folder_name,
-                    "project": detected_project,
-                    "tasks": sorted(list(session_tasks)) if session_tasks else ["Sans tâche"],
-                    "date": min_dt.strftime("%Y-%m-%d"),
-                    "start_time": min_dt.strftime("%H:%M:%S"),
-                    "end_time": max_dt.strftime("%H:%M:%S"),
-                    "duration": format_duration(duration_sec),
-                    "tokens": session_in,
-                    "cache_hits": session_cache,
-                    "output_tokens": session_out,
-                    "turns": model_turns + user_turns,
-                    "cost_usd": round(session_cost, 4)
-                }
-                
-                sessions_data.append(session_info)
-
-                totals["tokens"] += session_in
-                totals["cache_hits"] += session_cache
-                totals["output_tokens"] += session_out
-                totals["duration_seconds"] += duration_sec
-                totals["sessions_count"] += 1
-                totals["cost_usd"] += session_cost
-
-                # Project statistics
-                if detected_project not in projects_data:
-                    projects_data[detected_project] = {
-                        "tokens": 0,
-                        "cache_hits": 0,
-                        "output_tokens": 0,
-                        "sessions": 0,
-                        "cost_usd": 0.0
-                    }
-                projects_data[detected_project]["tokens"] += session_in
-                projects_data[detected_project]["cache_hits"] += session_cache
-                projects_data[detected_project]["output_tokens"] += session_out
-                projects_data[detected_project]["sessions"] += 1
-                projects_data[detected_project]["cost_usd"] += session_cost
-
-                # Task statistics
-                for tid, tdata in session_task_tokens.items():
-                    task_key = f"{detected_project}_{tid}"
-                    if task_key not in tasks_data:
-                        tasks_data[task_key] = {
-                            "project": detected_project,
-                            "tokens": 0,
-                            "cache_hits": 0,
-                            "output_tokens": 0,
-                            "turns": 0,
-                            "cost_usd": 0.0
-                        }
-                    t_cost = ((tdata["tokens"] - tdata["cache_hits"]) * 0.000003) + (tdata["cache_hits"] * 0.00000045) + (tdata["output_tokens"] * 0.000015)
-                    tasks_data[task_key]["tokens"] += tdata["tokens"]
-                    tasks_data[task_key]["cache_hits"] += tdata["cache_hits"]
-                    tasks_data[task_key]["output_tokens"] += tdata["output_tokens"]
-                    tasks_data[task_key]["turns"] += tdata["turns"]
-                    tasks_data[task_key]["cost_usd"] += t_cost
-
-    totals["duration_minutes"] = int(totals["duration_seconds"] // 60)
+    totals["duration_minutes"] = int(totals.pop("duration_seconds", 0) // 60)
     totals["cost_usd"] = round(totals["cost_usd"], 4)
-    del totals["duration_seconds"]
+    for collection in (projects_data, tasks_data, clients_data):
+        for values in collection.values():
+            values["cost_usd"] = round(values["cost_usd"], 4)
 
-    for p, pdata in projects_data.items():
-        pdata["cost_usd"] = round(pdata["cost_usd"], 4)
-    for t, tdata in tasks_data.items():
-        tdata["cost_usd"] = round(tdata["cost_usd"], 4)
-
-    # Compile the final structured JSON
-    result_summary = {
+    return {
         "totals": totals,
         "projects": projects_data,
+        "clients": clients_data,
         "tasks": tasks_data,
-        "sessions": sorted(sessions_data, key=lambda x: x["date"] + " " + x["start_time"], reverse=True)
+        "sessions": sorted(public_sessions, key=lambda x: x["date"] + " " + x["start_time"], reverse=True),
     }
 
-    # Write unified JSON summary
-    summary_path = os.path.join(reports_dir, "token_metrics_summary.json")
-    with open(summary_path, "w", encoding="utf-8") as f:
-        json.dump(result_summary, f, indent=2, ensure_ascii=False)
-    print(f"[SUCCESS] Résumé consolidé écrit dans {summary_path}")
 
-    # 2. Extract stats for target date to write standalone HTML report
-    day_sessions = [s for s in sessions_data if s["date"] == tdate]
+def write_html_report(result_summary, reports_dir, tdate):
+    day_sessions = [s for s in result_summary["sessions"] if s["date"] == tdate]
     day_tokens = sum(s["tokens"] for s in day_sessions)
     day_cache = sum(s["cache_hits"] for s in day_sessions)
     day_cost = sum(s["cost_usd"] for s in day_sessions)
-    day_sessions_count = len(day_sessions)
 
-    # Format numbers nicely
-    if day_tokens > 1000000:
-        total_tokens_str = f"{day_tokens/1000000:.2f} M"
-        cache_hits_str = f"{day_cache/1000000:.2f} M"
-    elif day_tokens > 0:
-        total_tokens_str = f"{day_tokens/1000:.1f} K"
-        cache_hits_str = f"{day_cache/1000:.1f} K"
-    else:
-        total_tokens_str = "0"
-        cache_hits_str = "0"
-        
-    sessions_list_html = ""
-    if day_sessions_count == 0:
-        sessions_list_html = '<div class="no-sessions">Aucune session active enregistrée pour cette journée.</div>'
-    else:
-        for s in day_sessions:
-            total_steps = s["turns"]
-            tasks_list = ", ".join(s["tasks"])
-            cost_str = f"${s['cost_usd']:.2f}"
-            cache_pct = int((s["cache_hits"] / s["tokens"] * 100)) if s["tokens"] > 0 else 0
-            
-            sessions_list_html += f"""
-            <div class="session-item">
-                <div class="session-info">
-                    <div class="session-icon"></div>
-                    <div>
-                        <div class="session-id">{s['id']}</div>
-                        <div class="session-meta">Activité : {s['start_time']} - {s['end_time']} ({s['duration']}) | {total_steps} tours | Tâches : {tasks_list}</div>
-                    </div>
-                </div>
-                <div class="session-metrics">
-                    <div>{s['tokens']:,} tokens</div>
-                    <div style="font-size: 11px; color: var(--text-secondary); margin-top: 2px;">Coût : {cost_str} | Cache : {cache_pct}%</div>
-                </div>
-            </div>
-            """
+    def fmt_tokens(value):
+        if value > 1_000_000:
+            return f"{value / 1_000_000:.2f} M"
+        if value > 0:
+            return f"{value / 1000:.1f} K"
+        return "0"
 
-    # HTML Template (Premium Aesthetics with USD costs)
-    html_template = """<!DOCTYPE html>
+    if day_sessions:
+        rows = []
+        for session in day_sessions:
+            tasks = ", ".join(session["tasks"])
+            rows.append(
+                f"<div class='session-item'><b>{session['client']}</b> {session['id']} | "
+                f"{session['start_time']} - {session['end_time']} | {tasks} | "
+                f"{session['tokens']:,} tokens | ${session['cost_usd']:.2f}</div>"
+            )
+        sessions_html = "\n".join(rows)
+    else:
+        sessions_html = "<div class='no-sessions'>Aucune session active enregistree pour cette journee.</div>"
+
+    html = f"""<!doctype html>
 <html lang="fr">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Rapport de Tokens DEV_CORE — {date}</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <style>
-        :root {{
-            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
-            --panel-bg: rgba(30, 41, 59, 0.7);
-            --border-glow: rgba(99, 102, 241, 0.2);
-            --text-primary: #f8fafc;
-            --text-secondary: #94a3b8;
-            --accent-primary: #6366f1;
-            --accent-secondary: #4f46e5;
-            --success: #10b981;
-        }}
-
-        body {{
-            font-family: 'Outfit', sans-serif;
-            background: var(--bg-gradient);
-            color: var(--text-primary);
-            min-height: 100vh;
-            margin: 0;
-            padding: 40px 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }}
-
-        .container {{
-            max-width: 800px;
-            width: 100%;
-            background: var(--panel-bg);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 24px;
-            padding: 40px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5),
-                        0 0 40px 0 var(--border-glow);
-            position: relative;
-            overflow: hidden;
-        }}
-
-        .container::before {{
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle, rgba(99, 102, 241, 0.05) 0%, transparent 70%);
-            pointer-events: none;
-            z-index: 0;
-        }}
-
-        header {{
-            position: relative;
-            z-index: 1;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-            padding-bottom: 24px;
-            margin-bottom: 32px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }}
-
-        .logo-section h1 {{
-            font-size: 28px;
-            font-weight: 700;
-            margin: 0;
-            background: linear-gradient(to right, #a5b4fc, #6366f1);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            letter-spacing: -0.5px;
-        }}
-
-        .logo-section p {{
-            font-size: 14px;
-            color: var(--text-secondary);
-            margin: 4px 0 0 0;
-        }}
-
-        .date-badge {{
-            background: rgba(99, 102, 241, 0.15);
-            border: 1px solid rgba(99, 102, 241, 0.3);
-            border-radius: 12px;
-            padding: 8px 16px;
-            font-size: 14px;
-            font-weight: 600;
-            color: #c7d2fe;
-            font-family: 'JetBrains Mono', monospace;
-        }}
-
-        .stats-grid {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 20px;
-            margin-bottom: 32px;
-            position: relative;
-            z-index: 1;
-        }}
-
-        .stat-card {{
-            background: rgba(15, 23, 42, 0.4);
-            border: 1px solid rgba(255, 255, 255, 0.04);
-            border-radius: 18px;
-            padding: 24px;
-            text-align: center;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-        }}
-
-        .stat-card:hover {{
-            transform: translateY(-5px);
-            border-color: rgba(99, 102, 241, 0.4);
-            box-shadow: 0 10px 20px -10px rgba(99, 102, 241, 0.3);
-            background: rgba(15, 23, 42, 0.6);
-        }}
-
-        .stat-value {{
-            font-size: 32px;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 6px;
-            letter-spacing: -1px;
-        }}
-
-        .stat-card:nth-child(1) .stat-value {{
-            background: linear-gradient(to bottom, #ffffff, #818cf8);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }}
-
-        .stat-card:nth-child(2) .stat-value {{
-            background: linear-gradient(to bottom, #ffffff, #34d399);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }}
-
-        .stat-card:nth-child(3) .stat-value {{
-            background: linear-gradient(to bottom, #ffffff, #fbbf24);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }}
-
-        .stat-card:nth-child(4) .stat-value {{
-            background: linear-gradient(to bottom, #ffffff, #cbd5e1);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }}
-
-        .stat-label {{
-            font-size: 11px;
-            font-weight: 600;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }}
-
-        .sessions-section {{
-            position: relative;
-            z-index: 1;
-            background: rgba(15, 23, 42, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.04);
-            border-radius: 18px;
-            padding: 24px;
-        }}
-
-        .sessions-section h2 {{
-            font-size: 16px;
-            font-weight: 600;
-            margin: 0 0 16px 0;
-            color: #e2e8f0;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }}
-
-        .sessions-list {{
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }}
-
-        .session-item {{
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 14px 18px;
-            background: rgba(30, 41, 59, 0.4);
-            border: 1px solid rgba(255, 255, 255, 0.03);
-            border-radius: 14px;
-            transition: all 0.2s ease;
-        }}
-
-        .session-item:hover {{
-            background: rgba(30, 41, 59, 0.6);
-            border-color: rgba(255, 255, 255, 0.08);
-        }}
-
-        .session-info {{
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }}
-
-        .session-icon {{
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--accent-primary);
-            box-shadow: 0 0 8px var(--accent-primary);
-        }}
-
-        .session-id {{
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 13px;
-            color: #cbd5e1;
-        }}
-
-        .session-meta {{
-            font-size: 12px;
-            color: var(--text-secondary);
-            margin-top: 2px;
-        }}
-
-        .session-metrics {{
-            font-size: 13px;
-            font-weight: 500;
-            color: #cbd5e1;
-            background: rgba(255, 255, 255, 0.05);
-            padding: 6px 12px;
-            border-radius: 8px;
-            font-family: 'JetBrains Mono', monospace;
-            text-align: right;
-        }}
-
-        .no-sessions {{
-            text-align: center;
-            color: var(--text-secondary);
-            padding: 30px 0;
-            font-style: italic;
-        }}
-
-        footer {{
-            margin-top: 32px;
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
-            padding-top: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 12px;
-            color: var(--text-secondary);
-            position: relative;
-            z-index: 1;
-        }}
-
-        .footer-tag {{
-            background: rgba(255, 255, 255, 0.05);
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-family: 'JetBrains Mono', monospace;
-        }}
-    </style>
+  <meta charset="utf-8">
+  <title>Rapport de Tokens DEV_CORE - {tdate}</title>
+  <style>
+    body {{ font-family: Arial, sans-serif; background:#0f172a; color:#f8fafc; padding:32px; }}
+    .card {{ background:#1e293b; border:1px solid #334155; border-radius:8px; padding:18px; margin:12px 0; }}
+    .grid {{ display:grid; grid-template-columns:repeat(4,minmax(120px,1fr)); gap:12px; }}
+    .value {{ font-size:24px; font-weight:700; }}
+    .label {{ color:#94a3b8; font-size:12px; text-transform:uppercase; }}
+    .session-item {{ padding:10px 0; border-bottom:1px solid #334155; }}
+  </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <div class="logo-section">
-                <h1>DEV_CORE</h1>
-                <p>Rapport d'activité & consommation tokens</p>
-            </div>
-            <div class="date-badge">{date}</div>
-        </header>
-
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-value">{total_tokens}</div>
-                <div class="stat-label">Tokens Totaux</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value">{cache_hits}</div>
-                <div class="stat-label">Cache Hits</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value">${cost_usd:.2f}</div>
-                <div class="stat-label">Coût Estimé (USD)</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-value">{num_sessions}</div>
-                <div class="stat-label">Sessions Actives</div>
-            </div>
-        </div>
-
-        <div class="sessions-section">
-            <h2>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent-primary)"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                Détail des Sessions du jour
-            </h2>
-            <div class="sessions-list">
-                {sessions_list_html}
-            </div>
-        </div>
-
-        <footer>
-            <span>Auto-généré par <code>endday.ps1</code> & <code>token_report.py</code></span>
-            <span class="footer-tag">DEV_CORE v9.0</span>
-        </footer>
-    </div>
+  <h1>DEV_CORE - Rapport tokens {tdate}</h1>
+  <div class="grid">
+    <div class="card"><div class="value">{fmt_tokens(day_tokens)}</div><div class="label">Tokens</div></div>
+    <div class="card"><div class="value">{fmt_tokens(day_cache)}</div><div class="label">Cache</div></div>
+    <div class="card"><div class="value">${day_cost:.2f}</div><div class="label">Cout</div></div>
+    <div class="card"><div class="value">{len(day_sessions)}</div><div class="label">Sessions</div></div>
+  </div>
+  <div class="card">{sessions_html}</div>
 </body>
 </html>"""
 
-    report_html = html_template.format(
-        date=tdate,
-        total_tokens=total_tokens_str,
-        cache_hits=cache_hits_str,
-        cost_usd=day_cost,
-        num_sessions=day_sessions_count,
-        sessions_list_html=sessions_list_html
-    )
+    report_path = Path(reports_dir) / f"{tdate}-report.html"
+    report_path.write_text(html, encoding="utf-8")
+    print(f"[SUCCESS] Rapport de tokens HTML genere pour {tdate} -> {report_path}")
 
-    report_path = os.path.join(reports_dir, f"{tdate}-report.html")
-    with open(report_path, "w", encoding="utf-8") as f:
-        f.write(report_html)
 
-    print(f"[SUCCESS] Rapport de tokens HTML généré pour {tdate} -> {report_path}")
+def main():
+    parser = argparse.ArgumentParser(description="Generate DEV_CORE token report by project, task, and coding client.")
+    parser.add_argument("--date", type=str, help="Date au format YYYY-MM-DD (par defaut aujourd'hui)")
+    args = parser.parse_args()
+
+    tdate = args.date or datetime.now().strftime("%Y-%m-%d")
+    userprofile = os.environ.get("USERPROFILE") or str(Path.home())
+    devcore_data = os.environ.get("DEVCORE_DATA_ROOT", r"C:\devcore\DEV_CORE_DATA")
+    reports_dir = Path(devcore_data) / "Logs" / "token_reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    memory_path = Path(devcore_data) / "Memory"
+
+    valid_projects, task_to_project = discover_projects(memory_path)
+    sources = discover_sources(userprofile)
+    sessions = []
+    for source in sources:
+        session = parse_source(source, valid_projects, task_to_project)
+        if session:
+            sessions.append(session)
+
+    result_summary = aggregate_sessions(sessions)
+    summary_path = reports_dir / "token_metrics_summary.json"
+    summary_path.write_text(json.dumps(result_summary, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(f"[SUCCESS] Resume consolide ecrit dans {summary_path}")
+
+    write_html_report(result_summary, reports_dir, tdate)
+
 
 if __name__ == "__main__":
     main()
