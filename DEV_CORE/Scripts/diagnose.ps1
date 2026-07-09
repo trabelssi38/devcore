@@ -1,7 +1,8 @@
 # diagnose.ps1 -- DEV_CORE v9.0 -- Auto-reparation
 # Usage : dc check        (diagnostic seul)
 #         dc check --fix   (diagnostic + reparation automatique)
-param([switch]$Fix)
+#         dc check --gate  (diagnostic avec code de sortie release gate)
+param([switch]$Fix, [switch]$Gate)
 
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
@@ -11,6 +12,7 @@ $GEMINI_DIR    = "$env:USERPROFILE\.gemini"
 Write-Host ""
 Write-Host "  DEV_CORE v9.0 -- Diagnostic autonomie" -ForegroundColor Cyan
 if ($Fix) { Write-Host "  MODE AUTO-FIX ACTIVE" -ForegroundColor Yellow }
+if ($Gate) { Write-Host "  MODE RELEASE GATE ACTIVE" -ForegroundColor Yellow }
 Write-Host "  =======================================" -ForegroundColor DarkGray
 Write-Host ""
 
@@ -337,3 +339,7 @@ elseif ($warn -gt 0)  { Write-Host "  Quasi pret -- dc check --fix pour corriger
 else                  { Write-Host "  100% operationnel -- autonomie complete" -ForegroundColor Green }
 Write-Host ""
 
+if ($Gate) {
+    if ($fail -gt 0) { exit 1 }
+    exit 0
+}

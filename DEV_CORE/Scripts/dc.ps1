@@ -135,6 +135,8 @@ switch -Regex ($cmd) {
     "^weekly$"  { & "$SCRIPTS\Auto\weekly_maintenance.ps1"; break }
 
     # -- DIAGNOSTIC
+    "^check --gate$" { & "$SCRIPTS\diagnose.ps1" -Gate; break }
+    "^check --fix --gate$|^check --gate --fix$" { & "$SCRIPTS\diagnose.ps1" -Fix -Gate; break }
     "^check --fix$"  { & "$SCRIPTS\diagnose.ps1" -Fix; break }
     "^check$"        { & "$SCRIPTS\diagnose.ps1"; break }
     "^health$"       { & "$SCRIPTS\health_report.ps1"; break }
@@ -187,6 +189,7 @@ switch -Regex ($cmd) {
         Write-Host "  dc endday                       Cloture + sync auto" -ForegroundColor Gray
         Write-Host "  dc weekly                       Maintenance hebdo" -ForegroundColor Gray
         Write-Host "  dc check                        Diagnostic complet" -ForegroundColor Gray
+        Write-Host "  dc check --gate                 Diagnostic release gate (exit code)" -ForegroundColor Gray
         Write-Host "  dc health                       Rapport health v10 court" -ForegroundColor Gray
         Write-Host "  dc health --json                Rapport health v10 JSON" -ForegroundColor Gray
         Write-Host "  dc ask [prompt]                 Routing mode auto" -ForegroundColor Gray
