@@ -6,6 +6,7 @@ $taskAddScript = Join-Path $PSScriptRoot "task_add.ps1"
 $taskEditScript = Join-Path $PSScriptRoot "task_edit.ps1"
 $taskPauseScript = Join-Path $PSScriptRoot "task_pause.ps1"
 $taskSkipScript = Join-Path $PSScriptRoot "task_skip.ps1"
+$taskSyncScript = Join-Path $PSScriptRoot "task_sync.ps1"
 
 function Assert-True {
     param(
@@ -119,6 +120,52 @@ try {
     $board = Get-Content $boardPath -Raw -Encoding UTF8 | ConvertFrom-Json
     Assert-True ($board.tasks[5].status -eq "skipped") "task_skip adapter should delegate to Task Service"
     Assert-True ($board.tasks[5].skipped_reason -eq "adapter skip") "task_skip adapter should preserve reason"
+
+    $suggestionsPath = Join-Path $tempRoot "suggestions.json"
+    @(
+        [pscustomobject]@{
+            id = ""
+            title = "Generated Sync Task"
+            mode = "reasoning"
+            source = "spec"
+            details = "sync details"
+            steps_total = 3
+        },
+        [pscustomobject]@{
+            id = "T-02"
+            title = "Duplicate Id"
+            mode = "coding"
+            source = "git"
+        },
+        [pscustomobject]@{
+            id = "T-42"
+            title = "Generated Sync Task"
+            mode = "coding"
+            source = "prompt"
+        }
+    ) | ConvertTo-Json -Depth 8 | Set-Content $suggestionsPath -Encoding UTF8
+
+    $syncJson = powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $taskServiceScript -Action Sync -InputPath $suggestionsPath -Json | Out-String
+    $syncResult = $syncJson | ConvertFrom-Json
+    Assert-True ($syncResult.added -eq 1) "Task Service sync should add only unique suggestions"
+
+    $board = Get-Content $boardPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    $syncedTask = $board.tasks | Where-Object { $_.title -eq "Generated Sync Task" } | Select-Object -First 1
+    Assert-True ($syncedTask.id -eq "T-07") "Task Service sync should allocate the next task id"
+    Assert-True ($syncedTask.mode -eq "reasoning") "Task Service sync should preserve mode"
+    Assert-True ($syncedTask.source -eq "spec") "Task Service sync should preserve source"
+    Assert-True ($syncedTask.details -eq "sync details") "Task Service sync should preserve details"
+    Assert-True ($syncedTask.steps_total -eq 3) "Task Service sync should preserve steps_total"
+
+    $projectMemory = Split-Path -Parent $boardPath
+    @(
+        '{"id":"","title":"Queue Sync Task","mode":"bulk","source":"prompt"}'
+    ) | Set-Content (Join-Path $projectMemory "task_prompt_queue.jsonl") -Encoding UTF8
+
+    powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $taskSyncScript | Out-Null
+    $board = Get-Content $boardPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    Assert-True (($board.tasks | Where-Object { $_.title -eq "Queue Sync Task" } | Measure-Object).Count -eq 1) "task_sync adapter should delegate board mutation to Task Service"
+    Assert-True (-not (Test-Path (Join-Path $projectMemory "task_prompt_queue.jsonl"))) "task_sync adapter should remove queues after successful sync"
 
     Write-Host "[OK] task service smoke tests passed" -ForegroundColor Green
 } finally {

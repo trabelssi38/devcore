@@ -1,7 +1,7 @@
 # task_service.ps1 -- DEV_CORE v10 -- Task Service adapter
 param(
     [Parameter(Mandatory=$true)]
-    [ValidateSet("Path", "Read", "Add", "Next", "Complete", "Step", "Edit", "Pause", "Skip")]
+    [ValidateSet("Path", "Read", "Add", "Next", "Complete", "Step", "Edit", "Pause", "Skip", "Sync")]
     [string]$Action,
     [string]$Id = "",
     [string]$Title = "",
@@ -9,6 +9,7 @@ param(
     [string]$Mode = "coding",
     [string]$DependsOn = "",
     [string]$Reason = "",
+    [string]$InputPath = "",
     [int]$Steps = 0,
     [int]$StepNumber = 0,
     [switch]$Force,
@@ -305,6 +306,76 @@ function Skip-Task {
     }
 }
 
+function Sync-Tasks {
+    param([Parameter(Mandatory=$true)][string]$SuggestionsPath)
+
+    if (-not (Test-Path -LiteralPath $SuggestionsPath)) {
+        Write-Host "  Task Service: fichier de suggestions introuvable" -ForegroundColor Red
+        exit 66
+    }
+
+    $parsedSuggestions = Get-Content $SuggestionsPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    $suggestions = @($parsedSuggestions | ForEach-Object { $_ })
+    $board = Read-TaskBoard
+    $existingIds = @($board.tasks | ForEach-Object { $_.id })
+    $existingTitles = @($board.tasks | ForEach-Object { $_.title })
+    $nums = @($board.tasks | Where-Object { $_.id -match "^T-(\d+)$" } |
+        ForEach-Object { [int]($_.id -replace "T-", "") })
+    $nextNum = if ($nums.Count -gt 0) {
+        [int](($nums | Measure-Object -Maximum).Maximum) + 1
+    } else {
+        1
+    }
+    $addedTasks = @()
+
+    foreach ($suggestion in $suggestions) {
+        $id = [string]$suggestion.id
+        if ([string]::IsNullOrWhiteSpace($id)) {
+            while (("T-{0:D2}" -f $nextNum) -in $existingIds) {
+                $nextNum++
+            }
+            $id = "T-{0:D2}" -f $nextNum
+        }
+
+        $title = if ($suggestion.title) { [string]$suggestion.title } else { [string]$suggestion.reason }
+        if ([string]::IsNullOrWhiteSpace($title) -or $id -in $existingIds -or $title -in $existingTitles) {
+            continue
+        }
+
+        $status = if ($suggestion.status) { [string]$suggestion.status } else { "todo" }
+        $task = [pscustomobject]@{
+            id = $id
+            title = $title
+            mode = if ($suggestion.mode) { [string]$suggestion.mode } else { "coding" }
+            status = $status
+            steps_total = if ($null -ne $suggestion.steps_total) { [int]$suggestion.steps_total } else { 1 }
+            steps_done = if ($null -ne $suggestion.steps_done) { [int]$suggestion.steps_done } else { 0 }
+            depends_on = if ($suggestion.depends_on) { [string]$suggestion.depends_on } else { $null }
+            source = $suggestion.source
+            worktree = if ($suggestion.worktree) { [string]$suggestion.worktree } elseif ($env:DEVCORE_ACTIVE_WORKTREE_NAME) { $env:DEVCORE_ACTIVE_WORKTREE_NAME } else { "main" }
+            details = $suggestion.details
+            steps = $suggestion.steps
+            started_at = if ($suggestion.started_at) { $suggestion.started_at } elseif ($status -eq "done") { [datetime]::Now.AddHours(-1).ToString("o") } elseif ($status -eq "active") { [datetime]::Now.ToString("o") } else { $null }
+            completed_at = if ($suggestion.completed_at) { $suggestion.completed_at } elseif ($status -eq "done") { [datetime]::Now.ToString("o") } else { $null }
+        }
+
+        $board.tasks += $task
+        $existingIds += $id
+        $existingTitles += $title
+        $addedTasks += $task
+        $nextNum++
+    }
+
+    if ($addedTasks.Count -gt 0) {
+        Write-TaskBoard -Board $board
+    }
+
+    return [pscustomobject]@{
+        added = $addedTasks.Count
+        tasks = $addedTasks
+    }
+}
+
 switch ($Action) {
     "Path" {
         $boardPath = Get-TaskBoardPath
@@ -402,6 +473,19 @@ switch ($Action) {
             Write-Host "  [OK] Tache $($result.task.id) passee (skipped)." -ForegroundColor Green
         } else {
             Write-Host "  Aucune tache active a passer." -ForegroundColor Yellow
+        }
+        exit 0
+    }
+    "Sync" {
+        if ([string]::IsNullOrWhiteSpace($InputPath)) {
+            Write-Host "  Task Service: InputPath requis" -ForegroundColor Red
+            exit 64
+        }
+        $result = Sync-Tasks -SuggestionsPath $InputPath
+        if ($Json) {
+            $result | ConvertTo-Json -Depth 10
+        } else {
+            Write-Host "  [OK] $($result.added) taches synchronisees." -ForegroundColor Green
         }
         exit 0
     }

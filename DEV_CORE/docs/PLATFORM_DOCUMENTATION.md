@@ -211,7 +211,7 @@ T-01 (reasoning) → T-02 (coding) → T-03 (bulk) → T-04 (reasoning)
 | `task_status.ps1` | `dc task status` | Dashboard tâches |
 | `task_scan.ps1` | `dc task scan` | Scan git+spec+prompts |
 | `task_sync.ps1` | `dc task sync` | Sync suggestions |
-| `task_service.ps1` | `Path`, `Read`, `Add`, `Next`, `Complete`, `Step` | Service central pour board path, lecture et transitions de taches |
+| `task_service.ps1` | `Path`, `Read`, `Add`, `Next`, `Complete`, `Step`, `Edit`, `Pause`, `Skip`, `Sync` | Service central pour lecture, mutation et transitions de taches |
 | `gateway.ps1` | `dc check*`, `dc health*` | Gateway typée pour commandes validées |
 | `diagnose.ps1` | `dc check`, `dc check --gate`, `dc check --fix --dry-run` | Diagnostic complet, gate release locale et simulation de reparations |
 | `health_report.ps1` | `dc health`, `dc health --json` | Rapport court services, secrets, task board et memoire |
@@ -909,8 +909,12 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - `-Action Next` : active la prochaine tache eligible et met a jour `current_task`.
 - `-Action Complete` : marque la tache active done, corrige les steps en `-Force`, et retourne la prochaine tache eligible.
 - `-Action Step` : marque la prochaine step ou une step cible comme terminee et retourne la progression.
+- `-Action Edit` : modifie les champs autorises d'une tache sans exposer l'ecriture board aux adaptateurs.
+- `-Action Pause` : suspend la tache active ou cible et libere `current_task` si necessaire.
+- `-Action Skip` : marque une tache comme ignoree et conserve sa trace dans la board.
+- `-Action Sync` : fusionne les suggestions detectees depuis un fichier JSON, avec generation d'ID et deduplication par ID/titre.
 
-`task_add.ps1`, `task_next.ps1`, `task_done.ps1` et `task_step_done.ps1` sont maintenant des adaptateurs vers `task_service.ps1`, ce qui commence la migration des mutations de `tasks.json` hors des scripts CLI.
+`task_add.ps1`, `task_next.ps1`, `task_done.ps1`, `task_step_done.ps1` et `task_sync.ps1` sont maintenant des adaptateurs vers `task_service.ps1`, ce qui garde les mutations de `tasks.json` dans un seul service.
 
 ## Changelog v9
 
@@ -954,7 +958,7 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - ✅ **Analyseur IA Réécrit en Python** : Migration complète de `task_prompt_analyzer.ps1` vers un analyseur Python hautement intelligent `task_prompt_analyzer.py`. Au lieu d'extraire des tâches à partir des requêtes brutes de l'utilisateur, le système formule désormais des titres et détails pertinents basés uniquement sur les actions et accomplissements réels de l'agent (`PLANNER_RESPONSE` et outils d'écriture de fichiers).
 - ✅ **Champs de Détails et Historique du Dashboard** : Prise en charge complète du champ `details` pour chaque tâche, permettant d'afficher la description d'origine formatée dans le Dashboard HTML avec une bordure de couleur thématique et le style `white-space: pre-wrap`.
 - ✅ **Horodatage Dynamique & fuseaux horaires** : Détermination dynamique des heures de début (`started_at`) et de fin (`completed_at`) calculées automatiquement à partir de la date de modification des répertoires de session d'Antigravity, avec formatage rigoureux respectant le fuseau horaire local (`+01:00`).
-- ✅ **Synchronisation Robuste & Déduplication** : Mise à jour de `task_sync.ps1` pour traiter et fusionner intelligemment les métadonnées étendues (status, dates, détails, étapes), avec déduplication stricte par ID et par titre de tâche.
+- ✅ **Synchronisation Robuste & Déduplication** : Mise à jour de `task_sync.ps1` pour déléguer la fusion des métadonnées et la déduplication par ID/titre au Task Service central.
 
 ### 2026-05-18 — v6.5 Cockpit API Operations & Task Synchronization
 

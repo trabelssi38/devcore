@@ -463,14 +463,14 @@ Livrable : DEV_CORE v12 Cognitive Platform.
 ## Sprint 3 -- Service Layer minimal
 
 - [x] Introduire Gateway.
-- [ ] Extraire Task Service.
+- [x] Extraire Task Service.
   - [x] v1 : `Path`, `Read`, `Add` et adaptateur `task_add.ps1`.
   - [x] v2 : `Next` et adaptateur `task_next.ps1`.
   - [x] v3 : `Complete` et adaptateur `task_done.ps1`.
   - [x] v4 : `Step` et adaptateur `task_step_done.ps1`.
   - [x] v5 : `Edit` et adaptateur `task_edit.ps1`.
   - [x] v6 : `Pause`, `Skip` et adaptateurs `task_pause.ps1` / `task_skip.ps1`.
-  - [ ] v7 : `task_sync.ps1` et synchronisations secondaires.
+  - [x] v7 : `Sync`, `task_sync.ps1` et synchronisations secondaires.
 - [ ] Encapsuler accès mémoire dans Memory Service.
 - [ ] Faire lire le dashboard via API stable.
 
