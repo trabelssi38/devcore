@@ -396,7 +396,7 @@ details{margin-bottom: 8px}
   <div class="column" style="background:#0b0d12">
     <div class="scroll-area">
       <h2>Projets</h2>
-      <div style="margin-bottom:16px">
+      <div id="project-cards" style="margin-bottom:16px">
         {{PROJECT_CARDS}}
       </div>
       
@@ -413,7 +413,7 @@ details{margin-bottom: 8px}
       </div>
       
       <h2>Automation Hooks</h2>
-      <div style="margin-bottom:16px">
+      <div id="automation-hooks" style="margin-bottom:16px">
         {{AUTOMATION_HOOKS}}
       </div>
       
@@ -443,7 +443,7 @@ details{margin-bottom: 8px}
       <div class="scroll-area" id="tasks-pipeline">
         {{TASKS_PIPELINE}}
       </div>
-      {{TOKEN_ACTIVITY_REPORT}}
+      <div id="token-activity-report">{{TOKEN_ACTIVITY_REPORT}}</div>
     </div>
 
     <!-- Tab: Settings Content -->
@@ -499,7 +499,7 @@ details{margin-bottom: 8px}
 
   <!-- Colonne 3 : Infrastructure -->
   <div class="column" style="background:#0b0d12">
-    <div class="scroll-area">
+    <div class="scroll-area" id="services-monitoring">
       {{SERVICES_MONITORING}}
       
       <p style="color:#475569;font-size:10px;margin-top:32px;text-align:center">Auto-refresh 15s (AJAX)<br>DEV_CORE v9.0.0</p>
@@ -621,7 +621,7 @@ function deleteTask(project, id) {
   );
 }
 
-function refreshDashboard() {
+function refreshDashboardLegacy() {
   const indicator = document.getElementById('sync-indicator');
   if (indicator) {
     indicator.style.background = '#6366f1';
@@ -719,6 +719,106 @@ function refreshDashboard() {
         if (row) {
           row.classList.add('selected');
         }
+        document.querySelectorAll('.project-tasks-group').forEach(group => {
+          const proj = group.getAttribute('data-project');
+          if (proj === window.activeFilteredProject) {
+            group.classList.remove('hidden');
+          } else {
+            group.classList.add('hidden');
+          }
+        });
+      }
+      updateTokenReport(window.activeFilteredProject);
+
+      if (indicator) {
+        indicator.style.background = '#22c55e';
+        indicator.style.boxShadow = '0 0 8px #22c55e';
+        indicator.style.opacity = '0.7';
+      }
+    })
+    .catch(err => {
+      console.error("Failed to refresh dashboard:", err);
+      if (indicator) {
+        indicator.style.background = '#ef4444';
+        indicator.style.boxShadow = '0 0 12px #ef4444';
+        indicator.style.opacity = '1';
+      }
+    });
+}
+
+function refreshDashboard() {
+  const indicator = document.getElementById('sync-indicator');
+  if (indicator) {
+    indicator.style.background = '#6366f1';
+    indicator.style.boxShadow = '0 0 12px #6366f1';
+    indicator.style.opacity = '1';
+  }
+
+  fetch(`${API_BASE}/api/dashboard`)
+    .then(response => {
+      if (!response.ok) throw new Error('API server returned error status');
+      return response.json();
+    })
+    .then(payload => {
+      if (!payload || payload.schema_version !== 1 || !payload.sections) {
+        throw new Error('Unsupported dashboard payload schema');
+      }
+
+      const oldProjects = document.getElementById('project-cards');
+      if (oldProjects && oldProjects.innerHTML !== payload.sections.project_cards) {
+        oldProjects.innerHTML = payload.sections.project_cards || '';
+      }
+
+      const oldTasks = document.getElementById('tasks-pipeline');
+      if (oldTasks && oldTasks.innerHTML !== payload.sections.tasks_pipeline) {
+        const openSummaries = new Set();
+        document.querySelectorAll('#tasks-pipeline details').forEach(d => {
+          const summary = d.querySelector('summary');
+          if (summary && d.open) {
+            openSummaries.add(summary.textContent.trim());
+          }
+        });
+
+        oldTasks.innerHTML = payload.sections.tasks_pipeline || '';
+
+        document.querySelectorAll('#tasks-pipeline details').forEach(d => {
+          const summary = d.querySelector('summary');
+          if (summary) {
+            const title = summary.textContent.trim();
+            if (openSummaries.has(title)) {
+              d.open = true;
+            } else {
+              d.removeAttribute('open');
+            }
+          }
+        });
+      }
+
+      const oldTokenReport = document.getElementById('token-activity-report');
+      if (oldTokenReport && oldTokenReport.innerHTML !== payload.sections.token_activity_report) {
+        oldTokenReport.innerHTML = payload.sections.token_activity_report || '';
+      }
+
+      const oldInfra = document.getElementById('services-monitoring');
+      if (oldInfra && oldInfra.innerHTML !== payload.sections.services_monitoring) {
+        oldInfra.innerHTML = payload.sections.services_monitoring || '';
+      }
+
+      const oldHooks = document.getElementById('automation-hooks');
+      if (oldHooks && oldHooks.innerHTML !== payload.sections.automation_hooks) {
+        oldHooks.innerHTML = payload.sections.automation_hooks || '';
+      }
+
+      window.taskDetailsMap = payload.task_details || {};
+      const detailsDataEl = document.getElementById('task-details-data');
+      if (detailsDataEl) detailsDataEl.textContent = JSON.stringify(window.taskDetailsMap);
+
+      const tokenDataEl = document.getElementById('token-metrics-data');
+      if (tokenDataEl) tokenDataEl.textContent = JSON.stringify(payload.token_metrics || {});
+
+      if (window.activeFilteredProject) {
+        const row = document.querySelector(`.project-row[data-project="${window.activeFilteredProject}"]`);
+        if (row) row.classList.add('selected');
         document.querySelectorAll('.project-tasks-group').forEach(group => {
           const proj = group.getAttribute('data-project');
           if (proj === window.activeFilteredProject) {

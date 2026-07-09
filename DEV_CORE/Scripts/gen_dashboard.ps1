@@ -1,5 +1,9 @@
 # gen_dashboard.ps1 -- DEV_CORE v9.0 Multi-Projet
 # Genere le fichier index.html du dashboard dynamiquement
+param(
+    [switch]$Json,
+    [switch]$SkipTokenRefresh
+)
 
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
@@ -9,7 +13,7 @@ $OUTPUT_FILE   = "$DASHBOARD_DIR\index.html"
 $MEMORY_DIR    = "$DEV_CORE_DATA\Memory"
 $inv           = [System.Globalization.CultureInfo]::InvariantCulture
 
-if ($env:DEVCORE_SKIP_DASHBOARD -eq "1") {
+if ($env:DEVCORE_SKIP_DASHBOARD -eq "1" -and -not $Json) {
     Write-Host "Dashboard generation skipped (DEVCORE_SKIP_DASHBOARD=1)"
     exit 0
 }
@@ -36,10 +40,12 @@ function Get-TaskIdNumber {
 }
 
 # 0. Rafraîchir les métriques de tokens en temps réel
-try {
-    & python "$DEV_CORE\Scripts\Auto\token_report.py" 2>&1 | Out-Null
-} catch {
-    Write-Host "  [WARN] Real-time token report execution failed: $_" -ForegroundColor Yellow
+if (-not $SkipTokenRefresh) {
+    try {
+        & python "$DEV_CORE\Scripts\Auto\token_report.py" 2>&1 | Out-Null
+    } catch {
+        Write-Host "  [WARN] Real-time token report execution failed: $_" -ForegroundColor Yellow
+    }
 }
 
 $tokenSummary = $null
@@ -649,6 +655,24 @@ if (Test-Path $TEMPLATE_FILE) {
     }
     
     $tokenMetricsJson = if (Test-Path $jsonPath) { Get-Content $jsonPath -Raw -Encoding UTF8 } else { "{}" }
+
+    if ($Json) {
+        $tokenMetrics = try { $tokenMetricsJson | ConvertFrom-Json } catch { [pscustomobject]@{} }
+        [ordered]@{
+            schema_version = 1
+            generated_at = (Get-Date).ToString("o")
+            sections = [ordered]@{
+                project_cards = $cardsHtml
+                tasks_pipeline = $tasksHtml
+                services_monitoring = $infraHtml
+                automation_hooks = $hooksHtml
+                token_activity_report = $tokenReportHtml
+            }
+            task_details = $allDetailsMap
+            token_metrics = $tokenMetrics
+        } | ConvertTo-Json -Depth 30 -Compress
+        return
+    }
 
     $template = Get-Content $TEMPLATE_FILE -Raw -Encoding UTF8
     $template = $template.Replace('{{PROJECT_CARDS}}', $cardsHtml)

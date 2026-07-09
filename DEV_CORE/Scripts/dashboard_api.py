@@ -13,6 +13,7 @@ import random
 PORT = 20129
 PLATFORM_ROOT = os.getenv("DEVCORE_PLATFORM_ROOT", "C:/devcore/DEV_CORE")
 DATA_ROOT = os.getenv("DEVCORE_DATA_ROOT", "C:/devcore/DEV_CORE_DATA")
+API_SCHEMA_VERSION = 1
 
 def read_json_with_retry(file_path, retries=5, delay=0.05):
     for attempt in range(retries):
@@ -49,6 +50,31 @@ def write_json_with_retry(file_path, data, retries=5, delay=0.05):
                 time.sleep(delay + random.uniform(0.01, 0.05))
             else:
                 raise
+
+def build_dashboard_payload():
+    cmd = [
+        "powershell.exe",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        f"{PLATFORM_ROOT}/Scripts/gen_dashboard.ps1",
+        "-Json",
+        "-SkipTokenRefresh",
+    ]
+    print("[DashboardAPI] Running gen_dashboard.ps1 -Json (timeout=15s)...")
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=15.0)
+    if result.returncode != 0:
+        raise RuntimeError((result.stderr or result.stdout or "Dashboard generator failed").strip())
+
+    payload_text = result.stdout.strip()
+    if not payload_text:
+        raise RuntimeError("Dashboard generator returned an empty payload")
+
+    payload = json.loads(payload_text)
+    if payload.get("schema_version") != API_SCHEMA_VERSION:
+        raise RuntimeError(f"Unsupported dashboard schema: {payload.get('schema_version')}")
+    return payload
 
 class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
     def end_headers(self):
@@ -171,6 +197,18 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
                 self.send_error_response(str(e))
         elif path == "/api/status":
             self.send_success_response("API Server Active")
+        elif path == "/api/dashboard":
+            try:
+                payload = build_dashboard_payload()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(payload, ensure_ascii=False).encode("utf-8"))
+            except subprocess.TimeoutExpired as te:
+                print(f"[DashboardAPI] Timeout calling gen_dashboard.ps1 -Json: {te}")
+                self.send_error_response("Dashboard payload generation timed out after 15s")
+            except Exception as e:
+                self.send_error_response(str(e))
         elif path == "/api/refresh":
             try:
                 cmd = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", 

@@ -930,6 +930,22 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 
 `task_add.ps1`, `task_next.ps1`, `task_done.ps1`, `task_step_done.ps1` et `task_sync.ps1` sont maintenant des adaptateurs vers `task_service.ps1`, ce qui garde les mutations de `tasks.json` dans un seul service.
 
+### Dashboard API stable
+
+`dashboard_api.py` expose `GET /api/dashboard` comme contrat JSON stable pour le Cockpit :
+
+- `schema_version` : version du contrat, actuellement `1`.
+- `generated_at` : horodatage de generation.
+- `sections.project_cards` : HTML de la liste projets.
+- `sections.tasks_pipeline` : HTML de la pipeline taches/sessions.
+- `sections.services_monitoring` : HTML infrastructure et services.
+- `sections.automation_hooks` : HTML des hooks d'automatisation.
+- `sections.token_activity_report` : HTML du rapport tokens.
+- `task_details` : dictionnaire des details par cle projet/tache.
+- `token_metrics` : metriques tokens parsees depuis `token_metrics_summary.json`.
+
+`gen_dashboard.ps1 -Json` produit ce contrat. `template.html` lit maintenant `/api/dashboard` pour les rafraichissements dynamiques, au lieu de parser le HTML complet retourne par `/api/refresh`. L'ancien endpoint `/api/refresh` reste disponible en compatibilite.
+
 ## Changelog v9
 
 ### 2026-07-08 — v9.2 Repowise MCP & Continuous Watch
