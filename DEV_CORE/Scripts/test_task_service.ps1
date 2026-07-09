@@ -3,6 +3,7 @@ $ErrorActionPreference = "Stop"
 
 $taskServiceScript = Join-Path $PSScriptRoot "task_service.ps1"
 $taskAddScript = Join-Path $PSScriptRoot "task_add.ps1"
+$taskEditScript = Join-Path $PSScriptRoot "task_edit.ps1"
 
 function Assert-True {
     param(
@@ -21,10 +22,12 @@ if (-not (Test-Path -LiteralPath $taskServiceScript)) {
 $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("devcore-task-service-" + [guid]::NewGuid().ToString("N"))
 $oldDataRoot = $env:DEVCORE_DATA_ROOT
 $oldWorktree = $env:DEVCORE_ACTIVE_WORKTREE_NAME
+$oldSkipDashboard = $env:DEVCORE_SKIP_DASHBOARD
 
 try {
     $env:DEVCORE_DATA_ROOT = $tempRoot
     $env:DEVCORE_ACTIVE_WORKTREE_NAME = "service-test"
+    $env:DEVCORE_SKIP_DASHBOARD = "1"
 
     $boardPath = powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $taskServiceScript -Action Path | Select-Object -First 1
     Assert-True ($boardPath -like (Join-Path $tempRoot "Memory\devcore\tasks.json")) "Task Service should resolve active project board path"
@@ -75,6 +78,17 @@ try {
     $board = Get-Content $boardPath -Raw -Encoding UTF8 | ConvertFrom-Json
     Assert-True ($board.tasks[1].steps_done -eq 1) "Task Service step should persist progress"
 
+    powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $taskServiceScript -Action Edit -Id "T-02" -Title "Edited Service Task" -Mode reasoning -Steps 3 | Out-Null
+    $board = Get-Content $boardPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    Assert-True ($board.tasks[1].title -eq "Edited Service Task") "Task Service edit should update title"
+    Assert-True ($board.tasks[1].mode -eq "reasoning") "Task Service edit should update mode"
+    Assert-True ($board.tasks[1].steps_total -eq 3) "Task Service edit should update steps_total"
+
+    powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $taskEditScript -Id "T-02" -Mode bulk -Steps 4 | Out-Null
+    $board = Get-Content $boardPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    Assert-True ($board.tasks[1].mode -eq "bulk") "task_edit adapter should delegate mode update to Task Service"
+    Assert-True ($board.tasks[1].steps_total -eq 4) "task_edit adapter should delegate steps update to Task Service"
+
     Write-Host "[OK] task service smoke tests passed" -ForegroundColor Green
 } finally {
     if ($null -eq $oldDataRoot) {
@@ -87,6 +101,12 @@ try {
         Remove-Item Env:\DEVCORE_ACTIVE_WORKTREE_NAME -ErrorAction SilentlyContinue
     } else {
         $env:DEVCORE_ACTIVE_WORKTREE_NAME = $oldWorktree
+    }
+
+    if ($null -eq $oldSkipDashboard) {
+        Remove-Item Env:\DEVCORE_SKIP_DASHBOARD -ErrorAction SilentlyContinue
+    } else {
+        $env:DEVCORE_SKIP_DASHBOARD = $oldSkipDashboard
     }
 
     Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue

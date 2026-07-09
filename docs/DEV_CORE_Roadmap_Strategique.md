@@ -468,6 +468,8 @@ Livrable : DEV_CORE v12 Cognitive Platform.
   - [x] v2 : `Next` et adaptateur `task_next.ps1`.
   - [x] v3 : `Complete` et adaptateur `task_done.ps1`.
   - [x] v4 : `Step` et adaptateur `task_step_done.ps1`.
+  - [x] v5 : `Edit` et adaptateur `task_edit.ps1`.
+  - [ ] v6 : `Pause`, `Skip` et synchronisations secondaires.
 - [ ] Encapsuler accès mémoire dans Memory Service.
 - [ ] Faire lire le dashboard via API stable.
 

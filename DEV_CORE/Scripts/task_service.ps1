@@ -1,12 +1,14 @@
 # task_service.ps1 -- DEV_CORE v10 -- Task Service adapter
 param(
     [Parameter(Mandatory=$true)]
-    [ValidateSet("Path", "Read", "Add", "Next", "Complete", "Step")]
+    [ValidateSet("Path", "Read", "Add", "Next", "Complete", "Step", "Edit")]
     [string]$Action,
+    [string]$Id = "",
     [string]$Title = "",
     [ValidateSet("reasoning", "coding", "bulk")]
     [string]$Mode = "coding",
     [string]$DependsOn = "",
+    [int]$Steps = 0,
     [int]$StepNumber = 0,
     [switch]$Force,
     [switch]$Json
@@ -201,6 +203,67 @@ function Complete-Step {
     }
 }
 
+function Edit-Task {
+    param(
+        [Parameter(Mandatory=$true)][string]$TaskId,
+        [string]$TaskTitle = "",
+        [string]$TaskMode = "",
+        [int]$TaskSteps = 0,
+        [switch]$UpdateTitle,
+        [switch]$UpdateMode,
+        [switch]$UpdateSteps
+    )
+
+    if ([string]::IsNullOrWhiteSpace($TaskId)) {
+        Write-Host "  Task Service: id requis" -ForegroundColor Red
+        exit 64
+    }
+
+    $board = Read-TaskBoard
+    $task = $board.tasks | Where-Object { $_.id -eq $TaskId } | Select-Object -First 1
+    if (-not $task) {
+        Write-Host "  Task Service: tache $TaskId non trouvee" -ForegroundColor Red
+        exit 66
+    }
+
+    $changes = @()
+    if ($UpdateTitle) {
+        if ([string]::IsNullOrWhiteSpace($TaskTitle)) {
+            Write-Host "  Task Service: titre vide" -ForegroundColor Red
+            exit 64
+        }
+        $task.title = $TaskTitle
+        $changes += "title"
+    }
+
+    if ($UpdateMode) {
+        $task.mode = $TaskMode
+        $changes += "mode"
+    }
+
+    if ($UpdateSteps) {
+        if ($TaskSteps -lt 1) {
+            Write-Host "  Task Service: steps_total doit etre >= 1" -ForegroundColor Red
+            exit 64
+        }
+        $task.steps_total = $TaskSteps
+        if ($task.PSObject.Properties["steps_done"] -and [int]$task.steps_done -gt $TaskSteps) {
+            $task.steps_done = $TaskSteps
+        }
+        $changes += "steps_total"
+    }
+
+    if ($changes.Count -gt 0) {
+        Write-TaskBoard -Board $board
+    }
+
+    return [pscustomobject]@{
+        task = $task
+        changed = ($changes.Count -gt 0)
+        changes = $changes
+    }
+}
+
 switch ($Action) {
     "Path" {
         $boardPath = Get-TaskBoardPath
@@ -256,6 +319,24 @@ switch ($Action) {
             Write-Host "  Progress : $($result.task.steps_done)/$($result.task.steps_total)" -ForegroundColor Cyan
         } else {
             Write-Host "  Aucune tache active." -ForegroundColor Yellow
+        }
+        exit 0
+    }
+    "Edit" {
+        $result = Edit-Task `
+            -TaskId $Id `
+            -TaskTitle $Title `
+            -TaskMode $Mode `
+            -TaskSteps $Steps `
+            -UpdateTitle:$PSBoundParameters.ContainsKey("Title") `
+            -UpdateMode:$PSBoundParameters.ContainsKey("Mode") `
+            -UpdateSteps:$PSBoundParameters.ContainsKey("Steps")
+        if ($Json) {
+            $result | ConvertTo-Json -Depth 8
+        } elseif ($result.changed) {
+            Write-Host "  [OK] Tache $Id mise a jour." -ForegroundColor Green
+        } else {
+            Write-Host "  Aucune modification specifiee. Exemple: dc task edit T-05 -Mode bulk -Steps 5" -ForegroundColor Yellow
         }
         exit 0
     }
