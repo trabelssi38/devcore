@@ -1,7 +1,7 @@
 # task_service.ps1 -- DEV_CORE v10 -- Task Service adapter
 param(
     [Parameter(Mandatory=$true)]
-    [ValidateSet("Path", "Read", "Add")]
+    [ValidateSet("Path", "Read", "Add", "Next")]
     [string]$Action,
     [string]$Title = "",
     [ValidateSet("reasoning", "coding", "bulk")]
@@ -96,6 +96,33 @@ function Add-Task {
     return $task
 }
 
+function Get-NextTask {
+    $board = Read-TaskBoard
+    $current = $board.tasks | Where-Object { $_.status -eq "active" } | Select-Object -First 1
+
+    if (-not $current) {
+        $doneIds = ($board.tasks | Where-Object { $_.status -eq "done" }).id
+        $current = $board.tasks | Where-Object {
+            $_.status -eq "todo" -and (
+                -not $_.depends_on -or $doneIds -contains $_.depends_on
+            )
+        } | Select-Object -First 1
+    }
+
+    if (-not $current) {
+        return $null
+    }
+
+    if ($current.status -eq "todo") {
+        $current.status = "active"
+        $current | Add-Member -NotePropertyName "started_at" -NotePropertyValue (Get-Date -Format "o") -Force
+        $board.current_task = $current.id
+        Write-TaskBoard -Board $board
+    }
+
+    return $current
+}
+
 switch ($Action) {
     "Path" {
         $boardPath = Get-TaskBoardPath
@@ -114,6 +141,18 @@ switch ($Action) {
             $task | ConvertTo-Json -Depth 5
         } else {
             Write-Host "  [OK] Tache ajoutee : $($task.id) [$Mode] -- $Title" -ForegroundColor Green
+        }
+        exit 0
+    }
+    "Next" {
+        $task = Get-NextTask
+        if ($Json) {
+            if ($task) { $task | ConvertTo-Json -Depth 5 }
+            else { "null" }
+        } elseif ($task) {
+            Write-Host "  [OK] Tache active : $($task.id) [$($task.mode)] -- $($task.title)" -ForegroundColor Green
+        } else {
+            Write-Host "  Aucune tache disponible." -ForegroundColor Yellow
         }
         exit 0
     }

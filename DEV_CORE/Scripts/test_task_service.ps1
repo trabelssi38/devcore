@@ -44,6 +44,17 @@ try {
     Assert-True ($board.tasks[1].id -eq "T-02") "task_add adapter should allocate next task through service"
     Assert-True ($board.tasks[1].mode -eq "bulk") "task_add adapter should preserve mode"
 
+    powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $taskServiceScript -Action Add -Title "Blocked Task" -Mode coding -DependsOn "99" | Out-Null
+    $nextJson = powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $taskServiceScript -Action Next -Json | Out-String
+    $next = $nextJson | ConvertFrom-Json
+    Assert-True ($next.id -eq "T-01") "Task Service next should activate first eligible todo task"
+    Assert-True ($next.status -eq "active") "Task Service next should return active task"
+
+    $board = Get-Content $boardPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    Assert-True ($board.current_task -eq "T-01") "Task Service next should update current_task"
+    Assert-True ($board.tasks[0].status -eq "active") "Task Service next should persist active status"
+    Assert-True ($board.tasks[2].status -eq "todo") "Task Service next should not activate blocked dependencies"
+
     Write-Host "[OK] task service smoke tests passed" -ForegroundColor Green
 } finally {
     if ($null -eq $oldDataRoot) {

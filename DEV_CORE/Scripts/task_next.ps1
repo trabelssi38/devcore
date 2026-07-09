@@ -7,17 +7,13 @@ if (-not (Test-Path $tFile)) {
     Write-Host "  Aucun tasks.json -- dc new task 'titre'" -ForegroundColor Yellow; exit 0
 }
 
-$board = Get-Content $tFile -Raw | ConvertFrom-Json
-$current = $board.tasks | Where-Object { $_.status -eq "active" } | Select-Object -First 1
-
-if (-not $current) {
-    $done_ids = ($board.tasks | Where-Object { $_.status -eq "done" }).id
-    $current  = $board.tasks | Where-Object {
-        $_.status -eq "todo" -and (
-            -not $_.depends_on -or $done_ids -contains $_.depends_on
-        )
-    } | Select-Object -First 1
+$currentJson = & "$PSScriptRoot\task_service.ps1" -Action Next -Json
+$current = if ($currentJson -and (($currentJson -join "`n").Trim()) -ne "null") {
+    ($currentJson | Out-String) | ConvertFrom-Json
+} else {
+    $null
 }
+$board = Get-Content $tFile -Raw | ConvertFrom-Json
 
 if (-not $current) {
     $done  = ($board.tasks | Where-Object { $_.status -eq "done" }).Count
@@ -27,15 +23,7 @@ if (-not $current) {
     exit 0
 }
 
-# Activer
-if ($current.status -eq "todo") {
-    $current.status = "active"
-    $current | Add-Member -NotePropertyName "started_at" -NotePropertyValue (Get-Date -Format "o") -Force
-    $board.current_task = $current.id
-    $board | ConvertTo-Json -Depth 10 | Set-Content $tFile -Encoding UTF8
-    # Regenerer tasks.toon apres activation (via toonify.ps1 qui gere les paths Windows)
-    try { & "$DEV_CORE\Scripts\toonify.ps1" -InputFile $tFile 2>$null | Out-Null } catch {}
-}
+try { & "$DEV_CORE\Scripts\toonify.ps1" -InputFile $tFile 2>$null | Out-Null } catch {}
 
 # Mode -> budget
 $budget = switch ($current.mode) {
