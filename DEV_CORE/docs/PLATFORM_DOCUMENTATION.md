@@ -211,6 +211,7 @@ T-01 (reasoning) → T-02 (coding) → T-03 (bulk) → T-04 (reasoning)
 | `task_status.ps1` | `dc task status` | Dashboard tâches |
 | `task_scan.ps1` | `dc task scan` | Scan git+spec+prompts |
 | `task_sync.ps1` | `dc task sync` | Sync suggestions |
+| `task_service.ps1` | `Path`, `Read`, `Add` | Service central pour board path, lecture et creation de taches |
 | `gateway.ps1` | `dc check*`, `dc health*` | Gateway typée pour commandes validées |
 | `diagnose.ps1` | `dc check`, `dc check --gate`, `dc check --fix --dry-run` | Diagnostic complet, gate release locale et simulation de reparations |
 | `health_report.ps1` | `dc health`, `dc health --json` | Rapport court services, secrets, task board et memoire |
@@ -897,6 +898,16 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - `dc health --json`
 
 `dc.ps1` reste l'interface utilisateur, mais délègue ces commandes au Gateway pour centraliser validation et dispatch.
+
+### Task Service
+
+`task_service.ps1` centralise les premiers contrats du cycle de taches :
+
+- `-Action Path` : resout le chemin `DEV_CORE_DATA\Memory\<project>\tasks.json`.
+- `-Action Read` : lit ou initialise la board projet.
+- `-Action Add` : cree une tache avec ID, mode, dependance et worktree.
+
+`task_add.ps1` est maintenant un adaptateur vers `task_service.ps1 -Action Add`, ce qui commence la migration des mutations de `tasks.json` hors des scripts CLI.
 
 ## Changelog v9
 

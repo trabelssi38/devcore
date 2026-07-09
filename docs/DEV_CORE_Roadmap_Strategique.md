@@ -464,6 +464,7 @@ Livrable : DEV_CORE v12 Cognitive Platform.
 
 - [x] Introduire Gateway.
 - [ ] Extraire Task Service.
+  - [x] v1 : `Path`, `Read`, `Add` et adaptateur `task_add.ps1`.
 - [ ] Encapsuler accès mémoire dans Memory Service.
 - [ ] Faire lire le dashboard via API stable.
 
