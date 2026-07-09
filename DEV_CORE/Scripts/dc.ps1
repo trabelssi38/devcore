@@ -137,6 +137,8 @@ switch -Regex ($cmd) {
     # -- DIAGNOSTIC
     "^check --fix$"  { & "$SCRIPTS\diagnose.ps1" -Fix; break }
     "^check$"        { & "$SCRIPTS\diagnose.ps1"; break }
+    "^health$"       { & "$SCRIPTS\health_report.ps1"; break }
+    "^health --json$" { & "$SCRIPTS\health_report.ps1" -Json; break }
 
     # -- ASK (routing mode auto)
     "^ask (.+)$" { & "$SCRIPTS\ask.ps1" -PromptFr $Matches[1]; break }
@@ -185,6 +187,8 @@ switch -Regex ($cmd) {
         Write-Host "  dc endday                       Cloture + sync auto" -ForegroundColor Gray
         Write-Host "  dc weekly                       Maintenance hebdo" -ForegroundColor Gray
         Write-Host "  dc check                        Diagnostic complet" -ForegroundColor Gray
+        Write-Host "  dc health                       Rapport health v10 court" -ForegroundColor Gray
+        Write-Host "  dc health --json                Rapport health v10 JSON" -ForegroundColor Gray
         Write-Host "  dc ask [prompt]                 Routing mode auto" -ForegroundColor Gray
         Write-Host ""
         Write-Host "  TOON" -ForegroundColor White
@@ -213,4 +217,3 @@ switch -Regex ($cmd) {
 
     default { Write-Host "  Inconnu : '$cmd' -- dc help" -ForegroundColor Yellow; break }
 }
-
