@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "default_model": "default-current",
+  "models": {
+    "default-current": {
+      "provider": "devcore",
+      "pricing_per_million_usd": {
+        "input": 3.0,
+        "cached_input": 0.45,
+        "output": 15.0
+      },
+      "notes": "Legacy DEV_CORE fallback pricing used before model-aware pricing."
+    },
+    "gpt-5.3-codex": {
+      "provider": "openai",
+      "pricing_per_million_usd": {
+        "input": 1.75,
+        "cached_input": 0.175,
+        "output": 14.0
+      }
+    },
+    "claude-haiku-4-5": {
+      "provider": "anthropic",
+      "pricing_per_million_usd": {
+        "input": 1.0,
+        "cached_input": 0.1,
+        "output": 5.0
+      }
+    },
+    "claude-opus-4-8": {
+      "provider": "anthropic",
+      "pricing_per_million_usd": {
+        "input": 5.0,
+        "cached_input": 0.5,
+        "output": 25.0
+      }
+    },
+    "gemini-2.5-pro": {
+      "provider": "google",
+      "pricing_per_million_usd": {
+        "input": 1.25,
+        "cached_input": 0.125,
+        "output": 10.0
+      },
+      "notes": "Google standard tier for prompts <= 200k tokens; higher-context pricing is not modeled yet."
+    },
+    "gemini-2.5-flash": {
+      "provider": "google",
+      "pricing_per_million_usd": {
+        "input": 0.3,
+        "cached_input": 0.03,
+        "output": 2.5
+      }
+    }
+  },
+  "aliases": {
+    "devcore-always-on": "gemini-2.5-flash",
+    "gemini-pro": "gemini-2.5-pro",
+    "gemini-flash": "gemini-2.5-flash",
+    "models/gemini-2.5-pro": "gemini-2.5-pro",
+    "models/gemini-2.5-flash": "gemini-2.5-flash",
+    "claude-haiku": "claude-haiku-4-5",
+    "claude-opus": "claude-opus-4-8"
+  },
+  "client_defaults": {
+    "codex": "gpt-5.3-codex",
+    "codex desktop": "gpt-5.3-codex",
+    "antigravity": "gemini-2.5-flash",
+    "gemini": "gemini-2.5-flash"
+  },
+  "sources": {
+    "openai": "https://developers.openai.com/api/docs/pricing",
+    "anthropic": "https://docs.anthropic.com/en/docs/about-claude/pricing",
+    "google": "https://ai.google.dev/gemini-api/docs/pricing"
+  }
+}

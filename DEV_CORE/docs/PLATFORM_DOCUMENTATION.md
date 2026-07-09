@@ -947,6 +947,19 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 
 `gen_dashboard.ps1 -Json` produit ce contrat. `template.html` lit maintenant `/api/dashboard` pour les rafraichissements dynamiques, au lieu de parser le HTML complet retourne par `/api/refresh`. L'ancien endpoint `/api/refresh` reste disponible en compatibilite.
 
+### Model Pricing Registry
+
+`DEV_CORE/Config/model_pricing.json` centralise les tarifs par modele pour le rapport de tokens.
+
+- `models.<id>.pricing_per_million_usd.input` : prix input normal par million de tokens.
+- `models.<id>.pricing_per_million_usd.cached_input` : prix input servi depuis le cache par million de tokens.
+- `models.<id>.pricing_per_million_usd.output` : prix output par million de tokens.
+- `aliases` : mapping des noms exposes par les clients/routeurs vers un profil canonique.
+- `client_defaults` : modele par defaut a appliquer quand un client ne logge pas le modele pour un tour.
+- `default_model` : profil fallback quand le log de session ne contient pas de modele.
+
+`token_report.py` detecte les champs `model`, `model_slug`, `model_name`, `selected_model`, `requested_model` ou `original_model` dans les logs Codex, Claude, Antigravity/Gemini et opencode. La resolution se fait pour chaque tour/prompt modele : modele explicite du payload, puis `client_defaults`, puis `default_model`. Le resume `token_metrics_summary.json` conserve les champs existants (`tokens`, `cache_hits`, `output_tokens`, `cost_usd`) et ajoute `models`, `pricing_profiles`, `model_usage` et `model_turns`. `model_turns[].source` indique si le modele vient du `payload`, de `client_default` ou du fallback `default_model`.
+
 ### Context Service
 
 `context_service.ps1` demarre le Context Engine v1 avec `-Action ScoreSources`.

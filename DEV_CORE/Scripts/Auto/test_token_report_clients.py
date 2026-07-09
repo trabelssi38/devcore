@@ -18,8 +18,26 @@ def test_multi_client_token_report(tmp_path):
     data = tmp_path / "data"
     memory = data / "Memory" / "devcore"
     reports = data / "Logs" / "token_reports"
+    config = tmp_path / "DEV_CORE" / "Config"
     memory.mkdir(parents=True)
     reports.mkdir(parents=True)
+    config.mkdir(parents=True)
+    (config / "model_pricing.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "default_model": "default-current",
+                "models": {
+                    "default-current": {"pricing_per_million_usd": {"input": 3.0, "cached_input": 0.45, "output": 15.0}},
+                    "gpt-5.3-codex": {"pricing_per_million_usd": {"input": 1.75, "cached_input": 0.175, "output": 14.0}},
+                    "claude-haiku-4-5": {"pricing_per_million_usd": {"input": 1.0, "cached_input": 0.1, "output": 5.0}},
+                },
+                "aliases": {},
+                "client_defaults": {"codex desktop": "gpt-5.3-codex"},
+            }
+        ),
+        encoding="utf-8",
+    )
     (memory / "tasks.json").write_text(
         json.dumps(
             {
@@ -67,7 +85,7 @@ def test_multi_client_token_report(tmp_path):
             {
                 "timestamp": "2026-07-09T00:20:00Z",
                 "type": "assistant",
-                "message": {"content": [{"type": "text", "text": "finished T-42"}]},
+                "message": {"model": "claude-haiku-4-5", "content": [{"type": "text", "text": "finished T-42"}]},
                 "usage": {"input_tokens": 300, "cache_read_input_tokens": 30, "output_tokens": 70},
                 "cwd": str(tmp_path / "devcore"),
             }
@@ -97,3 +115,19 @@ def test_multi_client_token_report(tmp_path):
     sources = {session["client"] for session in summary["sessions"]}
     assert "codex" in sources
     assert "claude" in sources
+
+    codex_session = next(session for session in summary["sessions"] if session["client"] == "codex")
+    claude_session = next(session for session in summary["sessions"] if session["client"] == "claude")
+    assert codex_session["models"] == ["gpt-5.3-codex"]
+    assert claude_session["models"] == ["claude-haiku-4-5"]
+    assert codex_session["pricing_profiles"] == ["gpt-5.3-codex"]
+    assert claude_session["pricing_profiles"] == ["claude-haiku-4-5"]
+    assert codex_session["cost_usd"] == 0.0042
+    assert claude_session["cost_usd"] == 0.0006
+    assert codex_session["model_turns"][0]["model"] == "gpt-5.3-codex"
+    assert codex_session["model_turns"][0]["source"] == "client_default"
+    assert claude_session["model_turns"][0]["model"] == "claude-haiku-4-5"
+    assert claude_session["model_turns"][0]["source"] == "payload"
+    assert summary["totals"]["model_usage"]["gpt-5.3-codex"]["sources"]["client_default"] == 1
+    assert summary["totals"]["model_usage"]["claude-haiku-4-5"]["sources"]["payload"] == 1
+    assert summary["tasks"]["devcore_T-96"]["model_usage"]["gpt-5.3-codex"]["turns"] == 1

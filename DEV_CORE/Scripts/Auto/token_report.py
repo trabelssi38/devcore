@@ -11,6 +11,14 @@ CACHED_INPUT_TOKEN_PRICE = 0.00000045
 OUTPUT_TOKEN_PRICE = 0.000015
 ESTIMATED_INPUT_PER_MODEL_TURN = 15000
 ESTIMATED_CACHE_RATIO = 0.85
+DEFAULT_PRICING_PROFILE = {
+    "provider": "devcore",
+    "pricing_per_million_usd": {
+        "input": INPUT_TOKEN_PRICE * 1_000_000,
+        "cached_input": CACHED_INPUT_TOKEN_PRICE * 1_000_000,
+        "output": OUTPUT_TOKEN_PRICE * 1_000_000,
+    },
+}
 
 
 def format_duration(seconds):
@@ -93,13 +101,111 @@ def as_text(value):
     return str(value)
 
 
-def calculate_cost(tokens, cache_hits, output_tokens):
+def default_model_pricing():
+    return {
+        "schema_version": 1,
+        "default_model": "default-current",
+        "models": {"default-current": DEFAULT_PRICING_PROFILE},
+        "aliases": {},
+        "client_defaults": {},
+    }
+
+
+def load_model_pricing():
+    platform_root = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", Path(__file__).resolve().parents[2]))
+    pricing_path = Path(os.environ.get("DEVCORE_MODEL_PRICING_PATH", platform_root / "Config" / "model_pricing.json"))
+    registry = default_model_pricing()
+    if not pricing_path.exists():
+        return registry
+    try:
+        loaded = json.loads(pricing_path.read_text(encoding="utf-8"))
+    except Exception:
+        return registry
+    if not isinstance(loaded, dict) or not isinstance(loaded.get("models"), dict):
+        return registry
+    registry.update(loaded)
+    registry.setdefault("models", {}).setdefault("default-current", DEFAULT_PRICING_PROFILE)
+    registry.setdefault("aliases", {})
+    registry.setdefault("client_defaults", {})
+    registry.setdefault("default_model", "default-current")
+    return registry
+
+
+def normalize_model_name(model):
+    value = str(model or "").strip().lower()
+    if value.startswith("models/"):
+        value = value.split("/", 1)[1]
+    return value
+
+
+def resolve_model_pricing(model, registry):
+    registry = registry or default_model_pricing()
+    models = registry.get("models", {})
+    aliases = {normalize_model_name(k): normalize_model_name(v) for k, v in registry.get("aliases", {}).items()}
+    default_model = normalize_model_name(registry.get("default_model") or "default-current")
+    requested = normalize_model_name(model)
+    profile_id = aliases.get(requested, requested) if requested else default_model
+    if profile_id not in models:
+        profile_id = default_model if default_model in models else "default-current"
+    return profile_id, models.get(profile_id, DEFAULT_PRICING_PROFILE)
+
+
+def default_model_for_client(client, app, registry):
+    defaults = registry.get("client_defaults", {}) if registry else {}
+    for key in (app, client):
+        normalized = normalize_model_name(key)
+        if normalized in defaults:
+            return defaults[normalized]
+    return None
+
+
+def pricing_token_value(profile, key, fallback):
+    try:
+        per_million = profile.get("pricing_per_million_usd", {}).get(key)
+        if per_million is not None:
+            return float(per_million) / 1_000_000
+    except Exception:
+        pass
+    return fallback
+
+
+def calculate_cost(tokens, cache_hits, output_tokens, pricing_profile=None):
+    pricing_profile = pricing_profile or DEFAULT_PRICING_PROFILE
+    input_price = pricing_token_value(pricing_profile, "input", INPUT_TOKEN_PRICE)
+    cached_input_price = pricing_token_value(pricing_profile, "cached_input", CACHED_INPUT_TOKEN_PRICE)
+    output_price = pricing_token_value(pricing_profile, "output", OUTPUT_TOKEN_PRICE)
     normal_in = max(tokens - cache_hits - output_tokens, 0)
     return (
-        normal_in * INPUT_TOKEN_PRICE
-        + cache_hits * CACHED_INPUT_TOKEN_PRICE
-        + output_tokens * OUTPUT_TOKEN_PRICE
+        normal_in * input_price
+        + cache_hits * cached_input_price
+        + output_tokens * output_price
     )
+
+
+def first_model_value(value, depth=0):
+    if depth > 4:
+        return None
+    if isinstance(value, dict):
+        for key in ("model", "model_slug", "model_name", "selected_model", "requested_model", "original_model"):
+            candidate = value.get(key)
+            if isinstance(candidate, str) and candidate.strip():
+                return candidate
+        for key, nested in value.items():
+            if key in {"content", "text", "output", "arguments"}:
+                continue
+            candidate = first_model_value(nested, depth + 1)
+            if candidate:
+                return candidate
+    if isinstance(value, list):
+        for item in value[:8]:
+            candidate = first_model_value(item, depth + 1)
+            if candidate:
+                return candidate
+    return None
+
+
+def detect_model(payload, row):
+    return first_model_value(payload) or first_model_value(row)
 
 
 def usage_from_payload(payload):
@@ -159,15 +265,67 @@ def add_usage(left, right):
     left["cache_hits"] += int(right.get("cache_hits", 0))
     left["output_tokens"] += int(right.get("output_tokens", 0))
     left["turns"] += int(right.get("turns", 0))
-    left["cost_usd"] += calculate_cost(
-        int(right.get("tokens", 0)),
-        int(right.get("cache_hits", 0)),
-        int(right.get("output_tokens", 0)),
-    )
+    if "cost_usd" in right:
+        left["cost_usd"] += float(right.get("cost_usd") or 0)
+    else:
+        left["cost_usd"] += calculate_cost(
+            int(right.get("tokens", 0)),
+            int(right.get("cache_hits", 0)),
+            int(right.get("output_tokens", 0)),
+        )
+
+
+def empty_model_usage():
+    return {"tokens": 0, "cache_hits": 0, "output_tokens": 0, "turns": 0, "cost_usd": 0.0, "sources": {}}
+
+
+def add_model_usage(collection, model_id, usage, source):
+    if model_id not in collection:
+        collection[model_id] = empty_model_usage()
+    bucket = collection[model_id]
+    bucket["tokens"] += int(usage.get("tokens", 0))
+    bucket["cache_hits"] += int(usage.get("cache_hits", 0))
+    bucket["output_tokens"] += int(usage.get("output_tokens", 0))
+    turns = int(usage.get("turns", 0))
+    bucket["turns"] += turns
+    bucket["cost_usd"] += float(usage.get("cost_usd") or 0)
+    bucket["pricing_profile"] = usage.get("pricing_profile")
+    bucket["sources"][source] = bucket["sources"].get(source, 0) + max(turns, 1)
+
+
+def merge_model_usage(left, right):
+    for model_id, usage in (right or {}).items():
+        if model_id not in left:
+            left[model_id] = empty_model_usage()
+        bucket = left[model_id]
+        bucket["tokens"] += int(usage.get("tokens", 0))
+        bucket["cache_hits"] += int(usage.get("cache_hits", 0))
+        bucket["output_tokens"] += int(usage.get("output_tokens", 0))
+        bucket["turns"] += int(usage.get("turns", 0))
+        bucket["cost_usd"] += float(usage.get("cost_usd") or 0)
+        bucket["pricing_profile"] = usage.get("pricing_profile") or bucket.get("pricing_profile")
+        for source, count in usage.get("sources", {}).items():
+            bucket["sources"][source] = bucket["sources"].get(source, 0) + int(count)
+
+
+def finalize_model_usage(model_usage):
+    finalized = {}
+    for model_id, usage in sorted((model_usage or {}).items()):
+        item = dict(usage)
+        item["cost_usd"] = round(float(item.get("cost_usd") or 0), 4)
+        finalized[model_id] = item
+    return finalized
 
 
 def empty_bucket():
     return {"tokens": 0, "cache_hits": 0, "output_tokens": 0, "turns": 0, "cost_usd": 0.0}
+
+
+def empty_stats_bucket(include_sessions=False):
+    bucket = {"tokens": 0, "cache_hits": 0, "output_tokens": 0, "cost_usd": 0.0, "model_usage": {}}
+    if include_sessions:
+        bucket["sessions"] = 0
+    return bucket
 
 
 def discover_projects(memory_path):
@@ -251,7 +409,7 @@ def discover_sources(userprofile):
     return sources
 
 
-def parse_source(source, valid_projects, task_to_project):
+def parse_source(source, valid_projects, task_to_project, pricing_registry=None):
     client = source["client"]
     session_id = source["session_id"]
     app = source.get("app", client)
@@ -263,6 +421,10 @@ def parse_source(source, valid_projects, task_to_project):
     detected_project = "devcore"
     task_tokens = {}
     cwd_hint = ""
+    session_models = set()
+    session_pricing_profiles = set()
+    session_model_usage = {}
+    prompt_model_turns = []
 
     for row in read_jsonl(source["path"]):
         payload = row.get("payload") if isinstance(row.get("payload"), dict) else row
@@ -320,16 +482,64 @@ def parse_source(source, valid_projects, task_to_project):
             usage = estimated_usage_from_text(content)
 
         if usage:
+            explicit_model = detect_model(payload, row)
+            client_default_model = default_model_for_client(client, app, pricing_registry)
+            detected_model = explicit_model or client_default_model
+            model_source = "payload" if explicit_model else "client_default" if client_default_model else "default_model"
+            pricing_profile_id, pricing_profile = resolve_model_pricing(detected_model, pricing_registry)
+            model_id = normalize_model_name(detected_model) if detected_model else pricing_profile_id
+            usage["model"] = model_id
+            usage["pricing_profile"] = pricing_profile_id
+            usage["cost_usd"] = calculate_cost(
+                int(usage.get("tokens", 0)),
+                int(usage.get("cache_hits", 0)),
+                int(usage.get("output_tokens", 0)),
+                pricing_profile,
+            )
+            session_models.add(model_id)
+            session_pricing_profiles.add(pricing_profile_id)
+            add_model_usage(session_model_usage, model_id, usage, model_source)
             model_turns += usage["turns"]
             targets = task_ids or ([current_task] if current_task else ["Sans tache"])
+            prompt_model_turns.append(
+                {
+                    "index": model_turns,
+                    "model": model_id,
+                    "source": model_source,
+                    "pricing_profile": pricing_profile_id,
+                    "tokens": int(usage.get("tokens", 0)),
+                    "cache_hits": int(usage.get("cache_hits", 0)),
+                    "output_tokens": int(usage.get("output_tokens", 0)),
+                    "cost_usd": round(float(usage.get("cost_usd") or 0), 4),
+                    "estimated": bool(usage.get("estimated")),
+                    "tasks": targets,
+                }
+            )
             share = max(len(targets), 1)
             for task_id in targets:
                 if task_id not in task_tokens:
-                    task_tokens[task_id] = {"tokens": 0, "cache_hits": 0, "output_tokens": 0, "turns": 0}
+                    task_tokens[task_id] = {
+                        "tokens": 0,
+                        "cache_hits": 0,
+                        "output_tokens": 0,
+                        "turns": 0,
+                        "cost_usd": 0.0,
+                        "model_usage": {},
+                    }
                 task_tokens[task_id]["tokens"] += usage["tokens"] // share
                 task_tokens[task_id]["cache_hits"] += usage["cache_hits"] // share
                 task_tokens[task_id]["output_tokens"] += usage["output_tokens"] // share
                 task_tokens[task_id]["turns"] += max(usage["turns"] // share, 1)
+                task_tokens[task_id]["cost_usd"] += usage["cost_usd"] / share
+                split_usage = {
+                    "tokens": usage["tokens"] // share,
+                    "cache_hits": usage["cache_hits"] // share,
+                    "output_tokens": usage["output_tokens"] // share,
+                    "turns": max(usage["turns"] // share, 1),
+                    "cost_usd": usage["cost_usd"] / share,
+                    "pricing_profile": pricing_profile_id,
+                }
+                add_model_usage(task_tokens[task_id]["model_usage"], model_id, split_usage, model_source)
 
     if not timestamps or not task_tokens:
         return None
@@ -356,12 +566,24 @@ def parse_source(source, valid_projects, task_to_project):
         "output_tokens": session_usage["output_tokens"],
         "turns": model_turns + user_turns,
         "cost_usd": round(session_usage["cost_usd"], 4),
+        "models": sorted(session_models),
+        "pricing_profiles": sorted(session_pricing_profiles),
+        "model_usage": finalize_model_usage(session_model_usage),
+        "model_turns": prompt_model_turns,
         "_task_tokens": task_tokens,
     }
 
 
 def aggregate_sessions(sessions):
-    totals = {"tokens": 0, "cache_hits": 0, "output_tokens": 0, "duration_seconds": 0, "sessions_count": 0, "cost_usd": 0.0}
+    totals = {
+        "tokens": 0,
+        "cache_hits": 0,
+        "output_tokens": 0,
+        "duration_seconds": 0,
+        "sessions_count": 0,
+        "cost_usd": 0.0,
+        "model_usage": {},
+    }
     projects_data = {}
     tasks_data = {}
     clients_data = {}
@@ -373,39 +595,53 @@ def aggregate_sessions(sessions):
         totals["output_tokens"] += session["output_tokens"]
         totals["sessions_count"] += 1
         totals["cost_usd"] += session["cost_usd"]
+        merge_model_usage(totals["model_usage"], session.get("model_usage", {}))
 
         project = session["project"]
         if project not in projects_data:
-            projects_data[project] = {"tokens": 0, "cache_hits": 0, "output_tokens": 0, "sessions": 0, "cost_usd": 0.0}
+            projects_data[project] = empty_stats_bucket(include_sessions=True)
         projects_data[project]["tokens"] += session["tokens"]
         projects_data[project]["cache_hits"] += session["cache_hits"]
         projects_data[project]["output_tokens"] += session["output_tokens"]
         projects_data[project]["sessions"] += 1
         projects_data[project]["cost_usd"] += session["cost_usd"]
+        merge_model_usage(projects_data[project]["model_usage"], session.get("model_usage", {}))
 
         client = session["client"]
         if client not in clients_data:
-            clients_data[client] = {"tokens": 0, "cache_hits": 0, "output_tokens": 0, "sessions": 0, "cost_usd": 0.0}
+            clients_data[client] = empty_stats_bucket(include_sessions=True)
         clients_data[client]["tokens"] += session["tokens"]
         clients_data[client]["cache_hits"] += session["cache_hits"]
         clients_data[client]["output_tokens"] += session["output_tokens"]
         clients_data[client]["sessions"] += 1
         clients_data[client]["cost_usd"] += session["cost_usd"]
+        merge_model_usage(clients_data[client]["model_usage"], session.get("model_usage", {}))
 
         for tid, usage in session["_task_tokens"].items():
             task_key = f"{project}_{tid}"
             if task_key not in tasks_data:
-                tasks_data[task_key] = {"project": project, "tokens": 0, "cache_hits": 0, "output_tokens": 0, "turns": 0, "cost_usd": 0.0}
+                tasks_data[task_key] = {
+                    "project": project,
+                    "tokens": 0,
+                    "cache_hits": 0,
+                    "output_tokens": 0,
+                    "turns": 0,
+                    "cost_usd": 0.0,
+                    "model_usage": {},
+                }
             add_usage(tasks_data[task_key], usage)
+            merge_model_usage(tasks_data[task_key]["model_usage"], usage.get("model_usage", {}))
 
         public_session = {k: v for k, v in session.items() if not k.startswith("_")}
         public_sessions.append(public_session)
 
     totals["duration_minutes"] = int(totals.pop("duration_seconds", 0) // 60)
     totals["cost_usd"] = round(totals["cost_usd"], 4)
+    totals["model_usage"] = finalize_model_usage(totals["model_usage"])
     for collection in (projects_data, tasks_data, clients_data):
         for values in collection.values():
             values["cost_usd"] = round(values["cost_usd"], 4)
+            values["model_usage"] = finalize_model_usage(values.get("model_usage", {}))
 
     return {
         "totals": totals,
@@ -486,10 +722,11 @@ def main():
     memory_path = Path(devcore_data) / "Memory"
 
     valid_projects, task_to_project = discover_projects(memory_path)
+    pricing_registry = load_model_pricing()
     sources = discover_sources(userprofile)
     sessions = []
     for source in sources:
-        session = parse_source(source, valid_projects, task_to_project)
+        session = parse_source(source, valid_projects, task_to_project, pricing_registry)
         if session:
             sessions.append(session)
 
