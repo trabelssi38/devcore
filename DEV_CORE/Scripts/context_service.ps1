@@ -48,6 +48,43 @@ function Get-RelevanceScore {
     return [Math]::Min(1.0, [Math]::Round($score, 4))
 }
 
+function Get-MatchedTerms {
+    param(
+        [string]$Content,
+        [string]$Needle
+    )
+
+    $lowerContent = if ($Content) { $Content.ToLowerInvariant() } else { "" }
+    $terms = @($Needle.ToLowerInvariant() -split "\s+" | Where-Object { $_.Length -gt 2 })
+    $matches = @()
+    foreach ($term in $terms) {
+        if ($lowerContent.Contains($term)) { $matches += $term }
+    }
+    return @($matches | Select-Object -Unique)
+}
+
+function New-SourceJustification {
+    param(
+        [string]$Type,
+        [string[]]$MatchedTerms,
+        [double]$Score,
+        [double]$Freshness,
+        [double]$Authority,
+        [bool]$Included
+    )
+
+    $reasons = @()
+    if ($MatchedTerms.Count -gt 0) {
+        $reasons += ("matched query terms: " + (($MatchedTerms | Select-Object -First 5) -join ", "))
+    } else {
+        $reasons += "no direct query term match"
+    }
+    if ($Freshness -ge 0.8) { $reasons += "fresh source" } else { $reasons += "older source" }
+    if ($Authority -ge 0.85) { $reasons += "high authority $Type" } else { $reasons += "supporting $Type" }
+    $decision = if ($Included) { "included" } else { "excluded" }
+    return "${decision}: score=$Score; " + ($reasons -join "; ")
+}
+
 function New-SourceScore {
     param(
         [string]$Id,
@@ -65,6 +102,8 @@ function New-SourceScore {
     $relevance = Get-RelevanceScore -Content $content -Needle $Query -ScenarioType $TaskType -Base $RelevanceBase
     $freshness = Get-FreshnessScore -Path $Path
     $score = [Math]::Round(($relevance * 0.5) + ($freshness * 0.2) + ($Authority * 0.3), 4)
+    $included = ($score -ge $IncludeThreshold)
+    $matchedTerms = @(Get-MatchedTerms -Content $content -Needle $Query)
     [pscustomobject]@{
         id = $Id
         tier = $Tier
@@ -74,7 +113,9 @@ function New-SourceScore {
         relevance = $relevance
         freshness = $freshness
         authority = $Authority
-        included = ($score -ge $IncludeThreshold)
+        included = $included
+        matched_terms = $matchedTerms
+        justification = New-SourceJustification -Type $Type -MatchedTerms $matchedTerms -Score $score -Freshness $freshness -Authority $Authority -Included $included
     }
 }
 
@@ -103,17 +144,22 @@ switch ($Action) {
             freshness = 1.0
             authority = 0.85
             included = $false
+            matched_terms = @()
+            justification = "excluded: vector search is scored by memory_hierarchy query results, not static source scoring"
         }
+        $sqliteExists = Test-Path -LiteralPath $dbPath
         $sources += [pscustomobject]@{
             id = "L0:sqlite"
             tier = "L0"
             type = "conversation_fts"
             path = $dbPath
-            score = if (Test-Path -LiteralPath $dbPath) { 0.46 } else { 0.0 }
+            score = if ($sqliteExists) { 0.46 } else { 0.0 }
             relevance = 0.30
             freshness = Get-FreshnessScore -Path $dbPath
             authority = 0.65
             included = $false
+            matched_terms = @()
+            justification = if ($sqliteExists) { "excluded: fallback FTS source kept below include threshold until higher tiers are insufficient" } else { "excluded: SQLite fallback database not found" }
         }
 
         $orderedSources = @($sources | Sort-Object score -Descending)

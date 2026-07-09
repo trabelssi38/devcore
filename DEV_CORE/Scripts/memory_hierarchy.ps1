@@ -50,7 +50,7 @@ switch ($Action) {
                 $scorePayload = & $CONTEXT_SERVICE -Action ScoreSources -Query $Query -TaskType $TaskType -Json | Out-String | ConvertFrom-Json
                 $results += "`n=== CONTEXT SOURCE SCORES ==="
                 foreach ($source in @($scorePayload.sources | Where-Object { $_.included })) {
-                    $results += ("- {0} score={1} relevance={2} freshness={3} authority={4}" -f $source.id, $source.score, $source.relevance, $source.freshness, $source.authority)
+                    $results += ("- {0} score={1} relevance={2} freshness={3} authority={4} reason={5}" -f $source.id, $source.score, $source.relevance, $source.freshness, $source.authority, $source.justification)
                 }
             } catch {
                 Log "Context source scoring failed: $_" "Yellow"

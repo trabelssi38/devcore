@@ -39,10 +39,14 @@ try {
     Assert-True ($null -ne $persona) "Context Service should score persona"
     Assert-True ($scenario.score -gt $persona.score) "Task-specific scenario should outrank persona for matching task query"
     Assert-True ($scenario.included -eq $true) "Relevant scenario should be included"
+    Assert-True (-not [string]::IsNullOrWhiteSpace($scenario.justification)) "Included scenario should explain why it was selected"
+    Assert-True ($scenario.justification -match "api|contract") "Scenario justification should mention matched query evidence"
+    Assert-True (-not [string]::IsNullOrWhiteSpace($persona.justification)) "Persona should expose a source justification"
 
     $queryText = powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $memoryHierarchyScript -Action Query -Query "api contract" -TaskType api | Out-String
     Assert-True ($queryText -match "CONTEXT SOURCE SCORES") "memory_hierarchy query should display context source scores"
     Assert-True ($queryText -match "L2:scenario:api") "memory_hierarchy query should include scored scenario id"
+    Assert-True ($queryText -match "reason=") "memory_hierarchy query should display source justifications"
 
     Write-Host "[OK] context service smoke tests passed" -ForegroundColor Green
 } finally {

@@ -477,7 +477,7 @@ Livrable : DEV_CORE v12 Cognitive Platform.
 ## Sprint 4 -- Context Engine v1
 
 - [x] Scorer les sources de contexte.
-- [ ] Ajouter justification des sources.
+- [x] Ajouter justification des sources.
 - [ ] Offloader les blocs volumineux.
 - [ ] Afficher composition du contexte dans dashboard.
 
