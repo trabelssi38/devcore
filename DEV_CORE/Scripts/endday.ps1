@@ -48,6 +48,14 @@ if (-not $SkipBackup) {
     Log "  Backup OK" "Green"
 }
 
+Log "6.5/8 Sync tarifs modeles"
+try {
+    & "$DEV_CORE\Scripts\Auto\model_pricing_sync.ps1" 2>&1 | Out-Null
+    Log "  Pricing sync OK : $DEV_CORE_DATA\Logs\pricing\model_pricing_sync_report.json" "Green"
+} catch {
+    Log "  Pricing sync skip: $_" "Yellow"
+}
+
 Log "7/8 Rapport token"
 try {
     python "$DEV_CORE\Scripts\Auto\token_report.py" --date $TODAY

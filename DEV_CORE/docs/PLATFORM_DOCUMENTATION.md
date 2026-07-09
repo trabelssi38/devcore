@@ -962,6 +962,8 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 
 Pour le dashboard, le resume expose aussi des vues directes de cout par modele : `totals.cost_by_model` pour le global, `projects.<project>.cost_by_model` pour chaque projet, et `model_costs.global` / `model_costs.projects` comme contrat stable dedie aux graphiques.
 
+`model_pricing_sync.py` verifie les sources de prix et ecrit `DEV_CORE_DATA/Logs/pricing/model_pricing_sync_report.json`. Par defaut, `endday.ps1` lance ce check avant le rapport token. Les catalogues structures JSON sont consideres `high` confidence et peuvent etre appliques avec `--apply`, `sync.auto_apply=true` ou `DEVCORE_PRICING_AUTO_APPLY=1`. Les extractions HTML/texte sont seulement signalees en `medium` confidence et ne sont pas appliquees sans `--allow-medium-confidence`.
+
 ### Context Service
 
 `context_service.ps1` demarre le Context Engine v1 avec `-Action ScoreSources`.

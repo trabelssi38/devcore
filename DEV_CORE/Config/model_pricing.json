@@ -79,5 +79,11 @@
     "openai": "https://developers.openai.com/api/docs/pricing",
     "anthropic": "https://docs.anthropic.com/en/docs/about-claude/pricing",
     "google": "https://ai.google.dev/gemini-api/docs/pricing"
+  },
+  "sync": {
+    "auto_apply": false,
+    "last_checked_at": null,
+    "last_status": "not_checked",
+    "report_path": "C:\\devcore\\DEV_CORE_DATA\\Logs\\pricing\\model_pricing_sync_report.json"
   }
 }
