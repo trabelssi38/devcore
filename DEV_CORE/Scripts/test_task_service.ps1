@@ -65,6 +65,16 @@ try {
     Assert-True ($board.tasks[0].steps_done -eq $board.tasks[0].steps_total) "Task Service complete -Force should correct incomplete steps"
     Assert-True (-not [string]::IsNullOrWhiteSpace([string]$board.tasks[0].completed_at)) "Task Service complete should set completed_at"
 
+    powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $taskServiceScript -Action Next -Json | Out-Null
+    $stepJson = powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $taskServiceScript -Action Step -Json | Out-String
+    $stepResult = $stepJson | ConvertFrom-Json
+    Assert-True ($stepResult.task.id -eq "T-02") "Task Service step should return active task"
+    Assert-True ($stepResult.task.steps_done -eq 1) "Task Service step should increment steps_done"
+    Assert-True ($stepResult.complete -eq $true) "Task Service step should report complete when steps_done reaches total"
+
+    $board = Get-Content $boardPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    Assert-True ($board.tasks[1].steps_done -eq 1) "Task Service step should persist progress"
+
     Write-Host "[OK] task service smoke tests passed" -ForegroundColor Green
 } finally {
     if ($null -eq $oldDataRoot) {

@@ -1,12 +1,13 @@
 # task_service.ps1 -- DEV_CORE v10 -- Task Service adapter
 param(
     [Parameter(Mandatory=$true)]
-    [ValidateSet("Path", "Read", "Add", "Next", "Complete")]
+    [ValidateSet("Path", "Read", "Add", "Next", "Complete", "Step")]
     [string]$Action,
     [string]$Title = "",
     [ValidateSet("reasoning", "coding", "bulk")]
     [string]$Mode = "coding",
     [string]$DependsOn = "",
+    [int]$StepNumber = 0,
     [switch]$Force,
     [switch]$Json
 )
@@ -162,6 +163,44 @@ function Complete-Task {
     }
 }
 
+function Complete-Step {
+    param([int]$TargetStep = 0)
+
+    $board = Read-TaskBoard
+    $current = $board.tasks | Where-Object { $_.status -eq "active" } | Select-Object -First 1
+    if (-not $current) {
+        return $null
+    }
+
+    $message = ""
+    if (-not $current.steps -or $current.steps.Count -eq 0) {
+        $current.steps_done = [math]::Min(([int]$current.steps_done) + 1, [int]$current.steps_total)
+        $message = "Step $($current.steps_done)/$($current.steps_total) pour $($current.id)"
+    } else {
+        if ($TargetStep -eq 0) {
+            $step = $current.steps | Where-Object { -not $_.done } | Select-Object -First 1
+        } else {
+            $step = $current.steps | Where-Object { $_.id -eq $TargetStep } | Select-Object -First 1
+        }
+
+        if (-not $step) {
+            $message = "Toutes les steps sont deja terminees."
+        } else {
+            $step.done = $true
+            $current.steps_done = @($current.steps | Where-Object { $_.done }).Count
+            $message = "Step $($step.id) done : $($step.title)"
+        }
+    }
+
+    Write-TaskBoard -Board $board
+
+    return [pscustomobject]@{
+        task = $current
+        complete = ([int]$current.steps_done -ge [int]$current.steps_total)
+        message = $message
+    }
+}
+
 switch ($Action) {
     "Path" {
         $boardPath = Get-TaskBoardPath
@@ -204,6 +243,19 @@ switch ($Action) {
             Write-Host "  [OK] Tache terminee : $($result.completed.id)" -ForegroundColor Green
         } else {
             Write-Host "  Aucune tache active -- dc next task" -ForegroundColor Yellow
+        }
+        exit 0
+    }
+    "Step" {
+        $result = Complete-Step -TargetStep $StepNumber
+        if ($Json) {
+            if ($result) { $result | ConvertTo-Json -Depth 8 }
+            else { "null" }
+        } elseif ($result) {
+            Write-Host "  [OK] $($result.message)" -ForegroundColor Green
+            Write-Host "  Progress : $($result.task.steps_done)/$($result.task.steps_total)" -ForegroundColor Cyan
+        } else {
+            Write-Host "  Aucune tache active." -ForegroundColor Yellow
         }
         exit 0
     }
