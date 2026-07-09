@@ -133,6 +133,8 @@ def load_model_pricing():
 
 def normalize_model_name(model):
     value = str(model or "").strip().lower()
+    value = re.sub(r"\s*\([^)]*\)\s*$", "", value).strip()
+    value = re.sub(r"\s+", "-", value)
     if value.startswith("models/"):
         value = value.split("/", 1)[1]
     return value
@@ -204,8 +206,35 @@ def first_model_value(value, depth=0):
     return None
 
 
+def model_from_settings_change(text):
+    match = re.search(
+        r"<USER_SETTINGS_CHANGE>.*?Model Selection`?\s+from\s+.*?\s+to\s+(.+?)(?:\.\s|<|\n)",
+        text or "",
+        re.IGNORECASE | re.DOTALL,
+    )
+    if not match:
+        return None
+    model = re.sub(r"\s*\([^)]*\)\s*$", "", match.group(1).strip())
+    return model or None
+
+
 def detect_model(payload, row):
-    return first_model_value(payload) or first_model_value(row)
+    return (
+        first_model_value(payload)
+        or first_model_value(row)
+        or model_from_settings_change(as_text(payload.get("content") if isinstance(payload, dict) else ""))
+        or model_from_settings_change(as_text(row.get("content") if isinstance(row, dict) else ""))
+    )
+
+
+def resolve_turn_model(explicit_model, current_model, client_default_model):
+    if explicit_model:
+        return explicit_model, "payload"
+    if current_model:
+        return current_model, "timeline"
+    if client_default_model:
+        return client_default_model, "client_default"
+    return None, "default_model"
 
 
 def usage_from_payload(payload):
@@ -425,6 +454,7 @@ def parse_source(source, valid_projects, task_to_project, pricing_registry=None)
     session_pricing_profiles = set()
     session_model_usage = {}
     prompt_model_turns = []
+    current_model = None
 
     for row in read_jsonl(source["path"]):
         payload = row.get("payload") if isinstance(row.get("payload"), dict) else row
@@ -438,6 +468,10 @@ def parse_source(source, valid_projects, task_to_project, pricing_registry=None)
             if ts:
                 timestamps.append(ts + timedelta(hours=1))
             continue
+
+        row_model = detect_model(payload, row)
+        if row_model:
+            current_model = row_model
 
         ts = parse_created_at(row.get("created_at") or row.get("timestamp") or payload.get("timestamp"))
         if ts:
@@ -484,8 +518,7 @@ def parse_source(source, valid_projects, task_to_project, pricing_registry=None)
         if usage:
             explicit_model = detect_model(payload, row)
             client_default_model = default_model_for_client(client, app, pricing_registry)
-            detected_model = explicit_model or client_default_model
-            model_source = "payload" if explicit_model else "client_default" if client_default_model else "default_model"
+            detected_model, model_source = resolve_turn_model(explicit_model, current_model, client_default_model)
             pricing_profile_id, pricing_profile = resolve_model_pricing(detected_model, pricing_registry)
             model_id = normalize_model_name(detected_model) if detected_model else pricing_profile_id
             usage["model"] = model_id

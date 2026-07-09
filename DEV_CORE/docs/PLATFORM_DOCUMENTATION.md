@@ -958,7 +958,7 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - `client_defaults` : modele par defaut a appliquer quand un client ne logge pas le modele pour un tour.
 - `default_model` : profil fallback quand le log de session ne contient pas de modele.
 
-`token_report.py` detecte les champs `model`, `model_slug`, `model_name`, `selected_model`, `requested_model` ou `original_model` dans les logs Codex, Claude, Antigravity/Gemini et opencode. La resolution se fait pour chaque tour/prompt modele : modele explicite du payload, puis `client_defaults`, puis `default_model`. Le resume `token_metrics_summary.json` conserve les champs existants (`tokens`, `cache_hits`, `output_tokens`, `cost_usd`) et ajoute `models`, `pricing_profiles`, `model_usage` et `model_turns`. `model_turns[].source` indique si le modele vient du `payload`, de `client_default` ou du fallback `default_model`.
+`token_report.py` detecte les champs `model`, `model_slug`, `model_name`, `selected_model`, `requested_model` ou `original_model` dans les logs Codex, Claude, Antigravity/Gemini et opencode. Il lit aussi les blocs Antigravity `<USER_SETTINGS_CHANGE>` du type `Model Selection ... to Gemini 3.5 Flash (Medium)`. La resolution se fait pour chaque tour/prompt modele : modele explicite du payload, modele courant de la timeline, `client_defaults`, puis `default_model`. Le resume `token_metrics_summary.json` conserve les champs existants (`tokens`, `cache_hits`, `output_tokens`, `cost_usd`) et ajoute `models`, `pricing_profiles`, `model_usage` et `model_turns`. `model_turns[].source` indique si le modele vient du `payload`, de la `timeline`, de `client_default` ou du fallback `default_model`.
 
 ### Context Service
 

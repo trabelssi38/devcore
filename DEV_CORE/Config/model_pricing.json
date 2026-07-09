@@ -19,6 +19,15 @@
         "output": 14.0
       }
     },
+    "gpt-5.5": {
+      "provider": "openai",
+      "pricing_per_million_usd": {
+        "input": 1.75,
+        "cached_input": 0.175,
+        "output": 14.0
+      },
+      "notes": "Temporary DEV_CORE profile. Replace with official gpt-5.5 pricing when published/confirmed."
+    },
     "claude-haiku-4-5": {
       "provider": "anthropic",
       "pricing_per_million_usd": {
@@ -63,10 +72,8 @@
     "claude-opus": "claude-opus-4-8"
   },
   "client_defaults": {
-    "codex": "gpt-5.3-codex",
-    "codex desktop": "gpt-5.3-codex",
-    "antigravity": "gemini-2.5-flash",
-    "gemini": "gemini-2.5-flash"
+    "codex": "gpt-5.5",
+    "codex desktop": "gpt-5.5"
   },
   "sources": {
     "openai": "https://developers.openai.com/api/docs/pricing",
