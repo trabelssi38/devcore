@@ -93,11 +93,13 @@ def test_multi_client_token_report(tmp_path):
                 "created_at": "2026-07-09T00:30:00Z",
                 "source": "USER_EXPLICIT",
                 "type": "USER_INPUT",
+                "model": "comment on this change if the user doesn't ask about it",
                 "content": (
                     "<USER_REQUEST>continue [T-99]</USER_REQUEST>\n"
                     "<USER_SETTINGS_CHANGE>\n"
                     "The user changed setting `Model Selection` from None to Gemini 3.5 Flash (Medium). "
-                    "No need to comment on this change.\n"
+                    "No need to comment on this change if the user doesn't ask about it. "
+                    "If reporting what model you are, please use a human readable name instead of the exact string.\n"
                     "</USER_SETTINGS_CHANGE>"
                 ),
             },
@@ -175,3 +177,5 @@ def test_multi_client_token_report(tmp_path):
     assert summary["model_costs"]["global"]["gemini-3.5-flash"] > 0
     assert summary["model_costs"]["projects"]["devcore"]["gemini-3.5-flash"] > 0
     assert all("no-need-to-comment" not in model for model in summary["model_costs"]["global"])
+    assert all("comment-on-this-change" not in model for model in summary["model_costs"]["global"])
+    assert all("ask-about-it" not in model for model in summary["model_costs"]["global"])

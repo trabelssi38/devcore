@@ -140,6 +140,22 @@ def normalize_model_name(model):
     return value
 
 
+INVALID_MODEL_FRAGMENTS = (
+    "comment-on-this-change",
+    "ask-about-it",
+    "if-reporting-what-model",
+    "human-readable-name",
+    "exact-string",
+)
+
+
+def valid_model_candidate(model):
+    normalized = normalize_model_name(model)
+    if not normalized:
+        return False
+    return not any(fragment in normalized for fragment in INVALID_MODEL_FRAGMENTS)
+
+
 def resolve_model_pricing(model, registry):
     registry = registry or default_model_pricing()
     models = registry.get("models", {})
@@ -208,24 +224,24 @@ def first_model_value(value, depth=0):
 
 def model_from_settings_change(text):
     match = re.search(
-        r"Model Selection`?\s+from\s+[^\n<]*?\s+to\s+([^\n<]+)",
+        r"`?Model Selection`?\s+from\s+(.+?)\s+to\s+(.+?)(?:\.\s+(?:No need|If reporting)|<|\n|$)",
         text or "",
-        re.IGNORECASE,
+        re.IGNORECASE | re.DOTALL,
     )
     if not match:
         return None
-    model = re.sub(r"\.\s+(?:No need|If reporting).*$", "", match.group(1).strip(), flags=re.IGNORECASE)
-    model = re.sub(r"\s*\([^)]*\)\s*\.?$", "", model.strip())
-    return model or None
+    model = re.sub(r"\s*\([^)]*\)\s*$", "", match.group(2).strip().rstrip(" ."))
+    return model if valid_model_candidate(model) else None
 
 
 def detect_model(payload, row):
-    return (
-        first_model_value(payload)
-        or first_model_value(row)
-        or model_from_settings_change(as_text(payload.get("content") if isinstance(payload, dict) else ""))
-        or model_from_settings_change(as_text(row.get("content") if isinstance(row, dict) else ""))
+    candidates = (
+        first_model_value(payload),
+        first_model_value(row),
+        model_from_settings_change(as_text(payload.get("content") if isinstance(payload, dict) else "")),
+        model_from_settings_change(as_text(row.get("content") if isinstance(row, dict) else "")),
     )
+    return next((candidate for candidate in candidates if valid_model_candidate(candidate)), None)
 
 
 def resolve_turn_model(explicit_model, current_model, client_default_model):
