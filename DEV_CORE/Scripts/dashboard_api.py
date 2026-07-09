@@ -14,6 +14,7 @@ PORT = 20129
 PLATFORM_ROOT = os.getenv("DEVCORE_PLATFORM_ROOT", "C:/devcore/DEV_CORE")
 DATA_ROOT = os.getenv("DEVCORE_DATA_ROOT", "C:/devcore/DEV_CORE_DATA")
 API_SCHEMA_VERSION = 1
+DASHBOARD_COMMAND_TIMEOUT_SEC = 90.0
 
 def read_json_with_retry(file_path, retries=5, delay=0.05):
     for attempt in range(retries):
@@ -62,8 +63,8 @@ def build_dashboard_payload():
         "-Json",
         "-SkipTokenRefresh",
     ]
-    print("[DashboardAPI] Running gen_dashboard.ps1 -Json (timeout=15s)...")
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=15.0)
+    print(f"[DashboardAPI] Running gen_dashboard.ps1 -Json (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC)
     if result.returncode != 0:
         raise RuntimeError((result.stderr or result.stdout or "Dashboard generator failed").strip())
 
@@ -206,15 +207,15 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
                 self.wfile.write(json.dumps(payload, ensure_ascii=False).encode("utf-8"))
             except subprocess.TimeoutExpired as te:
                 print(f"[DashboardAPI] Timeout calling gen_dashboard.ps1 -Json: {te}")
-                self.send_error_response("Dashboard payload generation timed out after 15s")
+                self.send_error_response(f"Dashboard payload generation timed out after {DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s")
             except Exception as e:
                 self.send_error_response(str(e))
         elif path == "/api/refresh":
             try:
                 cmd = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", 
                        f"{PLATFORM_ROOT}/Scripts/gen_dashboard.ps1"]
-                print(f"[DashboardAPI] Running gen_dashboard.ps1 (timeout=15s)...")
-                subprocess.run(cmd, capture_output=True, timeout=15.0)
+                print(f"[DashboardAPI] Running gen_dashboard.ps1 (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
+                subprocess.run(cmd, capture_output=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC)
                 
                 index_path = Path(PLATFORM_ROOT) / "Dashboard" / "index.html"
                 if index_path.exists():
@@ -231,7 +232,7 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
                 pass
             except subprocess.TimeoutExpired as te:
                 print(f"[DashboardAPI] Timeout calling gen_dashboard.ps1: {te}")
-                self.send_error_response("Dashboard regeneration timed out after 15s")
+                self.send_error_response(f"Dashboard regeneration timed out after {DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s")
             except Exception as e:
                 self.send_error_response(str(e))
         else:
@@ -310,15 +311,15 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
             if is_active:
                 cmd = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", 
                        f"{PLATFORM_ROOT}/Scripts/task_done.ps1", "-Force"]
-                print(f"[DashboardAPI] Running task_done.ps1 for active task completion (timeout=15s)...")
-                subprocess.run(cmd, capture_output=True, timeout=15.0)
+                print(f"[DashboardAPI] Running task_done.ps1 for active task completion (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
+                subprocess.run(cmd, capture_output=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC)
                 return True, f"Active task {task_id} completed successfully via task_done.ps1"
             else:
                 # Regenerate the dashboard
                 cmd = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", 
                        f"{PLATFORM_ROOT}/Scripts/gen_dashboard.ps1"]
-                print(f"[DashboardAPI] Running gen_dashboard.ps1 for dashboard refresh (timeout=15s)...")
-                subprocess.run(cmd, capture_output=True, timeout=15.0)
+                print(f"[DashboardAPI] Running gen_dashboard.ps1 for dashboard refresh (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
+                subprocess.run(cmd, capture_output=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC)
                 return True, f"Task {task_id} completed successfully"
 
         except subprocess.TimeoutExpired as te:
@@ -352,8 +353,8 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
             # Regenerate the dashboard
             cmd = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", 
                    f"{PLATFORM_ROOT}/Scripts/gen_dashboard.ps1"]
-            print(f"[DashboardAPI] Running gen_dashboard.ps1 for dashboard refresh (timeout=15s)...")
-            subprocess.run(cmd, capture_output=True, timeout=15.0)
+            print(f"[DashboardAPI] Running gen_dashboard.ps1 for dashboard refresh (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
+            subprocess.run(cmd, capture_output=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC)
             return True, f"Task {task_id} deleted successfully"
 
         except subprocess.TimeoutExpired as te:

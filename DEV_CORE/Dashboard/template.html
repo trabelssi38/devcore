@@ -848,6 +848,57 @@ function refreshDashboard() {
 
 window.activeFilteredProject = null;
 
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function getModelCosts(metrics, projectName) {
+  if (!metrics) return {};
+  if (projectName) {
+    const key = projectName.toLowerCase();
+    const projectStats = metrics.projects && metrics.projects[key];
+    if (projectStats && projectStats.cost_by_model) return projectStats.cost_by_model;
+    if (metrics.model_costs && metrics.model_costs.projects && metrics.model_costs.projects[key]) {
+      return metrics.model_costs.projects[key];
+    }
+    return {};
+  }
+  if (metrics.model_costs && metrics.model_costs.global) return metrics.model_costs.global;
+  if (metrics.totals && metrics.totals.cost_by_model) return metrics.totals.cost_by_model;
+  return {};
+}
+
+function updateModelCostBreakdown(metrics, projectName) {
+  const container = document.getElementById('token-report-model-costs');
+  if (!container) return;
+  const title = document.getElementById('model-cost-title');
+  if (title) {
+    title.textContent = projectName ? `Coût par modèle : ${projectName}` : 'Coût global par modèle';
+  }
+  const entries = Object.entries(getModelCosts(metrics, projectName))
+    .map(([model, value]) => [model, Number(value) || 0])
+    .filter(([, value]) => value > 0)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 12);
+
+  if (!entries.length) {
+    container.innerHTML = '<div style="font-size:10px; color:#64748b; padding:6px 0;">Aucun coût par modèle disponible.</div>';
+    return;
+  }
+
+  container.innerHTML = entries.map(([model, value]) => `
+    <div class="model-cost-row" style="display:flex; justify-content:space-between; gap:10px; padding:5px 0; border-bottom:1px solid rgba(255,255,255,0.04); font-size:10px;">
+      <span style="color:#cbd5e1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(model)}">${escapeHtml(model)}</span>
+      <span style="color:#fbbf24; font-family:monospace; flex-shrink:0;">$${value.toFixed(2)}</span>
+    </div>
+  `).join('');
+}
+
 function updateTokenReport(projectName) {
   const dataEl = document.getElementById('token-metrics-data');
   if (!dataEl) return;
@@ -892,6 +943,8 @@ function updateTokenReport(projectName) {
     headerCostEl.textContent = `Coût total : ${costStr} USD`;
   }
   
+  updateModelCostBreakdown(metrics, projectName);
+
   const allocContainer = document.getElementById('token-report-alloc-container');
   if (allocContainer) {
     allocContainer.style.display = projectName ? 'none' : 'block';

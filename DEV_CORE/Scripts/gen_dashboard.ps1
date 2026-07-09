@@ -565,6 +565,25 @@ if ($tokenSummary) {
         }
         $projectAllocHtml += '</div>'
     }
+
+    $modelCostHtml = ""
+    $globalCostByModel = $null
+    if ($tokenSummary.model_costs -and $tokenSummary.model_costs.global) {
+        $globalCostByModel = $tokenSummary.model_costs.global
+    } elseif ($tokenSummary.totals -and $tokenSummary.totals.cost_by_model) {
+        $globalCostByModel = $tokenSummary.totals.cost_by_model
+    }
+    if ($globalCostByModel) {
+        $modelCostRows = $globalCostByModel.PSObject.Properties | Sort-Object { [double]$_.Value } -Descending | Select-Object -First 12
+        foreach ($modelCost in $modelCostRows) {
+            $modelName = [System.Net.WebUtility]::HtmlEncode($modelCost.Name)
+            $modelCostFormatted = '{0:F2}' -f ([double]$modelCost.Value)
+            $modelCostHtml += "<div class='model-cost-row' style='display:flex; justify-content:space-between; gap:10px; padding:5px 0; border-bottom:1px solid rgba(255,255,255,0.04); font-size:10px;'><span style='color:#cbd5e1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;' title='$modelName'>$modelName</span><span style='color:#fbbf24; font-family:monospace; flex-shrink:0;'>`$$modelCostFormatted</span></div>"
+        }
+    }
+    if (-not $modelCostHtml) {
+        $modelCostHtml = "<div style='font-size:10px; color:#64748b; padding:6px 0;'>Aucun cout par modele disponible.</div>"
+    }
     
     # Sessions
     $sessionsHtml = ""
@@ -634,6 +653,11 @@ if ($tokenSummary) {
       <!-- R&eacute;partition par Projet -->
       <h3 style="font-size: 10px; color: #94a3b8; text-transform: uppercase; margin: 12px 0 6px;">R&eacute;partition par Projet</h3>
       $projectAllocHtml
+    </div>
+
+    <h3 id="model-cost-title" style="font-size: 10px; color: #94a3b8; text-transform: uppercase; margin: 16px 0 8px;">Co&ucirc;t global par mod&egrave;le</h3>
+    <div id="token-report-model-costs" style="background: rgba(30, 41, 59, 0.25); border: 1px solid #2d3148; border-radius: 6px; padding: 8px 10px; max-height: 180px; overflow-y: auto;">
+      $modelCostHtml
     </div>
     
     <!-- Sessions Actives -->

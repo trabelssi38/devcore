@@ -47,6 +47,7 @@ def test_build_dashboard_payload_uses_stable_json_contract():
     assert "gen_dashboard.ps1" in command[5]
     assert "-Json" in command
     assert "-SkipTokenRefresh" in command
+    assert run.call_args.kwargs["timeout"] >= 45
 
 
 def test_build_dashboard_payload_rejects_unknown_schema():
