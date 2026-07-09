@@ -208,13 +208,14 @@ def first_model_value(value, depth=0):
 
 def model_from_settings_change(text):
     match = re.search(
-        r"<USER_SETTINGS_CHANGE>.*?Model Selection`?\s+from\s+.*?\s+to\s+(.+?)(?:\.\s|<|\n)",
+        r"Model Selection`?\s+from\s+[^\n<]*?\s+to\s+([^\n<]+)",
         text or "",
-        re.IGNORECASE | re.DOTALL,
+        re.IGNORECASE,
     )
     if not match:
         return None
-    model = re.sub(r"\s*\([^)]*\)\s*$", "", match.group(1).strip())
+    model = re.sub(r"\.\s+(?:No need|If reporting).*$", "", match.group(1).strip(), flags=re.IGNORECASE)
+    model = re.sub(r"\s*\([^)]*\)\s*\.?$", "", model.strip())
     return model or None
 
 
@@ -344,6 +345,13 @@ def finalize_model_usage(model_usage):
         item["cost_usd"] = round(float(item.get("cost_usd") or 0), 4)
         finalized[model_id] = item
     return finalized
+
+
+def cost_by_model(model_usage):
+    return {
+        model_id: round(float(usage.get("cost_usd") or 0), 4)
+        for model_id, usage in sorted((model_usage or {}).items())
+    }
 
 
 def empty_bucket():
@@ -671,16 +679,25 @@ def aggregate_sessions(sessions):
     totals["duration_minutes"] = int(totals.pop("duration_seconds", 0) // 60)
     totals["cost_usd"] = round(totals["cost_usd"], 4)
     totals["model_usage"] = finalize_model_usage(totals["model_usage"])
+    totals["cost_by_model"] = cost_by_model(totals["model_usage"])
     for collection in (projects_data, tasks_data, clients_data):
         for values in collection.values():
             values["cost_usd"] = round(values["cost_usd"], 4)
             values["model_usage"] = finalize_model_usage(values.get("model_usage", {}))
+            values["cost_by_model"] = cost_by_model(values["model_usage"])
 
     return {
         "totals": totals,
         "projects": projects_data,
         "clients": clients_data,
         "tasks": tasks_data,
+        "model_costs": {
+            "global": totals["cost_by_model"],
+            "projects": {
+                project: values["cost_by_model"]
+                for project, values in sorted(projects_data.items())
+            },
+        },
         "sessions": sorted(public_sessions, key=lambda x: x["date"] + " " + x["start_time"], reverse=True),
     }
 

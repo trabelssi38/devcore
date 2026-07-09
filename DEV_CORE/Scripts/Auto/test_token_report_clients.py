@@ -169,3 +169,9 @@ def test_multi_client_token_report(tmp_path):
     assert summary["totals"]["model_usage"]["gemini-3.5-flash"]["sources"]["timeline"] == 1
     assert summary["tasks"]["devcore_T-96"]["model_usage"]["gpt-5.5"]["turns"] == 1
     assert summary["tasks"]["devcore_T-99"]["model_usage"]["gemini-3.5-flash"]["turns"] == 1
+    assert summary["totals"]["cost_by_model"]["gpt-5.5"] == 0.0047
+    assert summary["projects"]["devcore"]["cost_by_model"]["gpt-5.5"] == 0.0047
+    assert summary["projects"]["devcore"]["cost_by_model"]["claude-haiku-4-5"] == 0.0006
+    assert summary["model_costs"]["global"]["gemini-3.5-flash"] > 0
+    assert summary["model_costs"]["projects"]["devcore"]["gemini-3.5-flash"] > 0
+    assert all("no-need-to-comment" not in model for model in summary["model_costs"]["global"])

@@ -960,6 +960,8 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 
 `token_report.py` detecte les champs `model`, `model_slug`, `model_name`, `selected_model`, `requested_model` ou `original_model` dans les logs Codex, Claude, Antigravity/Gemini et opencode. Il lit aussi les blocs Antigravity `<USER_SETTINGS_CHANGE>` du type `Model Selection ... to Gemini 3.5 Flash (Medium)`. La resolution se fait pour chaque tour/prompt modele : modele explicite du payload, modele courant de la timeline, `client_defaults`, puis `default_model`. Le resume `token_metrics_summary.json` conserve les champs existants (`tokens`, `cache_hits`, `output_tokens`, `cost_usd`) et ajoute `models`, `pricing_profiles`, `model_usage` et `model_turns`. `model_turns[].source` indique si le modele vient du `payload`, de la `timeline`, de `client_default` ou du fallback `default_model`.
 
+Pour le dashboard, le resume expose aussi des vues directes de cout par modele : `totals.cost_by_model` pour le global, `projects.<project>.cost_by_model` pour chaque projet, et `model_costs.global` / `model_costs.projects` comme contrat stable dedie aux graphiques.
+
 ### Context Service
 
 `context_service.ps1` demarre le Context Engine v1 avec `-Action ScoreSources`.
