@@ -481,6 +481,86 @@ Livrable : DEV_CORE v12 Cognitive Platform.
 - [x] Offloader les blocs volumineux.
 - [x] Afficher composition du contexte dans dashboard.
 
+## Sprint 5 -- Metrics Service v1
+
+Objectif : centraliser les mesures opérationnelles dans un service append-only avant de construire l'Event Bus.
+
+- [ ] Introduire `metrics_service.ps1` avec actions `Record`, `Aggregate`, `Status`, `Health`.
+- [ ] Écrire les métriques dans `DEV_CORE_DATA\Logs\metrics\metrics-YYYY-MM-DD.jsonl`.
+- [ ] Normaliser le schéma `MetricRecorded` :
+  - `schema_version`
+  - `id`
+  - `timestamp`
+  - `source`
+  - `project`
+  - `task_id`
+  - `metric_type`
+  - `value`
+  - `unit`
+  - `payload`
+- [ ] Ajouter tests smoke pour append JSONL, agrégation et health.
+- [ ] Brancher `token_report.py` pour publier tokens, coût, cache et modèles.
+- [ ] Brancher `gen_dashboard.ps1` pour publier durée de génération et statut.
+- [ ] Brancher `launch.ps1` et `endday.ps1` pour publier durée, succès et erreurs.
+- [ ] Afficher dans le dashboard un résumé Metrics Service : événements du jour, erreurs, coût, tokens, durée.
+
+Gate Sprint 5 :
+
+- `metrics_service.ps1 -Action Health` retourne OK avec codes de sortie normalisés.
+- Le store JSONL est append-only et supporte plusieurs appels successifs.
+- Aucune métrique ne contient de secret ou contenu de prompt brut.
+- Les tests smoke Metrics Service passent.
+
+## Sprint 6 -- Event Bus v1
+
+Objectif : transformer les métriques et actions critiques en événements durables, typés et consommables.
+
+- [ ] Introduire `event_bus.ps1` avec actions `Publish`, `Read`, `Tail`, `Health`.
+- [ ] Définir le schéma événement append-only :
+  - `schema_version`
+  - `id`
+  - `timestamp`
+  - `source`
+  - `event_type`
+  - `project`
+  - `task_id`
+  - `correlation_id`
+  - `payload`
+- [ ] Publier `TaskCreated`, `TaskStarted`, `TaskStepCompleted`, `TaskCompleted`.
+- [ ] Publier `CommitCreated` depuis hook post-commit ou scanner git.
+- [ ] Publier `ContextBuilt`, `MetricRecorded`, `DashboardRefreshed`, `HealthCheckFailed`.
+- [ ] Ajouter idempotence minimale par `id`/`correlation_id`.
+- [ ] Ajouter une vue dashboard des événements récents.
+
+Gate Sprint 6 :
+
+- 80 % des actions critiques listées dans la roadmap publient un événement.
+- Les consommateurs peuvent relire le log sans modifier l'état.
+- Les tests valident publication, lecture, filtrage par type et idempotence.
+
+## Sprint 7 -- Knowledge Graph v1
+
+Objectif : construire les relations exploitables entre tâches, commits, fichiers, services, décisions et métriques.
+
+- [ ] Créer un générateur `knowledge_graph.ps1` ou service Python minimal.
+- [ ] Ingérer `tasks.json`, commits Git, events JSONL, metrics JSONL et décisions docs.
+- [ ] Produire un graphe local dans `DEV_CORE_DATA\Knowledge\graph.json`.
+- [ ] Modéliser les relations initiales :
+  - tâche -> commit
+  - commit -> fichier
+  - fichier -> service
+  - métrique -> tâche
+  - événement -> tâche
+  - décision -> service
+- [ ] Ajouter `ImpactAnalysis` pour un fichier ou service.
+- [ ] Afficher dans le dashboard les dépendances critiques et le blast radius.
+
+Gate Sprint 7 :
+
+- Un fichier modifié retourne les tâches, commits et services liés.
+- Le graphe est régénérable sans état caché.
+- Les tests couvrent ingestion tasks, commits et events.
+
 ---
 
 # Décisions ouvertes
