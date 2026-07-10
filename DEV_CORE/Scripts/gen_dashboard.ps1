@@ -109,6 +109,71 @@ if (Test-Path $MEMORY_DIR) {
 
 $projects = $projects | Sort-Object LastDate -Descending
 
+function ConvertTo-DashboardHtml {
+    param($Value)
+    return [System.Net.WebUtility]::HtmlEncode([string]$Value)
+}
+
+function Get-ContextCompositionHtml {
+    param($ProjectList)
+
+    $rowsHtml = ""
+    foreach ($project in $ProjectList) {
+        $activeTasks = @($project.Tasks | Where-Object { $_.status -eq "active" })
+        foreach ($task in $activeTasks) {
+            $query = if ($task.title) { [string]$task.title } else { [string]$task.id }
+            $taskType = if ($task.mode) { [string]$task.mode } else { "devcore" }
+            try {
+                $scoreJson = & "$DEV_CORE\Scripts\context_service.ps1" -Action ScoreSources -Query $query -TaskType $taskType -Json | Out-String
+                $scorePayload = $scoreJson | ConvertFrom-Json
+                $sourceRows = ""
+                foreach ($source in @($scorePayload.sources | Sort-Object score -Descending)) {
+                    $statusText = if ($source.included) { "IN" } else { "OUT" }
+                    $statusColor = if ($source.included) { "#22c55e" } else { "#64748b" }
+                    $sourceRows += @"
+          <div class="context-source-row" style="display:grid; grid-template-columns: 38px 1fr 48px; gap:8px; align-items:start; padding:7px 0; border-bottom:1px solid rgba(255,255,255,0.04);">
+            <span style="font-size:9px; color:$statusColor; font-family:'JetBrains Mono',monospace; font-weight:600;">$statusText</span>
+            <div style="min-width:0;">
+              <div style="font-size:10px; color:#e2e8f0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="$(ConvertTo-DashboardHtml $source.path)">$(ConvertTo-DashboardHtml $source.id)</div>
+              <div style="font-size:9px; color:#64748b; line-height:1.35; margin-top:2px;">$(ConvertTo-DashboardHtml $source.justification)</div>
+            </div>
+            <span style="font-size:10px; color:#a5b4fc; font-family:'JetBrains Mono',monospace; text-align:right;">$($source.score)</span>
+          </div>
+"@
+                }
+                $rowsHtml += @"
+    <div class="context-task-card" data-project="$(ConvertTo-DashboardHtml $project.Name)" style="background:#1a1d27; border:1px solid #2d3148; border-radius:6px; padding:10px; margin-bottom:8px;">
+      <div style="display:flex; justify-content:space-between; gap:8px; align-items:center; margin-bottom:8px;">
+        <div style="min-width:0;">
+          <div style="font-size:11px; color:#f8fafc; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">$(ConvertTo-DashboardHtml $project.Name) / $(ConvertTo-DashboardHtml $task.id)</div>
+          <div style="font-size:9px; color:#64748b; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="$(ConvertTo-DashboardHtml $query)">$(ConvertTo-DashboardHtml $query)</div>
+        </div>
+        <span style="font-size:9px; color:#cbd5e1; border:1px solid #312e81; border-radius:4px; padding:2px 5px;">$(ConvertTo-DashboardHtml $taskType)</span>
+      </div>
+      <div>$sourceRows</div>
+    </div>
+"@
+            } catch {
+                $rowsHtml += "<div class='component'><div><div class='component-name'>$(ConvertTo-DashboardHtml $project.Name) / $(ConvertTo-DashboardHtml $task.id)</div><div class='component-detail'>Context scoring failed: $(ConvertTo-DashboardHtml $_)</div></div><div class='status-error'>&#10007;</div></div>"
+            }
+        }
+    }
+
+    if (-not $rowsHtml) {
+        $rowsHtml = "<div style='font-size:10px; color:#64748b; padding:8px 0;'>Aucune t&acirc;che active avec contexte scor&eacute;.</div>"
+    }
+
+    return @"
+<div id="context-composition-inner">
+  <h2>Composition du Contexte</h2>
+  <div style="margin-bottom:6px; font-size:9px; color:#64748b; line-height:1.35;">Sources incluses/exclues pour la t&acirc;che active.</div>
+  $rowsHtml
+</div>
+"@
+}
+
+$contextCompositionHtml = Get-ContextCompositionHtml -ProjectList $projects
+
 
 # 3. Generer le HTML
 $cardsHtml = ""
@@ -691,6 +756,7 @@ if (Test-Path $TEMPLATE_FILE) {
                 services_monitoring = $infraHtml
                 automation_hooks = $hooksHtml
                 token_activity_report = $tokenReportHtml
+                context_composition = $contextCompositionHtml
             }
             task_details = $allDetailsMap
             token_metrics = $tokenMetrics
@@ -704,6 +770,7 @@ if (Test-Path $TEMPLATE_FILE) {
     $template = $template.Replace('{{SERVICES_MONITORING}}', $infraHtml)
     $template = $template.Replace('{{AUTOMATION_HOOKS}}', $hooksHtml)
     $template = $template.Replace('{{TOKEN_ACTIVITY_REPORT}}', $tokenReportHtml)
+    $template = $template.Replace('{{CONTEXT_COMPOSITION}}', $contextCompositionHtml)
     $template = $template.Replace('{{TASK_DETAILS_MAP}}', $detailsJson)
     $template = $template.Replace('{{TOKEN_METRICS_JSON}}', $tokenMetricsJson)
 

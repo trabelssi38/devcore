@@ -412,6 +412,10 @@ details{margin-bottom: 8px}
         </div>
       </div>
       
+      <div id="context-composition" style="margin-bottom:16px">
+        {{CONTEXT_COMPOSITION}}
+      </div>
+      
       <h2>Automation Hooks</h2>
       <div id="automation-hooks" style="margin-bottom:16px">
         {{AUTOMATION_HOOKS}}
@@ -807,6 +811,11 @@ function refreshDashboard() {
       const oldHooks = document.getElementById('automation-hooks');
       if (oldHooks && oldHooks.innerHTML !== payload.sections.automation_hooks) {
         oldHooks.innerHTML = payload.sections.automation_hooks || '';
+      }
+
+      const oldContext = document.getElementById('context-composition');
+      if (oldContext && oldContext.innerHTML !== payload.sections.context_composition) {
+        oldContext.innerHTML = payload.sections.context_composition || '';
       }
 
       window.taskDetailsMap = payload.task_details || {};
