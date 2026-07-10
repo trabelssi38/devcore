@@ -415,6 +415,10 @@ details{margin-bottom: 8px}
       <div id="context-composition" style="margin-bottom:16px">
         {{CONTEXT_COMPOSITION}}
       </div>
+
+      <div id="metrics-service-summary" style="margin-bottom:16px">
+        {{METRICS_SERVICE_SUMMARY}}
+      </div>
       
       <h2>Automation Hooks</h2>
       <div id="automation-hooks" style="margin-bottom:16px">
@@ -816,6 +820,11 @@ function refreshDashboard() {
       const oldContext = document.getElementById('context-composition');
       if (oldContext && oldContext.innerHTML !== payload.sections.context_composition) {
         oldContext.innerHTML = payload.sections.context_composition || '';
+      }
+
+      const oldMetricsService = document.getElementById('metrics-service-summary');
+      if (oldMetricsService && oldMetricsService.innerHTML !== payload.sections.metrics_service_summary) {
+        oldMetricsService.innerHTML = payload.sections.metrics_service_summary || '';
       }
 
       window.taskDetailsMap = payload.task_details || {};

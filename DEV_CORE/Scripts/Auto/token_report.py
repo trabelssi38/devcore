@@ -2,6 +2,7 @@ import argparse
 import json
 import os
 import re
+import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -19,6 +20,47 @@ DEFAULT_PRICING_PROFILE = {
         "output": OUTPUT_TOKEN_PRICE * 1_000_000,
     },
 }
+
+
+def record_metric(metric_type, value, unit, payload=None, project="devcore", task_id=""):
+    platform_root = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", Path(__file__).resolve().parents[2]))
+    metrics_script = platform_root / "Scripts" / "metrics_service.ps1"
+    if not metrics_script.exists():
+        return
+    try:
+        subprocess.run(
+            [
+                "powershell.exe",
+                "-NoProfile",
+                "-NonInteractive",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                str(metrics_script),
+                "-Action",
+                "Record",
+                "-Source",
+                "token_report",
+                "-Project",
+                project,
+                "-TaskId",
+                task_id,
+                "-MetricType",
+                metric_type,
+                "-Value",
+                str(float(value or 0)),
+                "-Unit",
+                unit,
+                "-PayloadJson",
+                json.dumps(payload or {}, ensure_ascii=False),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+    except Exception:
+        pass
 
 
 def format_duration(seconds):
@@ -802,6 +844,11 @@ def main():
     print(f"[SUCCESS] Resume consolide ecrit dans {summary_path}")
 
     write_html_report(result_summary, reports_dir, tdate)
+    totals = result_summary.get("totals", {})
+    record_metric("tokens", totals.get("tokens", 0), "tokens", {"date": tdate, "clients": list(result_summary.get("clients", {}).keys())})
+    record_metric("cache_hits", totals.get("cache_hits", 0), "tokens", {"date": tdate})
+    record_metric("cost", totals.get("cost_usd", 0), "usd", {"date": tdate, "models": result_summary.get("model_costs", {}).get("global", {})})
+    record_metric("sessions", len(result_summary.get("sessions", [])), "count", {"date": tdate})
 
 
 if __name__ == "__main__":

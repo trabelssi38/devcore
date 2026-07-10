@@ -12,6 +12,8 @@ $TEMPLATE_FILE = "$DASHBOARD_DIR\template.html"
 $OUTPUT_FILE   = "$DASHBOARD_DIR\index.html"
 $MEMORY_DIR    = "$DEV_CORE_DATA\Memory"
 $inv           = [System.Globalization.CultureInfo]::InvariantCulture
+$dashboardStarted = Get-Date
+$METRICS_SERVICE = Join-Path $DEV_CORE "Scripts\metrics_service.ps1"
 
 if ($env:DEVCORE_SKIP_DASHBOARD -eq "1" -and -not $Json) {
     Write-Host "Dashboard generation skipped (DEVCORE_SKIP_DASHBOARD=1)"
@@ -37,6 +39,57 @@ function Get-TaskIdNumber {
         try { return [int]($Task.id -replace "\D", "") } catch {}
     }
     return 0
+}
+
+function Record-DashboardMetric {
+    param(
+        [string]$MetricType,
+        [double]$Value,
+        [string]$Unit = "count",
+        [hashtable]$Payload = @{}
+    )
+    if (-not (Test-Path -LiteralPath $METRICS_SERVICE)) { return }
+    try {
+        $payloadJson = $Payload | ConvertTo-Json -Depth 10 -Compress
+        & $METRICS_SERVICE -Action Record -Source "gen_dashboard" -Project "devcore" -MetricType $MetricType -Value $Value -Unit $Unit -PayloadJson $payloadJson 6>$null | Out-Null
+    } catch {}
+}
+
+function Get-MetricsServiceSummaryHtml {
+    $empty = "<div style='font-size:10px; color:#64748b; padding:8px 0;'>Metrics Service indisponible.</div>"
+    if (-not (Test-Path -LiteralPath $METRICS_SERVICE)) { return $empty }
+    try {
+        $statusJson = & $METRICS_SERVICE -Action Status -Json | Out-String
+        $status = $statusJson | ConvertFrom-Json
+        $aggregate = $status.aggregate
+        $health = $status.health
+        $events = [int]$aggregate.events_count
+        $errors = [int]$aggregate.errors_count
+        $tokens = 0.0
+        $cost = 0.0
+        $duration = 0.0
+        if ($aggregate.totals.tokens -and $aggregate.totals.tokens.tokens) { $tokens = [double]$aggregate.totals.tokens.tokens.sum }
+        if ($aggregate.totals.cost -and $aggregate.totals.cost.usd) { $cost = [double]$aggregate.totals.cost.usd.sum }
+        if ($aggregate.totals.duration -and $aggregate.totals.duration.seconds) { $duration = [double]$aggregate.totals.duration.seconds.sum }
+        $tokensStr = if ($tokens -gt 1000000) { "$([math]::Round($tokens/1000000, 2))M" } elseif ($tokens -gt 0) { "$([math]::Round($tokens/1000, 1))K" } else { "0" }
+        $costStr = '{0:F2}' -f $cost
+        $durationStr = '{0:F1}s' -f $duration
+        $healthColor = if ($health.ok) { "#22c55e" } else { "#ef4444" }
+        return @"
+<div id="metrics-service-inner">
+  <h2>Metrics Service</h2>
+  <div style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:6px; margin-bottom:8px;">
+    <div class="token-layer"><span class="token-name">Events</span><span class="token-reduction">$events</span></div>
+    <div class="token-layer"><span class="token-name">Errors</span><span class="token-reduction" style="color:$healthColor">$errors</span></div>
+    <div class="token-layer"><span class="token-name">Tokens</span><span class="token-reduction">$tokensStr</span></div>
+    <div class="token-layer"><span class="token-name">Cost</span><span class="token-reduction">`$$costStr</span></div>
+  </div>
+  <div style="font-size:9px; color:#64748b; font-family:'JetBrains Mono',monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="$($aggregate.store_path)">Durée cumulée: $durationStr</div>
+</div>
+"@
+    } catch {
+        return "<div style='font-size:10px; color:#ef4444; padding:8px 0;'>Metrics Service erreur: $([System.Net.WebUtility]::HtmlEncode([string]$_))</div>"
+    }
 }
 
 # 0. Rafraîchir les métriques de tokens en temps réel
@@ -173,6 +226,7 @@ function Get-ContextCompositionHtml {
 }
 
 $contextCompositionHtml = Get-ContextCompositionHtml -ProjectList $projects
+$metricsServiceHtml = Get-MetricsServiceSummaryHtml
 
 
 # 3. Generer le HTML
@@ -747,6 +801,9 @@ if (Test-Path $TEMPLATE_FILE) {
 
     if ($Json) {
         $tokenMetrics = try { $tokenMetricsJson | ConvertFrom-Json } catch { [pscustomobject]@{} }
+        $elapsed = ((Get-Date) - $dashboardStarted).TotalSeconds
+        Record-DashboardMetric -MetricType "duration" -Value $elapsed -Unit "seconds" -Payload @{ status = "success"; output = "json" }
+        Record-DashboardMetric -MetricType "dashboard_refresh" -Value 1 -Unit "count" -Payload @{ status = "success"; json = $true }
         [ordered]@{
             schema_version = 1
             generated_at = (Get-Date).ToString("o")
@@ -757,6 +814,7 @@ if (Test-Path $TEMPLATE_FILE) {
                 automation_hooks = $hooksHtml
                 token_activity_report = $tokenReportHtml
                 context_composition = $contextCompositionHtml
+                metrics_service_summary = $metricsServiceHtml
             }
             task_details = $allDetailsMap
             token_metrics = $tokenMetrics
@@ -771,11 +829,16 @@ if (Test-Path $TEMPLATE_FILE) {
     $template = $template.Replace('{{AUTOMATION_HOOKS}}', $hooksHtml)
     $template = $template.Replace('{{TOKEN_ACTIVITY_REPORT}}', $tokenReportHtml)
     $template = $template.Replace('{{CONTEXT_COMPOSITION}}', $contextCompositionHtml)
+    $template = $template.Replace('{{METRICS_SERVICE_SUMMARY}}', $metricsServiceHtml)
     $template = $template.Replace('{{TASK_DETAILS_MAP}}', $detailsJson)
     $template = $template.Replace('{{TOKEN_METRICS_JSON}}', $tokenMetricsJson)
 
     $template | Set-Content $OUTPUT_FILE -Encoding UTF8
+    $elapsed = ((Get-Date) - $dashboardStarted).TotalSeconds
+    Record-DashboardMetric -MetricType "duration" -Value $elapsed -Unit "seconds" -Payload @{ status = "success"; output = $OUTPUT_FILE }
+    Record-DashboardMetric -MetricType "dashboard_refresh" -Value 1 -Unit "count" -Payload @{ status = "success"; json = [bool]$Json }
     Write-Host "Dashboard genere : $OUTPUT_FILE" -ForegroundColor Green
 } else {
+    Record-DashboardMetric -MetricType "dashboard_refresh" -Value 1 -Unit "count" -Payload @{ status = "error"; reason = "template_missing" }
     Write-Host "Erreur : template.html introuvable" -ForegroundColor Red
 }

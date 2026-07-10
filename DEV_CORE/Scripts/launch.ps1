@@ -9,8 +9,17 @@ $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } 
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
 $TODAY         = Get-Date -Format "yyyy-MM-dd"
 $LOG           = "$DEV_CORE_DATA\Logs\scripts\launch_$TODAY.log"
+$LAUNCH_STARTED = Get-Date
+$METRICS_SERVICE = "$DEV_CORE\Scripts\metrics_service.ps1"
 
 function Log { param($msg,$color="Gray"); $l="[$(Get-Date -f HH:mm:ss)] $msg"; Add-Content $LOG $l -ErrorAction SilentlyContinue; Write-Host "  $l" -ForegroundColor $color }
+function Record-Metric { param([string]$MetricType,[double]$Value,[string]$Unit="count",[hashtable]$Payload=@{})
+    if (-not (Test-Path $METRICS_SERVICE)) { return }
+    try {
+        $payloadJson = $Payload | ConvertTo-Json -Depth 8 -Compress
+        & $METRICS_SERVICE -Action Record -Source "launch" -Project "devcore" -MetricType $MetricType -Value $Value -Unit $Unit -PayloadJson $payloadJson 6>$null | Out-Null
+    } catch {}
+}
 
 Write-Host ""
 Write-Host "  DEV_CORE v9.0 - LAUNCH" -ForegroundColor Cyan
@@ -320,3 +329,7 @@ if ($Project) { Write-Host "  ||  Projet : $($Project.PadRight(29))||" -Foregrou
 Write-Host "  ||  dc help pour la liste des commandes  ||" -ForegroundColor Gray
 Write-Host "  ========================================" -ForegroundColor Green
 Write-Host ""
+
+$launchElapsed = ((Get-Date) - $LAUNCH_STARTED).TotalSeconds
+Record-Metric -MetricType "duration" -Value $launchElapsed -Unit "seconds" -Payload @{ status = "success"; component = "launch" }
+Record-Metric -MetricType "success" -Value 1 -Unit "count" -Payload @{ component = "launch" }

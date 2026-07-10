@@ -1,4 +1,4 @@
-﻿# DEV_CORE v10+ -- Roadmap Strategique Raffinee
+# DEV_CORE v10+ -- Roadmap Strategique Raffinee
 
 Date : 2026-07-08
 Statut : draft stratégique
@@ -485,9 +485,9 @@ Livrable : DEV_CORE v12 Cognitive Platform.
 
 Objectif : centraliser les mesures opérationnelles dans un service append-only avant de construire l'Event Bus.
 
-- [ ] Introduire `metrics_service.ps1` avec actions `Record`, `Aggregate`, `Status`, `Health`.
-- [ ] Écrire les métriques dans `DEV_CORE_DATA\Logs\metrics\metrics-YYYY-MM-DD.jsonl`.
-- [ ] Normaliser le schéma `MetricRecorded` :
+- [x] Introduire `metrics_service.ps1` avec actions `Record`, `Aggregate`, `Status`, `Health`.
+- [x] Écrire les métriques dans `DEV_CORE_DATA\Logs\metrics\metrics-YYYY-MM-DD.jsonl`.
+- [x] Normaliser le schéma `MetricRecorded` :
   - `schema_version`
   - `id`
   - `timestamp`
@@ -498,11 +498,11 @@ Objectif : centraliser les mesures opérationnelles dans un service append-only 
   - `value`
   - `unit`
   - `payload`
-- [ ] Ajouter tests smoke pour append JSONL, agrégation et health.
-- [ ] Brancher `token_report.py` pour publier tokens, coût, cache et modèles.
-- [ ] Brancher `gen_dashboard.ps1` pour publier durée de génération et statut.
-- [ ] Brancher `launch.ps1` et `endday.ps1` pour publier durée, succès et erreurs.
-- [ ] Afficher dans le dashboard un résumé Metrics Service : événements du jour, erreurs, coût, tokens, durée.
+- [x] Ajouter tests smoke pour append JSONL, agrégation et health.
+- [x] Brancher `token_report.py` pour publier tokens, coût, cache et modèles.
+- [x] Brancher `gen_dashboard.ps1` pour publier durée de génération et statut.
+- [x] Brancher `launch.ps1` et `endday.ps1` pour publier durée, succès et erreurs.
+- [x] Afficher dans le dashboard un résumé Metrics Service : événements du jour, erreurs, coût, tokens, durée.
 
 Gate Sprint 5 :
 

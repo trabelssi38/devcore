@@ -6,8 +6,17 @@ $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     
 $AUTO          = "$DEV_CORE\Scripts\Auto"
 $TODAY         = Get-Date -Format "yyyy-MM-dd"
 $LOG           = "$DEV_CORE_DATA\Logs\scripts\endday_$TODAY.log"
+$ENDDAY_STARTED = Get-Date
+$METRICS_SERVICE = "$DEV_CORE\Scripts\metrics_service.ps1"
 
 function Log { param($msg,$color="Gray"); $l="[$(Get-Date -f HH:mm:ss)] $msg"; Add-Content $LOG $l -ErrorAction SilentlyContinue; Write-Host "  $l" -ForegroundColor $color }
+function Record-Metric { param([string]$MetricType,[double]$Value,[string]$Unit="count",[hashtable]$Payload=@{})
+    if (-not (Test-Path $METRICS_SERVICE)) { return }
+    try {
+        $payloadJson = $Payload | ConvertTo-Json -Depth 8 -Compress
+        & $METRICS_SERVICE -Action Record -Source "endday" -Project "devcore" -MetricType $MetricType -Value $Value -Unit $Unit -PayloadJson $payloadJson 6>$null | Out-Null
+    } catch {}
+}
 function Run { param($script,$label)
     $p = "$AUTO\$script"
     if (Test-Path $p) { Log "→ $label" "Cyan"; & $p } else { Log "SKIP $script" "Yellow" }
@@ -95,6 +104,9 @@ try {
 
 Log "8/8 Next actions"
 $na = "$DEV_CORE_DATA\Memory\next_actions.md"
+$enddayElapsed = ((Get-Date) - $ENDDAY_STARTED).TotalSeconds
+Record-Metric -MetricType "duration" -Value $enddayElapsed -Unit "seconds" -Payload @{ status = "success"; component = "endday" }
+Record-Metric -MetricType "success" -Value 1 -Unit "count" -Payload @{ component = "endday" }
 if (Test-Path $na) { Write-Host ""; Get-Content $na | Select-Object -First 15 | ForEach-Object { Write-Host "    $_" -ForegroundColor Gray } }
 
 Write-Host ""; Write-Host "  ✓ End of day — $TODAY" -ForegroundColor Green; Write-Host ""

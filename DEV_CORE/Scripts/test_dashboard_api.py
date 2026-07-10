@@ -29,6 +29,7 @@ def test_build_dashboard_payload_uses_stable_json_contract():
             "automation_hooks": "<div>hooks</div>",
             "token_activity_report": "<details>tokens</details>",
             "context_composition": "<div>context</div>",
+            "metrics_service_summary": "<div>metrics</div>",
         },
         "task_details": {"devcore_T-113": "details"},
         "token_metrics": {"total": {"tokens": 10}},
@@ -46,6 +47,7 @@ def test_build_dashboard_payload_uses_stable_json_contract():
     assert result["schema_version"] == 1
     assert result["sections"]["tasks_pipeline"] == "<div>tasks</div>"
     assert result["sections"]["context_composition"] == "<div>context</div>"
+    assert result["sections"]["metrics_service_summary"] == "<div>metrics</div>"
     assert result["task_details"]["devcore_T-113"] == "details"
     command = run.call_args.args[0]
     assert "gen_dashboard.ps1" in command[5]
@@ -129,3 +131,4 @@ def test_gen_dashboard_payload_includes_context_composition(tmp_path):
     assert "Composition du Contexte" in context_html
     assert "L3:persona" in context_html
     assert "L2:scenario:coding" in context_html
+    assert "Metrics Service" in payload["sections"]["metrics_service_summary"]
