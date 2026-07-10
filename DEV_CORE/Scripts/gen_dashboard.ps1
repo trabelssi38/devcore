@@ -14,6 +14,7 @@ $MEMORY_DIR    = "$DEV_CORE_DATA\Memory"
 $inv           = [System.Globalization.CultureInfo]::InvariantCulture
 $dashboardStarted = Get-Date
 $METRICS_SERVICE = Join-Path $DEV_CORE "Scripts\metrics_service.ps1"
+$EVENT_BUS = Join-Path $DEV_CORE "Scripts\event_bus.ps1"
 
 if ($env:DEVCORE_SKIP_DASHBOARD -eq "1" -and -not $Json) {
     Write-Host "Dashboard generation skipped (DEVCORE_SKIP_DASHBOARD=1)"
@@ -55,6 +56,20 @@ function Record-DashboardMetric {
     } catch {}
 }
 
+function Publish-DashboardEvent {
+    param(
+        [Parameter(Mandatory=$true)][string]$EventType,
+        [hashtable]$Payload = @{},
+        [string]$Id = ""
+    )
+    if (-not (Test-Path -LiteralPath $EVENT_BUS)) { return }
+    try {
+        $eventId = if ($Id) { $Id } else { [guid]::NewGuid().ToString("n") }
+        $payloadJson = $Payload | ConvertTo-Json -Depth 10 -Compress
+        & $EVENT_BUS -Action Publish -Id $eventId -Source "gen_dashboard" -Project "devcore" -EventType $EventType -CorrelationId $eventId -PayloadJson $payloadJson -Json 6>$null | Out-Null
+    } catch {}
+}
+
 function Get-MetricsServiceSummaryHtml {
     $empty = "<div style='font-size:10px; color:#64748b; padding:8px 0;'>Metrics Service indisponible.</div>"
     if (-not (Test-Path -LiteralPath $METRICS_SERVICE)) { return $empty }
@@ -89,6 +104,39 @@ function Get-MetricsServiceSummaryHtml {
 "@
     } catch {
         return "<div style='font-size:10px; color:#ef4444; padding:8px 0;'>Metrics Service erreur: $([System.Net.WebUtility]::HtmlEncode([string]$_))</div>"
+    }
+}
+
+function Get-EventBusRecentHtml {
+    $empty = "<div style='font-size:10px; color:#64748b; padding:8px 0;'>Event Bus indisponible.</div>"
+    if (-not (Test-Path -LiteralPath $EVENT_BUS)) { return $empty }
+    try {
+        $tailJson = & $EVENT_BUS -Action Tail -Limit 8 -Json | Out-String
+        $tail = $tailJson | ConvertFrom-Json
+        $events = @($tail.events)
+        $rows = ""
+        foreach ($event in $events) {
+            $type = [System.Net.WebUtility]::HtmlEncode([string]$event.event_type)
+            $source = [System.Net.WebUtility]::HtmlEncode([string]$event.source)
+            $task = if ($event.task_id) { [System.Net.WebUtility]::HtmlEncode([string]$event.task_id) } else { "-" }
+            $time = ""
+            try { $time = ([datetimeoffset]::Parse([string]$event.timestamp, $inv)).ToLocalTime().ToString("HH:mm:ss") } catch { $time = [System.Net.WebUtility]::HtmlEncode([string]$event.timestamp) }
+            $rows += "<div class='token-layer'><span class='token-name'>$time $type</span><span class='token-reduction' title='$source'>$task</span></div>"
+        }
+        if (-not $rows) {
+            $rows = "<div style='font-size:10px; color:#64748b; padding:8px 0;'>Aucun evenement recent.</div>"
+        }
+        return @"
+<div id="event-bus-inner">
+  <h2>Event Bus</h2>
+  <div style="display:flex; flex-direction:column; gap:4px; margin-bottom:8px;">
+    $rows
+  </div>
+  <div style="font-size:9px; color:#64748b; font-family:'JetBrains Mono',monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="$($tail.store_path)">Events lus: $($tail.events_count) | erreurs: $($tail.errors_count)</div>
+</div>
+"@
+    } catch {
+        return "<div style='font-size:10px; color:#ef4444; padding:8px 0;'>Event Bus erreur: $([System.Net.WebUtility]::HtmlEncode([string]$_))</div>"
     }
 }
 
@@ -227,6 +275,8 @@ function Get-ContextCompositionHtml {
 
 $contextCompositionHtml = Get-ContextCompositionHtml -ProjectList $projects
 $metricsServiceHtml = Get-MetricsServiceSummaryHtml
+$eventBusHtml = Get-EventBusRecentHtml
+Publish-DashboardEvent -EventType "ContextBuilt" -Payload @{ projects = @($projects).Count; has_context = ($contextCompositionHtml.Length -gt 0) } -Id "context-built-$(Get-Date -Format 'yyyyMMddHHmmssffff')"
 
 
 # 3. Generer le HTML
@@ -804,6 +854,7 @@ if (Test-Path $TEMPLATE_FILE) {
         $elapsed = ((Get-Date) - $dashboardStarted).TotalSeconds
         Record-DashboardMetric -MetricType "duration" -Value $elapsed -Unit "seconds" -Payload @{ status = "success"; output = "json" }
         Record-DashboardMetric -MetricType "dashboard_refresh" -Value 1 -Unit "count" -Payload @{ status = "success"; json = $true }
+        Publish-DashboardEvent -EventType "DashboardRefreshed" -Payload @{ status = "success"; json = $true; duration_seconds = [math]::Round($elapsed, 3) } -Id "dashboard-refreshed-json-$(Get-Date -Format 'yyyyMMddHHmmssffff')"
         [ordered]@{
             schema_version = 1
             generated_at = (Get-Date).ToString("o")
@@ -815,6 +866,7 @@ if (Test-Path $TEMPLATE_FILE) {
                 token_activity_report = $tokenReportHtml
                 context_composition = $contextCompositionHtml
                 metrics_service_summary = $metricsServiceHtml
+                event_bus_recent = $eventBusHtml
             }
             task_details = $allDetailsMap
             token_metrics = $tokenMetrics
@@ -830,6 +882,7 @@ if (Test-Path $TEMPLATE_FILE) {
     $template = $template.Replace('{{TOKEN_ACTIVITY_REPORT}}', $tokenReportHtml)
     $template = $template.Replace('{{CONTEXT_COMPOSITION}}', $contextCompositionHtml)
     $template = $template.Replace('{{METRICS_SERVICE_SUMMARY}}', $metricsServiceHtml)
+    $template = $template.Replace('{{EVENT_BUS_RECENT}}', $eventBusHtml)
     $template = $template.Replace('{{TASK_DETAILS_MAP}}', $detailsJson)
     $template = $template.Replace('{{TOKEN_METRICS_JSON}}', $tokenMetricsJson)
 
@@ -837,8 +890,10 @@ if (Test-Path $TEMPLATE_FILE) {
     $elapsed = ((Get-Date) - $dashboardStarted).TotalSeconds
     Record-DashboardMetric -MetricType "duration" -Value $elapsed -Unit "seconds" -Payload @{ status = "success"; output = $OUTPUT_FILE }
     Record-DashboardMetric -MetricType "dashboard_refresh" -Value 1 -Unit "count" -Payload @{ status = "success"; json = [bool]$Json }
+    Publish-DashboardEvent -EventType "DashboardRefreshed" -Payload @{ status = "success"; json = [bool]$Json; duration_seconds = [math]::Round($elapsed, 3); output = $OUTPUT_FILE } -Id "dashboard-refreshed-html-$(Get-Date -Format 'yyyyMMddHHmmssffff')"
     Write-Host "Dashboard genere : $OUTPUT_FILE" -ForegroundColor Green
 } else {
     Record-DashboardMetric -MetricType "dashboard_refresh" -Value 1 -Unit "count" -Payload @{ status = "error"; reason = "template_missing" }
+    Publish-DashboardEvent -EventType "HealthCheckFailed" -Payload @{ component = "dashboard"; reason = "template_missing" } -Id "healthcheck-dashboard-template-missing-$(Get-Date -Format 'yyyyMMddHHmmssffff')"
     Write-Host "Erreur : template.html introuvable" -ForegroundColor Red
 }

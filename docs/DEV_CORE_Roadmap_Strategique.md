@@ -515,8 +515,8 @@ Gate Sprint 5 :
 
 Objectif : transformer les métriques et actions critiques en événements durables, typés et consommables.
 
-- [ ] Introduire `event_bus.ps1` avec actions `Publish`, `Read`, `Tail`, `Health`.
-- [ ] Définir le schéma événement append-only :
+- [x] Introduire `event_bus.ps1` avec actions `Publish`, `Read`, `Tail`, `Health`.
+- [x] Définir le schéma événement append-only :
   - `schema_version`
   - `id`
   - `timestamp`
@@ -526,11 +526,11 @@ Objectif : transformer les métriques et actions critiques en événements durab
   - `task_id`
   - `correlation_id`
   - `payload`
-- [ ] Publier `TaskCreated`, `TaskStarted`, `TaskStepCompleted`, `TaskCompleted`.
-- [ ] Publier `CommitCreated` depuis hook post-commit ou scanner git.
-- [ ] Publier `ContextBuilt`, `MetricRecorded`, `DashboardRefreshed`, `HealthCheckFailed`.
-- [ ] Ajouter idempotence minimale par `id`/`correlation_id`.
-- [ ] Ajouter une vue dashboard des événements récents.
+- [x] Publier `TaskCreated`, `TaskStarted`, `TaskStepCompleted`, `TaskCompleted`.
+- [x] Publier `CommitCreated` depuis hook post-commit ou scanner git.
+- [x] Publier `ContextBuilt`, `MetricRecorded`, `DashboardRefreshed`, `HealthCheckFailed`.
+- [x] Ajouter idempotence minimale par `id`/`correlation_id`.
+- [x] Ajouter une vue dashboard des événements récents.
 
 Gate Sprint 6 :
 

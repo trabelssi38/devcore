@@ -140,6 +140,23 @@ fi
 # 2. Émettre l'événement post-commit pour le bus d'événements (Hermes)
 echo "  [DEV_CORE] Emission evenement post-commit..."
 powershell.exe -NoProfile -ExecutionPolicy Bypass -NonInteractive -Command "
+\$eventBus = '$SCRIPTS/event_bus.ps1'
+if (Test-Path \$eventBus) {
+    \$commitMsg = (\$input | Out-String).Trim()
+    \$commit = (git rev-parse HEAD).Trim()
+    \$shortCommit = (git rev-parse --short=12 HEAD).Trim()
+    \$project = (& '$SCRIPTS/Get-ActiveProject.ps1' | Select-Object -First 1).Trim()
+    \$payload = @{
+        commit = \$commit
+        message = \$commitMsg
+        task_id = '$TID'
+    } | ConvertTo-Json -Depth 10 -Compress
+    & \$eventBus -Action Publish -Id \"commit-\$shortCommit\" -Source 'post-commit' -Project \$project -TaskId '$TID' -EventType 'CommitCreated' -CorrelationId \$commit -PayloadJson \$payload -Json | Out-Null
+}
+" <<EOF
+$MSG
+EOF
+powershell.exe -NoProfile -ExecutionPolicy Bypass -NonInteractive -Command "
 \$evt = @{
     type = 'post-commit'
     timestamp = (Get-Date -Format 'o')

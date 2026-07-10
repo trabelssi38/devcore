@@ -18,6 +18,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
+$EVENT_BUS = Join-Path $PSScriptRoot "event_bus.ps1"
 
 function Get-TaskServiceProject {
     $currentPath = (Get-Location).Path
@@ -67,6 +68,35 @@ function Write-TaskBoard {
     $Board | ConvertTo-Json -Depth 10 | Set-Content $path -Encoding UTF8
 }
 
+function Publish-TaskEvent {
+    param(
+        [Parameter(Mandatory=$true)][string]$EventType,
+        [Parameter(Mandatory=$true)]$Task,
+        [string]$EventId = "",
+        [hashtable]$Payload = @{}
+    )
+
+    if (-not (Test-Path -LiteralPath $EVENT_BUS)) { return }
+    try {
+        $project = Get-TaskServiceProject
+        $taskId = [string]$Task.id
+        $id = if ($EventId) { $EventId } else { "$project-$taskId-$EventType" }
+        $eventPayload = [ordered]@{
+            id = $taskId
+            title = [string]$Task.title
+            mode = [string]$Task.mode
+            status = [string]$Task.status
+            steps_done = if ($Task.PSObject.Properties["steps_done"]) { [int]$Task.steps_done } else { 0 }
+            steps_total = if ($Task.PSObject.Properties["steps_total"]) { [int]$Task.steps_total } else { 1 }
+        }
+        foreach ($key in $Payload.Keys) {
+            $eventPayload[$key] = $Payload[$key]
+        }
+        $payloadJson = $eventPayload | ConvertTo-Json -Depth 10 -Compress
+        & $EVENT_BUS -Action Publish -Id $id -Source "task_service" -Project $project -TaskId $taskId -EventType $EventType -CorrelationId $id -PayloadJson $payloadJson 6>$null | Out-Null
+    } catch {}
+}
+
 function Add-Task {
     param(
         [Parameter(Mandatory=$true)][string]$TaskTitle,
@@ -99,6 +129,7 @@ function Add-Task {
 
     $board.tasks += $task
     Write-TaskBoard -Board $board
+    Publish-TaskEvent -EventType "TaskCreated" -Task $task -Payload @{ depends_on = $task.depends_on; worktree = $task.worktree }
     return $task
 }
 
@@ -124,6 +155,7 @@ function Get-NextTask {
         $current | Add-Member -NotePropertyName "started_at" -NotePropertyValue (Get-Date -Format "o") -Force
         $board.current_task = $current.id
         Write-TaskBoard -Board $board
+        Publish-TaskEvent -EventType "TaskStarted" -Task $current -Payload @{ started_at = $current.started_at }
     }
 
     return $current
@@ -160,6 +192,7 @@ function Complete-Task {
     } | Select-Object -First 1
 
     Write-TaskBoard -Board $board
+    Publish-TaskEvent -EventType "TaskCompleted" -Task $current -Payload @{ completed_at = $current.completed_at }
 
     return [pscustomobject]@{
         completed = $current
@@ -197,6 +230,7 @@ function Complete-Step {
     }
 
     Write-TaskBoard -Board $board
+    Publish-TaskEvent -EventType "TaskStepCompleted" -Task $current -EventId "$(Get-TaskServiceProject)-$($current.id)-TaskStepCompleted-$($current.steps_done)" -Payload @{ message = $message; complete = ([int]$current.steps_done -ge [int]$current.steps_total) }
 
     return [pscustomobject]@{
         task = $current

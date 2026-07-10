@@ -1,30 +1,31 @@
-# metrics_service.ps1 -- DEV_CORE v10 -- append-only Metrics Service
+# event_bus.ps1 -- DEV_CORE v10 -- append-only Event Bus
 param(
     [Parameter(Mandatory=$true)]
-    [ValidateSet("Record", "Aggregate", "Status", "Health")]
+    [ValidateSet("Publish", "Read", "Tail", "Health")]
     [string]$Action,
+    [string]$Id = "",
     [string]$Source = "devcore",
+    [string]$EventType = "",
     [string]$Project = "",
     [string]$TaskId = "",
-    [string]$MetricType = "",
-    [double]$Value = 0,
-    [string]$Unit = "count",
+    [string]$CorrelationId = "",
     [string]$PayloadJson = "{}",
     [string]$Date = "",
+    [int]$Limit = 50,
     [switch]$Json
 )
 
 $ErrorActionPreference = "Stop"
 
+$SOURCE_WAS_SPECIFIED = $PSBoundParameters.ContainsKey("Source")
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
 $TODAY = if ($Date) { $Date } else { Get-Date -Format "yyyy-MM-dd" }
-$METRICS_DIR = Join-Path $DEV_CORE_DATA "Logs\metrics"
-$METRICS_FILE = Join-Path $METRICS_DIR "metrics-$TODAY.jsonl"
-$EVENT_BUS = Join-Path $PSScriptRoot "event_bus.ps1"
+$EVENTS_DIR = Join-Path $DEV_CORE_DATA "Bus\events"
+$EVENTS_FILE = Join-Path $EVENTS_DIR "events-$TODAY.jsonl"
 
-function Ensure-MetricsDir {
-    New-Item -ItemType Directory -Path $METRICS_DIR -Force | Out-Null
-    return $METRICS_DIR
+function Ensure-EventsDir {
+    New-Item -ItemType Directory -Path $EVENTS_DIR -Force | Out-Null
+    return $EVENTS_DIR
 }
 
 function Get-ActiveProjectName {
@@ -124,46 +125,36 @@ function Read-PayloadJson {
     }
 }
 
-function New-MetricEvent {
+function New-BusEvent {
+    if ([string]::IsNullOrWhiteSpace($EventType)) {
+        Write-Error "EventType is required for Publish."
+        exit 64
+    }
+
     $projectName = Get-ActiveProjectName
+    $eventId = if ($Id) { $Id } else { [guid]::NewGuid().ToString("n") }
     [pscustomobject][ordered]@{
         schema_version = 1
-        id = [guid]::NewGuid().ToString("n")
-        event_type = "MetricRecorded"
+        id = $eventId
         timestamp = (Get-Date).ToString("o")
         source = $Source
+        event_type = $EventType
         project = $projectName
         task_id = Get-ActiveTaskId -ProjectName $projectName
-        metric_type = $MetricType
-        value = $Value
-        unit = $Unit
+        correlation_id = if ($CorrelationId) { $CorrelationId } else { $eventId }
         payload = Read-PayloadJson
     }
 }
 
-function Publish-MetricRecordedEvent {
-    param($MetricEvent)
-
-    if (-not (Test-Path -LiteralPath $EVENT_BUS)) { return }
-    try {
-        $payload = [ordered]@{
-            metric_type = [string]$MetricEvent.metric_type
-            value = [double]$MetricEvent.value
-            unit = [string]$MetricEvent.unit
-            payload = $MetricEvent.payload
-        }
-        $payloadJson = $payload | ConvertTo-Json -Depth 20 -Compress
-        & $EVENT_BUS -Action Publish -Id $MetricEvent.id -Source "metrics_service" -Project $MetricEvent.project -TaskId $MetricEvent.task_id -EventType "MetricRecorded" -CorrelationId $MetricEvent.id -PayloadJson $payloadJson 6>$null | Out-Null
-    } catch {}
-}
-
-function Read-MetricEvents {
+function Read-EventFile {
     param([string]$Path)
+
     $events = @()
     $errors = 0
     if (-not (Test-Path -LiteralPath $Path)) {
         return [pscustomobject]@{ events = @(); errors = 0 }
     }
+
     foreach ($line in Get-Content -LiteralPath $Path -Encoding UTF8) {
         if ([string]::IsNullOrWhiteSpace($line)) { continue }
         try {
@@ -172,121 +163,116 @@ function Read-MetricEvents {
             $errors++
         }
     }
+
     return [pscustomobject]@{ events = $events; errors = $errors }
 }
 
-function Add-GroupedMetric {
-    param(
-        [hashtable]$Table,
-        [string]$MetricType,
-        [string]$MetricUnit,
-        [double]$MetricValue
-    )
+function Test-DuplicateEvent {
+    param($Candidate, $ExistingEvents)
 
-    if (-not $Table.ContainsKey($MetricType)) { $Table[$MetricType] = @{} }
-    if (-not $Table[$MetricType].ContainsKey($MetricUnit)) {
-        $Table[$MetricType][$MetricUnit] = [ordered]@{ count = 0; sum = 0.0 }
+    foreach ($event in @($ExistingEvents)) {
+        if ($event.id -and $event.id -eq $Candidate.id) { return $true }
+        if ($Candidate.correlation_id -and $event.correlation_id -eq $Candidate.correlation_id -and
+            $event.event_type -eq $Candidate.event_type -and $event.source -eq $Candidate.source -and
+            $event.task_id -eq $Candidate.task_id) {
+            return $true
+        }
     }
-    $Table[$MetricType][$MetricUnit].count++
-    $Table[$MetricType][$MetricUnit].sum = [math]::Round(([double]$Table[$MetricType][$MetricUnit].sum + $MetricValue), 6)
+    return $false
 }
 
-function New-Aggregate {
-    Ensure-MetricsDir | Out-Null
-    $read = Read-MetricEvents -Path $METRICS_FILE
-    $totals = @{}
-    $projects = @{}
-    $tasks = @{}
-    $sources = @{}
+function Select-Events {
+    param($Events)
 
-    foreach ($event in @($read.events)) {
-        $metricTypeName = if ($event.metric_type) { [string]$event.metric_type } else { "unknown" }
-        $metricUnitName = if ($event.unit) { [string]$event.unit } else { "count" }
-        $metricValue = try { [double]$event.value } catch { 0.0 }
-        Add-GroupedMetric -Table $totals -MetricType $metricTypeName -MetricUnit $metricUnitName -MetricValue $metricValue
+    $selected = @($Events)
+    if ($EventType) { $selected = @($selected | Where-Object { $_.event_type -eq $EventType }) }
+    if ($Project) { $selected = @($selected | Where-Object { $_.project -eq $Project }) }
+    if ($TaskId) { $selected = @($selected | Where-Object { $_.task_id -eq $TaskId }) }
+    if ($Source -and $SOURCE_WAS_SPECIFIED) { $selected = @($selected | Where-Object { $_.source -eq $Source }) }
+    return $selected
+}
 
-        $projectName = if ($event.project) { [string]$event.project } else { "unknown" }
-        if (-not $projects.ContainsKey($projectName)) { $projects[$projectName] = [ordered]@{ events_count = 0; totals = @{} } }
-        $projects[$projectName].events_count++
-        Add-GroupedMetric -Table $projects[$projectName].totals -MetricType $metricTypeName -MetricUnit $metricUnitName -MetricValue $metricValue
+function New-ReadResult {
+    param([switch]$TailOnly)
 
-        $taskName = if ($event.task_id) { [string]$event.task_id } else { "none" }
-        if (-not $tasks.ContainsKey($taskName)) { $tasks[$taskName] = [ordered]@{ events_count = 0; totals = @{} } }
-        $tasks[$taskName].events_count++
-        Add-GroupedMetric -Table $tasks[$taskName].totals -MetricType $metricTypeName -MetricUnit $metricUnitName -MetricValue $metricValue
-
-        $sourceName = if ($event.source) { [string]$event.source } else { "unknown" }
-        if (-not $sources.ContainsKey($sourceName)) { $sources[$sourceName] = [ordered]@{ events_count = 0 } }
-        $sources[$sourceName].events_count++
+    Ensure-EventsDir | Out-Null
+    $read = Read-EventFile -Path $EVENTS_FILE
+    $events = @(Select-Events -Events $read.events)
+    if ($TailOnly) {
+        $events = @($events | Select-Object -Last ([math]::Max(1, $Limit)))
+    } elseif ($Limit -gt 0) {
+        $events = @($events | Select-Object -First $Limit)
     }
 
     [pscustomobject][ordered]@{
         schema_version = 1
         date = $TODAY
-        store_path = $METRICS_FILE
-        events_count = @($read.events).Count
+        store_path = $EVENTS_FILE
+        events_count = @($events).Count
         errors_count = $read.errors
-        totals = $totals
-        projects = $projects
-        tasks = $tasks
-        sources = $sources
+        events = $events
     }
 }
 
 function New-Health {
-    Ensure-MetricsDir | Out-Null
+    Ensure-EventsDir | Out-Null
     $canWrite = $false
     try {
-        $probe = Join-Path $METRICS_DIR ".health"
+        $probe = Join-Path $EVENTS_DIR ".health"
         "ok" | Set-Content -LiteralPath $probe -Encoding UTF8
         Remove-Item -LiteralPath $probe -Force -ErrorAction SilentlyContinue
         $canWrite = $true
     } catch {
         $canWrite = $false
     }
+
     [pscustomobject][ordered]@{
         schema_version = 1
         ok = $canWrite
-        metrics_dir = $METRICS_DIR
-        store_path = $METRICS_FILE
+        events_dir = $EVENTS_DIR
+        store_path = $EVENTS_FILE
         writable = $canWrite
     }
 }
 
 switch ($Action) {
-    "Record" {
-        if ([string]::IsNullOrWhiteSpace($MetricType)) {
-            Write-Error "MetricType is required for Record."
-            exit 64
+    "Publish" {
+        Ensure-EventsDir | Out-Null
+        $event = New-BusEvent
+        $read = Read-EventFile -Path $EVENTS_FILE
+        $duplicate = Test-DuplicateEvent -Candidate $event -ExistingEvents $read.events
+        if (-not $duplicate) {
+            ($event | ConvertTo-Json -Depth 30 -Compress) | Add-Content -LiteralPath $EVENTS_FILE -Encoding UTF8
         }
-        Ensure-MetricsDir | Out-Null
-        $event = New-MetricEvent
-        ($event | ConvertTo-Json -Depth 20 -Compress) | Add-Content -LiteralPath $METRICS_FILE -Encoding UTF8
-        Publish-MetricRecordedEvent -MetricEvent $event
-        if ($Json) {
-            $event | ConvertTo-Json -Depth 20
-        } else {
-            Write-Host "[METRICS] record OK -- $($event.metric_type)=$($event.value) $($event.unit)"
-        }
-        exit 0
-    }
-    "Aggregate" {
-        $aggregate = New-Aggregate
-        if ($Json) { $aggregate | ConvertTo-Json -Depth 30 } else { Write-Host "[METRICS] aggregate OK -- $($aggregate.events_count) event(s)" }
-        exit 0
-    }
-    "Status" {
-        $status = [pscustomobject][ordered]@{
+        $result = [pscustomobject][ordered]@{
             schema_version = 1
-            health = New-Health
-            aggregate = New-Aggregate
+            duplicate = $duplicate
+            event = $event
+            store_path = $EVENTS_FILE
         }
-        if ($Json) { $status | ConvertTo-Json -Depth 30 } else { Write-Host "[METRICS] status OK -- $($status.aggregate.events_count) event(s)" }
+        if ($Json) { $result | ConvertTo-Json -Depth 30 }
+        else {
+            $state = if ($duplicate) { "duplicate" } else { "published" }
+            Write-Host "[EVENT_BUS] $state -- $($event.event_type) $($event.id)"
+        }
+        exit 0
+    }
+    "Read" {
+        $result = New-ReadResult
+        if ($Json) { $result | ConvertTo-Json -Depth 30 }
+        else { Write-Host "[EVENT_BUS] read OK -- $($result.events_count) event(s)" }
+        exit 0
+    }
+    "Tail" {
+        $result = New-ReadResult -TailOnly
+        if ($Json) { $result | ConvertTo-Json -Depth 30 }
+        else { Write-Host "[EVENT_BUS] tail OK -- $($result.events_count) event(s)" }
         exit 0
     }
     "Health" {
         $health = New-Health
-        if ($Json) { $health | ConvertTo-Json -Depth 10 } else { Write-Host "[METRICS] health OK -- writable=$($health.writable)" }
+        if ($Json) { $health | ConvertTo-Json -Depth 10 }
+        else { Write-Host "[EVENT_BUS] health OK -- writable=$($health.writable)" }
         if ($health.ok) { exit 0 } else { exit 1 }
     }
 }

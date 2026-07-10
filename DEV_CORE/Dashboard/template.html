@@ -419,6 +419,10 @@ details{margin-bottom: 8px}
       <div id="metrics-service-summary" style="margin-bottom:16px">
         {{METRICS_SERVICE_SUMMARY}}
       </div>
+
+      <div id="event-bus-recent" style="margin-bottom:16px">
+        {{EVENT_BUS_RECENT}}
+      </div>
       
       <h2>Automation Hooks</h2>
       <div id="automation-hooks" style="margin-bottom:16px">
@@ -825,6 +829,11 @@ function refreshDashboard() {
       const oldMetricsService = document.getElementById('metrics-service-summary');
       if (oldMetricsService && oldMetricsService.innerHTML !== payload.sections.metrics_service_summary) {
         oldMetricsService.innerHTML = payload.sections.metrics_service_summary || '';
+      }
+
+      const oldEventBus = document.getElementById('event-bus-recent');
+      if (oldEventBus && oldEventBus.innerHTML !== payload.sections.event_bus_recent) {
+        oldEventBus.innerHTML = payload.sections.event_bus_recent || '';
       }
 
       window.taskDetailsMap = payload.task_details || {};
