@@ -1,5 +1,9 @@
 # DEV_CORE v10+ -- Roadmap Strategique Raffinee
 
+> Plan opérationnel courant : [DEV_CORE_PLAN_SPRINTS_2026.md](DEV_CORE_PLAN_SPRINTS_2026.md).
+> Ce document conserve la vision historique ; le plan par sprints porte désormais
+> l'ordre d'exécution, les gates et les KPI de livraison.
+
 Date : 2026-07-08
 Statut : draft stratégique
 Mode cible : single client, orchestration locale, mémoire hiérarchique, services observables
