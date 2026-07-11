@@ -347,6 +347,7 @@ function Get-PluginStatusHtml {
         }
 
         $rowsHtml = ""
+        $checksDir = Join-Path $DEV_CORE_DATA "Plugins\checks"
         foreach ($plugin in ($plugins | Sort-Object id | Select-Object -First 8)) {
             $pluginId = ConvertTo-DashboardHtml $plugin.id
             $pluginName = ConvertTo-DashboardHtml $plugin.name
@@ -358,10 +359,29 @@ function Get-PluginStatusHtml {
             $checkStatus = "Health checks: $(@($healthChecks).Count) configured"
             $checkColor = "#94a3b8"
             $checkTitle = ConvertTo-DashboardHtml ((@($healthChecks) | ForEach-Object { if ($_.id) { [string]$_.id } else { [string]$_ } }) -join " | ")
+            $lastCheckHtml = "<div style=""font-size:9px; color:#64748b; margin-top:3px; font-family:'JetBrains Mono',monospace;"">Last check: never</div>"
+            $lastCheckPath = Join-Path $checksDir "$($plugin.id)-last.json"
+            if (Test-Path -LiteralPath $lastCheckPath) {
+                try {
+                    $lastCheck = Get-Content -LiteralPath $lastCheckPath -Raw -Encoding UTF8 | ConvertFrom-Json
+                    $lastState = if ($lastCheck.ok -eq $true) { "OK" } else { "FAIL" }
+                    $lastColor = if ($lastCheck.ok -eq $true) { "#22c55e" } else { "#ef4444" }
+                    $lastWhen = if ($lastCheck.checked_at) {
+                        try { ([datetime]::Parse([string]$lastCheck.checked_at)).ToString("yyyy-MM-dd HH:mm:ss") } catch { [string]$lastCheck.checked_at }
+                    } else {
+                        "unknown"
+                    }
+                    $lastSummary = "Last check: $lastState $lastWhen"
+                    $lastCheckHtml = "<div style=""font-size:9px; color:$lastColor; margin-top:3px; font-family:'JetBrains Mono',monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"" title=""$(ConvertTo-DashboardHtml $lastSummary)"">$(ConvertTo-DashboardHtml $lastSummary)</div>"
+                } catch {
+                    $lastCheckHtml = "<div style=""font-size:9px; color:#f59e0b; margin-top:3px; font-family:'JetBrains Mono',monospace;"">Last check: unreadable</div>"
+                }
+            }
 
             $statusClass = if ($enabled) { "status-ok" } else { "status-warn" }
             $statusText = if ($enabled) { "ON" } else { "OFF" }
             $commandsText = ConvertTo-DashboardHtml ("commands: $(@($commands).Count) | skills: " + (@($skills) -join ", "))
+            $disabledAttr = if ($enabled) { "" } else { " disabled" }
 
             $rowsHtml += @"
   <div class="component" style="padding:8px 10px; margin-bottom:6px; background:rgba(30,41,59,0.2); border:1px solid rgba(255,255,255,0.03); border-radius:6px; display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">
@@ -369,8 +389,12 @@ function Get-PluginStatusHtml {
       <div class="component-name" style="font-size:11px; font-weight:600; color:#f8fafc; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="$pluginName">$pluginId <span style="font-size:9px; color:#64748b;">v$version</span></div>
       <div class="component-detail" style="font-size:9px; color:#64748b; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="$commandsText">$commandsText</div>
       <div style="font-size:9px; color:$checkColor; margin-top:3px; font-family:'JetBrains Mono',monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="$checkTitle">$checkStatus</div>
+      $lastCheckHtml
     </div>
-    <div class="$statusClass" style="font-size:10px; font-weight:bold; flex-shrink:0;">$statusText</div>
+    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px; flex-shrink:0;">
+      <div class="$statusClass" style="font-size:10px; font-weight:bold;">$statusText</div>
+      <button type="button" data-plugin-id="$pluginId" onclick="checkPlugin(this.dataset.pluginId)"$disabledAttr style="min-width:44px; height:24px; padding:0 8px; border-radius:4px; border:1px solid #2d3148; background:#111827; color:#cbd5e1; font-size:10px; cursor:pointer;">Check</button>
+    </div>
   </div>
 "@
         }

@@ -2,7 +2,7 @@
 # Alias : Set-Alias dc 'C:\devcore\DEV_CORE\Scripts\dc.ps1'
 param([Parameter(ValueFromRemainingArguments=$true)][string[]]$Args)
 
-$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
+$DEV_CORE = Split-Path -Parent $PSScriptRoot
 $SCRIPTS  = "$DEV_CORE\Scripts"
 $cmd = ($Args -join " ").ToLower().Trim()
 

@@ -129,6 +129,7 @@ try {
 
     $dcSource = Get-Content $dcScript -Raw -Encoding UTF8
     Assert-True (-not ($dcSource -match "Invoke-Expression")) "dc.ps1 must not use Invoke-Expression"
+    Assert-True ($dcSource -match '\$DEV_CORE = Split-Path -Parent \$PSScriptRoot') "dc.ps1 should use the current worktree platform root"
 
     Write-Host "[OK] dc dispatch smoke tests passed" -ForegroundColor Green
 } finally {

@@ -891,6 +891,30 @@ function refreshDashboard() {
     });
 }
 
+function checkPlugin(pluginId) {
+  const indicator = document.getElementById('sync-indicator');
+  if (indicator) {
+    indicator.style.background = '#6366f1';
+    indicator.style.boxShadow = '0 0 12px #6366f1';
+    indicator.style.opacity = '1';
+  }
+
+  fetch(`${API_BASE}/api/plugin/check?id=${encodeURIComponent(pluginId)}`)
+    .then(response => {
+      if (!response.ok) throw new Error('Plugin check failed');
+      return response.json();
+    })
+    .then(() => refreshDashboard())
+    .catch(err => {
+      console.error("Failed to check plugin:", err);
+      if (indicator) {
+        indicator.style.background = '#ef4444';
+        indicator.style.boxShadow = '0 0 12px #ef4444';
+        indicator.style.opacity = '1';
+      }
+    });
+}
+
 window.activeFilteredProject = null;
 
 function escapeHtml(value) {

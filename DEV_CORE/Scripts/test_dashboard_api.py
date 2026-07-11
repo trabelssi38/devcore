@@ -79,6 +79,35 @@ def test_build_dashboard_payload_rejects_unknown_schema():
             raise AssertionError("build_dashboard_payload should reject unknown schemas")
 
 
+def test_run_plugin_check_invokes_dc_plugin_check_json():
+    dashboard_api = load_dashboard_api()
+    with patch.object(dashboard_api.subprocess, "run") as run:
+        run.return_value = SimpleNamespace(
+            returncode=0,
+            stdout=json.dumps({"ok": True, "action": "Check", "plugin": {"id": "python-fastapi"}}),
+            stderr="",
+        )
+
+        result = dashboard_api.run_plugin_check("python-fastapi")
+
+    assert result["ok"] is True
+    assert result["plugin"]["id"] == "python-fastapi"
+    command = run.call_args.args[0]
+    assert any("dc.ps1" in str(part) for part in command)
+    assert "plugin check python-fastapi --json" in command
+    assert run.call_args.kwargs["timeout"] >= 45
+
+
+def test_run_plugin_check_rejects_invalid_id():
+    dashboard_api = load_dashboard_api()
+    try:
+        dashboard_api.run_plugin_check("../bad")
+    except ValueError as exc:
+        assert "Invalid plugin id" in str(exc)
+    else:
+        raise AssertionError("run_plugin_check should reject path-like plugin ids")
+
+
 def test_gen_dashboard_payload_includes_context_composition(tmp_path):
     platform_root = MODULE_PATH.parents[1]
     data_root = tmp_path / "DEV_CORE_DATA"
@@ -89,6 +118,8 @@ def test_gen_dashboard_payload_includes_context_composition(tmp_path):
     scenario_root.mkdir(parents=True)
     plugins_root = data_root / "Plugins"
     plugins_root.mkdir(parents=True)
+    checks_root = plugins_root / "checks"
+    checks_root.mkdir(parents=True)
     (memory_root / "persona.md").write_text("api persona preference", encoding="utf-8")
     (scenario_root / "coding.md").write_text("coding api context composition", encoding="utf-8")
     (project_root / "tasks.json").write_text(
@@ -147,6 +178,19 @@ def test_gen_dashboard_payload_includes_context_composition(tmp_path):
         ),
         encoding="utf-8",
     )
+    (checks_root / "python-fastapi-last.json").write_text(
+        json.dumps(
+            {
+                "ok": True,
+                "checked_at": "2026-07-11T16:55:00+01:00",
+                "plugin": {"id": "python-fastapi"},
+                "health_checks_count": 1,
+                "required_failures": 0,
+                "health_checks": [],
+            }
+        ),
+        encoding="utf-8",
+    )
 
     env = os.environ.copy()
     env["DEVCORE_PLATFORM_ROOT"] = str(platform_root)
@@ -183,3 +227,6 @@ def test_gen_dashboard_payload_includes_context_composition(tmp_path):
     assert "Plugin SDK" in plugin_html
     assert "python-fastapi" in plugin_html
     assert "Health checks" in plugin_html
+    assert "Last check" in plugin_html
+    assert "data-plugin-id=\"python-fastapi\"" in plugin_html
+    assert "checkPlugin" in plugin_html

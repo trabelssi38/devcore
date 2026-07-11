@@ -631,10 +631,11 @@ Objectif : poser un SDK plugin minimal, testable et borne par scope, sans modifi
 - [x] Creer trois plugins internes prioritaires : Python/FastAPI, Web/React, Android/Gradle.
 - [x] Ajouter health checks plugin executables via `dc plugin check <id>`.
 - [x] Afficher les plugins et leurs checks dans le dashboard.
+- [x] Brancher l'action dashboard `Check` sur `dc plugin check` via l'API dashboard et persister le dernier resultat.
 
-Gate Sprint 9 restant :
+Gate Sprint 9 :
 
-- Brancher les actions dashboard futures sur `dc plugin check` si controle interactif requis.
+- SDK Plugin v1 complete.
 
 ---
 

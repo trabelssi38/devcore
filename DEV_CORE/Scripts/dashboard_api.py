@@ -5,6 +5,7 @@ import json
 import subprocess
 from pathlib import Path
 import os
+import re
 import sys
 from datetime import datetime
 import time
@@ -15,6 +16,7 @@ PLATFORM_ROOT = os.getenv("DEVCORE_PLATFORM_ROOT", "C:/devcore/DEV_CORE")
 DATA_ROOT = os.getenv("DEVCORE_DATA_ROOT", "C:/devcore/DEV_CORE_DATA")
 API_SCHEMA_VERSION = 1
 DASHBOARD_COMMAND_TIMEOUT_SEC = 90.0
+PLUGIN_ID_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]*$")
 
 def read_json_with_retry(file_path, retries=5, delay=0.05):
     for attempt in range(retries):
@@ -51,6 +53,35 @@ def write_json_with_retry(file_path, data, retries=5, delay=0.05):
                 time.sleep(delay + random.uniform(0.01, 0.05))
             else:
                 raise
+
+def run_plugin_check(plugin_id):
+    if not PLUGIN_ID_PATTERN.fullmatch(plugin_id or ""):
+        raise ValueError(f"Invalid plugin id: {plugin_id}")
+
+    dc_script = Path(PLATFORM_ROOT) / "Scripts" / "dc.ps1"
+    cmd = [
+        "powershell.exe",
+        "-NoProfile",
+        "-NonInteractive",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        str(dc_script),
+        f"plugin check {plugin_id} --json",
+    ]
+    env = os.environ.copy()
+    env["DEVCORE_DATA_ROOT"] = DATA_ROOT
+    result = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        timeout=DASHBOARD_COMMAND_TIMEOUT_SEC,
+        env=env,
+    )
+    if result.returncode != 0:
+        details = (result.stderr or result.stdout or "plugin check failed").strip()
+        raise RuntimeError(details)
+    return json.loads(result.stdout)
 
 def build_dashboard_payload():
     cmd = [
@@ -210,6 +241,19 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
                 self.send_error_response(f"Dashboard payload generation timed out after {DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s")
             except Exception as e:
                 self.send_error_response(str(e))
+        elif path == "/api/plugin/check":
+            plugin_id = query.get("id", [""])[0]
+            if not plugin_id:
+                self.send_error_response("Missing plugin id")
+                return
+            try:
+                result = run_plugin_check(plugin_id)
+                self.send_json_response(result)
+            except subprocess.TimeoutExpired as te:
+                print(f"[DashboardAPI] Timeout calling dc plugin check: {te}")
+                self.send_error_response(f"Plugin check timed out after {DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s")
+            except Exception as e:
+                self.send_error_response(str(e))
         elif path == "/api/refresh":
             try:
                 cmd = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", 
@@ -268,6 +312,15 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps({"success": True, "message": message}).encode("utf-8"))
+        except ConnectionError:
+            pass
+
+    def send_json_response(self, payload):
+        try:
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(json.dumps(payload, ensure_ascii=False).encode("utf-8"))
         except ConnectionError:
             pass
 

@@ -14,10 +14,12 @@ $ErrorActionPreference = "Stop"
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
 $PLUGINS_DIR = Join-Path $DEV_CORE_DATA "Plugins"
 $INSTALLED_DIR = Join-Path $PLUGINS_DIR "installed"
+$CHECKS_DIR = Join-Path $PLUGINS_DIR "checks"
 $REGISTRY_PATH = Join-Path $PLUGINS_DIR "plugins_registry.json"
 
 function Ensure-PluginDirs {
     New-Item -ItemType Directory -Path $INSTALLED_DIR -Force | Out-Null
+    New-Item -ItemType Directory -Path $CHECKS_DIR -Force | Out-Null
     if (-not (Test-Path -LiteralPath $REGISTRY_PATH)) {
         [pscustomobject][ordered]@{
             schema_version = 1
@@ -26,6 +28,16 @@ function Ensure-PluginDirs {
             plugins = @()
         } | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $REGISTRY_PATH -Encoding UTF8
     }
+}
+
+function Write-LastCheckResult {
+    param($PluginId, $Result)
+
+    Ensure-PluginDirs
+    $safePluginId = ([string]$PluginId) -replace "[^A-Za-z0-9._-]", "_"
+    $lastCheckPath = Join-Path $CHECKS_DIR "$safePluginId-last.json"
+    $Result | ConvertTo-Json -Depth 30 | Set-Content -LiteralPath $lastCheckPath -Encoding UTF8
+    return $lastCheckPath
 }
 
 function Read-Registry {
@@ -491,26 +503,34 @@ function Check-Plugin {
 
     $diagnose = Diagnose-Plugin
     if (-not $diagnose.ok) {
-        return [pscustomobject][ordered]@{
+        $result = [pscustomobject][ordered]@{
             ok = $false
             action = "Check"
+            checked_at = (Get-Date).ToString("o")
             plugin = $plugin
             diagnose = $diagnose
             health_checks_count = 0
             required_failures = 0
             health_checks = @()
         }
+        $lastCheckPath = Write-LastCheckResult -PluginId $plugin.id -Result $result
+        Add-Member -InputObject $result -NotePropertyName "last_check_path" -NotePropertyValue $lastCheckPath
+        return $result
     }
 
     $checkResult = Invoke-PluginHealthChecks -Plugin $plugin
-    [pscustomobject][ordered]@{
+    $result = [pscustomobject][ordered]@{
         ok = $checkResult.ok
         action = "Check"
+        checked_at = (Get-Date).ToString("o")
         plugin = $plugin
         health_checks_count = $checkResult.health_checks_count
         required_failures = $checkResult.required_failures
         health_checks = $checkResult.health_checks
     }
+    $lastCheckPath = Write-LastCheckResult -PluginId $plugin.id -Result $result
+    Add-Member -InputObject $result -NotePropertyName "last_check_path" -NotePropertyValue $lastCheckPath
+    return $result
 }
 
 function Get-Health {

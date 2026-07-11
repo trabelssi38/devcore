@@ -78,6 +78,11 @@ try {
     Assert-True ($requiredPass.ok -eq $true) "Required passing health check should be ok"
     Assert-True ($optionalFail.ok -eq $false) "Optional failing health check should report failure"
     Assert-True ($optionalFail.required -eq $false) "Optional health check should remain optional"
+    $lastCheckPath = Join-Path $dataRoot "Plugins\checks\python-fastapi-last.json"
+    Assert-True (Test-Path -LiteralPath $lastCheckPath) "Check should persist the latest dashboard-readable result"
+    $lastCheck = Get-Content -LiteralPath $lastCheckPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    Assert-True ($lastCheck.plugin.id -eq "python-fastapi") "Persisted check should include plugin identity"
+    Assert-True ($lastCheck.health_checks_count -eq 2) "Persisted check should include health check summary"
 
     $disableJson = & $pluginServiceScript -Action Disable -Id "python-fastapi" -Json | Out-String
     $disable = $disableJson | ConvertFrom-Json
