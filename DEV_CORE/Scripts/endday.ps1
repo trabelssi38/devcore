@@ -21,23 +21,23 @@ function Record-Metric { param([string]$MetricType,[double]$Value,[string]$Unit=
 }
 function Run { param($script,$label)
     $p = "$AUTO\$script"
-    if (Test-Path $p) { Log "→ $label" "Cyan"; & $p } else { Log "SKIP $script" "Yellow" }
+    if (Test-Path $p) { Log "-> $label" "Cyan"; & $p } else { Log "SKIP $script" "Yellow" }
 }
 
 Write-Host ""; Write-Host "  $($PLATFORM.title) -- END OF DAY" -ForegroundColor Cyan
-Write-Host "  ─────────────────────────────────────" -ForegroundColor DarkGray; Write-Host ""
+Write-Host "  -------------------------------------" -ForegroundColor DarkGray; Write-Host ""
 
-Log "1/8 Extraction leçons"   ; Run "lesson_extractor.ps1"  "lesson_extractor"
+Log "1/8 Extraction lecons"   ; Run "lesson_extractor.ps1"  "lesson_extractor"
 if (-not $SkipQdrant) { Log "2/8 Sync Qdrant"; Run "qdrant_sync.ps1" "qdrant_sync" } else { Log "2/8 Qdrant SKIP" "Gray" }
 Log "3/8 Sync Obsidian"       ; Run "obsidian_sync.ps1"     "obsidian_sync"
-Log "4/8 Rotation mémoire"    ; Run "memory_rotate.ps1"     "memory_rotate"
-Log "4.5/8 Consolidation mémoire hiérarchique L1 -> L2/L3"
+Log "4/8 Rotation memoire"    ; Run "memory_rotate.ps1"     "memory_rotate"
+Log "4.5/8 Consolidation memoire hierarchique L1 -> L2/L3"
 try {
     & "$DEV_CORE\Scripts\memory_hierarchy.ps1" -Action Aggregate
 } catch {
-    Log "  [WARN] Échec de la consolidation de la mémoire : $_" "Yellow"
+    Log "  [WARN] Echec de la consolidation de la memoire : $_" "Yellow"
 }
-Log "5/8 Détection skills & Auto-Apprentissage" ; Run "auto_skills_detector.ps1" "auto_skills"
+Log "5/8 Detection skills et Auto-Apprentissage" ; Run "auto_skills_detector.ps1" "auto_skills"
 try {
     python "$DEV_CORE\Scripts\Auto\intent_learner.py"
 } catch {
@@ -85,9 +85,9 @@ background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin:6px;text-al
 .v{{font-size:24px;font-weight:600}}.l{{font-size:11px;color:#64748b;margin-top:3px}}</style>
 </head><body>
 <h1>$($PLATFORM.title) -- Token Report $TODAY</h1>
-<div class="m"><div class="v">—</div><div class="l">Total tokens</div></div>
-<div class="m"><div class="v">—</div><div class="l">Cache hits</div></div>
-<div class="m"><div class="v">—</div><div class="l">Sessions</div></div>
+<div class="m"><div class="v">-</div><div class="l">Total tokens</div></div>
+<div class="m"><div class="v">-</div><div class="l">Cache hits</div></div>
+<div class="m"><div class="v">-</div><div class="l">Sessions</div></div>
 <p style="color:#94a3b8;font-size:12px;margin-top:20px">Auto-genere par endday.ps1 - $($PLATFORM.title)</p>
 </body></html>
 "@
@@ -111,4 +111,4 @@ Record-Metric -MetricType "duration" -Value $enddayElapsed -Unit "seconds" -Payl
 Record-Metric -MetricType "success" -Value 1 -Unit "count" -Payload @{ component = "endday" }
 if (Test-Path $na) { Write-Host ""; Get-Content $na | Select-Object -First 15 | ForEach-Object { Write-Host "    $_" -ForegroundColor Gray } }
 
-Write-Host ""; Write-Host "  ✓ End of day — $TODAY" -ForegroundColor Green; Write-Host ""
+Write-Host ""; Write-Host "  OK End of day -- $TODAY" -ForegroundColor Green; Write-Host ""
