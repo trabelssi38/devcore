@@ -12,6 +12,8 @@ function Assert-True {
 [scriptblock]::Create($content) | Out-Null
 
 Assert-True ($content -match "function Invoke-RepowiseDocsRefresh") "worker should define docs refresh function"
+Assert-True ($content -match "function Import-GeminiKeyForDocsRefresh") "worker should load Gemini key files for docs refresh"
+Assert-True ($content -match "Config\\gemini_api_key.txt") "worker should use DEV_CORE Config gemini_api_key.txt fallback"
 Assert-True ($content -match "update --index-only --no-docs --no-workspace") "worker should keep lightweight index-only update"
 Assert-True ($content -match '@\("update", "--docs", "--no-workspace"\)') "worker should force a docs-capable update"
 Assert-True ($content -match '@\("update", "--full", "--docs", "--no-workspace"\)') "worker should use full backfill when wiki docs are empty"

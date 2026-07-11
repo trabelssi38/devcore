@@ -107,6 +107,31 @@ function Save-DocsRefreshState {
     } | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath $Path -Encoding UTF8
 }
 
+function Import-GeminiKeyForDocsRefresh {
+    if ($env:GEMINI_API_KEY -or $env:GOOGLE_API_KEY) {
+        return "env"
+    }
+
+    $candidateFiles = @()
+    if ($env:GEMINI_API_KEY_FILE) { $candidateFiles += $env:GEMINI_API_KEY_FILE }
+    if ($env:GOOGLE_API_KEY_FILE) { $candidateFiles += $env:GOOGLE_API_KEY_FILE }
+    $candidateFiles += Join-Path $DEV_CORE "Config\gemini_api_key.txt"
+
+    foreach ($candidate in $candidateFiles) {
+        if ($candidate -and (Test-Path -LiteralPath $candidate)) {
+            try {
+                $key = (Get-Content -LiteralPath $candidate -Raw -Encoding UTF8).Trim()
+                if ($key) {
+                    $env:GEMINI_API_KEY = $key
+                    return "file"
+                }
+            } catch {}
+        }
+    }
+
+    return $null
+}
+
 function Invoke-RepowiseDocsRefresh {
     param(
         [string]$RepowisePath,
@@ -119,6 +144,11 @@ function Invoke-RepowiseDocsRefresh {
     if (-not $check.required) {
         Log "DOCS refresh skip reason=$($check.reason) head=$($check.head)"
         return
+    }
+
+    $geminiKeySource = Import-GeminiKeyForDocsRefresh
+    if ($geminiKeySource) {
+        Log "DOCS provider key source=gemini_$geminiKeySource"
     }
 
     if (-not $env:REPOWISE_PROVIDER -and

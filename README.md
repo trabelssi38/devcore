@@ -167,7 +167,7 @@ Chaque worker :
 3. lance `repowise watch --no-workspace`;
 4. écrit ses logs dans `DEV_CORE_DATA\Logs\scripts\repowise_watch\`.
 
-Si aucun provider Repowise/API key non interactif n'est configuré, le worker journalise `provider_missing`, continue le watch index-only et retentera au prochain lancement. Configurer `REPOWISE_PROVIDER` ou une API key pour activer la génération wiki automatique.
+Le worker charge aussi `DEV_CORE\Config\gemini_api_key.txt` comme fallback Gemini, comme `gemini_router.py`. Si aucun provider Repowise/API key non interactif n'est disponible, il journalise `provider_missing`, continue le watch index-only et retentera au prochain lancement.
 
 Le démarrage est idempotent : relancer `dc launch` ne crée pas de doublons.
 

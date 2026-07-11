@@ -1,4 +1,4 @@
-# DEV_CORE v10.0 - Documentation Complete
+﻿# DEV_CORE v10.0 - Documentation Complete
 
 > **Single Client Mode** — Plateforme d'orchestration IA pour le développement logiciel
 > 
@@ -830,7 +830,7 @@ repowise update --full --docs --no-workspace <project-path>  # si le wiki est vi
 repowise watch --no-workspace <project-path>
 ```
 
-`--index-only` maintient le graphe, les symboles, l'historique git et le dead-code sans générer de documentation LLM. `--no-workspace` force un scope par projet déclaré et évite de scanner des sous-repos non déclarés.
+`--index-only` maintient le graphe, les symboles, l'historique git et le dead-code rapidement. Le refresh docs avec `--docs` force la generation des pages wiki utilisees par `get_answer()`. Si le repo a ete initialise en fast/index-only et que le wiki est vide, `--full --docs` backfill les pages LLM. Le worker charge aussi `DEV_CORE\Config\gemini_api_key.txt` comme fallback Gemini, comme `gemini_router.py`. Si aucun provider/API key non interactif n'est disponible, il journalise `provider_missing`, continue le watch index-only et retente au prochain lancement. `--no-workspace` force un scope par projet declare et evite de scanner des sous-repos non declares.
 
 ### Commandes opérationnelles
 
