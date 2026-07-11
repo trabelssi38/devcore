@@ -11,6 +11,8 @@ param(
 $ErrorActionPreference = "Continue"
 $DEVCORE_ROOT = "C:\devcore\DEV_CORE"
 $HERMES_BIN = "C:\devcore\hermes_temp\.venv\Scripts\hermes.exe"
+$passed = 0
+$failed = 0
 
 function Test-Section {
     param([string]$Name)
@@ -24,6 +26,7 @@ function Test-Item {
     $icon = if ($Result) { "[PASS]" } else { "[FAIL]" }
     $color = if ($Result) { "Green" } else { "Red" }
     Write-Host "    $icon $Name" -ForegroundColor $color
+    if ($Result) { $script:passed++ } else { $script:failed++ }
     if ($Details -and -not $Result) {
         Write-Host "         $Details" -ForegroundColor DarkGray
     }
@@ -259,9 +262,8 @@ Write-Host "  ========================================" -ForegroundColor Green
 Write-Host "  Tests termines" -ForegroundColor Green
 Write-Host ""
 
-# Resume
-$passCount = 0
-$failCount = 0
-# TODO: Count results
-
+Write-Host "  PASS: $passed  |  FAIL: $failed" -ForegroundColor White
 Write-Host ""
+
+if ($failed -gt 0) { exit 1 }
+exit 0

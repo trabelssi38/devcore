@@ -127,4 +127,5 @@ if ($failed -eq 0) {
 }
 Write-Host ""
 
-
+if ($failed -gt 0) { exit 1 }
+exit 0
