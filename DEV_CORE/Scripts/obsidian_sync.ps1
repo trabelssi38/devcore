@@ -1,10 +1,12 @@
-# obsidian_sync.ps1 -- DEV_CORE v9.0
+# obsidian_sync.ps1 -- DEV_CORE
 # Sync accomplishments vers Obsidian Daily Note
 
 $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
 $TODAY = Get-Date -Format "yyyy-MM-dd"
 $NOTE_PATH = "$DEV_CORE_DATA\Vault\Daily Notes\$TODAY.md"
+. "$DEV_CORE\Scripts\platform_version.ps1"
+$PLATFORM = Get-DevCorePlatformInfo
 
 function Write-Log {
     param([string]$msg, [string]$color="Gray")
@@ -13,7 +15,7 @@ function Write-Log {
 }
 
 Write-Host ""
-Write-Host "  DEV_CORE v9.0 -- Obsidian Sync" -ForegroundColor Cyan
+Write-Host "  $($PLATFORM.title) -- Obsidian Sync" -ForegroundColor Cyan
 
 # Create daily note if not exists
 if (-not (Test-Path $NOTE_PATH)) {
@@ -73,5 +75,4 @@ if (Test-Path $tFile) {
 
 Write-Log "Obsidian sync termine" "Green"
 Write-Host ""
-
 

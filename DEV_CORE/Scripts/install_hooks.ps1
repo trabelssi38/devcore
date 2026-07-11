@@ -1,4 +1,4 @@
-# install_hooks.ps1 -- DEV_CORE v9.0
+# install_hooks.ps1 -- DEV_CORE
 # Installe les hooks Claude Code dans settings.json
 # C'est CE fichier qui rend les actions autonomes -- CLAUDE.md seul ne suffit pas
 # Usage : powershell -ExecutionPolicy Bypass -File C:\devcore\DEV_CORE\Scripts\install_hooks.ps1
@@ -6,9 +6,11 @@
 $DEV_CORE   = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $CLAUDE_DIR = "$env:USERPROFILE\.claude"
 $SETTINGS   = "$CLAUDE_DIR\settings.json"
+. "$DEV_CORE\Scripts\platform_version.ps1"
+$PLATFORM = Get-DevCorePlatformInfo
 
 Write-Host ""
-Write-Host "  DEV_CORE v9.0 -- Installation hooks Claude Code" -ForegroundColor Cyan
+Write-Host "  $($PLATFORM.title) -- Installation hooks Claude Code" -ForegroundColor Cyan
 Write-Host "  ==============================================" -ForegroundColor DarkGray
 Write-Host ""
 

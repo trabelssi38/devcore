@@ -1,10 +1,12 @@
-# task_sync.ps1 -- DEV_CORE v9.0 -- Synchronise les suggestions via Task Service
+# task_sync.ps1 -- DEV_CORE -- Synchronise les suggestions via Task Service
 param([int]$MaxPerSource = 30)
 
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
 $TODAY         = Get-Date -Format "yyyy-MM-dd"
 $LOG           = "$DEV_CORE_DATA\Logs\scripts\task_sync_$TODAY.log"
+. "$DEV_CORE\Scripts\platform_version.ps1"
+$PLATFORM = Get-DevCorePlatformInfo
 
 function Log { param($msg,$color="Gray")
     $l = "[$(Get-Date -f HH:mm:ss)] $msg"
@@ -38,7 +40,7 @@ function Get-ContentWithRetry {
 }
 
 Write-Host ""
-Write-Host "  DEV_CORE v9.0 -- TASK SYNC" -ForegroundColor Cyan
+Write-Host "  $($PLATFORM.title) -- TASK SYNC" -ForegroundColor Cyan
 Write-Host "  ========================================" -ForegroundColor DarkGray
 Write-Host ""
 

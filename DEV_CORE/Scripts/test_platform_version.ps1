@@ -58,4 +58,15 @@ foreach ($file in $runtimeFiles) {
     Assert-True (-not ($text -match "DEV_CORE v10(?!\.0)")) "$file should display DEV_CORE v10.0, not v10"
 }
 
+$scriptRootItem = Get-Item -LiteralPath $PSScriptRoot
+$displayVersionPattern = '(Write-Host|Log)\s+.*DEV_CORE v9\.0'
+$scriptFiles = Get-ChildItem -LiteralPath $PSScriptRoot -Recurse -Filter "*.ps1" |
+    Where-Object { $_.FullName -notmatch "\\archived\\" }
+
+foreach ($scriptFile in $scriptFiles) {
+    $text = Get-Content -LiteralPath $scriptFile.FullName -Raw
+    $relativePath = $scriptFile.FullName.Substring($scriptRootItem.FullName.Length + 1)
+    Assert-True (-not ($text -match $displayVersionPattern)) "$relativePath should not display DEV_CORE v9.0"
+}
+
 Write-Host "[OK] platform version consistency tests passed" -ForegroundColor Green

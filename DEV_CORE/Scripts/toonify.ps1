@@ -1,4 +1,4 @@
-# toonify.ps1 -- DEV_CORE v9.0
+# toonify.ps1 -- DEV_CORE
 # DEPRECATED in v9.0 -- Remplacé par le proxy de compression Headroom SmartCrusher
 # Conversion JSON <-> TOON avec stats et fallback
 Write-Host "  [TOON] [DEPRECATED] Ce script est déprécié. Headroom SmartCrusher gère maintenant la compression JSON." -ForegroundColor Yellow
@@ -13,6 +13,8 @@ param(
 
 $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
+. "$DEV_CORE\Scripts\platform_version.ps1"
+$PLATFORM = Get-DevCorePlatformInfo
 $KPI_FILE = "$DEV_CORE_DATA\Metrics\kpi.csv"
 $TOON_CLI = "npx @toon-format/cli"
 
@@ -22,7 +24,7 @@ function Write-Log {
 }
 
 Write-Host ""
-Write-Host "  DEV_CORE v9.0 -- TOONIFY" -ForegroundColor Cyan
+Write-Host "  $($PLATFORM.title) -- TOONIFY" -ForegroundColor Cyan
 
 if (-not (Test-Path $InputFile)) {
     Write-Log "ERREUR: $InputFile introuvable" "Red"

@@ -1,4 +1,4 @@
-# endday_check.ps1 -- DEV_CORE v9.0
+# endday_check.ps1 -- DEV_CORE
 # Verifie si endday.ps1 a ete execute aujourd'hui
 # Si non -> lance endday.ps1
 
@@ -6,6 +6,8 @@ $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else 
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
 $TODAY = Get-Date -Format "yyyy-MM-dd"
 $FLAG = "$DEV_CORE_DATA\Logs\endday_flag_$TODAY.txt"
+. "$DEV_CORE\Scripts\platform_version.ps1"
+$PLATFORM = Get-DevCorePlatformInfo
 
 function Write-Log {
     param([string]$msg, [string]$color="Gray")
@@ -14,7 +16,7 @@ function Write-Log {
 }
 
 Write-Host ""
-Write-Host "  DEV_CORE v9.0 -- Endday Check" -ForegroundColor Cyan
+Write-Host "  $($PLATFORM.title) -- Endday Check" -ForegroundColor Cyan
 Write-Host "  ========================================" -ForegroundColor DarkGray
 
 if (Test-Path $FLAG) {

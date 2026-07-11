@@ -1,4 +1,4 @@
-# launch_all.ps1 -- DEV_CORE v9.0
+# launch_all.ps1 -- DEV_CORE
 # Lance l'ensemble des services DEV_CORE et le daemon HERMES
 
 [CmdletBinding()]
@@ -10,9 +10,11 @@ param(
 
 $ErrorActionPreference = "Stop"
 $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
+. "$DEV_CORE\Scripts\platform_version.ps1"
+$PLATFORM = Get-DevCorePlatformInfo
 
 Write-Host ""
-Write-Host "  DEV_CORE v9.0 -- LAUNCH ALL SYSTEMS" -ForegroundColor Cyan
+Write-Host "  $($PLATFORM.title) -- LAUNCH ALL SYSTEMS" -ForegroundColor Cyan
 Write-Host "  ========================================" -ForegroundColor DarkGray
 Write-Host ""
 

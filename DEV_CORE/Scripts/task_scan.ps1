@@ -1,10 +1,12 @@
-# task_scan.ps1 -- DEV_CORE v9.0 -- Lance les 3 scanners et affiche les suggestions
+# task_scan.ps1 -- DEV_CORE -- Lance les 3 scanners et affiche les suggestions
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
 $AUTO          = "$DEV_CORE\Scripts\Auto"
+. "$DEV_CORE\Scripts\platform_version.ps1"
+$PLATFORM = Get-DevCorePlatformInfo
 
 Write-Host ""
-Write-Host "  DEV_CORE v9.0 -- TASK SCAN" -ForegroundColor Cyan
+Write-Host "  $($PLATFORM.title) -- TASK SCAN" -ForegroundColor Cyan
 Write-Host "  ========================================" -ForegroundColor DarkGray
 Write-Host ""
 

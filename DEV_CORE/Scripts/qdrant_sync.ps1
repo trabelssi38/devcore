@@ -1,4 +1,4 @@
-# qdrant_sync.ps1 -- DEV_CORE v9.0
+# qdrant_sync.ps1 -- DEV_CORE
 # Sync des 4 collections Qdrant : decisions, lessons, patterns, codebase
 # Sources : DECISIONS.md, LESSONS.md, PATTERNS.md, codebase scan
 
@@ -10,6 +10,8 @@ $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "
 $QDRANT_URL = if ($env:QDRANT_URL) { $env:QDRANT_URL } else { "http://localhost:6333" }
 $TODAY = Get-Date -Format "yyyy-MM-dd"
 $LOG = "$DEV_CORE_DATA\Logs\scripts\qdrant_sync_$TODAY.log"
+. "$DEV_CORE\Scripts\platform_version.ps1"
+$PLATFORM = Get-DevCorePlatformInfo
 
 function Write-Log {
     param([string]$msg, [string]$color="Gray")
@@ -19,7 +21,7 @@ function Write-Log {
 }
 
 Write-Host ""
-Write-Host "  DEV_CORE v9.0 -- Qdrant Sync (4 collections)" -ForegroundColor Cyan
+Write-Host "  $($PLATFORM.title) -- Qdrant Sync (4 collections)" -ForegroundColor Cyan
 
 # Check Qdrant
 try {

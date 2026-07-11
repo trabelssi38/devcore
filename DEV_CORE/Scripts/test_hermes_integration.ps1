@@ -1,4 +1,4 @@
-# test_hermes_integration.ps1 -- DEV_CORE v9.0 + Hermes Integration Tests
+# test_hermes_integration.ps1 -- DEV_CORE + Hermes Integration Tests
 
 param(
     [switch]$All,
@@ -10,6 +10,8 @@ param(
 
 $ErrorActionPreference = "Continue"
 $DEVCORE_ROOT = "C:\devcore\DEV_CORE"
+. "$DEVCORE_ROOT\Scripts\platform_version.ps1"
+$PLATFORM = Get-DevCorePlatformInfo
 $HERMES_BIN = "C:\devcore\hermes_temp\.venv\Scripts\hermes.exe"
 $passed = 0
 $failed = 0
@@ -234,7 +236,7 @@ function Test-Scripts {
 # ========== MAIN ==========
 
 Write-Host ""
-Write-Host "  DEV_CORE v9.0 + HERMES INTEGRATION TEST" -ForegroundColor Cyan
+Write-Host "  $($PLATFORM.title) + HERMES INTEGRATION TEST" -ForegroundColor Cyan
 Write-Host "  ========================================" -ForegroundColor DarkGray
 Write-Host "  Date: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor DarkGray
 Write-Host ""

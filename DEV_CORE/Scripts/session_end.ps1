@@ -1,4 +1,4 @@
-# session_end.ps1 -- DEV_CORE v9.0
+# session_end.ps1 -- DEV_CORE
 # Execute a la fin de session Claude Code
 # 1. Sync Qdrant
 # 2. Sync Obsidian
@@ -9,6 +9,8 @@ $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     
 $TODAY         = Get-Date -Format "yyyy-MM-dd"
 $LOG_DIR       = "$DEV_CORE_DATA\Logs\scripts"
 $LOG           = "$LOG_DIR\session_end_$TODAY.log"
+. "$DEV_CORE\Scripts\platform_version.ps1"
+$PLATFORM = Get-DevCorePlatformInfo
 
 New-Item -ItemType Directory -Path $LOG_DIR -Force | Out-Null
 
@@ -19,7 +21,7 @@ function Log {
 }
 
 Write-Host ""
-Log "DEV_CORE v9.0 -- Session End" "Cyan"
+Log "$($PLATFORM.title) -- Session End" "Cyan"
 Log "========================================" "DarkGray"
 Log "Date: $TODAY" "White"
 Write-Host ""

@@ -1,10 +1,12 @@
-# task_done.ps1 -- DEV_CORE v9.0 single client
+# task_done.ps1 -- DEV_CORE single client
 param([switch]$Force)
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
 $AUTO          = "$DEV_CORE\Scripts\Auto"
 $TODAY         = Get-Date -Format "yyyy-MM-dd"
 $tFile         = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
+. "$DEV_CORE\Scripts\platform_version.ps1"
+$PLATFORM = Get-DevCorePlatformInfo
 
 if (-not (Test-Path $tFile)) { Write-Host "  Aucun tasks.json." -ForegroundColor Red; exit 1 }
 $board = Get-Content $tFile -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -36,7 +38,7 @@ $current = $completeResult.completed
 $nextTask = $completeResult.next
 $board = Get-Content $tFile -Raw -Encoding UTF8 | ConvertFrom-Json
 
-Write-Host ""; Write-Host "  DEV_CORE v9.0 -- TASK DONE" -ForegroundColor Green; Write-Host ""
+Write-Host ""; Write-Host "  $($PLATFORM.title) -- TASK DONE" -ForegroundColor Green; Write-Host ""
 Write-Host "  1/5 Lecons..." -ForegroundColor Cyan
 if (Test-Path "$AUTO\lesson_extractor.ps1") { & "$AUTO\lesson_extractor.ps1" }
 

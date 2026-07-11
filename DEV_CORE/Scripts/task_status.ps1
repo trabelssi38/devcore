@@ -1,5 +1,8 @@
-# task_status.ps1 -- DEV_CORE v9.0 single client
+# task_status.ps1 -- DEV_CORE single client
+$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
+. "$DEV_CORE\Scripts\platform_version.ps1"
+$PLATFORM = Get-DevCorePlatformInfo
 $tFile = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
 if (-not (Test-Path $tFile)) { Write-Host "  Aucun tasks.json -- dc new task 'titre'" -ForegroundColor Yellow; exit 0 }
 
@@ -10,7 +13,7 @@ $pct   = if ($total -gt 0) { [math]::Round(($done/$total)*100) } else { 0 }
 $bar   = "#" * [math]::Round($pct/5) + "-" * (20 - [math]::Round($pct/5))
 
 Write-Host ""
-Write-Host "  DEV_CORE v9.0 -- Task Board" -ForegroundColor Cyan
+Write-Host "  $($PLATFORM.title) -- Task Board" -ForegroundColor Cyan
 Write-Host "  Projet : $($board.project) | $(Get-Date -f 'yyyy-MM-dd HH:mm')" -ForegroundColor DarkGray
 Write-Host "  -------------------------------------------------------" -ForegroundColor DarkGray
 Write-Host ("  {0,-6} {1,-12} {2,-10} {3}" -f "ID","Mode","Status","Titre") -ForegroundColor DarkGray
@@ -31,5 +34,4 @@ foreach ($t in $board.tasks) {
 Write-Host "  -------------------------------------------------------" -ForegroundColor DarkGray
 Write-Host "  [$bar] $pct% ($done/$total done)" -ForegroundColor Cyan
 Write-Host ""
-
 
