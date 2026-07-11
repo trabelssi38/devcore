@@ -21,7 +21,6 @@ C:\devcore\
 │   ├── Skills\                 # Compétences réutilisables
 │   │   ├── qdrant\             # Mémoire vectorielle
 │   │   ├── obsidian\           # Vault management
-│   │   ├── graphify\           # Graphes connaissances
 │   │   ├── fabric-patterns\    # Patterns IA
 │   │   └── dev-methodology\     # Méthodologie
 │   ├── Config\                 # Configuration
@@ -159,7 +158,6 @@ Example: `git commit -m "feat: add MCP server [T-05]"`
 
 - `qdrant` — Mémoire vectorielle
 - `obsidian` — Vault management
-- `graphify` — Graphes de connaissances
 - `fabric-patterns` — Patterns IA réutilisables
 - `dev-methodology` — Méthodologie dev
 - `python_api` — APIs Python

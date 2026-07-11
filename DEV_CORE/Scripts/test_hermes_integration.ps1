@@ -161,12 +161,16 @@ function Test-Services {
 function Test-Skills {
     Test-Section "DEV_CORE SKILLS"
 
-    $skills = @("devcore", "qdrant", "obsidian", "graphify", "fabric-patterns", "dev-methodology")
+    $skills = @("devcore", "qdrant", "obsidian", "fabric-patterns", "dev-methodology")
     foreach ($skill in $skills) {
         $skillPath = "$DEVCORE_ROOT\Skills\$skill\SKILL.md"
         $skillOk = Test-Path $skillPath
         Test-Item "Skill: $skill" $skillOk $skillPath
     }
+
+    $removedSkill = "grap" + "hify"
+    $removedSkillPath = "$DEVCORE_ROOT\Skills\$removedSkill"
+    Test-Item "Removed optional graph tool absent" (-not (Test-Path $removedSkillPath)) $removedSkillPath
 
     # skills_registry.json
     $regPath = "$DEVCORE_ROOT\Skills\skills_registry.json"

@@ -67,16 +67,3 @@
 @when moment=daily
 @priority 40
 @load Daily Notes/latest.md
-
-## Skills -- graphify (knowledge graph)
-@when task_type=architecture
-@priority 88
-@load Skills/graphify/SKILL.md
-
-@when task_type=review
-@priority 85
-@load Skills/graphify/SKILL.md
-
-@when task_type=onboarding
-@priority 95
-@load Skills/graphify/SKILL.md

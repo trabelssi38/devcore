@@ -1,8 +1,8 @@
 ﻿{
     "schema_version":  1,
-    "generated_at":  "2026-07-11T14:54:01.3551926+01:00",
+    "generated_at":  "2026-07-11T20:26:00+01:00",
     "source":  "DEV_CORE/Skills/*/SKILL.md",
-    "skills_count":  12,
+    "skills_count":  11,
     "skills":  [
                    {
                        "id":  "android_release",
@@ -102,27 +102,6 @@
                                         "fabric-patterns",
                                         "incident",
                                         "postmortem"
-                                    ]
-                   },
-                   {
-                       "id":  "graphify",
-                       "name":  "graphify",
-                       "description":  "Utiliser quand la tâche implique de comprendre la structure d\u0027une codebase, des relations entre composants, l\u0027impact d\u0027un refactoring, une analyse d\u0027architecture, ou une review de code sur un projet inconnu. Graphify construit un knowledge graph interrogeable depuis code, SQL, docs, images, vidéos. Déclencher avec /graphify (Claude Code) ou $graphify (Codex). Complémentaire à Qdrant (sémantique) — graphify couvre les relations structurelles (qui appelle qui, quelles dépendances, quels clusters).",
-                       "skill_path":  "C:\\devcore\\DEV_CORE\\Skills\\graphify\\SKILL.md",
-                       "compatibility":  "Claude Code · Codex Desktop · Gemini CLI · Antigravity · Qwen",
-                       "priority":  null,
-                       "enabled":  true,
-                       "auto_generated":  false,
-                       "created":  "2026-07-11",
-                       "token_cost_avg":  0,
-                       "tags":  [
-                                    "graphify"
-                                ],
-                       "triggers":  [
-                                        "graphify",
-                                        "architecture",
-                                        "graph",
-                                        "qdrant"
                                     ]
                    },
                    {

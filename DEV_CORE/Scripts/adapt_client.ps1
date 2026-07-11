@@ -69,7 +69,7 @@ if ($skillsTarget) {
     if (-not (Test-Path $skillsTarget) -and -not $DryRun) {
         New-Item -ItemType Directory -Path $skillsTarget -Force | Out-Null
     }
-    $skills = @("devcore-automation","obsidian","qdrant","dev-methodology","ui-ux","fabric-patterns","android_release","python_api","web_ui","graphify")
+    $skills = @("devcore-automation","obsidian","qdrant","dev-methodology","ui-ux","fabric-patterns","android_release","python_api","web_ui")
     foreach ($skill in $skills) {
         $src  = "$SKILLS_DIR\$skill"
         $link = "$skillsTarget\$skill"
@@ -136,5 +136,4 @@ if (-not $DryRun) {
 
 Write-Host "  [adapt_client] Boot injecte : $bootDst" -ForegroundColor Green
 Write-Host "  [adapt_client] Source       : $bootSrc" -ForegroundColor DarkGray
-
 

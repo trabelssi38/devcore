@@ -75,8 +75,7 @@ $dirs = @(
     "$DEV_CORE_DATA\Logs\router",
     "$DEV_CORE_DATA\Logs\token_reports",
     "$DEV_CORE_DATA\Backups\auto",
-    "$DEV_CORE_DATA\qdrant_storage",
-    "$DEV_CORE_DATA\Vault\docs\graphify"
+    "$DEV_CORE_DATA\qdrant_storage"
 )
 foreach ($d in $dirs) {
     if (-not (Test-Path $d)) {

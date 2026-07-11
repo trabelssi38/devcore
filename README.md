@@ -178,7 +178,6 @@ Le démarrage est idempotent : relancer `dc launch` ne crée pas de doublons.
 **Core skills actifs** :
 - `qdrant` — Mémoire vectorielle
 - `obsidian` — Vault management
-- `graphify` — Graphes de connaissances
 - `fabric-patterns` — Patterns IA
 - `dev-methodology` — Méthodologie dev
 

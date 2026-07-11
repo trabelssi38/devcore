@@ -96,7 +96,6 @@ C:\devcore\
 │   ├── Skills\                 # Compétences réutilisables
 │   │   ├── qdrant\
 │   │   ├── obsidian\
-│   │   ├── graphify\
 │   │   ├── fabric-patterns\
 │   │   ├── dev-methodology\
 │   │   └── devcore\            # Integration Hermes
@@ -245,7 +244,6 @@ T-01 (reasoning) → T-02 (coding) → T-03 (bulk) → T-04 (reasoning)
 |-------|--------|-------|
 | `qdrant` | qdrant/skills | Mémoire vectorielle |
 | `obsidian` | kepano/obsidian-skills | Vault management |
-| `graphify` | Custom | Graphes de connaissances |
 | `fabric-patterns` | danielmiessler/Fabric | Patterns IA |
 | `dev-methodology` | obra/superpowers | Méthodologie dev |
 
