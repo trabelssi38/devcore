@@ -15,6 +15,7 @@ $inv           = [System.Globalization.CultureInfo]::InvariantCulture
 $dashboardStarted = Get-Date
 $METRICS_SERVICE = Join-Path $DEV_CORE "Scripts\metrics_service.ps1"
 $EVENT_BUS = Join-Path $DEV_CORE "Scripts\event_bus.ps1"
+$KNOWLEDGE_GRAPH = Join-Path $DEV_CORE "Scripts\knowledge_graph.ps1"
 
 if ($env:DEVCORE_SKIP_DASHBOARD -eq "1" -and -not $Json) {
     Write-Host "Dashboard generation skipped (DEVCORE_SKIP_DASHBOARD=1)"
@@ -137,6 +138,56 @@ function Get-EventBusRecentHtml {
 "@
     } catch {
         return "<div style='font-size:10px; color:#ef4444; padding:8px 0;'>Event Bus erreur: $([System.Net.WebUtility]::HtmlEncode([string]$_))</div>"
+    }
+}
+
+function Get-KnowledgeGraphSummaryHtml {
+    $empty = "<div style='font-size:10px; color:#64748b; padding:8px 0;'>Knowledge Graph indisponible.</div>"
+    if (-not (Test-Path -LiteralPath $KNOWLEDGE_GRAPH)) { return $empty }
+    try {
+        $graphPath = Join-Path $DEV_CORE_DATA "Knowledge\graph.json"
+        if (-not (Test-Path -LiteralPath $graphPath)) {
+            return "<div id='knowledge-graph-inner'><h2>Knowledge Graph</h2><div style='font-size:10px; color:#64748b; padding:8px 0;'>Graphe non genere.</div></div>"
+        }
+
+        $graph = Get-Content -LiteralPath $graphPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        $nodesCount = [int]$graph.nodes_count
+        $edgesCount = [int]$graph.edges_count
+        $serviceRows = ""
+        $serviceNodes = @($graph.nodes | Where-Object { $_.type -eq "service" })
+        foreach ($service in ($serviceNodes | Select-Object -First 6)) {
+            $edgeCount = @($graph.edges | Where-Object { $_.from -eq $service.id -or $_.to -eq $service.id }).Count
+            $label = [System.Net.WebUtility]::HtmlEncode([string]$service.label)
+            $serviceRows += "<div class='token-layer'><span class='token-name'>$label</span><span class='token-reduction'>$edgeCount liens</span></div>"
+        }
+        if (-not $serviceRows) {
+            $serviceRows = "<div style='font-size:10px; color:#64748b; padding:8px 0;'>Aucun service relie.</div>"
+        }
+
+        $blast = 0
+        try {
+            $topFile = @($graph.nodes | Where-Object { $_.type -eq "file" } | Select-Object -First 1)
+            if ($topFile) {
+                $fileNodeId = [string]$topFile[0].id
+                $blast = @($graph.edges | Where-Object { $_.from -eq $fileNodeId -or $_.to -eq $fileNodeId }).Count
+            }
+        } catch {}
+
+        return @"
+<div id="knowledge-graph-inner">
+  <h2>Knowledge Graph</h2>
+  <div style="display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap:6px; margin-bottom:8px;">
+    <div class="token-layer"><span class="token-name">Nodes</span><span class="token-reduction">$nodesCount</span></div>
+    <div class="token-layer"><span class="token-name">Edges</span><span class="token-reduction">$edgesCount</span></div>
+  </div>
+  <div style="display:flex; flex-direction:column; gap:4px; margin-bottom:8px;">
+    $serviceRows
+  </div>
+  <div style="font-size:9px; color:#64748b; font-family:'JetBrains Mono',monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="$graphPath">Blast radius echantillon: $blast</div>
+</div>
+"@
+    } catch {
+        return "<div style='font-size:10px; color:#ef4444; padding:8px 0;'>Knowledge Graph erreur: $([System.Net.WebUtility]::HtmlEncode([string]$_))</div>"
     }
 }
 
@@ -276,6 +327,7 @@ function Get-ContextCompositionHtml {
 $contextCompositionHtml = Get-ContextCompositionHtml -ProjectList $projects
 $metricsServiceHtml = Get-MetricsServiceSummaryHtml
 $eventBusHtml = Get-EventBusRecentHtml
+$knowledgeGraphHtml = Get-KnowledgeGraphSummaryHtml
 Publish-DashboardEvent -EventType "ContextBuilt" -Payload @{ projects = @($projects).Count; has_context = ($contextCompositionHtml.Length -gt 0) } -Id "context-built-$(Get-Date -Format 'yyyyMMddHHmmssffff')"
 
 
@@ -867,6 +919,7 @@ if (Test-Path $TEMPLATE_FILE) {
                 context_composition = $contextCompositionHtml
                 metrics_service_summary = $metricsServiceHtml
                 event_bus_recent = $eventBusHtml
+                knowledge_graph_summary = $knowledgeGraphHtml
             }
             task_details = $allDetailsMap
             token_metrics = $tokenMetrics
@@ -883,6 +936,7 @@ if (Test-Path $TEMPLATE_FILE) {
     $template = $template.Replace('{{CONTEXT_COMPOSITION}}', $contextCompositionHtml)
     $template = $template.Replace('{{METRICS_SERVICE_SUMMARY}}', $metricsServiceHtml)
     $template = $template.Replace('{{EVENT_BUS_RECENT}}', $eventBusHtml)
+    $template = $template.Replace('{{KNOWLEDGE_GRAPH_SUMMARY}}', $knowledgeGraphHtml)
     $template = $template.Replace('{{TASK_DETAILS_MAP}}', $detailsJson)
     $template = $template.Replace('{{TOKEN_METRICS_JSON}}', $tokenMetricsJson)
 

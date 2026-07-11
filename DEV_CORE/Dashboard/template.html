@@ -423,6 +423,10 @@ details{margin-bottom: 8px}
       <div id="event-bus-recent" style="margin-bottom:16px">
         {{EVENT_BUS_RECENT}}
       </div>
+
+      <div id="knowledge-graph-summary" style="margin-bottom:16px">
+        {{KNOWLEDGE_GRAPH_SUMMARY}}
+      </div>
       
       <h2>Automation Hooks</h2>
       <div id="automation-hooks" style="margin-bottom:16px">
@@ -834,6 +838,11 @@ function refreshDashboard() {
       const oldEventBus = document.getElementById('event-bus-recent');
       if (oldEventBus && oldEventBus.innerHTML !== payload.sections.event_bus_recent) {
         oldEventBus.innerHTML = payload.sections.event_bus_recent || '';
+      }
+
+      const oldKnowledgeGraph = document.getElementById('knowledge-graph-summary');
+      if (oldKnowledgeGraph && oldKnowledgeGraph.innerHTML !== payload.sections.knowledge_graph_summary) {
+        oldKnowledgeGraph.innerHTML = payload.sections.knowledge_graph_summary || '';
       }
 
       window.taskDetailsMap = payload.task_details || {};

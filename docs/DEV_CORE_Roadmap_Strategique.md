@@ -542,18 +542,18 @@ Gate Sprint 6 :
 
 Objectif : construire les relations exploitables entre tâches, commits, fichiers, services, décisions et métriques.
 
-- [ ] Créer un générateur `knowledge_graph.ps1` ou service Python minimal.
-- [ ] Ingérer `tasks.json`, commits Git, events JSONL, metrics JSONL et décisions docs.
-- [ ] Produire un graphe local dans `DEV_CORE_DATA\Knowledge\graph.json`.
-- [ ] Modéliser les relations initiales :
+- [x] Créer un générateur `knowledge_graph.ps1` ou service Python minimal.
+- [x] Ingérer `tasks.json`, commits Git, events JSONL, metrics JSONL et décisions docs.
+- [x] Produire un graphe local dans `DEV_CORE_DATA\Knowledge\graph.json`.
+- [x] Modéliser les relations initiales :
   - tâche -> commit
   - commit -> fichier
   - fichier -> service
   - métrique -> tâche
   - événement -> tâche
   - décision -> service
-- [ ] Ajouter `ImpactAnalysis` pour un fichier ou service.
-- [ ] Afficher dans le dashboard les dépendances critiques et le blast radius.
+- [x] Ajouter `ImpactAnalysis` pour un fichier ou service.
+- [x] Afficher dans le dashboard les dépendances critiques et le blast radius.
 
 Gate Sprint 7 :
 
