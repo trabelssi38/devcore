@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "android-gradle",
+  "name": "Android Gradle",
+  "version": "0.1.0",
+  "description": "Internal DEV_CORE plugin for Android Gradle build and release workflows.",
+  "capabilities": {
+    "commands": [
+      "android-gradle:assemble",
+      "android-gradle:test",
+      "android-gradle:health"
+    ],
+    "hooks": [],
+    "skills": [
+      "android_release"
+    ],
+    "health_checks": [
+      "java -version",
+      "gradle --version"
+    ],
+    "widgets": [],
+    "templates": [
+      "gradle-module",
+      "release-checklist",
+      "android-smoke"
+    ]
+  },
+  "permissions": {
+    "write_roots": [
+      "data",
+      "cache",
+      "templates"
+    ],
+    "allow_out_of_scope_write": false
+  }
+}

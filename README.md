@@ -184,6 +184,27 @@ Le démarrage est idempotent : relancer `dc launch` ne crée pas de doublons.
 
 **Total installés** : 159 skills
 
+### Auto-Skills
+
+Auto-Skills transforme les evenements repetes du bus local en candidats `SKILL.md` controles :
+- `dc skills detect` cree des candidats dans `DEV_CORE_DATA\Skills\Candidates`.
+- `dc skills lint <name>` applique le gate statique.
+- `dc skills eval <name>` verifie les preuves Event Bus.
+- `dc skills promote <name>` active explicitement une skill verifiee.
+- `dc skills reject <name>` conserve la trace et desactive le candidat.
+
+Documentation : `C:\devcore\DEV_CORE\docs\AUTO_SKILLS.md`
+
+### Plugin SDK
+
+Le SDK plugin installe des manifests `plugin.json` bornes par scope dans `DEV_CORE_DATA\Plugins`.
+Plugins internes versionnes :
+- `DEV_CORE\Plugins\python-fastapi\plugin.json`
+- `DEV_CORE\Plugins\web-react\plugin.json`
+- `DEV_CORE\Plugins\android-gradle\plugin.json`
+
+Commandes : `dc plugin list|health|install|diagnose|disable [--json]`
+
 ---
 
 ## 📖 Documentation complète

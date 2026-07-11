@@ -590,6 +590,28 @@ Gate Sprint 8 restant :
 
 ---
 
+## Sprint 8.5 -- Auto-Skills Pipeline
+
+Objectif : automatiser la creation de candidats `SKILL.md` depuis les evenements repetes, avec gates explicites avant promotion.
+
+- [x] Introduire `auto_skill_service.ps1` avec actions `List`, `Candidates`, `Detect`, `Promote`, `Reject`, `Status`.
+- [x] Generer les candidats dans `DEV_CORE_DATA\Skills\Candidates`.
+- [x] Lire les preuves depuis `DEV_CORE_DATA\Bus\events\events-*.jsonl`.
+- [x] Ajouter `skill_lint.ps1` pour verifier frontmatter, sections attendues, secrets et commandes destructives.
+- [x] Ajouter `skill_eval.ps1` pour verifier les preuves et calculer `success_rate`.
+- [x] Brancher `dc skills ...` dans le dispatcher.
+- [x] Garder les champs runtime (`last_checked`, `usage_count`, `last_used`) dans `DEV_CORE_DATA\Skills\skills_runtime.json`.
+- [x] Documenter l'implementation dans `DEV_CORE\docs\AUTO_SKILLS.md`.
+
+Gate Auto-Skills :
+
+- Les candidats restent desactives tant qu'ils ne sont pas promus explicitement.
+- La promotion passe par lint + eval.
+- Le registre statique reste versionne et ne sert pas de store runtime.
+- Les tests couvrent detect, lint, eval, promote, reject et dispatch `dc skills`.
+
+---
+
 ## Sprint 9 -- Plugin SDK v1
 
 Objectif : poser un SDK plugin minimal, testable et borne par scope, sans modifier le noyau Skills ni la pipeline Auto-Skills.
@@ -606,10 +628,10 @@ Objectif : poser un SDK plugin minimal, testable et borne par scope, sans modifi
 - [x] Refuser par defaut les chemins d'ecriture hors scope plugin.
 - [x] Ajouter tests smoke Plugin Service.
 - [x] Ajouter commande `dc plugin ...` (`list`, `health`, `install`, `diagnose`, `disable`, `--json`).
+- [x] Creer trois plugins internes prioritaires : Python/FastAPI, Web/React, Android/Gradle.
 
 Gate Sprint 9 restant :
 
-- Creer trois plugins internes prioritaires : Python/FastAPI, Web/React, Android/Gradle.
 - Ajouter health checks plugin executables.
 - Afficher les plugins dans le dashboard.
 

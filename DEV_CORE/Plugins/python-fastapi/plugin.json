@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "python-fastapi",
+  "name": "Python FastAPI",
+  "version": "0.1.0",
+  "description": "Internal DEV_CORE plugin for Python FastAPI project workflows.",
+  "capabilities": {
+    "commands": [
+      "python-api:new-endpoint",
+      "python-api:run-tests",
+      "python-api:health"
+    ],
+    "hooks": [],
+    "skills": [
+      "python_api"
+    ],
+    "health_checks": [
+      "python --version",
+      "pytest --version"
+    ],
+    "widgets": [],
+    "templates": [
+      "fastapi-endpoint",
+      "fastapi-service",
+      "pytest-smoke"
+    ]
+  },
+  "permissions": {
+    "write_roots": [
+      "data",
+      "cache",
+      "templates"
+    ],
+    "allow_out_of_scope_write": false
+  }
+}

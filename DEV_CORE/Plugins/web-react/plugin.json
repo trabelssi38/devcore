@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "id": "web-react",
+  "name": "Web React",
+  "version": "0.1.0",
+  "description": "Internal DEV_CORE plugin for React and web UI project workflows.",
+  "capabilities": {
+    "commands": [
+      "web-react:new-component",
+      "web-react:run-tests",
+      "web-react:health"
+    ],
+    "hooks": [],
+    "skills": [
+      "web_ui",
+      "ui-ux"
+    ],
+    "health_checks": [
+      "node --version",
+      "npm --version"
+    ],
+    "widgets": [],
+    "templates": [
+      "react-component",
+      "react-page",
+      "playwright-smoke"
+    ]
+  },
+  "permissions": {
+    "write_roots": [
+      "data",
+      "cache",
+      "templates"
+    ],
+    "allow_out_of_scope_write": false
+  }
+}
