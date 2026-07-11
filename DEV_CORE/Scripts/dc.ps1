@@ -108,6 +108,67 @@ function Invoke-SkillsSafe {
     }
 }
 
+function Invoke-PluginSafe {
+    param([string]$OptionsText = "")
+
+    $tokens = @()
+    if (-not [string]::IsNullOrWhiteSpace($OptionsText)) {
+        $tokens = $OptionsText.Trim() -split "\s+"
+    }
+
+    $json = $false
+    $filtered = @()
+    foreach ($token in $tokens) {
+        if ($token -eq "--json" -or $token -eq "-json") {
+            $json = $true
+        } else {
+            $filtered += $token
+        }
+    }
+
+    $sub = if ($filtered.Count -gt 0) { $filtered[0].ToLowerInvariant() } else { "list" }
+    $serviceArgs = @{}
+    if ($json) { $serviceArgs.Json = $true }
+
+    switch ($sub) {
+        "list" {
+            $serviceArgs.Action = "List"
+            & "$SCRIPTS\plugin_service.ps1" @serviceArgs
+            return
+        }
+        "health" {
+            $serviceArgs.Action = "Health"
+            & "$SCRIPTS\plugin_service.ps1" @serviceArgs
+            return
+        }
+        "install" {
+            if ($filtered.Count -lt 2) { Write-Host "  Usage: dc plugin install <plugin.json> [--json]" -ForegroundColor Yellow; return }
+            $serviceArgs.Action = "Install"
+            $serviceArgs.ManifestPath = $filtered[1]
+            & "$SCRIPTS\plugin_service.ps1" @serviceArgs
+            return
+        }
+        "disable" {
+            if ($filtered.Count -lt 2) { Write-Host "  Usage: dc plugin disable <id> [--json]" -ForegroundColor Yellow; return }
+            $serviceArgs.Action = "Disable"
+            $serviceArgs.Id = $filtered[1]
+            & "$SCRIPTS\plugin_service.ps1" @serviceArgs
+            return
+        }
+        "diagnose" {
+            if ($filtered.Count -lt 2) { Write-Host "  Usage: dc plugin diagnose <id> [--json]" -ForegroundColor Yellow; return }
+            $serviceArgs.Action = "Diagnose"
+            $serviceArgs.Id = $filtered[1]
+            & "$SCRIPTS\plugin_service.ps1" @serviceArgs
+            return
+        }
+        default {
+            Write-Host "  Usage: dc plugin list|health|install <plugin.json>|diagnose <id>|disable <id> [--json]" -ForegroundColor Yellow
+            return
+        }
+    }
+}
+
 switch -Regex ($cmd) {
 
     # -- TASKS (nouveau systeme single client)
@@ -178,6 +239,9 @@ switch -Regex ($cmd) {
     # -- SKILLS
     "^skills($|\s+.*)" { Invoke-SkillsSafe -OptionsText ($cmd -replace "^skills", ""); break }
 
+    # -- PLUGINS
+    "^plugins?($|\s+.*)" { Invoke-PluginSafe -OptionsText ($cmd -replace "^plugins?", ""); break }
+
     # -- DIAGNOSTIC
     "^check($|\s+.*)|^health($|\s+.*)" { & "$SCRIPTS\gateway.ps1" -Command $cmd; break }
 
@@ -236,6 +300,9 @@ switch -Regex ($cmd) {
         Write-Host "  dc skills status                Etat Auto-Skills" -ForegroundColor Gray
         Write-Host "  dc skills detect                Detecte candidates depuis events" -ForegroundColor Gray
         Write-Host "  dc skills lint|eval|promote N   Gate et promotion skill" -ForegroundColor Gray
+        Write-Host "  dc plugin list|health           Etat Plugin SDK" -ForegroundColor Gray
+        Write-Host "  dc plugin install [plugin.json] Installe un plugin" -ForegroundColor Gray
+        Write-Host "  dc plugin diagnose|disable ID   Verifie ou desactive un plugin" -ForegroundColor Gray
         Write-Host ""
         Write-Host "  TOON" -ForegroundColor White
         Write-Host "  dc toon                         tasks.json -> tasks.toon (avec stats)" -ForegroundColor Gray
