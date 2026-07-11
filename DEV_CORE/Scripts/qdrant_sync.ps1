@@ -11,7 +11,9 @@ $QDRANT_URL = if ($env:QDRANT_URL) { $env:QDRANT_URL } else { "http://localhost:
 $TODAY = Get-Date -Format "yyyy-MM-dd"
 $LOG = "$DEV_CORE_DATA\Logs\scripts\qdrant_sync_$TODAY.log"
 . "$DEV_CORE\Scripts\platform_version.ps1"
+. "$DEV_CORE\Scripts\embedding_contract.ps1"
 $PLATFORM = Get-DevCorePlatformInfo
+$EMBEDDING_CONTRACT = Get-DevCoreEmbeddingContract
 
 function Write-Log {
     param([string]$msg, [string]$color="Gray")
@@ -32,7 +34,7 @@ try {
     exit 0
 }
 
-# Get embedding from Gemini Router (Direct gateway to Gemini API)
+# Get embedding from Gemini Router (OpenAI-compatible endpoint)
 function Get-GeminiEmbedding {
     param([string]$text)
     
@@ -44,10 +46,7 @@ function Get-GeminiEmbedding {
             $cleanText = $text -replace "`r", "" -replace "`n", " "
             if ($cleanText.Length -gt 8000) { $cleanText = $cleanText.Substring(0, 8000) }
 
-            $bodyObj = @{
-                model = "text-embedding-3-small"
-                input = $cleanText
-            }
+            $bodyObj = New-DevCoreEmbeddingRequestBody -Text $cleanText
             $jsonStr = $bodyObj | ConvertTo-Json
             $bodyJson = [System.Text.Encoding]::UTF8.GetBytes($jsonStr)
 
@@ -57,11 +56,12 @@ function Get-GeminiEmbedding {
                 $headers["Authorization"] = "Bearer $apiKey"
             }
 
-            # Query Gemini Router (Port 20130)
-            $response = Invoke-RestMethod -Uri "http://127.0.0.1:20130/v1/embeddings" -Method Post -Body $bodyJson -ContentType "application/json; charset=utf-8" -Headers $headers -TimeoutSec 15
+            $response = Invoke-RestMethod -Uri $EMBEDDING_CONTRACT.endpoint -Method Post -Body $bodyJson -ContentType "application/json; charset=utf-8" -Headers $headers -TimeoutSec 15
             if ($response -and $response.data -and $response.data.Count -gt 0 -and $response.data[0].embedding) {
-                Write-Log "Gemini embedding retrieved successfully (vector size: $($response.data[0].embedding.Count))" "Green"
-                return $response.data[0].embedding
+                $embedding = $response.data[0].embedding
+                Assert-DevCoreEmbeddingVector -Vector $embedding -Context "qdrant_sync"
+                Write-Log "Embedding retrieved successfully (vector size: $($embedding.Count))" "Green"
+                return $embedding
             }
             throw "No embedding found in response"
         } catch {
@@ -83,6 +83,7 @@ function Add-ToQdrant {
         [object]$vector,
         [hashtable]$payload
     )
+    Assert-DevCoreEmbeddingVector -Vector $vector -Context "Qdrant upsert $collection"
     $uuid = [guid]::NewGuid().ToString()
     # Round to 6 decimal places
     $roundedVector = $vector | ForEach-Object { "{0:F6}" -f [double]$_ }

@@ -280,9 +280,10 @@ Obsidian Vault (notes structurées)
 
 1. **Consulter** : Interroger Qdrant (score > 0.75 = réutiliser)
 2. **Créer** : Nouvelle décision/pattern/lesson
-3. **Embedder** : nomic-embed-text via Ollama
-4. **Stocker** : Qdrant + Obsidian + MEMORY.md
-5. **Rotate** : Score < 0.5 archivé (weekly_maintenance)
+3. **Embedder** : contrat central `DEV_CORE\Config\embedding.json`
+4. **Dimension** : les requêtes embeddings imposent `dimensions=768` avant tout upsert/search Qdrant.
+5. **Stocker** : Qdrant + Obsidian + MEMORY.md
+6. **Rotate** : Score < 0.5 archivé (weekly_maintenance)
 
 ### Memory Service
 
@@ -889,6 +890,7 @@ dc verify --ci --json
 - `dc health --json` et `dc verify --ci --json` exposent `platform_version` depuis `DEV_CORE\Config\platform.json`.
 - Le profil `dc verify --ci` est portable CI : lint PowerShell/Python, tests Python, tests PowerShell, secret scan et contrats.
 - Le workflow GitHub Actions `.github/workflows/ci.yml` exécute les mêmes gates sur `windows-latest`.
+- Le profil local `verify.ps1 -Json` inclut un contrat Qdrant live : collections 768d, embedding 768d, upsert et search temporaires.
 - `diagnose.ps1` integre le scan de secrets des fichiers suivis par Git.
 
 ### Etat v10.0

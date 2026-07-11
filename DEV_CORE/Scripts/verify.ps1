@@ -20,6 +20,8 @@ function Get-DefaultChecks {
         [pscustomobject]@{ name = "test-exit-contract"; script = (Join-Path $SCRIPTS "test_test_exit_contract.ps1"); arguments = @() },
         [pscustomobject]@{ name = "ci-workflow-contract"; script = (Join-Path $SCRIPTS "test_ci_workflow.ps1"); arguments = @() },
         [pscustomobject]@{ name = "platform-version-tests"; script = (Join-Path $SCRIPTS "test_platform_version.ps1"); arguments = @() },
+        [pscustomobject]@{ name = "embedding-contract-tests"; script = (Join-Path $SCRIPTS "test_embedding_contract.ps1"); arguments = @() },
+        [pscustomobject]@{ name = "qdrant-vector-contract"; script = (Join-Path $SCRIPTS "test_qdrant_vector_contract.ps1"); arguments = @() },
         [pscustomobject]@{ name = "health-report-tests"; script = (Join-Path $SCRIPTS "test_health_report.ps1"); arguments = @() },
         [pscustomobject]@{ name = "secret-scan-tests"; script = (Join-Path $SCRIPTS "test_secret_scan.ps1"); arguments = @() }
     )
@@ -86,7 +88,10 @@ foreach ($check in $configuredChecks) {
 
     if (Test-Path -LiteralPath $scriptPath) {
         try {
+            $previousErrorActionPreference = $ErrorActionPreference
+            $ErrorActionPreference = "Continue"
             $output = & powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $scriptPath @arguments 2>&1 | Out-String
+            $ErrorActionPreference = $previousErrorActionPreference
             $exitCode = $LASTEXITCODE
             if ($exitCode -ne 0) {
                 $reason = "exit_code"
@@ -96,6 +101,7 @@ foreach ($check in $configuredChecks) {
                 $reason = "passed"
             }
         } catch {
+            $ErrorActionPreference = "Stop"
             $exitCode = 70
             $output = $_ | Out-String
             $reason = "exception"

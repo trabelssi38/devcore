@@ -23,6 +23,8 @@ $DB_PATH       = "$DEV_CORE_DATA\Memory\conversations.db"
 $LOG           = "$DEV_CORE_DATA\Logs\scripts\memory_hierarchy_$TODAY.log"
 $MEMORY_SERVICE = "$DEV_CORE\Scripts\memory_service.ps1"
 $CONTEXT_SERVICE = "$DEV_CORE\Scripts\context_service.ps1"
+. "$DEV_CORE\Scripts\embedding_contract.ps1"
+$EMBEDDING_CONTRACT = Get-DevCoreEmbeddingContract
 
 function Log {
     param([string]$msg, [string]$color="Gray")
@@ -91,20 +93,18 @@ switch ($Action) {
         for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
             try {
                 Log "Attempting to get query embedding (attempt $attempt/$maxAttempts)..." "Gray"
-                $bodyObj = @{
-                    model = "gemini-embedding-001"
-                    input = $Query
-                }
+                $bodyObj = New-DevCoreEmbeddingRequestBody -Text $Query -Query
                 $jsonStr = $bodyObj | ConvertTo-Json
                 $bodyJson = [System.Text.Encoding]::UTF8.GetBytes($jsonStr)
                 $apiKey = "dummy_key"
                 $headers = @{
                     "Authorization" = "Bearer $apiKey"
                 }
-                $embedRes = Invoke-RestMethod -Uri "http://127.0.0.1:20130/v1/embeddings" -Method Post -Body $bodyJson -ContentType "application/json; charset=utf-8" -Headers $headers -TimeoutSec 10
+                $embedRes = Invoke-RestMethod -Uri $EMBEDDING_CONTRACT.endpoint -Method Post -Body $bodyJson -ContentType "application/json; charset=utf-8" -Headers $headers -TimeoutSec 10
                 
                 if ($embedRes -and $embedRes.data -and $embedRes.data.Count -gt 0 -and $embedRes.data[0].embedding) {
                     $vector = $embedRes.data[0].embedding
+                    Assert-DevCoreEmbeddingVector -Vector $vector -Context "memory_hierarchy query"
                     Log "Query embedding retrieved successfully (vector size: $($vector.Count))" "Green"
                     break
                 }
