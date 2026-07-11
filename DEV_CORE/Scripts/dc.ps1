@@ -67,6 +67,47 @@ function Invoke-RtkSafe {
         & "$SCRIPTS\rtk.ps1" -StatsSave
 }
 
+function Invoke-SkillsSafe {
+    param([Parameter(Mandatory=$true)][string]$OptionsText)
+
+    $tokens = @()
+    if (-not [string]::IsNullOrWhiteSpace($OptionsText)) {
+        $tokens = $OptionsText.Trim() -split "\s+"
+    }
+    $sub = if ($tokens.Count -gt 0) { $tokens[0].ToLowerInvariant() } else { "status" }
+
+    switch ($sub) {
+        "list"       { & "$SCRIPTS\auto_skill_service.ps1" -Action List; return }
+        "candidates" { & "$SCRIPTS\auto_skill_service.ps1" -Action Candidates; return }
+        "detect"     { & "$SCRIPTS\auto_skill_service.ps1" -Action Detect; return }
+        "status"     { & "$SCRIPTS\auto_skill_service.ps1" -Action Status; return }
+        "lint" {
+            if ($tokens.Count -lt 2) { Write-Host "  Usage: dc skills lint <name>" -ForegroundColor Yellow; return }
+            & "$SCRIPTS\skill_lint.ps1" -Name $tokens[1]
+            return
+        }
+        "eval" {
+            if ($tokens.Count -lt 2) { Write-Host "  Usage: dc skills eval <name>" -ForegroundColor Yellow; return }
+            & "$SCRIPTS\skill_eval.ps1" -Name $tokens[1]
+            return
+        }
+        "promote" {
+            if ($tokens.Count -lt 2) { Write-Host "  Usage: dc skills promote <name>" -ForegroundColor Yellow; return }
+            & "$SCRIPTS\auto_skill_service.ps1" -Action Promote -Name $tokens[1]
+            return
+        }
+        "reject" {
+            if ($tokens.Count -lt 2) { Write-Host "  Usage: dc skills reject <name>" -ForegroundColor Yellow; return }
+            & "$SCRIPTS\auto_skill_service.ps1" -Action Reject -Name $tokens[1]
+            return
+        }
+        default {
+            Write-Host "  Usage: dc skills list|candidates|detect|lint <name>|eval <name>|promote <name>|reject <name>|status" -ForegroundColor Yellow
+            return
+        }
+    }
+}
+
 switch -Regex ($cmd) {
 
     # -- TASKS (nouveau systeme single client)
@@ -134,6 +175,9 @@ switch -Regex ($cmd) {
     "^endday$"  { & "$SCRIPTS\endday.ps1"; break }
     "^weekly$"  { & "$SCRIPTS\Auto\weekly_maintenance.ps1"; break }
 
+    # -- SKILLS
+    "^skills($|\s+.*)" { Invoke-SkillsSafe -OptionsText ($cmd -replace "^skills", ""); break }
+
     # -- DIAGNOSTIC
     "^check($|\s+.*)|^health($|\s+.*)" { & "$SCRIPTS\gateway.ps1" -Command $cmd; break }
 
@@ -189,6 +233,9 @@ switch -Regex ($cmd) {
         Write-Host "  dc health                       Rapport health v10 court" -ForegroundColor Gray
         Write-Host "  dc health --json                Rapport health v10 JSON" -ForegroundColor Gray
         Write-Host "  dc ask [prompt]                 Routing mode auto" -ForegroundColor Gray
+        Write-Host "  dc skills status                Etat Auto-Skills" -ForegroundColor Gray
+        Write-Host "  dc skills detect                Detecte candidates depuis events" -ForegroundColor Gray
+        Write-Host "  dc skills lint|eval|promote N   Gate et promotion skill" -ForegroundColor Gray
         Write-Host ""
         Write-Host "  TOON" -ForegroundColor White
         Write-Host "  dc toon                         tasks.json -> tasks.toon (avec stats)" -ForegroundColor Gray
