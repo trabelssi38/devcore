@@ -250,7 +250,10 @@ switch -Regex ($cmd) {
     "^plugins?($|\s+.*)" { Invoke-PluginSafe -OptionsText ($cmd -replace "^plugins?", ""); break }
 
     # -- DIAGNOSTIC
-    "^check($|\s+.*)|^health($|\s+.*)" { & "$SCRIPTS\gateway.ps1" -Command $cmd; break }
+    "^check($|\s+.*)|^health($|\s+.*)|^verify($|\s+.*)" {
+        & "$SCRIPTS\gateway.ps1" -Command $cmd
+        exit $LASTEXITCODE
+    }
 
     # -- ASK (routing mode auto)
     "^ask (.+)$" { & "$SCRIPTS\ask.ps1" -PromptFr $Matches[1]; break }
@@ -303,6 +306,8 @@ switch -Regex ($cmd) {
         Write-Host "  dc check --fix --dry-run        Simule les reparations du diagnostic" -ForegroundColor Gray
         Write-Host "  dc health                       Rapport health v10 court" -ForegroundColor Gray
         Write-Host "  dc health --json                Rapport health v10 JSON" -ForegroundColor Gray
+        Write-Host "  dc verify --ci                  Gate CI deterministe" -ForegroundColor Gray
+        Write-Host "  dc verify --ci --json           Gate CI JSON" -ForegroundColor Gray
         Write-Host "  dc ask [prompt]                 Routing mode auto" -ForegroundColor Gray
         Write-Host "  dc skills status                Etat Auto-Skills" -ForegroundColor Gray
         Write-Host "  dc skills detect                Detecte candidates depuis events" -ForegroundColor Gray

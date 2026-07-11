@@ -49,6 +49,16 @@ $commandMap = [ordered]@{
         parameters = @{ Json = $true }
         description = "Rapport health JSON"
     }
+    "verify --ci" = @{
+        script = "verify.ps1"
+        parameters = @{ Ci = $true }
+        description = "Gate CI deterministe"
+    }
+    "verify --ci --json" = @{
+        script = "verify.ps1"
+        parameters = @{ Ci = $true; Json = $true }
+        description = "Gate CI deterministe JSON"
+    }
 }
 
 $aliases = @{
@@ -59,6 +69,7 @@ $aliases = @{
     "check --gate --dry-run --fix" = "check --fix --gate --dry-run"
     "check --dry-run --fix --gate" = "check --fix --gate --dry-run"
     "check --dry-run --gate --fix" = "check --fix --gate --dry-run"
+    "verify --json --ci" = "verify --ci --json"
 }
 
 function Normalize-Command {
@@ -112,4 +123,6 @@ if (-not (Test-Path -LiteralPath $target)) {
 
 $targetParameters = $selected["parameters"]
 & $target @targetParameters
-exit 0
+$targetExitCode = $LASTEXITCODE
+if ($null -eq $targetExitCode) { $targetExitCode = 0 }
+exit $targetExitCode

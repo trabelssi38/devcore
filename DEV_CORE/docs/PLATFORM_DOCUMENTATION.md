@@ -213,9 +213,10 @@ T-01 (reasoning) → T-02 (coding) → T-03 (bulk) → T-04 (reasoning)
 | `task_service.ps1` | `Path`, `Read`, `Add`, `Next`, `Complete`, `Step`, `Edit`, `Pause`, `Skip`, `Sync` | Service central pour lecture, mutation et transitions de taches |
 | `memory_service.ps1` | `Path`, `ReadText`, `WriteText`, `AppendText`, `EnsureMemory`, `RotateMemory` | Service central pour chemins et fichiers memoire L2/L3 |
 | `context_service.ps1` | `ScoreSources` | Service central pour scorer les sources de contexte |
-| `gateway.ps1` | `dc check*`, `dc health*` | Gateway typée pour commandes validées |
+| `gateway.ps1` | `dc check*`, `dc health*`, `dc verify*` | Gateway typée pour commandes validées |
 | `diagnose.ps1` | `dc check`, `dc check --gate`, `dc check --fix --dry-run` | Diagnostic complet, gate release locale et simulation de reparations |
 | `health_report.ps1` | `dc health`, `dc health --json` | Rapport court services, secrets, task board et memoire |
+| `verify.ps1` | `dc verify --ci`, `dc verify --ci --json` | Agrégateur CI déterministe avec propagation des codes d'échec |
 | `hermes-daemon.ps1` | `-Install|-Start|-Status` | Daemon Hermes |
 | `ensure_repowise_mcp.ps1` | launch | Configure Repowise MCP pour Codex, Claude, Gemini/Antigravity et opencode |
 | `ensure_repowise_watch.ps1` | launch / manuel | Démarre, vérifie ou arrête les watchers Repowise des projets déclarés |
@@ -873,6 +874,8 @@ dc check --gate
 dc check --fix --dry-run
 dc health
 dc health --json
+dc verify --ci
+dc verify --ci --json
 ```
 
 ### Gates locales
@@ -881,6 +884,8 @@ dc health --json
 - `dc check --fix --dry-run` affiche les reparations `AutoFix` sans executer d'ecriture.
 - Les `WARN` restent visibles mais ne bloquent pas la gate.
 - `dc health --json` expose `overall`, `ok`, `warn`, `fail`, `duration_ms` et la liste des checks.
+- `dc verify --ci` échoue sur un code enfant non nul ou un marqueur textuel `[FAIL]`.
+- `dc verify --ci --json` produit un rapport versionné avec le détail de chaque check.
 - `diagnose.ps1` integre le scan de secrets des fichiers suivis par Git.
 
 ### Etat v10.0
@@ -911,6 +916,8 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - `dc check --fix --gate --dry-run`
 - `dc health`
 - `dc health --json`
+- `dc verify --ci`
+- `dc verify --ci --json`
 
 `dc.ps1` reste l'interface utilisateur, mais délègue ces commandes au Gateway pour centraliser validation et dispatch.
 

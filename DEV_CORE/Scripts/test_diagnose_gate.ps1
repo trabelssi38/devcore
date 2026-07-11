@@ -34,6 +34,16 @@ try {
     Assert-ExitCode 1 {
         powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $diagnoseScript -Gate
     } "diagnose -Gate should fail when critical paths/scripts are missing"
+
+    $gatewayPlatformRoot = Join-Path $tempRoot "gateway-platform"
+    $gatewayScripts = Join-Path $gatewayPlatformRoot "Scripts"
+    New-Item -ItemType Directory -Path $gatewayScripts -Force | Out-Null
+    "Write-Output 'fixture diagnose failure'; exit 7" | Set-Content -LiteralPath (Join-Path $gatewayScripts "diagnose.ps1") -Encoding UTF8
+    $env:DEVCORE_PLATFORM_ROOT = $gatewayPlatformRoot
+
+    Assert-ExitCode 7 {
+        powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $dcScript "check --gate"
+    } "dc check --gate should preserve the diagnose child exit code"
 } finally {
     if ($null -eq $oldPlatformRoot) {
         Remove-Item Env:\DEVCORE_PLATFORM_ROOT -ErrorAction SilentlyContinue

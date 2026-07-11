@@ -25,6 +25,7 @@ dc launch
 dc check
 dc health
 dc check --gate
+dc verify --ci
 ```
 
 ---
@@ -88,6 +89,8 @@ C:\devcore\
 - `dc check --fix --dry-run` — Simulation des réparations sans écriture
 - `dc health` — Rapport court services, secrets, mémoire et task board
 - `dc health --json` — Rapport health exploitable par scripts
+- `dc verify --ci` — Agrège les gates CI et préserve tout code d'échec
+- `dc verify --ci --json` — Rapport CI structuré pour les pipelines
 
 ### Projet
 - `dc new project [nom] -stack [x]` — Init projet
