@@ -19,6 +19,7 @@ if ($LASTEXITCODE -ne 0) {
 
 $report = $jsonText | ConvertFrom-Json
 Assert-True ($report.schema_version -eq "1.0") "health report schema_version should be 1.0"
+Assert-True ($report.platform_version -eq "10.0") "health report platform_version should be 10.0"
 Assert-True ($report.duration_ms -ge 0) "health report should include duration_ms"
 Assert-True ($report.checks.Count -gt 0) "health report should include checks"
 
@@ -35,6 +36,6 @@ $dcOutput = & powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -Fil
 if ($LASTEXITCODE -ne 0) {
     throw "dc health failed with exit code $LASTEXITCODE"
 }
-Assert-True (($dcOutput -join "`n") -match "DEV_CORE v10 -- Health") "dc health should render health report"
+Assert-True (($dcOutput -join "`n") -match "DEV_CORE v10\.0 -- Health") "dc health should render canonical health report title"
 
 Write-Host "[OK] health report smoke tests passed" -ForegroundColor Green

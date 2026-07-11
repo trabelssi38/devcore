@@ -1,4 +1,4 @@
-# diagnose.ps1 -- DEV_CORE v9.0 -- Auto-reparation
+# diagnose.ps1 -- DEV_CORE diagnostic -- Auto-reparation
 # Usage : dc check        (diagnostic seul)
 #         dc check --fix   (diagnostic + reparation automatique)
 #         dc check --gate  (diagnostic avec code de sortie release gate)
@@ -9,9 +9,11 @@ $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } 
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
 $CLAUDE_DIR    = "$env:USERPROFILE\.claude"
 $GEMINI_DIR    = "$env:USERPROFILE\.gemini"
+. "$PSScriptRoot\platform_version.ps1"
+$PLATFORM = Get-DevCorePlatformInfo
 
 Write-Host ""
-Write-Host "  DEV_CORE v9.0 -- Diagnostic autonomie" -ForegroundColor Cyan
+Write-Host "  $($PLATFORM.title) -- Diagnostic autonomie" -ForegroundColor Cyan
 if ($Fix) { Write-Host "  MODE AUTO-FIX ACTIVE" -ForegroundColor Yellow }
 if ($DryRun) { Write-Host "  MODE DRY-RUN ACTIVE" -ForegroundColor Yellow }
 if ($Gate) { Write-Host "  MODE RELEASE GATE ACTIVE" -ForegroundColor Yellow }

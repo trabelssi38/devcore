@@ -1,4 +1,4 @@
-# endday.ps1 — DEV_CORE v9.0
+# endday.ps1 -- DEV_CORE session close
 param([switch]$SkipBackup, [switch]$SkipQdrant)
 
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
@@ -8,6 +8,8 @@ $TODAY         = Get-Date -Format "yyyy-MM-dd"
 $LOG           = "$DEV_CORE_DATA\Logs\scripts\endday_$TODAY.log"
 $ENDDAY_STARTED = Get-Date
 $METRICS_SERVICE = "$DEV_CORE\Scripts\metrics_service.ps1"
+. "$PSScriptRoot\platform_version.ps1"
+$PLATFORM = Get-DevCorePlatformInfo
 
 function Log { param($msg,$color="Gray"); $l="[$(Get-Date -f HH:mm:ss)] $msg"; Add-Content $LOG $l -ErrorAction SilentlyContinue; Write-Host "  $l" -ForegroundColor $color }
 function Record-Metric { param([string]$MetricType,[double]$Value,[string]$Unit="count",[hashtable]$Payload=@{})
@@ -22,7 +24,7 @@ function Run { param($script,$label)
     if (Test-Path $p) { Log "→ $label" "Cyan"; & $p } else { Log "SKIP $script" "Yellow" }
 }
 
-Write-Host ""; Write-Host "  DEV_CORE v9.0 — END OF DAY" -ForegroundColor Cyan
+Write-Host ""; Write-Host "  $($PLATFORM.title) -- END OF DAY" -ForegroundColor Cyan
 Write-Host "  ─────────────────────────────────────" -ForegroundColor DarkGray; Write-Host ""
 
 Log "1/8 Extraction leçons"   ; Run "lesson_extractor.ps1"  "lesson_extractor"
@@ -82,11 +84,11 @@ h1{{font-size:16px;color:#6366f1}}.m{{display:inline-block;padding:10px 18px;
 background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin:6px;text-align:center}}
 .v{{font-size:24px;font-weight:600}}.l{{font-size:11px;color:#64748b;margin-top:3px}}</style>
 </head><body>
-<h1>DEV_CORE v9.0 — Token Report $TODAY</h1>
+<h1>$($PLATFORM.title) -- Token Report $TODAY</h1>
 <div class="m"><div class="v">—</div><div class="l">Total tokens</div></div>
 <div class="m"><div class="v">—</div><div class="l">Cache hits</div></div>
 <div class="m"><div class="v">—</div><div class="l">Sessions</div></div>
-<p style="color:#94a3b8;font-size:12px;margin-top:20px">Auto-généré par endday.ps1 · DEV_CORE v9.0</p>
+<p style="color:#94a3b8;font-size:12px;margin-top:20px">Auto-genere par endday.ps1 - $($PLATFORM.title)</p>
 </body></html>
 "@
     [System.IO.File]::WriteAllText($rpt, $html, [System.Text.Encoding]::UTF8)

@@ -886,12 +886,14 @@ dc verify --ci --json
 - `dc health --json` expose `overall`, `ok`, `warn`, `fail`, `duration_ms` et la liste des checks.
 - `dc verify --ci` échoue sur un code enfant non nul ou un marqueur textuel `[FAIL]`.
 - `dc verify --ci --json` produit un rapport versionné avec le détail de chaque check.
+- `dc health --json` et `dc verify --ci --json` exposent `platform_version` depuis `DEV_CORE\Config\platform.json`.
 - `diagnose.ps1` integre le scan de secrets des fichiers suivis par Git.
 
 ### Etat v10.0
 
 - Aucun `Invoke-Expression` dans le chemin principal du CLI.
 - `.env.example` remplace les fallbacks secrets hardcodes.
+- La version plateforme affichée par les scripts runtime principaux est centralisée dans `DEV_CORE\Config\platform.json`.
 - Repowise MCP et watchers restent configures au lancement pour les clients DEV_CORE.
 - Les task boards sont isolees par projet dans `DEV_CORE_DATA\Memory\<project>\tasks.json`.
 

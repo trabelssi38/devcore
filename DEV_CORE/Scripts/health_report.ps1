@@ -1,10 +1,12 @@
-# health_report.ps1 -- DEV_CORE v10 short local health report
+# health_report.ps1 -- DEV_CORE platform short local health report
 param(
     [switch]$Json
 )
 
 $ErrorActionPreference = "Stop"
 $started = Get-Date
+. "$PSScriptRoot\platform_version.ps1"
+$platform = Get-DevCorePlatformInfo
 $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
 $checks = New-Object System.Collections.Generic.List[object]
@@ -148,6 +150,7 @@ foreach ($check in $checks) { $checkArray += $check }
 
 $report = [PSCustomObject]@{
     schema_version = "1.0"
+    platform_version = $platform.version
     generated_at   = (Get-Date).ToString("o")
     project        = $projectName
     overall        = $overall
@@ -162,7 +165,7 @@ if ($Json) {
     $report | ConvertTo-Json -Depth 8
 } else {
     Write-Host ""
-    Write-Host "  DEV_CORE v10 -- Health" -ForegroundColor Cyan
+    Write-Host "  $($platform.title) -- Health" -ForegroundColor Cyan
     Write-Host "  ======================" -ForegroundColor DarkGray
     foreach ($check in $checks) {
         $color = switch ($check.status) { "OK" { "Green" } "WARN" { "Yellow" } default { "Red" } }

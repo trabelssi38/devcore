@@ -1,4 +1,4 @@
-# adapt_client.ps1 -- DEV_CORE v9.0
+# adapt_client.ps1 -- DEV_CORE client adapter
 # Expose DEV_CORE au client actif : liens skills + injection boot
 # Usage : adapt_client.ps1 -Client claude|codex|gemini|antigravity|qwen|auto
 
@@ -11,6 +11,8 @@ param(
 
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
+. "$PSScriptRoot\platform_version.ps1"
+$PLATFORM = Get-DevCorePlatformInfo
 $SKILLS_DIR    = "$DEV_CORE\Skills"
 $CONFIG_DIR    = "$DEV_CORE\Config"
 $ACTIVE_FILE   = "$CONFIG_DIR\active_client.txt"
@@ -127,7 +129,7 @@ Action : dc task done quand steps_done = steps_total
 }
 
 # Header + mission + boot content
-$header = "<!-- DEV_CORE v9.0 -- genere par adapt_client.ps1 le $(Get-Date -f 'yyyy-MM-dd HH:mm') -->`n"
+$header = "<!-- $($PLATFORM.title) -- genere par adapt_client.ps1 le $(Get-Date -f 'yyyy-MM-dd HH:mm') -->`n"
 $final  = $header + $missionBlock + $bootContent
 
 if (-not $DryRun) {
@@ -136,4 +138,3 @@ if (-not $DryRun) {
 
 Write-Host "  [adapt_client] Boot injecte : $bootDst" -ForegroundColor Green
 Write-Host "  [adapt_client] Source       : $bootSrc" -ForegroundColor DarkGray
-

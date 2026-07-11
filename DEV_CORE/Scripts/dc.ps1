@@ -1,9 +1,12 @@
-# dc.ps1 -- DEV_CORE v9.0 -- Single client -- ASCII safe
+# dc.ps1 -- DEV_CORE single client dispatcher -- ASCII safe
 # Alias : Set-Alias dc 'C:\devcore\DEV_CORE\Scripts\dc.ps1'
 param([Parameter(ValueFromRemainingArguments=$true)][string[]]$Args)
 
 $DEV_CORE = Split-Path -Parent $PSScriptRoot
 $SCRIPTS  = "$DEV_CORE\Scripts"
+. "$SCRIPTS\platform_version.ps1"
+$PLATFORM = Get-DevCorePlatformInfo
+$PLATFORM_TITLE = $PLATFORM.title
 $cmd = ($Args -join " ").ToLower().Trim()
 
 function Invoke-TaskEditSafe {
@@ -278,7 +281,7 @@ switch -Regex ($cmd) {
     # -- HELP
     "^help$|^h$" {
         Write-Host ""
-        Write-Host "  DEV_CORE v9.0 -- Single Client Mode" -ForegroundColor Cyan
+        Write-Host "  $PLATFORM_TITLE -- Single Client Mode" -ForegroundColor Cyan
         Write-Host "  -------------------------------------------" -ForegroundColor DarkGray
         Write-Host "  TACHES" -ForegroundColor White
         Write-Host "  dc next task (nt)              Prochaine tache + mode auto" -ForegroundColor Gray

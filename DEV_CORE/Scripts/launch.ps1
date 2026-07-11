@@ -1,4 +1,4 @@
-# launch.ps1 -- DEV_CORE v9.0
+# launch.ps1 -- DEV_CORE platform launcher
 param(
     [string]$Client = "auto",
     [string]$Project = "",
@@ -11,6 +11,9 @@ $TODAY         = Get-Date -Format "yyyy-MM-dd"
 $LOG           = "$DEV_CORE_DATA\Logs\scripts\launch_$TODAY.log"
 $LAUNCH_STARTED = Get-Date
 $METRICS_SERVICE = "$DEV_CORE\Scripts\metrics_service.ps1"
+. "$PSScriptRoot\platform_version.ps1"
+$PLATFORM = Get-DevCorePlatformInfo
+$PLATFORM_TITLE = $PLATFORM.title
 
 function Log { param($msg,$color="Gray"); $l="[$(Get-Date -f HH:mm:ss)] $msg"; Add-Content $LOG $l -ErrorAction SilentlyContinue; Write-Host "  $l" -ForegroundColor $color }
 function Record-Metric { param([string]$MetricType,[double]$Value,[string]$Unit="count",[hashtable]$Payload=@{})
@@ -22,7 +25,7 @@ function Record-Metric { param([string]$MetricType,[double]$Value,[string]$Unit=
 }
 
 Write-Host ""
-Write-Host "  DEV_CORE v9.0 - LAUNCH" -ForegroundColor Cyan
+Write-Host "  $PLATFORM_TITLE - LAUNCH" -ForegroundColor Cyan
 Write-Host "  =======================================" -ForegroundColor DarkGray
 
 # 1. Adapter le client
@@ -321,7 +324,7 @@ else { Log "  Pas de rapport pour $yesterday" "Gray" }
 $activeClient = Get-Content "$DEV_CORE\Config\active_client.txt" -ErrorAction SilentlyContinue
 Write-Host ""
 Write-Host "  ========================================" -ForegroundColor Green
-Write-Host "  ||  DEV_CORE v9.0 - PRET               ||" -ForegroundColor Green
+Write-Host ("  ||  {0} - PRET{1}||" -f $PLATFORM_TITLE, (" " * [Math]::Max(1, 26 - ($PLATFORM_TITLE.Length)))) -ForegroundColor Green
 Write-Host "  ========================================" -ForegroundColor Green
 Write-Host "  ||  Client : $($activeClient.PadRight(29))||" -ForegroundColor White
 Write-Host "  ||  Date   : $($TODAY.PadRight(29))||" -ForegroundColor White

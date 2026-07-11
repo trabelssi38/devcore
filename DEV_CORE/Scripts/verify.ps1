@@ -1,4 +1,4 @@
-# verify.ps1 -- DEV_CORE v10 deterministic CI verification gate
+# verify.ps1 -- DEV_CORE deterministic CI verification gate
 param(
     [switch]$Ci,
     [switch]$Json
@@ -8,6 +8,8 @@ $ErrorActionPreference = "Stop"
 $started = Get-Date
 $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { Split-Path -Parent $PSScriptRoot }
 $SCRIPTS = Join-Path $DEV_CORE "Scripts"
+. "$SCRIPTS\platform_version.ps1"
+$platform = Get-DevCorePlatformInfo
 
 function Get-DefaultChecks {
     return @(
@@ -15,6 +17,7 @@ function Get-DefaultChecks {
         [pscustomobject]@{ name = "dc-dispatch"; script = (Join-Path $SCRIPTS "test_dc_dispatch.ps1"); arguments = @() },
         [pscustomobject]@{ name = "diagnose-gate-tests"; script = (Join-Path $SCRIPTS "test_diagnose_gate.ps1"); arguments = @() },
         [pscustomobject]@{ name = "test-exit-contract"; script = (Join-Path $SCRIPTS "test_test_exit_contract.ps1"); arguments = @() },
+        [pscustomobject]@{ name = "platform-version-tests"; script = (Join-Path $SCRIPTS "test_platform_version.ps1"); arguments = @() },
         [pscustomobject]@{ name = "health-report-tests"; script = (Join-Path $SCRIPTS "test_health_report.ps1"); arguments = @() },
         [pscustomobject]@{ name = "secret-scan-tests"; script = (Join-Path $SCRIPTS "test_secret_scan.ps1"); arguments = @() }
     )
@@ -101,6 +104,7 @@ $failCount = @($results | Where-Object status -eq "FAIL").Count
 $okCount = @($results | Where-Object status -eq "OK").Count
 $report = [pscustomobject]@{
     schema_version = "1.0"
+    platform_version = $platform.version
     generated_at = (Get-Date).ToString("o")
     mode = if ($Ci) { "ci" } else { "local" }
     overall = if ($failCount -gt 0) { "FAIL" } else { "OK" }
@@ -114,7 +118,7 @@ if ($Json) {
     $report | ConvertTo-Json -Depth 8
 } else {
     Write-Host ""
-    Write-Host "  DEV_CORE v10 -- Verify" -ForegroundColor Cyan
+    Write-Host "  $($platform.title) -- Verify" -ForegroundColor Cyan
     Write-Host "  ======================" -ForegroundColor DarkGray
     foreach ($result in $results) {
         $color = if ($result.status -eq "OK") { "Green" } else { "Red" }

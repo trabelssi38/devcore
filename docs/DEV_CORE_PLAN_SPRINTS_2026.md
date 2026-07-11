@@ -113,7 +113,7 @@ Objectif : rendre les signaux de santé fiables avant toute migration.
 
 - [x] `S0-01` — Créer `dc verify --ci` avec sortie JSON et code non nul fiable. `5 pts`
 - [x] `S0-02` — Corriger les tests qui affichent FAIL mais retournent `0`. `3 pts`
-- [ ] `S0-03` — Unifier la version plateforme affichée par scripts et documentation. `2 pts`
+- [x] `S0-03` — Unifier la version plateforme affichée par scripts et documentation. `2 pts`
 - [ ] `S0-04` — Ajouter une CI : lint, tests Python/PowerShell, secret scan, contrats. `5 pts`
 - [ ] `S0-05` — Corriger ou migrer la dimension Qdrant 768/3072. `5 pts`
 - [ ] `S0-06` — Ajouter les benchmarks de référence au pipeline. `2 pts`

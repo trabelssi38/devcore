@@ -1,4 +1,4 @@
-# new_project.ps1 -- DEV_CORE v9.0 single client
+# new_project.ps1 -- DEV_CORE single client
 param(
     [Parameter(Mandatory=$true)][string]$Name,
     [string]$Stack = "generic",
@@ -10,9 +10,12 @@ if (-not $Path) {
 }
 
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
+$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
+. "$DEV_CORE\Scripts\platform_version.ps1"
+$PLATFORM = Get-DevCorePlatformInfo
 
 Write-Host ""
-Write-Host "  DEV_CORE v9.0 -- Initialisation Projet" -ForegroundColor Cyan
+Write-Host "  $($PLATFORM.title) -- Initialisation Projet" -ForegroundColor Cyan
 Write-Host "  ====================================" -ForegroundColor DarkGray
 Write-Host ""
 
@@ -32,7 +35,6 @@ $projData | ConvertTo-Json | Set-Content "$devcoreDir\project.json" -Encoding UT
 Write-Host "  [OK] .devcore/project.json cree" -ForegroundColor Green
 
 # 1.5. Mettre a jour le registre global des projets DEV_CORE
-$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $registryPath = "$DEV_CORE\Config\projects.json"
 $registryDir = Split-Path $registryPath
 if (-not (Test-Path $registryDir)) {
@@ -65,7 +67,7 @@ if (-not (Test-Path $claudeMd)) {
 # $Name
 
 Stack: $Stack
-Initialise avec DEV_CORE v9.0.
+Initialise avec $($PLATFORM.title).
 
 ## Commandes utiles
 - \`dc next task\` : charger prochaine tache
