@@ -100,7 +100,7 @@ function Get-MetricsServiceSummaryHtml {
     <div class="token-layer"><span class="token-name">Tokens</span><span class="token-reduction">$tokensStr</span></div>
     <div class="token-layer"><span class="token-name">Cost</span><span class="token-reduction">`$$costStr</span></div>
   </div>
-  <div style="font-size:9px; color:#64748b; font-family:'JetBrains Mono',monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="$($aggregate.store_path)">Durée cumulée: $durationStr</div>
+  <div style="font-size:9px; color:#64748b; font-family:'JetBrains Mono',monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="$($aggregate.store_path)">Dur&eacute;e cumul&eacute;e: $durationStr</div>
 </div>
 "@
     } catch {

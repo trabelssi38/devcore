@@ -180,15 +180,27 @@ function Add-GroupedMetric {
         [hashtable]$Table,
         [string]$MetricType,
         [string]$MetricUnit,
-        [double]$MetricValue
+        [double]$MetricValue,
+        [string]$MetricSource = ""
+    )
+
+    $isSnapshot = (
+        $MetricSource -eq "token_report" -and
+        $MetricType -in @("tokens", "cache_hits", "cost", "sessions")
     )
 
     if (-not $Table.ContainsKey($MetricType)) { $Table[$MetricType] = @{} }
     if (-not $Table[$MetricType].ContainsKey($MetricUnit)) {
-        $Table[$MetricType][$MetricUnit] = [ordered]@{ count = 0; sum = 0.0 }
+        $Table[$MetricType][$MetricUnit] = [ordered]@{ count = 0; sum = 0.0; latest = 0.0; aggregation = "sum" }
     }
     $Table[$MetricType][$MetricUnit].count++
-    $Table[$MetricType][$MetricUnit].sum = [math]::Round(([double]$Table[$MetricType][$MetricUnit].sum + $MetricValue), 6)
+    $Table[$MetricType][$MetricUnit].latest = [math]::Round($MetricValue, 6)
+    if ($isSnapshot) {
+        $Table[$MetricType][$MetricUnit].aggregation = "latest"
+        $Table[$MetricType][$MetricUnit].sum = [math]::Round($MetricValue, 6)
+    } else {
+        $Table[$MetricType][$MetricUnit].sum = [math]::Round(([double]$Table[$MetricType][$MetricUnit].sum + $MetricValue), 6)
+    }
 }
 
 function New-Aggregate {
@@ -203,19 +215,19 @@ function New-Aggregate {
         $metricTypeName = if ($event.metric_type) { [string]$event.metric_type } else { "unknown" }
         $metricUnitName = if ($event.unit) { [string]$event.unit } else { "count" }
         $metricValue = try { [double]$event.value } catch { 0.0 }
-        Add-GroupedMetric -Table $totals -MetricType $metricTypeName -MetricUnit $metricUnitName -MetricValue $metricValue
+        $sourceName = if ($event.source) { [string]$event.source } else { "unknown" }
+        Add-GroupedMetric -Table $totals -MetricType $metricTypeName -MetricUnit $metricUnitName -MetricValue $metricValue -MetricSource $sourceName
 
         $projectName = if ($event.project) { [string]$event.project } else { "unknown" }
         if (-not $projects.ContainsKey($projectName)) { $projects[$projectName] = [ordered]@{ events_count = 0; totals = @{} } }
         $projects[$projectName].events_count++
-        Add-GroupedMetric -Table $projects[$projectName].totals -MetricType $metricTypeName -MetricUnit $metricUnitName -MetricValue $metricValue
+        Add-GroupedMetric -Table $projects[$projectName].totals -MetricType $metricTypeName -MetricUnit $metricUnitName -MetricValue $metricValue -MetricSource $sourceName
 
         $taskName = if ($event.task_id) { [string]$event.task_id } else { "none" }
         if (-not $tasks.ContainsKey($taskName)) { $tasks[$taskName] = [ordered]@{ events_count = 0; totals = @{} } }
         $tasks[$taskName].events_count++
-        Add-GroupedMetric -Table $tasks[$taskName].totals -MetricType $metricTypeName -MetricUnit $metricUnitName -MetricValue $metricValue
+        Add-GroupedMetric -Table $tasks[$taskName].totals -MetricType $metricTypeName -MetricUnit $metricUnitName -MetricValue $metricValue -MetricSource $sourceName
 
-        $sourceName = if ($event.source) { [string]$event.source } else { "unknown" }
         if (-not $sources.ContainsKey($sourceName)) { $sources[$sourceName] = [ordered]@{ events_count = 0 } }
         $sources[$sourceName].events_count++
     }

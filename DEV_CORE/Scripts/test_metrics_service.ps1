@@ -31,12 +31,14 @@ try {
     $payload = '{"api_key":"supersecret","model":"gpt-5.5","tokens":42}'
     powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $metricsServiceScript -Action Record -Source test -Project devcore -TaskId T-119 -MetricType tokens -Value 42 -Unit tokens -PayloadJson $payload | Out-Null
     powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $metricsServiceScript -Action Record -Source test -Project devcore -TaskId T-119 -MetricType duration -Value 3.5 -Unit seconds | Out-Null
+    powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $metricsServiceScript -Action Record -Source token_report -Project devcore -TaskId T-119 -MetricType cost -Value 10 -Unit usd | Out-Null
+    powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $metricsServiceScript -Action Record -Source token_report -Project devcore -TaskId T-119 -MetricType cost -Value 12 -Unit usd | Out-Null
 
     $metricsFile = Get-ChildItem -LiteralPath (Join-Path $tempRoot "Logs\metrics") -Filter "metrics-*.jsonl" | Select-Object -First 1
     Assert-True ($null -ne $metricsFile) "Metrics Service should create a daily JSONL file"
 
     $lines = @(Get-Content -LiteralPath $metricsFile.FullName -Encoding UTF8)
-    Assert-True ($lines.Count -eq 2) "Metrics Service should append one JSON object per Record call"
+    Assert-True ($lines.Count -eq 4) "Metrics Service should append one JSON object per Record call"
     Assert-True (($lines -join "`n") -notmatch "supersecret") "Metrics Service should redact secret payload values"
 
     $first = $lines[0] | ConvertFrom-Json
@@ -49,15 +51,17 @@ try {
 
     $aggregateJson = powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $metricsServiceScript -Action Aggregate -Json | Out-String
     $aggregate = $aggregateJson | ConvertFrom-Json
-    Assert-True ($aggregate.events_count -eq 2) "Aggregate should count recorded events"
+    Assert-True ($aggregate.events_count -eq 4) "Aggregate should count recorded events"
     Assert-True ($aggregate.errors_count -eq 0) "Aggregate should report zero parse errors"
     Assert-True ($aggregate.totals.tokens.tokens.sum -eq 42) "Aggregate should sum token metrics by type and unit"
-    Assert-True ($aggregate.projects.devcore.events_count -eq 2) "Aggregate should group by project"
+    Assert-True ($aggregate.totals.cost.usd.sum -eq 12) "Aggregate should use latest token_report snapshot for cost"
+    Assert-True ($aggregate.totals.cost.usd.aggregation -eq "latest") "Aggregate should mark token_report snapshots as latest"
+    Assert-True ($aggregate.projects.devcore.events_count -eq 4) "Aggregate should group by project"
 
     $statusJson = powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $metricsServiceScript -Action Status -Json | Out-String
     $status = $statusJson | ConvertFrom-Json
     Assert-True ($status.health.ok -eq $true) "Status should include health"
-    Assert-True ($status.aggregate.events_count -eq 2) "Status should include aggregate"
+    Assert-True ($status.aggregate.events_count -eq 4) "Status should include aggregate"
 
     Write-Host "[OK] metrics service smoke tests passed" -ForegroundColor Green
 } finally {
