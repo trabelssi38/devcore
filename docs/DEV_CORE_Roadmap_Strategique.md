@@ -563,6 +563,33 @@ Gate Sprint 7 :
 
 ---
 
+## Sprint 8 -- Learning Engine v1
+
+Objectif : transformer les metriques et evenements en recommandations operationnelles mesurees, sans action automatique sur le routage.
+
+- [x] Introduire `learning_service.ps1` avec actions `Analyze`, `Status`, `Health`.
+- [x] Lire les stores append-only Metrics et Event Bus.
+- [x] Produire `DEV_CORE_DATA\Learning\learning-report-YYYY-MM-DD.json`.
+- [x] Calculer une baseline initiale :
+  - cout par mode.
+  - tokens par mode.
+  - corrections par mode et type de tache.
+  - echecs health check par source.
+- [x] Generer des recommandations typees avec confiance et preuves :
+  - cout.
+  - routing.
+  - reliability.
+- [x] Ajouter tests smoke Learning Service.
+
+Gate Sprint 8 restant :
+
+- Brancher le rapport Learning Engine dans le dashboard.
+- Ajouter rapport hebdomadaire couts, gains, erreurs et recommandations.
+- Mesurer les suggestions de routage contre une baseline multi-jours.
+- Publier le score de confiance dans les vues operationnelles.
+
+---
+
 # Décisions ouvertes
 
 - Format du bus d'événements : JSONL local, SQLite, ou les deux.
