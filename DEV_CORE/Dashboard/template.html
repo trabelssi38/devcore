@@ -424,6 +424,10 @@ details{margin-bottom: 8px}
         {{EVENT_BUS_RECENT}}
       </div>
 
+      <div id="plugin-status" style="margin-bottom:16px">
+        {{PLUGIN_STATUS}}
+      </div>
+
       <div id="knowledge-graph-summary" style="margin-bottom:16px">
         {{KNOWLEDGE_GRAPH_SUMMARY}}
       </div>
@@ -843,6 +847,11 @@ function refreshDashboard() {
       const oldKnowledgeGraph = document.getElementById('knowledge-graph-summary');
       if (oldKnowledgeGraph && oldKnowledgeGraph.innerHTML !== payload.sections.knowledge_graph_summary) {
         oldKnowledgeGraph.innerHTML = payload.sections.knowledge_graph_summary || '';
+      }
+
+      const oldPluginStatus = document.getElementById('plugin-status');
+      if (oldPluginStatus && oldPluginStatus.innerHTML !== payload.sections.plugin_status) {
+        oldPluginStatus.innerHTML = payload.sections.plugin_status || '';
       }
 
       window.taskDetailsMap = payload.task_details || {};

@@ -32,6 +32,7 @@ def test_build_dashboard_payload_uses_stable_json_contract():
             "metrics_service_summary": "<div>metrics</div>",
             "event_bus_recent": "<div>events</div>",
             "knowledge_graph_summary": "<div>knowledge</div>",
+            "plugin_status": "<div>plugins</div>",
         },
         "task_details": {"devcore_T-113": "details"},
         "token_metrics": {"total": {"tokens": 10}},
@@ -52,6 +53,7 @@ def test_build_dashboard_payload_uses_stable_json_contract():
     assert result["sections"]["metrics_service_summary"] == "<div>metrics</div>"
     assert result["sections"]["event_bus_recent"] == "<div>events</div>"
     assert result["sections"]["knowledge_graph_summary"] == "<div>knowledge</div>"
+    assert result["sections"]["plugin_status"] == "<div>plugins</div>"
     assert result["task_details"]["devcore_T-113"] == "details"
     command = run.call_args.args[0]
     assert "gen_dashboard.ps1" in command[5]
@@ -85,6 +87,8 @@ def test_gen_dashboard_payload_includes_context_composition(tmp_path):
     scenario_root = memory_root / "Scenarios"
     project_root.mkdir(parents=True)
     scenario_root.mkdir(parents=True)
+    plugins_root = data_root / "Plugins"
+    plugins_root.mkdir(parents=True)
     (memory_root / "persona.md").write_text("api persona preference", encoding="utf-8")
     (scenario_root / "coding.md").write_text("coding api context composition", encoding="utf-8")
     (project_root / "tasks.json").write_text(
@@ -100,6 +104,43 @@ def test_gen_dashboard_payload_includes_context_composition(tmp_path):
                         "status": "active",
                         "steps_done": 0,
                         "steps_total": 1,
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (plugins_root / "plugins_registry.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "generated_at": "2026-07-11T10:00:00+01:00",
+                "plugins_count": 1,
+                "plugins": [
+                    {
+                        "id": "python-fastapi",
+                        "name": "Python FastAPI",
+                        "version": "0.1.0",
+                        "enabled": True,
+                        "capabilities": {
+                            "commands": ["python-api:new-endpoint"],
+                            "skills": ["python_api"],
+                            "health_checks": [
+                                {
+                                    "id": "python-version",
+                                    "command": "Write-Output 'python-ok'",
+                                    "required": True,
+                                    "timeout_seconds": 5,
+                                }
+                            ],
+                            "widgets": [],
+                            "templates": ["fastapi-endpoint"],
+                        },
+                        "permissions": {
+                            "write_roots": ["data"],
+                            "allow_out_of_scope_write": False,
+                        },
+                        "installed_manifest_path": str(plugins_root / "installed" / "python-fastapi" / "plugin.json"),
                     }
                 ],
             }
@@ -138,3 +179,7 @@ def test_gen_dashboard_payload_includes_context_composition(tmp_path):
     assert "Metrics Service" in payload["sections"]["metrics_service_summary"]
     assert "Event Bus" in payload["sections"]["event_bus_recent"]
     assert "Knowledge Graph" in payload["sections"]["knowledge_graph_summary"]
+    plugin_html = payload["sections"]["plugin_status"]
+    assert "Plugin SDK" in plugin_html
+    assert "python-fastapi" in plugin_html
+    assert "Health checks" in plugin_html

@@ -324,10 +324,82 @@ function Get-ContextCompositionHtml {
 "@
 }
 
+function Get-PluginStatusHtml {
+    $registryPath = Join-Path $DEV_CORE_DATA "Plugins\plugins_registry.json"
+    if (-not (Test-Path -LiteralPath $registryPath)) {
+        return @"
+<div id="plugin-status-inner">
+  <h2>Plugin SDK</h2>
+  <div style="font-size:10px; color:#64748b; padding:8px 0;">Aucun plugin installe.</div>
+</div>
+"@
+    }
+
+    try {
+        $registry = Get-Content -LiteralPath $registryPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        $plugins = @($registry.plugins)
+        $enabledCount = @($plugins | Where-Object { $_.enabled -eq $true }).Count
+        $checksCount = 0
+        foreach ($plugin in $plugins) {
+            if ($plugin.capabilities -and $plugin.capabilities.PSObject.Properties["health_checks"]) {
+                $checksCount += @($plugin.capabilities.health_checks).Count
+            }
+        }
+
+        $rowsHtml = ""
+        foreach ($plugin in ($plugins | Sort-Object id | Select-Object -First 8)) {
+            $pluginId = ConvertTo-DashboardHtml $plugin.id
+            $pluginName = ConvertTo-DashboardHtml $plugin.name
+            $version = ConvertTo-DashboardHtml $plugin.version
+            $enabled = [bool]$plugin.enabled
+            $healthChecks = if ($plugin.capabilities -and $plugin.capabilities.PSObject.Properties["health_checks"]) { @($plugin.capabilities.health_checks) } else { @() }
+            $commands = if ($plugin.capabilities -and $plugin.capabilities.PSObject.Properties["commands"]) { @($plugin.capabilities.commands) } else { @() }
+            $skills = if ($plugin.capabilities -and $plugin.capabilities.PSObject.Properties["skills"]) { @($plugin.capabilities.skills) } else { @() }
+            $checkStatus = "Health checks: $(@($healthChecks).Count) configured"
+            $checkColor = "#94a3b8"
+            $checkTitle = ConvertTo-DashboardHtml ((@($healthChecks) | ForEach-Object { if ($_.id) { [string]$_.id } else { [string]$_ } }) -join " | ")
+
+            $statusClass = if ($enabled) { "status-ok" } else { "status-warn" }
+            $statusText = if ($enabled) { "ON" } else { "OFF" }
+            $commandsText = ConvertTo-DashboardHtml ("commands: $(@($commands).Count) | skills: " + (@($skills) -join ", "))
+
+            $rowsHtml += @"
+  <div class="component" style="padding:8px 10px; margin-bottom:6px; background:rgba(30,41,59,0.2); border:1px solid rgba(255,255,255,0.03); border-radius:6px; display:flex; justify-content:space-between; gap:8px; align-items:flex-start;">
+    <div style="min-width:0; flex:1;">
+      <div class="component-name" style="font-size:11px; font-weight:600; color:#f8fafc; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="$pluginName">$pluginId <span style="font-size:9px; color:#64748b;">v$version</span></div>
+      <div class="component-detail" style="font-size:9px; color:#64748b; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="$commandsText">$commandsText</div>
+      <div style="font-size:9px; color:$checkColor; margin-top:3px; font-family:'JetBrains Mono',monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="$checkTitle">$checkStatus</div>
+    </div>
+    <div class="$statusClass" style="font-size:10px; font-weight:bold; flex-shrink:0;">$statusText</div>
+  </div>
+"@
+        }
+
+        if (-not $rowsHtml) {
+            $rowsHtml = "<div style='font-size:10px; color:#64748b; padding:8px 0;'>Aucun plugin enregistre.</div>"
+        }
+
+        return @"
+<div id="plugin-status-inner">
+  <h2>Plugin SDK</h2>
+  <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:6px; margin-bottom:8px;">
+    <div class="token-layer"><span class="token-name">Plugins</span><span class="token-reduction">$(@($plugins).Count)</span></div>
+    <div class="token-layer"><span class="token-name">Enabled</span><span class="token-reduction">$enabledCount</span></div>
+    <div class="token-layer"><span class="token-name">Checks</span><span class="token-reduction">$checksCount</span></div>
+  </div>
+  <div style="display:flex; flex-direction:column; gap:2px;">$rowsHtml</div>
+</div>
+"@
+    } catch {
+        return "<div id='plugin-status-inner'><h2>Plugin SDK</h2><div style='font-size:10px; color:#ef4444; padding:8px 0;'>Plugin SDK erreur: $(ConvertTo-DashboardHtml $_)</div></div>"
+    }
+}
+
 $contextCompositionHtml = Get-ContextCompositionHtml -ProjectList $projects
 $metricsServiceHtml = Get-MetricsServiceSummaryHtml
 $eventBusHtml = Get-EventBusRecentHtml
 $knowledgeGraphHtml = Get-KnowledgeGraphSummaryHtml
+$pluginStatusHtml = Get-PluginStatusHtml
 Publish-DashboardEvent -EventType "ContextBuilt" -Payload @{ projects = @($projects).Count; has_context = ($contextCompositionHtml.Length -gt 0) } -Id "context-built-$(Get-Date -Format 'yyyyMMddHHmmssffff')"
 
 
@@ -920,6 +992,7 @@ if (Test-Path $TEMPLATE_FILE) {
                 metrics_service_summary = $metricsServiceHtml
                 event_bus_recent = $eventBusHtml
                 knowledge_graph_summary = $knowledgeGraphHtml
+                plugin_status = $pluginStatusHtml
             }
             task_details = $allDetailsMap
             token_metrics = $tokenMetrics
@@ -937,6 +1010,7 @@ if (Test-Path $TEMPLATE_FILE) {
     $template = $template.Replace('{{METRICS_SERVICE_SUMMARY}}', $metricsServiceHtml)
     $template = $template.Replace('{{EVENT_BUS_RECENT}}', $eventBusHtml)
     $template = $template.Replace('{{KNOWLEDGE_GRAPH_SUMMARY}}', $knowledgeGraphHtml)
+    $template = $template.Replace('{{PLUGIN_STATUS}}', $pluginStatusHtml)
     $template = $template.Replace('{{TASK_DETAILS_MAP}}', $detailsJson)
     $template = $template.Replace('{{TOKEN_METRICS_JSON}}', $tokenMetricsJson)
 
