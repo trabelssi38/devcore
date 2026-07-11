@@ -1,6 +1,3 @@
-# DEPRECATED in v9.0 -- Remplacé par le proxy de compression Headroom (port 8787)
-Write-Host "  [RTK] [DEPRECATED] Ce script est déprécié. Headroom Proxy gère maintenant la compression automatiquement." -ForegroundColor Yellow
-
 [CmdletBinding()]
 param(
     [Parameter(ValueFromPipeline=$true)]
@@ -8,6 +5,9 @@ param(
     
     [switch]$StatsSave
 )
+
+# DEPRECATED in v9.0 -- Remplace par le proxy de compression Headroom (port 8787)
+Write-Host "  [RTK] [DEPRECATED] Ce script est deprecie. Headroom Proxy gere maintenant la compression automatiquement." -ForegroundColor Yellow
 
 begin {
     $rawLines = @()

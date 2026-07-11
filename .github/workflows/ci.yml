@@ -1,0 +1,50 @@
+name: DEV_CORE CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verify:
+    name: Verify
+    runs-on: windows-latest
+    env:
+      DEVCORE_PLATFORM_ROOT: ${{ github.workspace }}\DEV_CORE
+      DEVCORE_DATA_ROOT: ${{ github.workspace }}\DEV_CORE_DATA
+      DEVCORE_SKIP_DASHBOARD: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Python test dependencies
+        shell: pwsh
+        run: python -m pip install --upgrade pip pytest
+
+      - name: Lint PowerShell and Python
+        shell: pwsh
+        run: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File DEV_CORE\Scripts\ci_lint.ps1
+
+      - name: Run Python tests
+        shell: pwsh
+        run: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File DEV_CORE\Scripts\ci_python_tests.ps1
+
+      - name: Run PowerShell tests
+        shell: pwsh
+        run: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File DEV_CORE\Scripts\ci_powershell_tests.ps1
+
+      - name: Secret scan
+        shell: pwsh
+        run: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File DEV_CORE\Scripts\secret_scan.ps1 -Path .
+
+      - name: Contract checks
+        shell: pwsh
+        run: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File DEV_CORE\Scripts\ci_contract_tests.ps1
+
+      - name: Final DEV_CORE verify gate
+        shell: pwsh
+        run: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File DEV_CORE\Scripts\dc.ps1 "verify --ci --json"

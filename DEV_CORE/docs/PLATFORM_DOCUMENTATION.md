@@ -887,6 +887,8 @@ dc verify --ci --json
 - `dc verify --ci` échoue sur un code enfant non nul ou un marqueur textuel `[FAIL]`.
 - `dc verify --ci --json` produit un rapport versionné avec le détail de chaque check.
 - `dc health --json` et `dc verify --ci --json` exposent `platform_version` depuis `DEV_CORE\Config\platform.json`.
+- Le profil `dc verify --ci` est portable CI : lint PowerShell/Python, tests Python, tests PowerShell, secret scan et contrats.
+- Le workflow GitHub Actions `.github/workflows/ci.yml` exécute les mêmes gates sur `windows-latest`.
 - `diagnose.ps1` integre le scan de secrets des fichiers suivis par Git.
 
 ### Etat v10.0

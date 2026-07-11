@@ -16,15 +16,30 @@ function Get-DefaultChecks {
         [pscustomobject]@{ name = "diagnose-gate"; script = (Join-Path $SCRIPTS "diagnose.ps1"); arguments = @("-Gate") },
         [pscustomobject]@{ name = "dc-dispatch"; script = (Join-Path $SCRIPTS "test_dc_dispatch.ps1"); arguments = @() },
         [pscustomobject]@{ name = "diagnose-gate-tests"; script = (Join-Path $SCRIPTS "test_diagnose_gate.ps1"); arguments = @() },
+        [pscustomobject]@{ name = "verify-ci-tests"; script = (Join-Path $SCRIPTS "test_verify_ci.ps1"); arguments = @() },
         [pscustomobject]@{ name = "test-exit-contract"; script = (Join-Path $SCRIPTS "test_test_exit_contract.ps1"); arguments = @() },
+        [pscustomobject]@{ name = "ci-workflow-contract"; script = (Join-Path $SCRIPTS "test_ci_workflow.ps1"); arguments = @() },
         [pscustomobject]@{ name = "platform-version-tests"; script = (Join-Path $SCRIPTS "test_platform_version.ps1"); arguments = @() },
         [pscustomobject]@{ name = "health-report-tests"; script = (Join-Path $SCRIPTS "test_health_report.ps1"); arguments = @() },
         [pscustomobject]@{ name = "secret-scan-tests"; script = (Join-Path $SCRIPTS "test_secret_scan.ps1"); arguments = @() }
     )
 }
 
+function Get-CiChecks {
+    return @(
+        [pscustomobject]@{ name = "lint"; script = (Join-Path $SCRIPTS "ci_lint.ps1"); arguments = @() },
+        [pscustomobject]@{ name = "python-tests"; script = (Join-Path $SCRIPTS "ci_python_tests.ps1"); arguments = @() },
+        [pscustomobject]@{ name = "powershell-tests"; script = (Join-Path $SCRIPTS "ci_powershell_tests.ps1"); arguments = @() },
+        [pscustomobject]@{ name = "secret-scan"; script = (Join-Path $SCRIPTS "secret_scan.ps1"); arguments = @("-Path", (Split-Path -Parent $DEV_CORE)) },
+        [pscustomobject]@{ name = "contracts"; script = (Join-Path $SCRIPTS "ci_contract_tests.ps1"); arguments = @() }
+    )
+}
+
 function Get-ConfiguredChecks {
     if ([string]::IsNullOrWhiteSpace($env:DEVCORE_VERIFY_CHECKS_JSON)) {
+        if ($Ci) {
+            return @(Get-CiChecks)
+        }
         return @(Get-DefaultChecks)
     }
 
