@@ -163,8 +163,11 @@ Avant chaque scan, DEV_CORE exécute `ensure_repowise_web_languages.ps1`. Ce scr
 
 Chaque worker :
 1. exécute un `repowise update --index-only --no-docs --no-workspace`;
-2. lance `repowise watch --no-workspace`;
-3. écrit ses logs dans `DEV_CORE_DATA\Logs\scripts\repowise_watch\`.
+2. exécute un refresh docs `repowise update --docs --no-workspace`, ou `--full --docs` si le wiki est vide, quand le commit HEAD diffère du dernier wiki généré, avec throttle `REPOWISE_DOCS_REFRESH_MINUTES`;
+3. lance `repowise watch --no-workspace`;
+4. écrit ses logs dans `DEV_CORE_DATA\Logs\scripts\repowise_watch\`.
+
+Si aucun provider Repowise/API key non interactif n'est configuré, le worker journalise `provider_missing`, continue le watch index-only et retentera au prochain lancement. Configurer `REPOWISE_PROVIDER` ou une API key pour activer la génération wiki automatique.
 
 Le démarrage est idempotent : relancer `dc launch` ne crée pas de doublons.
 

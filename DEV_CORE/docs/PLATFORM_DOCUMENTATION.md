@@ -786,7 +786,7 @@ Langages ajoutes en passthrough indexable :
 | CSS / stylesheets | `.css`, `.scss`, `.sass`, `.less`, `.pcss`, `.postcss` |
 | PowerShell | `.ps1`, `.psm1`, `.psd1` |
 
-Ces fichiers entrent dans le graphe, le git index, les metriques et les lectures MCP par plage (`get_symbol("path:line-line")`). Les reponses synthetiques `get_answer()` restent dependantes des pages wiki ; avec `--index-only --no-docs`, les pages LLM ne sont pas generees.
+Ces fichiers entrent dans le graphe, le git index, les metriques et les lectures MCP par plage (`get_symbol("path:line-line")`). Les reponses synthetiques `get_answer()` restent dependantes des pages wiki ; le watcher lance donc un scan structurel rapide puis un refresh docs controle quand HEAD change.
 
 ### Registre projets
 
@@ -825,6 +825,8 @@ Chaque worker exécute :
 
 ```powershell
 repowise update --index-only --no-docs --no-workspace <project-path>
+repowise update --docs --no-workspace <project-path>
+repowise update --full --docs --no-workspace <project-path>  # si le wiki est vide
 repowise watch --no-workspace <project-path>
 ```
 
