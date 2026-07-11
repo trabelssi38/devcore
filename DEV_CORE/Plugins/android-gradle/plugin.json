@@ -15,8 +15,20 @@
       "android_release"
     ],
     "health_checks": [
-      "java -version",
-      "gradle --version"
+      {
+        "id": "java-version",
+        "command": "java -version",
+        "required": false,
+        "timeout_seconds": 10,
+        "description": "Check that Java is available for Android tooling."
+      },
+      {
+        "id": "gradle-version",
+        "command": "gradle --version",
+        "required": false,
+        "timeout_seconds": 15,
+        "description": "Check that Gradle is available for build workflows."
+      }
     ],
     "widgets": [],
     "templates": [

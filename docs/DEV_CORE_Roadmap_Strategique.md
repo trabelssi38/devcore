@@ -629,10 +629,10 @@ Objectif : poser un SDK plugin minimal, testable et borne par scope, sans modifi
 - [x] Ajouter tests smoke Plugin Service.
 - [x] Ajouter commande `dc plugin ...` (`list`, `health`, `install`, `diagnose`, `disable`, `--json`).
 - [x] Creer trois plugins internes prioritaires : Python/FastAPI, Web/React, Android/Gradle.
+- [x] Ajouter health checks plugin executables via `dc plugin check <id>`.
 
 Gate Sprint 9 restant :
 
-- Ajouter health checks plugin executables.
 - Afficher les plugins dans le dashboard.
 
 ---

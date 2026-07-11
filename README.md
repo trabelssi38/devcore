@@ -203,7 +203,9 @@ Plugins internes versionnes :
 - `DEV_CORE\Plugins\web-react\plugin.json`
 - `DEV_CORE\Plugins\android-gradle\plugin.json`
 
-Commandes : `dc plugin list|health|install|diagnose|disable [--json]`
+Commandes : `dc plugin list|health|install|diagnose|check|disable [--json]`
+
+`dc plugin check <id>` execute les `capabilities.health_checks` du manifest installe et retourne les sorties, codes de retour, timeouts et echecs requis.
 
 ---
 

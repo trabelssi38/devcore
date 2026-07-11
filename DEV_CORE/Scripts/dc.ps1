@@ -162,8 +162,15 @@ function Invoke-PluginSafe {
             & "$SCRIPTS\plugin_service.ps1" @serviceArgs
             return
         }
+        "check" {
+            if ($filtered.Count -lt 2) { Write-Host "  Usage: dc plugin check <id> [--json]" -ForegroundColor Yellow; return }
+            $serviceArgs.Action = "Check"
+            $serviceArgs.Id = $filtered[1]
+            & "$SCRIPTS\plugin_service.ps1" @serviceArgs
+            return
+        }
         default {
-            Write-Host "  Usage: dc plugin list|health|install <plugin.json>|diagnose <id>|disable <id> [--json]" -ForegroundColor Yellow
+            Write-Host "  Usage: dc plugin list|health|install <plugin.json>|diagnose <id>|check <id>|disable <id> [--json]" -ForegroundColor Yellow
             return
         }
     }
@@ -302,7 +309,8 @@ switch -Regex ($cmd) {
         Write-Host "  dc skills lint|eval|promote N   Gate et promotion skill" -ForegroundColor Gray
         Write-Host "  dc plugin list|health           Etat Plugin SDK" -ForegroundColor Gray
         Write-Host "  dc plugin install [plugin.json] Installe un plugin" -ForegroundColor Gray
-        Write-Host "  dc plugin diagnose|disable ID   Verifie ou desactive un plugin" -ForegroundColor Gray
+        Write-Host "  dc plugin diagnose|check ID     Verifie ou execute les health checks" -ForegroundColor Gray
+        Write-Host "  dc plugin disable ID            Desactive un plugin" -ForegroundColor Gray
         Write-Host ""
         Write-Host "  TOON" -ForegroundColor White
         Write-Host "  dc toon                         tasks.json -> tasks.toon (avec stats)" -ForegroundColor Gray

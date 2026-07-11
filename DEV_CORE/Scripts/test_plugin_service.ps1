@@ -26,7 +26,20 @@ try {
         capabilities = [ordered]@{
             commands = @("python-api:new-endpoint")
             skills = @("python_api")
-            health_checks = @("pytest")
+            health_checks = @(
+                [ordered]@{
+                    id = "required-pass"
+                    command = "Write-Output 'plugin-ok'"
+                    required = $true
+                    timeout_seconds = 5
+                },
+                [ordered]@{
+                    id = "optional-fail"
+                    command = "exit 7"
+                    required = $false
+                    timeout_seconds = 5
+                }
+            )
             widgets = @()
             templates = @("fastapi-endpoint")
         }
@@ -53,6 +66,18 @@ try {
     $diagnose = $diagnoseJson | ConvertFrom-Json
     Assert-True ($diagnose.ok -eq $true) "Diagnose should pass for scoped plugin"
     Assert-True ($diagnose.scope_violations_count -eq 0) "Diagnose should report zero scope violations"
+    Assert-True ($diagnose.health_checks_count -eq 2) "Diagnose should report plugin health check count"
+
+    $checkJson = & $pluginServiceScript -Action Check -Id "python-fastapi" -Json | Out-String
+    $check = $checkJson | ConvertFrom-Json
+    Assert-True ($check.ok -eq $true) "Check should pass when required checks pass"
+    Assert-True ($check.health_checks_count -eq 2) "Check should execute both declared health checks"
+    Assert-True ($check.required_failures -eq 0) "Optional health check failures should not fail plugin check"
+    $requiredPass = $check.health_checks | Where-Object { $_.id -eq "required-pass" } | Select-Object -First 1
+    $optionalFail = $check.health_checks | Where-Object { $_.id -eq "optional-fail" } | Select-Object -First 1
+    Assert-True ($requiredPass.ok -eq $true) "Required passing health check should be ok"
+    Assert-True ($optionalFail.ok -eq $false) "Optional failing health check should report failure"
+    Assert-True ($optionalFail.required -eq $false) "Optional health check should remain optional"
 
     $disableJson = & $pluginServiceScript -Action Disable -Id "python-fastapi" -Json | Out-String
     $disable = $disableJson | ConvertFrom-Json

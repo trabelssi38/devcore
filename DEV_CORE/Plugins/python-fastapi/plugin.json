@@ -15,8 +15,20 @@
       "python_api"
     ],
     "health_checks": [
-      "python --version",
-      "pytest --version"
+      {
+        "id": "python-version",
+        "command": "python --version",
+        "required": false,
+        "timeout_seconds": 10,
+        "description": "Check that Python is available on PATH."
+      },
+      {
+        "id": "pytest-version",
+        "command": "pytest --version",
+        "required": false,
+        "timeout_seconds": 10,
+        "description": "Check that pytest is available for test workflows."
+      }
     ],
     "widgets": [],
     "templates": [

@@ -89,7 +89,14 @@ try {
         capabilities = [ordered]@{
             commands = @("dispatcher:test")
             skills = @()
-            health_checks = @()
+            health_checks = @(
+                [ordered]@{
+                    id = "dispatcher-pass"
+                    command = "Write-Output 'dispatcher-ok'"
+                    required = $true
+                    timeout_seconds = 5
+                }
+            )
             widgets = @()
             templates = @()
         }
@@ -111,6 +118,10 @@ try {
 
     $pluginDiagnose = Invoke-DcJson "plugin diagnose dispatcher-plugin --json"
     Assert-True ($pluginDiagnose.ok -eq $true) "dc plugin diagnose should pass for installed plugin"
+
+    $pluginCheck = Invoke-DcJson "plugin check dispatcher-plugin --json"
+    Assert-True ($pluginCheck.ok -eq $true) "dc plugin check should execute plugin health checks"
+    Assert-True ($pluginCheck.health_checks_count -eq 1) "dc plugin check should report health check count"
 
     $pluginDisable = Invoke-DcJson "plugin disable dispatcher-plugin --json"
     Assert-True ($pluginDisable.ok -eq $true) "dc plugin disable should disable installed plugin"

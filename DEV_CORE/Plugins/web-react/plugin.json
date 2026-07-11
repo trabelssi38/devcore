@@ -16,8 +16,20 @@
       "ui-ux"
     ],
     "health_checks": [
-      "node --version",
-      "npm --version"
+      {
+        "id": "node-version",
+        "command": "node --version",
+        "required": false,
+        "timeout_seconds": 10,
+        "description": "Check that Node.js is available on PATH."
+      },
+      {
+        "id": "npm-version",
+        "command": "npm --version",
+        "required": false,
+        "timeout_seconds": 10,
+        "description": "Check that npm is available for package workflows."
+      }
     ],
     "widgets": [],
     "templates": [
