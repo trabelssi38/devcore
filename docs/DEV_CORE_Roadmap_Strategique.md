@@ -590,6 +590,31 @@ Gate Sprint 8 restant :
 
 ---
 
+## Sprint 9 -- Plugin SDK v1
+
+Objectif : poser un SDK plugin minimal, testable et borne par scope, sans modifier le noyau Skills ni la pipeline Auto-Skills.
+
+- [x] Introduire `plugin_service.ps1` avec actions `Install`, `List`, `Disable`, `Diagnose`, `Health`.
+- [x] Definir un manifeste `plugin.json` minimal :
+  - `id`
+  - `name`
+  - `version`
+  - `description`
+  - `capabilities`
+  - `permissions.write_roots`
+- [x] Stocker l'etat runtime dans `DEV_CORE_DATA\Plugins`.
+- [x] Refuser par defaut les chemins d'ecriture hors scope plugin.
+- [x] Ajouter tests smoke Plugin Service.
+
+Gate Sprint 9 restant :
+
+- Ajouter commande `dc plugin ...`.
+- Creer trois plugins internes prioritaires : Python/FastAPI, Web/React, Android/Gradle.
+- Ajouter health checks plugin executables.
+- Afficher les plugins dans le dashboard.
+
+---
+
 # Décisions ouvertes
 
 - Format du bus d'événements : JSONL local, SQLite, ou les deux.
