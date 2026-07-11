@@ -1,0 +1,284 @@
+﻿{
+    "schema_version":  1,
+    "generated_at":  "2026-07-11T14:54:01.3551926+01:00",
+    "source":  "DEV_CORE/Skills/*/SKILL.md",
+    "skills_count":  12,
+    "skills":  [
+                   {
+                       "id":  "android_release",
+                       "name":  "android_release",
+                       "description":  "Utiliser pour toute tâche Android : release, build Gradle, APK/AAB, versionCode, signing, déploiement Play Store.",
+                       "skill_path":  "C:\\devcore\\DEV_CORE\\Skills\\android_release\\SKILL.md",
+                       "compatibility":  "Claude Code · Codex · Gemini · Qwen",
+                       "priority":  null,
+                       "enabled":  true,
+                       "auto_generated":  false,
+                       "created":  "2026-07-11",
+                       "last_checked":  "2026-07-11T14:54:01.1289936+01:00",
+                       "last_used":  null,
+                       "usage_count":  0,
+                       "token_cost_avg":  0,
+                       "tags":  [
+                                    "android_release"
+                                ],
+                       "triggers":  [
+                                        "android_release",
+                                        "android"
+                                    ]
+                   },
+                   {
+                       "id":  "devcore",
+                       "name":  "devcore",
+                       "description":  "DEV_CORE v6.1 Integration for Hermes Agent. Use when working with DEV_CORE scripts, tasks, memory management, or development workflows. Triggers for: dc commands, tasks.json, Qdrant sync, Obsidian notes, launch/endday cycles, task scanning.",
+                       "skill_path":  "C:\\devcore\\DEV_CORE\\Skills\\devcore\\SKILL.md",
+                       "compatibility":  "",
+                       "priority":  null,
+                       "enabled":  true,
+                       "auto_generated":  false,
+                       "created":  "2026-07-11",
+                       "last_checked":  "2026-07-11T14:54:01.2576370+01:00",
+                       "last_used":  null,
+                       "usage_count":  0,
+                       "token_cost_avg":  0,
+                       "tags":  [
+                                    "devcore"
+                                ],
+                       "triggers":  [
+                                        "devcore",
+                                        "memory",
+                                        "qdrant",
+                                        "obsidian",
+                                        "task"
+                                    ]
+                   },
+                   {
+                       "id":  "devcore-automation",
+                       "name":  "devcore-automation",
+                       "description":  "CHARGER EN PREMIER a chaque session. Definit les regles d\u0027execution autonome de DEV_CORE v6.2 : initialisation projet, lancement taches, commits, step tracking, fin de session. L\u0027agent execute les scripts ps1 sans attendre d\u0027instruction humaine. Triggers automatiques sur detection de conditions precisees.",
+                       "skill_path":  "C:\\devcore\\DEV_CORE\\Skills\\devcore-automation\\SKILL.md",
+                       "compatibility":  "Claude Code · Codex Desktop · Gemini CLI · Antigravity",
+                       "priority":  100,
+                       "enabled":  true,
+                       "auto_generated":  false,
+                       "created":  "2026-07-11",
+                       "last_checked":  "2026-07-11T14:54:01.2767338+01:00",
+                       "last_used":  null,
+                       "usage_count":  0,
+                       "token_cost_avg":  0,
+                       "tags":  [
+                                    "devcore-automation"
+                                ],
+                       "triggers":  [
+                                        "devcore-automation"
+                                    ]
+                   },
+                   {
+                       "id":  "dev-methodology",
+                       "name":  "dev-methodology",
+                       "description":  "Utiliser pour toute tâche de développement : nouvelle feature, debug, review architecture, planning sprint, TDD, refactoring, postmortem. Couvre : brainstorming structuré, spec validée par sections, plan d\u0027implémentation granulaire, TDD red/green/refactor, subagent-driven-development, review deux étapes. Déclencher avant d\u0027écrire la moindre ligne de code.",
+                       "skill_path":  "C:\\devcore\\DEV_CORE\\Skills\\dev-methodology\\SKILL.md",
+                       "compatibility":  "Claude Code · Codex · Gemini CLI · Qwen · tout agent SKILL.md",
+                       "priority":  null,
+                       "enabled":  true,
+                       "auto_generated":  false,
+                       "created":  "2026-07-11",
+                       "last_checked":  "2026-07-11T14:54:01.2837333+01:00",
+                       "last_used":  null,
+                       "usage_count":  0,
+                       "token_cost_avg":  0,
+                       "tags":  [
+                                    "dev-methodology"
+                                ],
+                       "triggers":  [
+                                        "dev-methodology",
+                                        "architecture",
+                                        "tdd",
+                                        "postmortem"
+                                    ]
+                   },
+                   {
+                       "id":  "fabric-patterns",
+                       "name":  "fabric-patterns",
+                       "description":  "Utiliser pour : analyser un incident, extraire des insights d\u0027une session, améliorer un prompt, créer une feature spec, rédiger un postmortem, analyser un argument ou un texte, résumer avec structure, créer une user story agile. Patterns issus de Fabric (danielmiessler), adaptés DEV_CORE. Déclencher quand la tâche est analytique, extractive ou d\u0027amélioration de prompt.",
+                       "skill_path":  "C:\\devcore\\DEV_CORE\\Skills\\fabric-patterns\\SKILL.md",
+                       "compatibility":  "Claude Code · Codex · Gemini CLI · Qwen · tout agent SKILL.md",
+                       "priority":  null,
+                       "enabled":  true,
+                       "auto_generated":  false,
+                       "created":  "2026-07-11",
+                       "last_checked":  "2026-07-11T14:54:01.2933296+01:00",
+                       "last_used":  null,
+                       "usage_count":  0,
+                       "token_cost_avg":  0,
+                       "tags":  [
+                                    "fabric-patterns"
+                                ],
+                       "triggers":  [
+                                        "fabric-patterns",
+                                        "incident",
+                                        "postmortem"
+                                    ]
+                   },
+                   {
+                       "id":  "graphify",
+                       "name":  "graphify",
+                       "description":  "Utiliser quand la tâche implique de comprendre la structure d\u0027une codebase, des relations entre composants, l\u0027impact d\u0027un refactoring, une analyse d\u0027architecture, ou une review de code sur un projet inconnu. Graphify construit un knowledge graph interrogeable depuis code, SQL, docs, images, vidéos. Déclencher avec /graphify (Claude Code) ou $graphify (Codex). Complémentaire à Qdrant (sémantique) — graphify couvre les relations structurelles (qui appelle qui, quelles dépendances, quels clusters).",
+                       "skill_path":  "C:\\devcore\\DEV_CORE\\Skills\\graphify\\SKILL.md",
+                       "compatibility":  "Claude Code · Codex Desktop · Gemini CLI · Antigravity · Qwen",
+                       "priority":  null,
+                       "enabled":  true,
+                       "auto_generated":  false,
+                       "created":  "2026-07-11",
+                       "last_checked":  "2026-07-11T14:54:01.2998729+01:00",
+                       "last_used":  null,
+                       "usage_count":  0,
+                       "token_cost_avg":  0,
+                       "tags":  [
+                                    "graphify"
+                                ],
+                       "triggers":  [
+                                        "graphify",
+                                        "architecture",
+                                        "graph",
+                                        "qdrant"
+                                    ]
+                   },
+                   {
+                       "id":  "obsidian",
+                       "name":  "obsidian",
+                       "description":  "Utiliser quand la tâche implique de lire, créer, modifier ou rechercher dans le vault Obsidian de DEV_CORE_DATA. Couvre : Daily Notes, Decisions, Lessons, Architecture, wikilinks, frontmatter, callouts, JSON Canvas, Bases, CLI. Déclencher pour toute opération vault : obsidian_sync, lesson_extractor, endday summary, recherche de notes passées.",
+                       "skill_path":  "C:\\devcore\\DEV_CORE\\Skills\\obsidian\\SKILL.md",
+                       "compatibility":  "Claude Code · Codex · Gemini CLI · Qwen · tout agent SKILL.md",
+                       "priority":  null,
+                       "enabled":  true,
+                       "auto_generated":  false,
+                       "created":  "2026-07-11",
+                       "last_checked":  "2026-07-11T14:54:01.3094209+01:00",
+                       "last_used":  null,
+                       "usage_count":  0,
+                       "token_cost_avg":  0,
+                       "tags":  [
+                                    "obsidian"
+                                ],
+                       "triggers":  [
+                                        "obsidian",
+                                        "architecture"
+                                    ]
+                   },
+                   {
+                       "id":  "python_api",
+                       "name":  "python_api",
+                       "description":  "Utiliser pour toute API Python : FastAPI, endpoints, Pydantic, async, middleware, tests pytest.",
+                       "skill_path":  "C:\\devcore\\DEV_CORE\\Skills\\python_api\\SKILL.md",
+                       "compatibility":  "Claude Code · Codex · Gemini · Qwen",
+                       "priority":  null,
+                       "enabled":  true,
+                       "auto_generated":  false,
+                       "created":  "2026-07-11",
+                       "last_checked":  "2026-07-11T14:54:01.3219669+01:00",
+                       "last_used":  null,
+                       "usage_count":  0,
+                       "token_cost_avg":  0,
+                       "tags":  [
+                                    "python_api"
+                                ],
+                       "triggers":  [
+                                        "python_api",
+                                        "api",
+                                        "python"
+                                    ]
+                   },
+                   {
+                       "id":  "qdrant",
+                       "name":  "qdrant",
+                       "description":  "Utiliser quand la tâche implique Qdrant : upsert de mémoire, recherche sémantique, diagnostic de performance, quantisation, sharding, déduplication, migration de modèle d\u0027embedding, monitoring, ou toute opération sur les collections DEV_CORE. Déclencher pour qdrant_sync.ps1, mémoire vectorielle, recherche hybride, et maintenance hebdomadaire.",
+                       "skill_path":  "C:\\devcore\\DEV_CORE\\Skills\\qdrant\\SKILL.md",
+                       "compatibility":  "Claude Code · Codex · Gemini CLI · Qwen · tout agent SKILL.md",
+                       "priority":  null,
+                       "enabled":  true,
+                       "auto_generated":  false,
+                       "created":  "2026-07-11",
+                       "last_checked":  "2026-07-11T14:54:01.3300625+01:00",
+                       "last_used":  null,
+                       "usage_count":  0,
+                       "token_cost_avg":  0,
+                       "tags":  [
+                                    "qdrant"
+                                ],
+                       "triggers":  [
+                                        "qdrant"
+                                    ]
+                   },
+                   {
+                       "id":  "toon",
+                       "name":  "toon",
+                       "description":  "",
+                       "skill_path":  "C:\\devcore\\DEV_CORE\\Skills\\toon\\SKILL.md",
+                       "compatibility":  "",
+                       "priority":  null,
+                       "enabled":  true,
+                       "auto_generated":  false,
+                       "created":  "2026-07-11",
+                       "last_checked":  "2026-07-11T14:54:01.3396246+01:00",
+                       "last_used":  null,
+                       "usage_count":  0,
+                       "token_cost_avg":  0,
+                       "tags":  [
+                                    "toon"
+                                ],
+                       "triggers":  [
+                                        "toon"
+                                    ]
+                   },
+                   {
+                       "id":  "ui-ux",
+                       "name":  "ui-ux",
+                       "description":  "Utiliser pour toute tâche de design ou développement frontend : composants UI, design system, wireframes, choix typographie, palettes couleurs, accessibilité, responsive layout, micro-interactions. Fournit 99 guidelines UX, règles de raisonnement design, styles visuels, palettes et paires de polices. Déclencher avant de générer du HTML, CSS, React, SwiftUI ou Flutter.",
+                       "skill_path":  "C:\\devcore\\DEV_CORE\\Skills\\ui-ux\\SKILL.md",
+                       "compatibility":  "Claude Code · Codex · Gemini CLI · Qwen · tout agent SKILL.md",
+                       "priority":  null,
+                       "enabled":  true,
+                       "auto_generated":  false,
+                       "created":  "2026-07-11",
+                       "last_checked":  "2026-07-11T14:54:01.3456689+01:00",
+                       "last_used":  null,
+                       "usage_count":  0,
+                       "token_cost_avg":  0,
+                       "tags":  [
+                                    "ui-ux"
+                                ],
+                       "triggers":  [
+                                        "ui-ux",
+                                        "design",
+                                        "frontend",
+                                        "graph",
+                                        "react"
+                                    ]
+                   },
+                   {
+                       "id":  "web_ui",
+                       "name":  "web_ui",
+                       "description":  "Utiliser pour toute tâche web frontend : HTML, CSS, JS, React, responsive, composants.",
+                       "skill_path":  "C:\\devcore\\DEV_CORE\\Skills\\web_ui\\SKILL.md",
+                       "compatibility":  "Claude Code · Codex · Gemini · Qwen",
+                       "priority":  null,
+                       "enabled":  true,
+                       "auto_generated":  false,
+                       "created":  "2026-07-11",
+                       "last_checked":  "2026-07-11T14:54:01.3516830+01:00",
+                       "last_used":  null,
+                       "usage_count":  0,
+                       "token_cost_avg":  0,
+                       "tags":  [
+                                    "web_ui"
+                                ],
+                       "triggers":  [
+                                        "web_ui",
+                                        "frontend",
+                                        "react",
+                                        "web"
+                                    ]
+                   }
+               ],
+    "last_checked":  "2026-07-11T14:54:25.6777266+01:00"
+}
