@@ -93,8 +93,6 @@ if (Test-Path $regPath) {
             skill_path     = "$DEV_CORE\Skills\graphify\SKILL.md"
             source         = "safishamsi/graphify"
             created        = (Get-Date -Format "yyyy-MM-dd")
-            last_used      = (Get-Date -Format "yyyy-MM-dd")
-            usage_count    = 0
             auto_generated = $false
             token_cost_avg = 0
             tags           = @("graphify","knowledge-graph","architecture","codebase","analysis","dependencies")

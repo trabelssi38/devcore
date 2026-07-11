@@ -14,9 +14,6 @@
                        "enabled":  true,
                        "auto_generated":  false,
                        "created":  "2026-07-11",
-                       "last_checked":  "2026-07-11T14:54:01.1289936+01:00",
-                       "last_used":  null,
-                       "usage_count":  0,
                        "token_cost_avg":  0,
                        "tags":  [
                                     "android_release"
@@ -36,9 +33,6 @@
                        "enabled":  true,
                        "auto_generated":  false,
                        "created":  "2026-07-11",
-                       "last_checked":  "2026-07-11T14:54:01.2576370+01:00",
-                       "last_used":  null,
-                       "usage_count":  0,
                        "token_cost_avg":  0,
                        "tags":  [
                                     "devcore"
@@ -61,9 +55,6 @@
                        "enabled":  true,
                        "auto_generated":  false,
                        "created":  "2026-07-11",
-                       "last_checked":  "2026-07-11T14:54:01.2767338+01:00",
-                       "last_used":  null,
-                       "usage_count":  0,
                        "token_cost_avg":  0,
                        "tags":  [
                                     "devcore-automation"
@@ -82,9 +73,6 @@
                        "enabled":  true,
                        "auto_generated":  false,
                        "created":  "2026-07-11",
-                       "last_checked":  "2026-07-11T14:54:01.2837333+01:00",
-                       "last_used":  null,
-                       "usage_count":  0,
                        "token_cost_avg":  0,
                        "tags":  [
                                     "dev-methodology"
@@ -106,9 +94,6 @@
                        "enabled":  true,
                        "auto_generated":  false,
                        "created":  "2026-07-11",
-                       "last_checked":  "2026-07-11T14:54:01.2933296+01:00",
-                       "last_used":  null,
-                       "usage_count":  0,
                        "token_cost_avg":  0,
                        "tags":  [
                                     "fabric-patterns"
@@ -129,9 +114,6 @@
                        "enabled":  true,
                        "auto_generated":  false,
                        "created":  "2026-07-11",
-                       "last_checked":  "2026-07-11T14:54:01.2998729+01:00",
-                       "last_used":  null,
-                       "usage_count":  0,
                        "token_cost_avg":  0,
                        "tags":  [
                                     "graphify"
@@ -153,9 +135,6 @@
                        "enabled":  true,
                        "auto_generated":  false,
                        "created":  "2026-07-11",
-                       "last_checked":  "2026-07-11T14:54:01.3094209+01:00",
-                       "last_used":  null,
-                       "usage_count":  0,
                        "token_cost_avg":  0,
                        "tags":  [
                                     "obsidian"
@@ -175,9 +154,6 @@
                        "enabled":  true,
                        "auto_generated":  false,
                        "created":  "2026-07-11",
-                       "last_checked":  "2026-07-11T14:54:01.3219669+01:00",
-                       "last_used":  null,
-                       "usage_count":  0,
                        "token_cost_avg":  0,
                        "tags":  [
                                     "python_api"
@@ -198,9 +174,6 @@
                        "enabled":  true,
                        "auto_generated":  false,
                        "created":  "2026-07-11",
-                       "last_checked":  "2026-07-11T14:54:01.3300625+01:00",
-                       "last_used":  null,
-                       "usage_count":  0,
                        "token_cost_avg":  0,
                        "tags":  [
                                     "qdrant"
@@ -219,9 +192,6 @@
                        "enabled":  true,
                        "auto_generated":  false,
                        "created":  "2026-07-11",
-                       "last_checked":  "2026-07-11T14:54:01.3396246+01:00",
-                       "last_used":  null,
-                       "usage_count":  0,
                        "token_cost_avg":  0,
                        "tags":  [
                                     "toon"
@@ -240,9 +210,6 @@
                        "enabled":  true,
                        "auto_generated":  false,
                        "created":  "2026-07-11",
-                       "last_checked":  "2026-07-11T14:54:01.3456689+01:00",
-                       "last_used":  null,
-                       "usage_count":  0,
                        "token_cost_avg":  0,
                        "tags":  [
                                     "ui-ux"
@@ -265,9 +232,6 @@
                        "enabled":  true,
                        "auto_generated":  false,
                        "created":  "2026-07-11",
-                       "last_checked":  "2026-07-11T14:54:01.3516830+01:00",
-                       "last_used":  null,
-                       "usage_count":  0,
                        "token_cost_avg":  0,
                        "tags":  [
                                     "web_ui"
@@ -279,6 +243,5 @@
                                         "web"
                                     ]
                    }
-               ],
-    "last_checked":  "2026-07-11T14:54:25.6777266+01:00"
+               ]
 }

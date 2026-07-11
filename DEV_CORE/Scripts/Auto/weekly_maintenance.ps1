@@ -21,12 +21,22 @@ catch { Log "  Qdrant non disponible" "Yellow" }
 # 3. Skills prune
 Log "3/6 Skills check" "Cyan"
 $regPath = "$DEV_CORE\Skills\skills_registry.json"
+$runtimePath = "$DEV_CORE_DATA\Skills\skills_runtime.json"
 if (Test-Path $regPath) {
-    $reg = Get-Content $regPath | ConvertFrom-Json
+    $reg = Get-Content $regPath -Raw -Encoding UTF8 | ConvertFrom-Json
     $cutoff = (Get-Date).AddDays(-30).ToString("yyyy-MM-dd")
-    $stale = $reg.skills | Where-Object { $_.last_used -lt $cutoff }
-    if ($stale) { Log "  $($stale.Count) skills non utilises depuis 30j : $($stale.id -join ', ')" "Yellow" }
+    $runtime = $null
+    if (Test-Path $runtimePath) {
+        try { $runtime = Get-Content $runtimePath -Raw -Encoding UTF8 | ConvertFrom-Json } catch { $runtime = $null }
+    }
+    $stale = if ($runtime) {
+        @($runtime.skills | Where-Object { $_.last_used -and $_.last_used -lt $cutoff })
+    } else {
+        @()
+    }
+    if ($stale.Count -gt 0) { Log "  $($stale.Count) skills non utilises depuis 30j : $($stale.id -join ', ')" "Yellow" }
     else { Log "  Tous les skills actifs" "Green" }
+    if (-not $runtime) { Log "  Runtime skills absent : $runtimePath" "Gray" }
 }
 
 # 4. Cache flush
