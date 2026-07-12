@@ -1132,6 +1132,10 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - `OutboxRepository.claim_pending(limit=...)` recupere les messages `pending` dans l'ordre de creation.
 - `IdempotentConsumer` ignore les messages dont `idempotency_key` a deja ete traitee.
 - `DEV_CORE\Database\test_outbox_idempotency.py` couvre le schema, l'enqueue/claim et la consommation idempotente.
+- `BackoffPolicy` applique un backoff exponentiel borne pour les retries outbox.
+- `OutboxRepository.mark_failed(...)` replanifie un message ou le passe en `dead_letter` apres `max_attempts`.
+- `Worker(..., timeout_seconds=...)` convertit un depassement de temps en transition `timeout`.
+- `DEV_CORE\Database\test_outbox_retry_dlq.py` couvre backoff, retry, dead-letter et timeout worker.
 - `-Action Sync` : fusionne les suggestions detectees depuis un fichier JSON, avec generation d'ID et deduplication par ID/titre.
 
 `task_add.ps1`, `task_next.ps1`, `task_done.ps1`, `task_step_done.ps1` et `task_sync.ps1` sont maintenant des adaptateurs vers `task_service.ps1`, ce qui garde les mutations de `tasks.json` dans un seul service.
