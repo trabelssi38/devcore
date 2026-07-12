@@ -258,6 +258,26 @@ Skills installés via symlinks dans `~/.claude/skills/` :
 ~/.claude/skills/obsidian -> C:\devcore\DEV_CORE\Skills\obsidian
 ```
 
+### Compatibilité Agent Skills
+
+DEV_CORE supporte un contrôle de compatibilité avec la convention Agent Skills documentée par `anthropics/skills`.
+
+```powershell
+# Audit non bloquant pour les skills historiques DEV_CORE
+powershell -File C:\devcore\DEV_CORE\Scripts\skill_lint.ps1 -Path C:\devcore\DEV_CORE\Skills\dev-methodology -AgentSpec
+
+# Gate bloquant pour les nouveaux skills promus
+powershell -File C:\devcore\DEV_CORE\Scripts\skill_lint.ps1 -Path C:\devcore\DEV_CORE\Skills\dev-methodology -StrictAgentSpec
+```
+
+Règles principales :
+
+- un skill reste un dossier contenant un `SKILL.md`;
+- le frontmatter doit exposer `name` et `description`;
+- en mode strict, le nom doit correspondre au dossier et utiliser uniquement minuscules, chiffres et tirets;
+- les contenus longs doivent être déplacés vers `references/`, `scripts/` ou `assets/`;
+- le mode strict s’applique aux nouveaux skills, pas rétroactivement aux skills historiques contenant des underscores.
+
 ---
 
 ## 7. Mémoire et Qdrant

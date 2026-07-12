@@ -30,6 +30,7 @@ $tests = @(
     "test_plugin_service.ps1",
     "test_skills_runtime.ps1",
     "test_auto_skills_pipeline.ps1",
+    "test_skill_agent_spec.ps1",
     "test_internal_plugins.ps1",
     "test_repowise_watch_worker.ps1"
 )

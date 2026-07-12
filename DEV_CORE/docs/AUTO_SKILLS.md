@@ -55,6 +55,23 @@ The dispatcher routes these commands through `dc.ps1` to `auto_skill_service.ps1
 - obvious secret literals are absent;
 - recommended sections such as `Trigger`, `Workflow`, and `Safety` are present.
 
+Agent Skills compatibility can be checked with:
+
+```powershell
+.\DEV_CORE\Scripts\skill_lint.ps1 -Path .\DEV_CORE\Skills\dev-methodology -AgentSpec
+.\DEV_CORE\Scripts\skill_lint.ps1 -Path .\DEV_CORE\Skills\dev-methodology -StrictAgentSpec
+```
+
+`-AgentSpec` is advisory for legacy DEV_CORE skills. It reports compatibility gaps as warnings so existing internal skills with historical names such as `python_api` or `web_ui` do not break CI.
+
+`-StrictAgentSpec` is blocking and should be used for new promoted skills intended to follow the external Agent Skills package convention:
+
+- folder name must match frontmatter `name`;
+- `name` must be lowercase alphanumeric with hyphens only, maximum 64 characters;
+- `description` must be present and concise;
+- `SKILL.md` should stay focused, with large details moved to `references/`, `scripts/`, or `assets/`;
+- deep reference chains are discouraged to preserve progressive disclosure.
+
 `skill_eval.ps1` validates:
 
 - lint is not failing;
