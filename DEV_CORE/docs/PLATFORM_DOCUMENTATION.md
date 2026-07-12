@@ -1122,6 +1122,16 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - Sans run disponible, le worker retourne `idle`.
 - Le worker depend d'un port `RunRepository`, pas de FastAPI.
 - `DEV_CORE\API\test_worker_execution.py` couvre succes, echec handler et absence de run.
+
+### Transactional outbox
+
+`DEV_CORE\Database\devcore_db\outbox.py` ajoute une outbox transactionnelle pour publier les effets apres commit.
+
+- Table `outbox_messages` : `id`, `topic`, `payload`, `idempotency_key`, `status`, `attempts`, `created_at`, `available_at`, `processed_at`.
+- `OutboxRepository.enqueue(...)` ajoute un message dans la meme transaction que la mutation metier.
+- `OutboxRepository.claim_pending(limit=...)` recupere les messages `pending` dans l'ordre de creation.
+- `IdempotentConsumer` ignore les messages dont `idempotency_key` a deja ete traitee.
+- `DEV_CORE\Database\test_outbox_idempotency.py` couvre le schema, l'enqueue/claim et la consommation idempotente.
 - `-Action Sync` : fusionne les suggestions detectees depuis un fichier JSON, avec generation d'ID et deduplication par ID/titre.
 
 `task_add.ps1`, `task_next.ps1`, `task_done.ps1`, `task_step_done.ps1` et `task_sync.ps1` sont maintenant des adaptateurs vers `task_service.ps1`, ce qui garde les mutations de `tasks.json` dans un seul service.

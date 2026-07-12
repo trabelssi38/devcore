@@ -120,7 +120,23 @@ audit_log = Table(
 )
 
 
+outbox_messages = Table(
+    "outbox_messages",
+    metadata,
+    Column("id", Text, primary_key=True),
+    Column("topic", Text, nullable=False),
+    Column("payload", JSONB, nullable=False, server_default="{}"),
+    Column("idempotency_key", Text, nullable=False, unique=True),
+    Column("status", String, nullable=False, server_default="pending"),
+    Column("attempts", Integer, nullable=False, server_default="0"),
+    Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    Column("available_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    Column("processed_at", DateTime(timezone=True)),
+)
+
+
 Index("idx_tasks_project_status", tasks.c.project_id, tasks.c.status, tasks.c.updated_at.desc())
 Index("idx_runs_task_status", runs.c.task_id, runs.c.status, runs.c.updated_at.desc())
 Index("idx_events_project_created", events.c.project_id, events.c.created_at.desc())
 Index("idx_audit_log_project_created", audit_log.c.project_id, audit_log.c.created_at.desc())
+Index("idx_outbox_messages_status_created", outbox_messages.c.status, outbox_messages.c.created_at.asc())

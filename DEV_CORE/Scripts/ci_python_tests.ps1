@@ -13,6 +13,7 @@ $tests = @(
     "DEV_CORE/API/test_worker_execution.py",
     "DEV_CORE/Database/test_backup_restore_downgrade.py",
     "DEV_CORE/Database/test_importer_reconciliation.py",
+    "DEV_CORE/Database/test_outbox_idempotency.py",
     "DEV_CORE/Database/test_postgres_schema_contract.py",
     "DEV_CORE/Database/test_repositories_transactions.py",
     "DEV_CORE/Database/test_sqlalchemy_alembic_setup.py",

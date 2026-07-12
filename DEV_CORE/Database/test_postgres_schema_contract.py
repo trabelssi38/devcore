@@ -11,7 +11,7 @@ def read_schema() -> str:
 def test_postgres_schema_declares_core_tables() -> None:
     schema = read_schema()
 
-    for table in ["projects", "tasks", "runs", "events", "plugins", "audit_log"]:
+    for table in ["projects", "tasks", "runs", "events", "plugins", "audit_log", "outbox_messages"]:
         assert f"create table if not exists {table}" in schema
 
 
@@ -33,6 +33,7 @@ def test_postgres_schema_declares_operational_indexes() -> None:
         "idx_runs_task_status",
         "idx_events_project_created",
         "idx_audit_log_project_created",
+        "idx_outbox_messages_status_created",
     ]:
         assert f"create index if not exists {index}" in schema
 

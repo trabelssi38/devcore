@@ -82,6 +82,18 @@ create table if not exists audit_log (
     created_at timestamptz not null default now()
 );
 
+create table if not exists outbox_messages (
+    id text primary key,
+    topic text not null,
+    payload jsonb not null default '{}'::jsonb,
+    idempotency_key text not null unique,
+    status text not null default 'pending',
+    attempts integer not null default 0,
+    created_at timestamptz not null default now(),
+    available_at timestamptz not null default now(),
+    processed_at timestamptz
+);
+
 create index if not exists idx_tasks_project_status
     on tasks (project_id, status, updated_at desc);
 
@@ -93,3 +105,6 @@ create index if not exists idx_events_project_created
 
 create index if not exists idx_audit_log_project_created
     on audit_log (project_id, created_at desc);
+
+create index if not exists idx_outbox_messages_status_created
+    on outbox_messages (status, created_at asc);

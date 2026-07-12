@@ -30,5 +30,5 @@ def test_initial_alembic_revision_has_upgrade_and_downgrade() -> None:
     assert "def upgrade()" in content
     assert "postgres_schema_v1.sql" in content
     assert "def downgrade()" in content
-    for table in ["audit_log", "events", "plugins", "runs", "tasks", "projects"]:
+    for table in ["outbox_messages", "audit_log", "events", "plugins", "runs", "tasks", "projects"]:
         assert f"drop table if exists {table}" in content
