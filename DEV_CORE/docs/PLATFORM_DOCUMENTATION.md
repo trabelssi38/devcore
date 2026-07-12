@@ -1113,6 +1113,15 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - Transitions autorisees : `queued/start`, `queued/cancel`, `running/succeed`, `running/fail`, `running/timeout`, `running/cancel`.
 - Les transitions invalides levent `InvalidRunTransition`.
 - `DEV_CORE\API\test_run_state_machine.py` verrouille les transitions et les etats terminaux.
+
+### Execution worker
+
+`DEV_CORE\API\devcore_api\worker.py` extrait l'execution des runs hors du processus HTTP.
+
+- `Worker.run_once()` reclame un run `queued`, applique `start`, execute un handler, puis applique `succeed` ou `fail`.
+- Sans run disponible, le worker retourne `idle`.
+- Le worker depend d'un port `RunRepository`, pas de FastAPI.
+- `DEV_CORE\API\test_worker_execution.py` couvre succes, echec handler et absence de run.
 - `-Action Sync` : fusionne les suggestions detectees depuis un fichier JSON, avec generation d'ID et deduplication par ID/titre.
 
 `task_add.ps1`, `task_next.ps1`, `task_done.ps1`, `task_step_done.ps1` et `task_sync.ps1` sont maintenant des adaptateurs vers `task_service.ps1`, ce qui garde les mutations de `tasks.json` dans un seul service.

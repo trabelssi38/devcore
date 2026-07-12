@@ -10,6 +10,7 @@ $tests = @(
     "DEV_CORE/API/test_openapi_client_generation.py",
     "DEV_CORE/API/test_ports.py",
     "DEV_CORE/API/test_run_state_machine.py",
+    "DEV_CORE/API/test_worker_execution.py",
     "DEV_CORE/Database/test_backup_restore_downgrade.py",
     "DEV_CORE/Database/test_importer_reconciliation.py",
     "DEV_CORE/Database/test_postgres_schema_contract.py",
