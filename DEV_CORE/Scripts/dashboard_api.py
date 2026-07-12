@@ -20,6 +20,7 @@ DATA_ROOT = os.getenv("DEVCORE_DATA_ROOT", "C:/devcore/DEV_CORE_DATA")
 API_SCHEMA_VERSION = 1
 DASHBOARD_COMMAND_TIMEOUT_SEC = 90.0
 PLUGIN_ID_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]*$")
+SAFE_ID_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]*$")
 PUBLIC_BIND_HOSTS = {"0.0.0.0", "::", ""}
 PUBLIC_PATHS = {"/", "/index.html", "/api/status"}
 TOKEN_BYTES = 32
@@ -33,8 +34,49 @@ class RequestTooLarge(ValueError):
     pass
 
 
+def canonical_path(path):
+    return Path(path).resolve()
+
+
+def ensure_within_root(path, root):
+    resolved_root = canonical_path(root)
+    resolved_path = canonical_path(path)
+    try:
+        resolved_path.relative_to(resolved_root)
+    except ValueError as exc:
+        raise ValueError(f"Path escapes allowed root: {resolved_root}") from exc
+    return resolved_path
+
+
+def get_platform_path(*parts):
+    return ensure_within_root(Path(PLATFORM_ROOT).joinpath(*parts), PLATFORM_ROOT)
+
+
+def get_data_path(*parts):
+    return ensure_within_root(Path(DATA_ROOT).joinpath(*parts), DATA_ROOT)
+
+
+def validate_safe_id(value, label):
+    value = str(value or "").strip()
+    if (
+        not SAFE_ID_PATTERN.fullmatch(value)
+        or "/" in value
+        or "\\" in value
+        or ":" in value
+        or ".." in value
+    ):
+        raise ValueError(f"Invalid {label}: {value}")
+    return value
+
+
+def get_project_tasks_file(project):
+    safe_project = validate_safe_id(project, "project")
+    memory_root = get_data_path("Memory")
+    return ensure_within_root(memory_root / safe_project / "tasks.json", memory_root)
+
+
 def _read_network_config():
-    config_path = Path(PLATFORM_ROOT) / "Config" / "network.json"
+    config_path = get_platform_path("Config", "network.json")
     if not config_path.exists():
         return {}
     try:
@@ -62,7 +104,7 @@ def get_bind_host():
 
 
 def _read_security_config():
-    config_path = Path(PLATFORM_ROOT) / "Config" / "security.json"
+    config_path = get_platform_path("Config", "security.json")
     if not config_path.exists():
         return {}
     try:
@@ -115,11 +157,11 @@ def is_request_too_large(headers):
 
 
 def get_token_store_path():
-    return Path(DATA_ROOT) / "Security" / "dashboard_api_token.json"
+    return get_data_path("Security", "dashboard_api_token.json")
 
 
 def get_csrf_store_path():
-    return Path(DATA_ROOT) / "Security" / "dashboard_api_csrf.json"
+    return get_data_path("Security", "dashboard_api_csrf.json")
 
 
 def hash_token(token):
@@ -166,7 +208,7 @@ def read_csrf_record():
 
 def ensure_csrf_token():
     record = read_csrf_record()
-    bootstrap_path = Path(DATA_ROOT) / "Security" / "dashboard_api_csrf.bootstrap"
+    bootstrap_path = get_data_path("Security", "dashboard_api_csrf.bootstrap")
     if record and record.get("token_hash"):
         if bootstrap_path.exists():
             return bootstrap_path.read_text(encoding="utf-8").strip()
@@ -190,7 +232,7 @@ def validate_csrf_token(token):
 
 def ensure_api_token():
     record = read_token_record()
-    bootstrap_path = Path(DATA_ROOT) / "Security" / "dashboard_api_token.bootstrap"
+    bootstrap_path = get_data_path("Security", "dashboard_api_token.bootstrap")
     if record and record.get("token_hash"):
         if bootstrap_path.exists():
             return bootstrap_path.read_text(encoding="utf-8").strip()
@@ -206,7 +248,7 @@ def ensure_api_token():
 def rotate_api_token():
     token = secrets.token_urlsafe(TOKEN_BYTES)
     write_token_record(token)
-    bootstrap_path = Path(DATA_ROOT) / "Security" / "dashboard_api_token.bootstrap"
+    bootstrap_path = get_data_path("Security", "dashboard_api_token.bootstrap")
     bootstrap_path.parent.mkdir(parents=True, exist_ok=True)
     bootstrap_path.write_text(token, encoding="utf-8")
     return token
@@ -313,7 +355,7 @@ def run_plugin_check(plugin_id):
     if not PLUGIN_ID_PATTERN.fullmatch(plugin_id or ""):
         raise ValueError(f"Invalid plugin id: {plugin_id}")
 
-    dc_script = Path(PLATFORM_ROOT) / "Scripts" / "dc.ps1"
+    dc_script = get_platform_path("Scripts", "dc.ps1")
     cmd = [
         "powershell.exe",
         "-NoProfile",
@@ -339,13 +381,14 @@ def run_plugin_check(plugin_id):
     return json.loads(result.stdout)
 
 def build_dashboard_payload():
+    dashboard_script = get_platform_path("Scripts", "gen_dashboard.ps1")
     cmd = [
         "powershell.exe",
         "-NoProfile",
         "-ExecutionPolicy",
         "Bypass",
         "-File",
-        f"{PLATFORM_ROOT}/Scripts/gen_dashboard.ps1",
+        str(dashboard_script),
         "-Json",
         "-SkipTokenRefresh",
     ]
@@ -390,7 +433,7 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
         pass
 
     def get_settings(self):
-        settings_file = Path(PLATFORM_ROOT) / "Config" / "settings.json"
+        settings_file = get_platform_path("Config", "settings.json")
         if not settings_file.exists():
             defaults = {
                 "active_client": "antigravity",
@@ -413,14 +456,14 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
             return {}
 
     def save_settings(self, data):
-        settings_file = Path(PLATFORM_ROOT) / "Config" / "settings.json"
+        settings_file = get_platform_path("Config", "settings.json")
         settings_file.parent.mkdir(parents=True, exist_ok=True)
         write_json_with_retry(settings_file, data)
         
         # Sync active client file
         active_client = data.get("active_client")
         if active_client:
-            client_file = Path(PLATFORM_ROOT) / "Config" / "active_client.txt"
+            client_file = get_platform_path("Config", "active_client.txt")
             with open(client_file, "w", encoding="utf-8") as f:
                 f.write(active_client)
 
@@ -459,7 +502,7 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
 
         elif path in ["/", "/index.html"]:
             try:
-                index_path = Path(PLATFORM_ROOT) / "Dashboard" / "index.html"
+                index_path = get_platform_path("Dashboard", "index.html")
                 if index_path.exists():
                     with open(index_path, "r", encoding="utf-8") as f:
                         html_content = inject_auth_fetch(f.read())
@@ -502,12 +545,13 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
                 self.send_error_response(str(e))
         elif path == "/api/refresh":
             try:
+                dashboard_script = get_platform_path("Scripts", "gen_dashboard.ps1")
                 cmd = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", 
-                       f"{PLATFORM_ROOT}/Scripts/gen_dashboard.ps1"]
+                       str(dashboard_script)]
                 print(f"[DashboardAPI] Running gen_dashboard.ps1 (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
                 subprocess.run(cmd, capture_output=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC)
                 
-                index_path = Path(PLATFORM_ROOT) / "Dashboard" / "index.html"
+                index_path = get_platform_path("Dashboard", "index.html")
                 if index_path.exists():
                     with open(index_path, "r", encoding="utf-8") as f:
                         html_content = f.read()
@@ -691,7 +735,7 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
             pass
 
     def complete_task(self, project, task_id):
-        tasks_file = Path(DATA_ROOT) / "Memory" / project / "tasks.json"
+        tasks_file = get_project_tasks_file(project)
         if not tasks_file.exists():
             return False, f"Project board not found: {tasks_file}"
 
@@ -719,15 +763,17 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
 
             # If it was the active task, run the official task_done.ps1 to execute hooks
             if is_active:
+                task_done_script = get_platform_path("Scripts", "task_done.ps1")
                 cmd = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", 
-                       f"{PLATFORM_ROOT}/Scripts/task_done.ps1", "-Force"]
+                       str(task_done_script), "-Force"]
                 print(f"[DashboardAPI] Running task_done.ps1 for active task completion (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
                 subprocess.run(cmd, capture_output=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC)
                 return True, f"Active task {task_id} completed successfully via task_done.ps1"
             else:
                 # Regenerate the dashboard
+                dashboard_script = get_platform_path("Scripts", "gen_dashboard.ps1")
                 cmd = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", 
-                       f"{PLATFORM_ROOT}/Scripts/gen_dashboard.ps1"]
+                       str(dashboard_script)]
                 print(f"[DashboardAPI] Running gen_dashboard.ps1 for dashboard refresh (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
                 subprocess.run(cmd, capture_output=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC)
                 return True, f"Task {task_id} completed successfully"
@@ -740,7 +786,7 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
             return False, str(e)
 
     def delete_task(self, project, task_id):
-        tasks_file = Path(DATA_ROOT) / "Memory" / project / "tasks.json"
+        tasks_file = get_project_tasks_file(project)
         if not tasks_file.exists():
             return False, f"Project board not found: {tasks_file}"
 
@@ -761,8 +807,9 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
             print(f"[DashboardAPI] Successfully saved deleted task in tasks.json.")
 
             # Regenerate the dashboard
+            dashboard_script = get_platform_path("Scripts", "gen_dashboard.ps1")
             cmd = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", 
-                   f"{PLATFORM_ROOT}/Scripts/gen_dashboard.ps1"]
+                   str(dashboard_script)]
             print(f"[DashboardAPI] Running gen_dashboard.ps1 for dashboard refresh (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
             subprocess.run(cmd, capture_output=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC)
             return True, f"Task {task_id} deleted successfully"

@@ -928,6 +928,14 @@ dc verify --ci --json
 - La limite de body par defaut est `1048576` octets ; les depassements retournent `413 Payload Too Large`.
 - `test_dashboard_security_contract.ps1` et `test_dashboard_api.py` couvrent allowlist CORS, CSRF et limites de taille.
 
+### Canonicalisation des chemins et racines autorisees
+
+- `dashboard_api.py` resout les chemins via `Path.resolve()` et verifie `relative_to()` avant acces fichier.
+- Les fichiers runtime Dashboard restent confines sous `DEV_CORE_DATA`; les fichiers plateforme restent confines sous `DEV_CORE`.
+- Les IDs projet utilises pour `DEV_CORE_DATA\Memory\<project>\tasks.json` refusent `/`, `\`, `:`, `..` et tout format hors `[a-zA-Z0-9._-]`.
+- Le serveur MCP `obsidian-vault` resout les chemins relatifs depuis la racine du vault et bloque les traversals hors `DEV_CORE_DATA\Vault`.
+- `test_dashboard_api.py` et `test_obsidian_vault_paths.py` couvrent les cas negatifs `../` et les chemins valides sous racine.
+
 ### Etat v10.0
 
 - Aucun `Invoke-Expression` dans le chemin principal du CLI.

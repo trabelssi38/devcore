@@ -200,6 +200,28 @@ def test_request_body_limit_is_bounded():
     assert dashboard_api.is_request_too_large({"Content-Length": "128"}) is False
 
 
+def test_project_tasks_file_rejects_path_traversal(tmp_path):
+    dashboard_api = load_dashboard_api()
+    dashboard_api.DATA_ROOT = str(tmp_path)
+
+    try:
+        dashboard_api.get_project_tasks_file("../outside")
+    except ValueError as exc:
+        assert "Invalid project" in str(exc)
+    else:
+        raise AssertionError("project path traversal should be rejected")
+
+
+def test_project_tasks_file_is_confined_to_memory_root(tmp_path):
+    dashboard_api = load_dashboard_api()
+    dashboard_api.DATA_ROOT = str(tmp_path)
+
+    tasks_file = dashboard_api.get_project_tasks_file("devcore")
+
+    assert tasks_file == (tmp_path / "Memory" / "devcore" / "tasks.json").resolve()
+    assert tasks_file.relative_to((tmp_path / "Memory").resolve())
+
+
 def test_gen_dashboard_payload_includes_context_composition(tmp_path):
     platform_root = MODULE_PATH.parents[1]
     data_root = tmp_path / "DEV_CORE_DATA"

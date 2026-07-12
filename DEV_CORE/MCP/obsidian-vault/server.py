@@ -12,6 +12,20 @@ DECISIONS_PATH = VAULT_PATH / "Decisions"
 LESSONS_PATH = VAULT_PATH / "Lessons"
 
 
+def resolve_vault_path(file_path: str) -> Path:
+    """Resolve a path and ensure it stays inside the Obsidian vault."""
+    vault_root = VAULT_PATH.resolve()
+    candidate = Path(file_path)
+    if not candidate.is_absolute():
+        candidate = vault_root / candidate
+    resolved = candidate.resolve()
+    try:
+        resolved.relative_to(vault_root)
+    except ValueError as exc:
+        raise ValueError(f"Path escapes vault root: {vault_root}") from exc
+    return resolved
+
+
 def get_today_string() -> str:
     """Get today's date in YYYY-MM-DD format."""
     return datetime.now().strftime("%Y-%m-%d")
@@ -19,8 +33,8 @@ def get_today_string() -> str:
 
 def read_file(file_path: str) -> dict:
     """Read a markdown file."""
-    path = Path(file_path)
     try:
+        path = resolve_vault_path(file_path)
         with open(path, 'r', encoding='utf-8') as f:
             content = f.read()
         return {
@@ -33,7 +47,7 @@ def read_file(file_path: str) -> dict:
     except FileNotFoundError:
         return {
             "success": False,
-            "path": str(path),
+            "path": str(file_path),
             "exists": False,
             "error": "Fichier non trouve"
         }
@@ -43,8 +57,8 @@ def read_file(file_path: str) -> dict:
 
 def write_file(file_path: str, content: str, append: bool = False) -> dict:
     """Write to a markdown file."""
-    path = Path(file_path)
     try:
+        path = resolve_vault_path(file_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         mode = 'a' if append else 'w'
         with open(path, mode, encoding='utf-8') as f:
@@ -63,7 +77,8 @@ def search_vault(query: str, max_results: int = 10) -> dict:
     """Simple text search in vault."""
     results = []
     try:
-        for md_file in VAULT_PATH.rglob("*.md"):
+        vault_root = resolve_vault_path(".")
+        for md_file in vault_root.rglob("*.md"):
             if md_file.name.startswith("."):
                 continue
             try:
@@ -76,7 +91,7 @@ def search_vault(query: str, max_results: int = 10) -> dict:
                     snippet = content[start:end].replace('\n', ' ')
 
                     results.append({
-                        "path": str(md_file.relative_to(VAULT_PATH)),
+                        "path": str(md_file.relative_to(vault_root)),
                         "snippet": f"...{snippet}...",
                         "size": len(content)
                     })
@@ -230,12 +245,12 @@ def handle_tool_call(tool_name: str, arguments: dict) -> dict:
         ),
 
         "obsidian_create_note": lambda args: create_note_with_frontmatter(
-            str(VAULT_PATH / args['path']),
+            args['path'],
             args['content'],
             args.get('frontmatter')
         ),
 
-        "obsidian_read_note": lambda args: read_file(str(VAULT_PATH / args['path'])),
+        "obsidian_read_note": lambda args: read_file(args['path']),
 
         "obsidian_list_notes": lambda args: {
             "success": True,
@@ -268,15 +283,16 @@ def create_note_with_frontmatter(file_path: str, content: str, frontmatter: dict
 
 def list_notes_in_folder(folder: str, max_results: int = 20) -> list:
     """List notes in a folder."""
-    search_path = VAULT_PATH / folder if folder else VAULT_PATH
     results = []
     try:
+        vault_root = resolve_vault_path(".")
+        search_path = resolve_vault_path(folder or ".")
         for md_file in search_path.rglob("*.md"):
             if md_file.name.startswith("."):
                 continue
             results.append({
                 "name": md_file.name,
-                "path": str(md_file.relative_to(VAULT_PATH)),
+                "path": str(md_file.relative_to(vault_root)),
                 "size": md_file.stat().st_size,
                 "modified": datetime.fromtimestamp(md_file.stat().st_mtime).isoformat()
             })
