@@ -1086,6 +1086,16 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - L'import genere un `ReconciliationReport` avec `tasks_seen`, `tasks_imported`, `tasks_skipped`, `warnings` et statut `ok|partial`.
 - Les taches invalides sont ignorees avec warning au lieu de bloquer toute la migration.
 - `DEV_CORE\Database\test_importer_reconciliation.py` couvre l'import nominal et les erreurs de reconciliation.
+
+### Dual-read tasks
+
+`DualReadTaskRepository` dans `DEV_CORE\API\devcore_api\ports.py` controle la migration lecture JSON -> SQL.
+
+- `DEVCORE_TASK_READ_MODE=json` : source legacy `tasks.json`, mode par defaut.
+- `DEVCORE_TASK_READ_MODE=dual` : sert `tasks.json`, lit aussi SQL et signale les divergences sans bloquer.
+- `DEVCORE_TASK_READ_MODE=sql` : cutover lecture SQL.
+- En mode `dual`, une indisponibilite SQL retombe sur la source legacy pour ne pas bloquer l'API.
+- `DEV_CORE\API\test_dual_read_cutover.py` couvre legacy, dual-read, fallback et cutover SQL.
 - `-Action Sync` : fusionne les suggestions detectees depuis un fichier JSON, avec generation d'ID et deduplication par ID/titre.
 
 `task_add.ps1`, `task_next.ps1`, `task_done.ps1`, `task_step_done.ps1` et `task_sync.ps1` sont maintenant des adaptateurs vers `task_service.ps1`, ce qui garde les mutations de `tasks.json` dans un seul service.
