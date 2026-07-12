@@ -167,7 +167,7 @@ Objectif : supprimer la génération synchrone massive du dashboard.
 
 ## Backlog
 
-- [ ] `S2-01` — Construire un read model incrémental depuis les événements. `5 pts`
+- [x] `S2-01` — Construire un read model incrémental depuis les événements. `5 pts`
 - [ ] `S2-02` — Découper `/api/dashboard` en ressources paginées. `4 pts`
 - [ ] `S2-03` — Retirer les appels PowerShell des requêtes de lecture. `4 pts`
 - [ ] `S2-04` — Ajouter ETag, cache conditionnel et compression HTTP. `3 pts`

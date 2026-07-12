@@ -79,6 +79,28 @@ def test_build_dashboard_payload_rejects_unknown_schema():
             raise AssertionError("build_dashboard_payload should reject unknown schemas")
 
 
+def test_load_dashboard_read_model_uses_runtime_snapshot(tmp_path):
+    dashboard_api = load_dashboard_api()
+    dashboard_api.DATA_ROOT = str(tmp_path)
+    snapshot_path = tmp_path / "Dashboard" / "read_model.json"
+    snapshot_path.parent.mkdir(parents=True)
+    snapshot_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "events": {"cursor": {"total_events": 3}},
+                "dashboard": {"last_refresh": {"status": "success"}},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    model = dashboard_api.load_dashboard_read_model()
+
+    assert model["schema_version"] == 1
+    assert model["events"]["cursor"]["total_events"] == 3
+
+
 def test_run_plugin_check_invokes_dc_plugin_check_json():
     dashboard_api = load_dashboard_api()
     with patch.object(dashboard_api.subprocess, "run") as run:

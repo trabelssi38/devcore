@@ -944,6 +944,14 @@ dc verify --ci --json
 - L'etat runtime `active_client` est stocke dans `DEV_CORE_DATA\Runtime\active_client.txt`, avec lecture legacy de `DEV_CORE\Config\active_client.txt` pour compatibilite.
 - `test_dashboard_api.py` bloque les regressions : secret dans settings publics, secret dans config versionnee, et etat runtime ecrit dans `Config`.
 
+### Dashboard read model incremental
+
+- `dashboard_read_model.ps1` construit un snapshot regenerable depuis les fichiers Event Bus `DEV_CORE_DATA\Bus\events\events-*.jsonl`.
+- Le snapshot est ecrit dans `DEV_CORE_DATA\Dashboard\read_model.json`.
+- Le modele expose un curseur (`total_events`, dernier evenement, fichier et ligne), des compteurs par type/source, les evenements recents, la tache active, les dernieres metriques et le dernier refresh dashboard.
+- `dashboard_api.py` charge ce snapshot et l'ajoute au contrat JSON `/api/dashboard` via le champ `read_model`.
+- `test_dashboard_read_model.ps1` couvre la reconstruction depuis des evenements `TaskCreated`, `MetricRecorded` et `DashboardRefreshed`.
+
 ### Etat v10.0
 
 - Aucun `Invoke-Expression` dans le chemin principal du CLI.

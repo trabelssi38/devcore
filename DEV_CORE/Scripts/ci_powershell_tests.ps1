@@ -23,6 +23,7 @@ $tests = @(
     "test_memory_service.ps1",
     "test_metrics_service.ps1",
     "test_event_bus.ps1",
+    "test_dashboard_read_model.ps1",
     "test_knowledge_graph.ps1",
     "test_plugin_service.ps1",
     "test_skills_runtime.ps1",

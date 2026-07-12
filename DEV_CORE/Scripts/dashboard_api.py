@@ -446,6 +446,18 @@ def run_plugin_check(plugin_id):
         raise RuntimeError(details)
     return json.loads(result.stdout)
 
+
+def get_dashboard_read_model_path():
+    return get_data_path("Dashboard", "read_model.json")
+
+
+def load_dashboard_read_model():
+    read_model_path = get_dashboard_read_model_path()
+    if not read_model_path.exists():
+        return None
+    return read_json_with_retry(read_model_path)
+
+
 def build_dashboard_payload():
     dashboard_script = get_platform_path("Scripts", "gen_dashboard.ps1")
     cmd = [
@@ -470,6 +482,7 @@ def build_dashboard_payload():
     payload = json.loads(payload_text)
     if payload.get("schema_version") != API_SCHEMA_VERSION:
         raise RuntimeError(f"Unsupported dashboard schema: {payload.get('schema_version')}")
+    payload["read_model"] = load_dashboard_read_model()
     return payload
 
 class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
