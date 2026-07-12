@@ -28,6 +28,8 @@ CSRF_BYTES = 32
 CSRF_HEADER = "X-CSRF-Token"
 DEFAULT_ALLOWED_ORIGINS = ["http://127.0.0.1:20129", "http://localhost:20129"]
 DEFAULT_MAX_REQUEST_BODY_BYTES = 1024 * 1024
+DEFAULT_DASHBOARD_RESOURCE_PAGE_SIZE = 20
+MAX_DASHBOARD_RESOURCE_PAGE_SIZE = 100
 SENSITIVE_SETTING_KEYS = {"gemini_api_key", "anthropic_api_key"}
 RUNTIME_SETTING_KEYS = {"active_client"}
 DEFAULT_PUBLIC_SETTINGS = {
@@ -458,6 +460,69 @@ def load_dashboard_read_model():
     return read_json_with_retry(read_model_path)
 
 
+def get_nested_value(data, dotted_path):
+    current = data
+    for part in str(dotted_path or "").split("."):
+        if not part:
+            raise ValueError("resource path is required")
+        if isinstance(current, dict) and part in current:
+            current = current[part]
+        else:
+            raise ValueError(f"Unknown dashboard resource: {dotted_path}")
+    return current
+
+
+def validate_page_value(value, name, default, max_value=None):
+    if value in (None, ""):
+        return default
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"Invalid {name}: {value}") from exc
+    if parsed < 1:
+        raise ValueError(f"Invalid {name}: {value}")
+    if max_value:
+        parsed = min(parsed, max_value)
+    return parsed
+
+
+def paginate_items(items, page=1, page_size=DEFAULT_DASHBOARD_RESOURCE_PAGE_SIZE):
+    page = validate_page_value(page, "page", 1)
+    page_size = validate_page_value(
+        page_size,
+        "page_size",
+        DEFAULT_DASHBOARD_RESOURCE_PAGE_SIZE,
+        MAX_DASHBOARD_RESOURCE_PAGE_SIZE,
+    )
+    item_list = list(items if isinstance(items, list) else [items])
+    start = (page - 1) * page_size
+    end = start + page_size
+    return {
+        "page": page,
+        "page_size": page_size,
+        "total": len(item_list),
+        "has_next": end < len(item_list),
+        "items": item_list[start:end],
+    }
+
+
+def build_dashboard_resource(resource_name, page=1, page_size=DEFAULT_DASHBOARD_RESOURCE_PAGE_SIZE):
+    page = validate_page_value(page, "page", 1)
+    page_size = validate_page_value(
+        page_size,
+        "page_size",
+        DEFAULT_DASHBOARD_RESOURCE_PAGE_SIZE,
+        MAX_DASHBOARD_RESOURCE_PAGE_SIZE,
+    )
+    read_model = load_dashboard_read_model() or {}
+    root = {"read_model": read_model}
+    value = get_nested_value(root, resource_name)
+    response = paginate_items(value, page=page, page_size=page_size)
+    response["schema_version"] = 1
+    response["resource"] = resource_name
+    return response
+
+
 def build_dashboard_payload():
     dashboard_script = get_platform_path("Scripts", "gen_dashboard.ps1")
     cmd = [
@@ -601,6 +666,17 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
             except subprocess.TimeoutExpired as te:
                 print(f"[DashboardAPI] Timeout calling gen_dashboard.ps1 -Json: {te}")
                 self.send_error_response(f"Dashboard payload generation timed out after {DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s")
+            except Exception as e:
+                self.send_error_response(str(e))
+        elif path == "/api/dashboard/resource":
+            resource_name = query.get("name", [""])[0]
+            try:
+                payload = build_dashboard_resource(
+                    resource_name,
+                    page=query.get("page", ["1"])[0],
+                    page_size=query.get("page_size", [str(DEFAULT_DASHBOARD_RESOURCE_PAGE_SIZE)])[0],
+                )
+                self.send_json_response(payload)
             except Exception as e:
                 self.send_error_response(str(e))
         elif path == "/api/plugin/check":

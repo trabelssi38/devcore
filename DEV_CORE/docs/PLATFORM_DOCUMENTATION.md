@@ -952,6 +952,14 @@ dc verify --ci --json
 - `dashboard_api.py` charge ce snapshot et l'ajoute au contrat JSON `/api/dashboard` via le champ `read_model`.
 - `test_dashboard_read_model.ps1` couvre la reconstruction depuis des evenements `TaskCreated`, `MetricRecorded` et `DashboardRefreshed`.
 
+### Dashboard resources paginees
+
+- `GET /api/dashboard/resource?name=<resource>&page=<n>&page_size=<n>` expose une ressource paginee sans relancer `gen_dashboard.ps1`.
+- La premiere ressource supportee est `read_model.events.recent`.
+- `page` commence a 1 ; `page_size` est borne par defaut a 20 et au maximum a 100.
+- La reponse contient `schema_version`, `resource`, `page`, `page_size`, `total`, `has_next` et `items`.
+- `test_dashboard_api.py` couvre la pagination et verifie que l'appel n'invoque pas de sous-processus.
+
 ### Etat v10.0
 
 - Aucun `Invoke-Expression` dans le chemin principal du CLI.

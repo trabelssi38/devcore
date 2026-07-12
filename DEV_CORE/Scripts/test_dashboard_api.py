@@ -101,6 +101,51 @@ def test_load_dashboard_read_model_uses_runtime_snapshot(tmp_path):
     assert model["events"]["cursor"]["total_events"] == 3
 
 
+def test_dashboard_resource_paginates_read_model_list(tmp_path):
+    dashboard_api = load_dashboard_api()
+    dashboard_api.DATA_ROOT = str(tmp_path)
+    snapshot_path = tmp_path / "Dashboard" / "read_model.json"
+    snapshot_path.parent.mkdir(parents=True)
+    snapshot_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "events": {
+                    "recent": [
+                        {"id": "evt-1"},
+                        {"id": "evt-2"},
+                        {"id": "evt-3"},
+                    ]
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with patch.object(dashboard_api.subprocess, "run") as run:
+        page = dashboard_api.build_dashboard_resource("read_model.events.recent", page=2, page_size=2)
+
+    assert page["resource"] == "read_model.events.recent"
+    assert page["page"] == 2
+    assert page["page_size"] == 2
+    assert page["total"] == 3
+    assert page["has_next"] is False
+    assert [item["id"] for item in page["items"]] == ["evt-3"]
+    run.assert_not_called()
+
+
+def test_dashboard_resource_rejects_invalid_pagination(tmp_path):
+    dashboard_api = load_dashboard_api()
+    dashboard_api.DATA_ROOT = str(tmp_path)
+
+    try:
+        dashboard_api.build_dashboard_resource("read_model.events.recent", page=0, page_size=500)
+    except ValueError as exc:
+        assert "page" in str(exc)
+    else:
+        raise AssertionError("invalid pagination should be rejected")
+
+
 def test_run_plugin_check_invokes_dc_plugin_check_json():
     dashboard_api = load_dashboard_api()
     with patch.object(dashboard_api.subprocess, "run") as run:
