@@ -222,7 +222,7 @@ Objectif : remplacer les fichiers JSON concurrents par un stockage transactionne
 
 ## Backlog
 
-- [ ] `S4-01` — Concevoir le schéma projects/tasks/runs/events/plugins/audit. `4 pts`
+- [x] `S4-01` — Concevoir le schéma projects/tasks/runs/events/plugins/audit. `4 pts`
 - [ ] `S4-02` — Ajouter SQLAlchemy, Alembic et configuration locale. `4 pts`
 - [ ] `S4-03` — Implémenter repositories et transactions. `5 pts`
 - [ ] `S4-04` — Importer les données existantes avec rapport de réconciliation. `4 pts`

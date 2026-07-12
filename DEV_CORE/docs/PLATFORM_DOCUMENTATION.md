@@ -1064,6 +1064,16 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - `-Action Edit` : modifie les champs autorises d'une tache sans exposer l'ecriture board aux adaptateurs.
 - `-Action Pause` : suspend la tache active ou cible et libere `current_task` si necessaire.
 - `-Action Skip` : marque une tache comme ignoree et conserve sa trace dans la board.
+
+### PostgreSQL schema v1
+
+`DEV_CORE\Database\postgres_schema_v1.sql` definit le contrat cible pour Sprint 4.
+
+- Tables canoniques : `projects`, `tasks`, `runs`, `events`, `plugins`, `audit_log`.
+- Les relations utilisent `project_id`, `task_id`, `run_id` et `plugin_id` avec cles etrangeres explicites.
+- Les extensions evolutives passent par `metadata`, `payload` et `details` en `jsonb`.
+- Les indexes operationnels couvrent les lectures courantes : taches par projet/statut, runs par tache/statut, evenements/audit par projet/date.
+- `DEV_CORE\Database\test_postgres_schema_contract.py` verrouille le contrat avant l'introduction SQLAlchemy/Alembic.
 - `-Action Sync` : fusionne les suggestions detectees depuis un fichier JSON, avec generation d'ID et deduplication par ID/titre.
 
 `task_add.ps1`, `task_next.ps1`, `task_done.ps1`, `task_step_done.ps1` et `task_sync.ps1` sont maintenant des adaptateurs vers `task_service.ps1`, ce qui garde les mutations de `tasks.json` dans un seul service.
