@@ -1096,6 +1096,13 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - `DEVCORE_TASK_READ_MODE=sql` : cutover lecture SQL.
 - En mode `dual`, une indisponibilite SQL retombe sur la source legacy pour ne pas bloquer l'API.
 - `DEV_CORE\API\test_dual_read_cutover.py` couvre legacy, dual-read, fallback et cutover SQL.
+
+### Database backup, restore, downgrade
+
+- `DEV_CORE\Database\devcore_db\backup.py` construit des commandes explicites `pg_dump` et `pg_restore` sans shell interpolation.
+- `DEV_CORE\Database\alembic\versions\0001_schema_v1.py` applique `postgres_schema_v1.sql` en upgrade.
+- La migration descendante supprime les tables dans l'ordre inverse des dependances : `audit_log`, `events`, `plugins`, `runs`, `tasks`, `projects`.
+- `DEV_CORE\Database\test_backup_restore_downgrade.py` verrouille les commandes backup/restore et la presence du downgrade.
 - `-Action Sync` : fusionne les suggestions detectees depuis un fichier JSON, avec generation d'ID et deduplication par ID/titre.
 
 `task_add.ps1`, `task_next.ps1`, `task_done.ps1`, `task_step_done.ps1` et `task_sync.ps1` sont maintenant des adaptateurs vers `task_service.ps1`, ce qui garde les mutations de `tasks.json` dans un seul service.
