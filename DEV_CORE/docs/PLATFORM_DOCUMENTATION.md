@@ -1204,6 +1204,10 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - Responsive : breakpoints `768px` et `480px`, grille mono-colonne mobile et cartes compactes.
 - WCAG AA : focus visible, zones interactives `44px`, badges avec texte accessible et indicateur non-couleur.
 - `DEV_CORE\Web\test_responsive_accessibility.py` verrouille responsive, focus visible et indices non-couleur.
+- `DEV_CORE\Web\playwright.config.ts` définit deux projets : `components` et `e2e`.
+- Scripts frontend : `npm run test:components` et `npm run test:e2e`.
+- Specs Playwright : `tests\components\dashboard.spec.ts` et `tests\e2e\dashboard.spec.ts`.
+- `DEV_CORE\Web\test_playwright_setup.py` verrouille la configuration Playwright versionnée.
 
 ### LLMOps / Langfuse
 
