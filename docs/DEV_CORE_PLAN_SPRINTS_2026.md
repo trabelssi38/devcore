@@ -37,7 +37,7 @@ d'isolation ou de disponibilité.
 | `/api/dashboard` | 47,55 s | p95 < 500 ms |
 | Payload dashboard | ~7,9 Mo | < 500 Ko initial, < 20 Ko par delta |
 | `launch.ps1` | ~35 s | < 10 s hors dépendances externes |
-| `endday.ps1` | 159–170 s | < 30 s, tâches longues en arrière-plan |
+| `endday.ps1 -SkipBackup` | 159–334 s | < 30 s en mode agent, tâches longues réservées au endday planifié |
 | Santé statique moyenne | 8,14/10 | >= 8,5/10 |
 | Hotspots critiques | 3 principaux | 0 fichier < 5/10 |
 | Tests Python observés | 10/10 | couverture cœur >= 80 % |

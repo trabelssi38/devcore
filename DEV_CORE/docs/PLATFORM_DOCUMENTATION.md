@@ -1074,6 +1074,15 @@ Pour le dashboard, le resume expose aussi des vues directes de cout par modele :
 
 `model_pricing_sync.py` verifie les sources de prix et ecrit `DEV_CORE_DATA/Logs/pricing/model_pricing_sync_report.json`. Par defaut, `endday.ps1` lance ce check avant le rapport token. Les catalogues structures JSON sont consideres `high` confidence et peuvent etre appliques avec `--apply`, `sync.auto_apply=true` ou `DEVCORE_PRICING_AUTO_APPLY=1`. Les extractions HTML/texte sont seulement signalees en `medium` confidence et ne sont pas appliquees sans `--allow-medium-confidence`.
 
+### Endday non bloquant pour agents
+
+- `endday.ps1` utilise un lock runtime `DEV_CORE_DATA\Runtime\endday.lock` pour eviter deux clotures concurrentes.
+- `-SkipBackup` active automatiquement `AgentMode`, sauf si `-Full` est passe explicitement.
+- `AgentMode` garde une cloture courte et bornee : extraction de lecons, metriques et next actions.
+- Les operations longues (`qdrant_sync`, `obsidian_sync`, rotation memoire, pricing sync, rapport token, task scan/sync final) sont reservees au endday complet planifie.
+- Chaque etape lancee par `endday.ps1` passe par `Invoke-EnddayStep` avec timeout.
+- Mesure locale du 2026-07-12 : `endday.ps1 -SkipBackup -StepTimeoutSeconds 20` termine en `21.4 s`.
+
 ### Context Service
 
 `context_service.ps1` demarre le Context Engine v1 avec `-Action ScoreSources`.
