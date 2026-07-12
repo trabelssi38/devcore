@@ -1048,6 +1048,8 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - `DEV_CORE\API\export_openapi.py` genere le schema versionne `DEV_CORE\Schemas\openapi-v1.json`.
 - `DEV_CORE\API\clients\typescript\devcore-api-client.ts` fournit un client TypeScript sans dependance pour `health`, `contracts` et `tasks`.
 - `DEV_CORE\API\test_openapi_client_generation.py` verrouille la generation OpenAPI et client TypeScript.
+- `docs\API_VERSIONING_POLICY.md` definit les regles de compatibilite `/api/v1`, breaking change et regeneration OpenAPI/client.
+- `DEV_CORE\API\test_api_versioning_policy.py` verrouille les routes versionnees, la coherence OpenAPI runtime/committe et la presence de la politique.
 
 ### Task Service
 
