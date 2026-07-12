@@ -48,12 +48,16 @@ function Test-Hermes {
     }
 
     # Config Hermes
-    $configPath = "$env:USERPROFILE\.hermes\config.yaml"
+    $configPath = Join-Path $env:LOCALAPPDATA "hermes\config.yaml"
     $configOk = Test-Path $configPath
     Test-Item "Config Hermes" $configOk $configPath
+    if ($configOk) {
+        $configSource = Get-Content $configPath -Raw
+        Test-Item "Hermes route via Gemini Router" ($configSource -match "http://127\.0\.0\.1:20130/v1") $configPath
+    }
 
     # .env Hermes
-    $envPath = "$env:USERPROFILE\.hermes\.env"
+    $envPath = Join-Path $env:LOCALAPPDATA "hermes\.env"
     $envOk = Test-Path $envPath
     Test-Item "Env Hermes" $envOk $envPath
 

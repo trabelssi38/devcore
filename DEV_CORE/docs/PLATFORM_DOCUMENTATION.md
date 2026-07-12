@@ -469,11 +469,11 @@ uv pip install pip
 ```yaml
 agent:
   name: "DEV_CORE Assistant"
-  default_model: "anthropic/claude-sonnet-4-20250514"
+  default_model: "devcore-always-on"
 model:
-  provider: "openai"
-  base_url: "https://api.anthropic.com/v1"
-  default: "anthropic/claude-sonnet-4-20250514"
+  provider: "custom"
+  base_url: "http://127.0.0.1:20130/v1"
+  default: "devcore-always-on"
 tools:
   terminal: {enabled: true}
   filesystem: {enabled: true}
@@ -1441,3 +1441,4 @@ Le score combine pertinence, fraicheur et autorite de source. `memory_hierarchy.
 - **Diagnostic** : `dc check`
 - **Logs** : `C:\devcore\DEV_CORE_DATA\Logs\`
 - **Dashboard** : `C:\devcore\DEV_CORE\Dashboard\index.html`
+

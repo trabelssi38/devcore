@@ -61,5 +61,4 @@ qc
 .mcp.json
 
 # Virtual Environment
-hermes_temp/
 hermes/

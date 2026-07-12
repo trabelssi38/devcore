@@ -1,10 +1,10 @@
-# 9Router Config — Hermes Agent Integration
-# DEV_CORE v6.1 — Mode-based routing for Hermes
+# Gemini Router Config — Hermes Agent Integration
+# DEV_CORE v10 — Mode-aware routing for Hermes
 
 ## Overview
 
-Hermes utilise le même routing 9Router que Claude Code.
-Quand Hermes traite une requête DEV_CORE, il détecte le mode et route vers le bon modèle.
+Hermes utilise le point d'entrée OpenAI-compatible du Gemini Router local.
+Quand Hermes traite une requête DEV_CORE, il conserve le mode de tâche côté DEV_CORE et envoie les appels LLM vers `http://127.0.0.1:20130/v1`.
 
 ## Model Tiers
 
@@ -48,26 +48,26 @@ Solution: Hermes exécute les tâches selon le mode detectado.
 
 ### Routing Strategy
 
-Hermes peut invoquer différents providers selon le mode:
+Hermes route via Gemini Router. Le routeur mappe les aliases OpenAI/DEV_CORE vers les modèles Gemini.
 
 ```yaml
 # Windows Hermes v0.18+ : %LOCALAPPDATA%\hermes\config.yaml
 model:
-  provider: "openai"
-  base_url: "https://api.anthropic.com/v1"
-  default: "anthropic/claude-sonnet-4-20250514"
-  reasoning_model: "anthropic/claude-opus-4-7"
-  coding_model: "anthropic/claude-sonnet-4-6"
-  bulk_model: "anthropic/claude-haiku-4-5"
+  provider: "custom"
+  base_url: "http://127.0.0.1:20130/v1"
+  default: "devcore-always-on"
+  reasoning_model: "devcore-always-on"
+  coding_model: "gpt-4o"
+  bulk_model: "gpt-4o-mini"
 ```
 
 ### Tool Invocation per Mode
 
 | Mode | Provider | Model | Budget |
 |------|----------|-------|--------|
-| reasoning | Anthropic | opus-4-7 | 32k |
-| coding | Anthropic | sonnet-4-6 | 8k |
-| bulk | Anthropic | haiku-4-5 | 16k |
+| reasoning | Gemini Router | devcore-always-on -> gemini-2.5-pro | 32k |
+| coding | Gemini Router | gpt-4o -> gemini-2.5-pro | 8k |
+| bulk | Gemini Router | gpt-4o-mini -> gemini-2.5-flash | 16k |
 
 ## Integration Points
 
