@@ -1,0 +1,25 @@
+{
+  "name": "routing_context_eval",
+  "version": 1,
+  "description": "Minimal DEV_CORE routing and context evaluation dataset.",
+  "cases": [
+    {
+      "id": "routing-python-api",
+      "input": "Implement a FastAPI endpoint with Pydantic response contracts.",
+      "expected_route": "python_api",
+      "required_context": ["trace_id", "project_id", "task_id"]
+    },
+    {
+      "id": "routing-qdrant",
+      "input": "Diagnose slow semantic search in Qdrant collection sync.",
+      "expected_route": "qdrant",
+      "required_context": ["trace_id", "project_id", "run_id"]
+    },
+    {
+      "id": "routing-web-ui",
+      "input": "Build a responsive dashboard card with accessible interactions.",
+      "expected_route": "web_ui",
+      "required_context": ["trace_id", "project_id"]
+    }
+  ]
+}

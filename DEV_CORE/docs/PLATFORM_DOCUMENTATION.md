@@ -1171,6 +1171,15 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - `LlmOpsClient.capture(...)` envoie via transport injecte si `LANGFUSE_PUBLIC_KEY` et `LANGFUSE_SECRET_KEY` sont configures.
 - Sans configuration Langfuse, les evenements sont buffers localement et ne bloquent pas l'execution.
 - `DEV_CORE\API\test_llmops_langfuse.py` couvre payload, buffering et transport.
+
+### Evaluation datasets
+
+`DEV_CORE\API\devcore_api\evals.py` ajoute les primitives d'evaluation routage/contexte.
+
+- `load_eval_dataset(path)` charge un dataset versionne `version=1`.
+- `evaluate_cases(...)` calcule `route_accuracy` et `context_recall`.
+- `DEV_CORE\Evals\routing_context_dataset.json` versionne les premiers cas de routage/contexte.
+- `DEV_CORE\API\test_eval_datasets.py` verrouille chargement, validite JSON et scoring.
 - `-Action Sync` : fusionne les suggestions detectees depuis un fichier JSON, avec generation d'ID et deduplication par ID/titre.
 
 `task_add.ps1`, `task_next.ps1`, `task_done.ps1`, `task_step_done.ps1` et `task_sync.ps1` sont maintenant des adaptateurs vers `task_service.ps1`, ce qui garde les mutations de `tasks.json` dans un seul service.
