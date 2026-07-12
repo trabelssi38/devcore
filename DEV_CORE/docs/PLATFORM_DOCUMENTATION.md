@@ -1103,6 +1103,16 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - `DEV_CORE\Database\alembic\versions\0001_schema_v1.py` applique `postgres_schema_v1.sql` en upgrade.
 - La migration descendante supprime les tables dans l'ordre inverse des dependances : `audit_log`, `events`, `plugins`, `runs`, `tasks`, `projects`.
 - `DEV_CORE\Database\test_backup_restore_downgrade.py` verrouille les commandes backup/restore et la presence du downgrade.
+
+### Run state machine
+
+`DEV_CORE\API\devcore_api\run_state.py` definit les transitions durables des runs.
+
+- Etats actifs : `queued`, `running`.
+- Etats terminaux : `succeeded`, `failed`, `cancelled`, `timed_out`.
+- Transitions autorisees : `queued/start`, `queued/cancel`, `running/succeed`, `running/fail`, `running/timeout`, `running/cancel`.
+- Les transitions invalides levent `InvalidRunTransition`.
+- `DEV_CORE\API\test_run_state_machine.py` verrouille les transitions et les etats terminaux.
 - `-Action Sync` : fusionne les suggestions detectees depuis un fichier JSON, avec generation d'ID et deduplication par ID/titre.
 
 `task_add.ps1`, `task_next.ps1`, `task_done.ps1`, `task_step_done.ps1` et `task_sync.ps1` sont maintenant des adaptateurs vers `task_service.ps1`, ce qui garde les mutations de `tasks.json` dans un seul service.

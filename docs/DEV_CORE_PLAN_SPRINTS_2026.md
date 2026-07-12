@@ -250,7 +250,7 @@ Objectif : rendre les runs persistants, reprenables et contrôlables.
 
 ## Backlog
 
-- [ ] `S5-01` — Définir la machine d'état Run et ses transitions. `4 pts`
+- [x] `S5-01` — Définir la machine d'état Run et ses transitions. `4 pts`
 - [ ] `S5-02` — Extraire un worker d'exécution hors du processus HTTP. `5 pts`
 - [ ] `S5-03` — Ajouter outbox transactionnelle et consommateurs idempotents. `5 pts`
 - [ ] `S5-04` — Implémenter timeout, retry/backoff et dead-letter queue. `4 pts`
