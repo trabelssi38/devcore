@@ -1151,6 +1151,16 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - `InMemorySpanRecorder` fournit un backend de test deterministic; un exporteur OpenTelemetry reel peut s'y brancher ensuite.
 - `DEV_CORE\API\test_observability_instrumentation.py` verrouille l'instrumentation HTTP et worker.
 - `DEV_CORE\API\test_correlation_context.py` verrouille la normalisation et propagation des identifiants standards.
+
+### Prometheus and Grafana
+
+`DEV_CORE\API\devcore_api\metrics.py` expose les métriques Prometheus.
+
+- `configure_metrics(app, registry=...)` ajoute `/api/v1/metrics`.
+- `devcore_http_requests_total` compte les requetes HTTP par `method`, `path`, `status_code`.
+- `devcore_worker_runs_total` compte les executions worker par resultat.
+- `DEV_CORE\Metrics\grafana\devcore-api-worker.json` versionne le dashboard Grafana API/worker.
+- `DEV_CORE\API\test_prometheus_metrics.py` verrouille l'endpoint Prometheus et le dashboard Grafana.
 - `-Action Sync` : fusionne les suggestions detectees depuis un fichier JSON, avec generation d'ID et deduplication par ID/titre.
 
 `task_add.ps1`, `task_next.ps1`, `task_done.ps1`, `task_step_done.ps1` et `task_sync.ps1` sont maintenant des adaptateurs vers `task_service.ps1`, ce qui garde les mutations de `tasks.json` dans un seul service.

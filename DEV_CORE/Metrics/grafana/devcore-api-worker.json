@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 39,
+  "title": "DEV_CORE API and Worker",
+  "tags": ["devcore", "api", "worker"],
+  "timezone": "browser",
+  "panels": [
+    {
+      "id": 1,
+      "title": "HTTP Requests",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum by (method, path, status_code) (rate(devcore_http_requests_total[5m]))",
+          "legendFormat": "{{method}} {{path}} {{status_code}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Worker Runs",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum by (result) (rate(devcore_worker_runs_total[5m]))",
+          "legendFormat": "{{result}}"
+        }
+      ]
+    }
+  ]
+}
