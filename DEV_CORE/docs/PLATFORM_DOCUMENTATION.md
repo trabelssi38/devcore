@@ -1175,6 +1175,9 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - Composants dashboard : `ProjectSummary`, `TaskList`, `RunTimeline`, `HealthPanel`.
 - Les composants utilisent des landmarks/labels ARIA explicites pour les domaines projets, tâches, runs et health.
 - `DEV_CORE\Web\test_dashboard_components.py` verrouille la composition des composants core.
+- `DEV_CORE\Web\src\lib\apiClient.ts` encapsule le client OpenAPI TypeScript généré.
+- `DEV_CORE\Web\src\hooks\useDevCoreEvents.ts` consomme les événements SSE via `EventSource`.
+- `DEV_CORE\Web\test_api_client_sse.py` verrouille l'intégration client OpenAPI et SSE.
 
 ### LLMOps / Langfuse
 

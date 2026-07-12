@@ -1,9 +1,16 @@
+"use client";
+
 import { HealthPanel } from "../components/HealthPanel";
 import { ProjectSummary } from "../components/ProjectSummary";
 import { RunTimeline } from "../components/RunTimeline";
 import { TaskList } from "../components/TaskList";
+import { useDevCoreEvents } from "../hooks/useDevCoreEvents";
+import { getHealth } from "../lib/apiClient";
 
 export default function HomePage() {
+  const events = useDevCoreEvents();
+  void getHealth;
+
   return (
     <main className="shell" aria-label="Vue synthétique DEV_CORE">
       <section className="card">
@@ -20,6 +27,12 @@ export default function HomePage() {
         <TaskList />
         <RunTimeline />
         <HealthPanel />
+      </section>
+
+      <section className="card" aria-label="Événements temps réel">
+        <p className="eyebrow">SSE</p>
+        <h2>Événements récents</h2>
+        <p>{events.length} événement(s) reçus</p>
       </section>
     </main>
   );
