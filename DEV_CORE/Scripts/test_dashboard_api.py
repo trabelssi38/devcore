@@ -173,6 +173,30 @@ def test_cached_json_response_gzips_when_client_accepts_gzip():
     assert json.loads(gzip.decompress(response["body"]).decode("utf-8")) == payload
 
 
+def test_dashboard_delta_detects_changed_top_level_read_model_keys():
+    dashboard_api = load_dashboard_api()
+    previous = {"events": {"cursor": {"total_events": 1}}, "tasks": {"active": "T-1"}}
+    current = {"events": {"cursor": {"total_events": 2}}, "tasks": {"active": "T-1"}}
+
+    delta = dashboard_api.build_dashboard_delta(previous, current)
+
+    assert delta["schema_version"] == 1
+    assert delta["has_changes"] is True
+    assert delta["changed_keys"] == ["events"]
+    assert delta["read_model"]["events"]["cursor"]["total_events"] == 2
+
+
+def test_sse_event_format_uses_named_event_and_json_data():
+    dashboard_api = load_dashboard_api()
+
+    event = dashboard_api.format_sse_event("dashboard.delta", {"changed_keys": ["events"]}, event_id="abc")
+
+    assert event.endswith(b"\n\n")
+    assert b"id: abc\n" in event
+    assert b"event: dashboard.delta\n" in event
+    assert b'data: {"changed_keys":["events"]}\n' in event
+
+
 def test_run_plugin_check_invokes_dc_plugin_check_json():
     dashboard_api = load_dashboard_api()
     with patch.object(dashboard_api.subprocess, "run") as run:

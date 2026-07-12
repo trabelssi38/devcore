@@ -33,6 +33,8 @@ DEFAULT_DASHBOARD_RESOURCE_PAGE_SIZE = 20
 MAX_DASHBOARD_RESOURCE_PAGE_SIZE = 100
 CACHE_CONTROL_HEADER = "private, max-age=5, must-revalidate"
 GZIP_MIN_RESPONSE_BYTES = 1024
+DASHBOARD_SSE_POLL_SECONDS = 2.0
+DASHBOARD_SSE_HEARTBEAT_SECONDS = 15.0
 SENSITIVE_SETTING_KEYS = {"gemini_api_key", "anthropic_api_key"}
 RUNTIME_SETTING_KEYS = {"active_client"}
 DEFAULT_PUBLIC_SETTINGS = {
@@ -122,6 +124,48 @@ def build_cached_json_response(payload, request_headers):
 
     response_headers["Content-Length"] = str(len(body))
     return {"status": 200, "headers": response_headers, "body": body}
+
+
+def stable_json_bytes(value):
+    return json.dumps(value or {}, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+
+
+def read_model_fingerprint(read_model):
+    return hashlib.sha256(stable_json_bytes(read_model)).hexdigest()
+
+
+def build_dashboard_delta(previous_read_model, current_read_model):
+    previous = previous_read_model or {}
+    current = current_read_model or {}
+    keys = sorted(set(previous.keys()) | set(current.keys()))
+    changed_keys = [key for key in keys if previous.get(key) != current.get(key)]
+    return {
+        "schema_version": 1,
+        "generated_at": datetime.now().isoformat(),
+        "has_changes": bool(changed_keys),
+        "changed_keys": changed_keys,
+        "fingerprint": read_model_fingerprint(current),
+        "read_model": {key: current.get(key) for key in changed_keys},
+    }
+
+
+def format_sse_event(event_name, data, event_id=None, retry=None):
+    lines = []
+    if event_id:
+        lines.append(f"id: {event_id}")
+    if retry is not None:
+        lines.append(f"retry: {int(retry)}")
+    lines.append(f"event: {event_name}")
+    payload = json.dumps(data, ensure_ascii=False, separators=(",", ":"))
+    for line in payload.splitlines() or [""]:
+        lines.append(f"data: {line}")
+    lines.append("")
+    lines.append("")
+    return "\n".join(lines).encode("utf-8")
+
+
+def format_sse_comment(comment):
+    return f": {comment}\n\n".encode("utf-8")
 
 
 def get_project_tasks_file(project):
@@ -754,6 +798,11 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
                 self.send_cached_json_response(payload)
             except Exception as e:
                 self.send_error_response(str(e))
+        elif path == "/api/dashboard/stream":
+            try:
+                self.send_dashboard_stream_response(once=query.get("once", ["0"])[0] == "1")
+            except Exception as e:
+                self.send_error_response(str(e))
         elif path == "/api/plugin/check":
             plugin_id = query.get("id", [""])[0]
             if not plugin_id:
@@ -907,6 +956,44 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
                 self.wfile.write(response["body"])
         except ConnectionError:
             pass
+
+    def send_dashboard_stream_response(self, once=False):
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Connection", "keep-alive")
+        self.send_header("X-Accel-Buffering", "no")
+        self.end_headers()
+
+        previous = load_dashboard_read_model() or {}
+        event_id = read_model_fingerprint(previous)
+        snapshot = {
+            "schema_version": 1,
+            "generated_at": datetime.now().isoformat(),
+            "fingerprint": event_id,
+            "read_model": previous,
+        }
+        self.wfile.write(format_sse_event("dashboard.snapshot", snapshot, event_id=event_id, retry=3000))
+        self.wfile.flush()
+        if once:
+            return
+
+        last_heartbeat = time.monotonic()
+        while True:
+            time.sleep(DASHBOARD_SSE_POLL_SECONDS)
+            current = load_dashboard_read_model() or {}
+            delta = build_dashboard_delta(previous, current)
+            if delta["has_changes"]:
+                self.wfile.write(
+                    format_sse_event("dashboard.delta", delta, event_id=delta["fingerprint"])
+                )
+                self.wfile.flush()
+                previous = current
+                last_heartbeat = time.monotonic()
+            elif time.monotonic() - last_heartbeat >= DASHBOARD_SSE_HEARTBEAT_SECONDS:
+                self.wfile.write(format_sse_comment("heartbeat"))
+                self.wfile.flush()
+                last_heartbeat = time.monotonic()
 
     def send_error_response(self, error):
         try:

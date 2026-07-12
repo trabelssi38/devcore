@@ -1160,6 +1160,8 @@ setInterval(updateTimestamp, 1000);
 let currentTab = 'tasks';
 let refreshIntervalId = null;
 let currentRefreshRate = 15000;
+let dashboardStreamAbort = null;
+let dashboardStreamRetryId = null;
 
 function switchTab(tab) {
   currentTab = tab;
@@ -1266,8 +1268,68 @@ function setupRefresh(rateMs) {
 }
 
 // Rafraîchir le tableau de bord immédiatement puis toutes les 15 secondes (ou le taux configuré)
+function handleDashboardSseEvent(eventName, payload) {
+  if (eventName === 'dashboard.delta' && payload && payload.has_changes && currentTab === 'tasks') {
+    refreshDashboard();
+  }
+}
+
+function parseDashboardSseBlock(block) {
+  const event = { event: 'message', data: '' };
+  block.split('\n').forEach(line => {
+    if (line.startsWith('event:')) event.event = line.slice(6).trim();
+    if (line.startsWith('data:')) event.data += line.slice(5).trim();
+  });
+  if (!event.data) return;
+  try {
+    handleDashboardSseEvent(event.event, JSON.parse(event.data));
+  } catch (err) {
+    console.error('Invalid dashboard SSE payload:', err);
+  }
+}
+
+function connectDashboardStream() {
+  if (!window.ReadableStream || dashboardStreamAbort) return;
+  if (dashboardStreamRetryId) {
+    clearTimeout(dashboardStreamRetryId);
+    dashboardStreamRetryId = null;
+  }
+  dashboardStreamAbort = new AbortController();
+  fetch(`${API_BASE}/api/dashboard/stream`, {
+    headers: { Accept: 'text/event-stream' },
+    signal: dashboardStreamAbort.signal
+  })
+    .then(response => {
+      if (!response.ok || !response.body) throw new Error('Dashboard stream unavailable');
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      function pump() {
+        return reader.read().then(({ done, value }) => {
+          if (done) throw new Error('Dashboard stream closed');
+          buffer += decoder.decode(value, { stream: true });
+          const blocks = buffer.split('\n\n');
+          buffer = blocks.pop() || '';
+          blocks.forEach(parseDashboardSseBlock);
+          return pump();
+        });
+      }
+
+      return pump();
+    })
+    .catch(err => {
+      if (dashboardStreamAbort && !dashboardStreamAbort.signal.aborted) {
+        console.error('Dashboard stream error:', err);
+        dashboardStreamAbort = null;
+        dashboardStreamRetryId = setTimeout(connectDashboardStream, 5000);
+      }
+    });
+}
+
 setupRefresh(15000);
 refreshDashboard();
+connectDashboardStream();
 </script>
 <div id="details-bubble"></div>
 

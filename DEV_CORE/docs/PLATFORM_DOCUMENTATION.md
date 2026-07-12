@@ -976,6 +976,14 @@ dc verify --ci --json
 - Les headers `Cache-Control: private, max-age=5, must-revalidate` et `Vary: Accept-Encoding` encadrent le cache local sans exposer de donnees partagees.
 - `test_dashboard_api.py` couvre le contrat `ETag`, `304` et compression gzip.
 
+### Deltas dashboard par SSE
+
+- `GET /api/dashboard/stream` ouvre un flux `text/event-stream` authentifie par le meme Bearer token que les autres endpoints prives.
+- Le flux publie d'abord `dashboard.snapshot`, puis des evenements `dashboard.delta` quand le read model change.
+- Les deltas listent les cles top-level modifiees et embarquent uniquement les fragments de `read_model` concernes.
+- Le client dashboard consomme ce SSE via `fetch` streaming pour conserver les headers d'authentification injectes ; le polling periodique reste en fallback.
+- `test_dashboard_api.py` couvre la detection de delta et le format SSE.
+
 ### Etat v10.0
 
 - Aucun `Invoke-Expression` dans le chemin principal du CLI.

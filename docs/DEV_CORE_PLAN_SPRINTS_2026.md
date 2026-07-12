@@ -171,7 +171,7 @@ Objectif : supprimer la génération synchrone massive du dashboard.
 - [x] `S2-02` — Découper `/api/dashboard` en ressources paginées. `4 pts`
 - [x] `S2-03` — Retirer les appels PowerShell des requêtes de lecture. `4 pts`
 - [x] `S2-04` — Ajouter ETag, cache conditionnel et compression HTTP. `3 pts`
-- [ ] `S2-05` — Publier les deltas par SSE. `4 pts`
+- [x] `S2-05` — Publier les deltas par SSE. `4 pts`
 - [ ] `S2-06` — Ajouter un test de non-régression payload/latence. `2 pts`
 
 ## Gate de sortie
