@@ -1162,6 +1162,17 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - `DEV_CORE\Metrics\grafana\devcore-api-worker.json` versionne le dashboard Grafana API/worker.
 - `DEV_CORE\API\test_prometheus_metrics.py` verrouille l'endpoint Prometheus et le dashboard Grafana.
 
+### Web frontend
+
+`DEV_CORE\Web` initialise le frontend moderne DEV_CORE.
+
+- Stack : Next.js, React, TypeScript.
+- Style cible : Dark Tech pour dashboard interne.
+- Tokens CSS : couleurs sémantiques, espacements 4/8/12/16/24/32/48, rayons et polices Inter / JetBrains Mono.
+- Shell initial : `src\app\layout.tsx`, `src\app\page.tsx`, `src\app\globals.css`.
+- Accessibilité initiale : `lang="fr"`, landmark `<main>`, focus visible, contraste dark AA.
+- `DEV_CORE\Web\test_frontend_scaffold.py` verrouille package, tokens et shell accessible.
+
 ### LLMOps / Langfuse
 
 `DEV_CORE\API\devcore_api\llmops.py` ajoute une couche LLMOps compatible Langfuse.

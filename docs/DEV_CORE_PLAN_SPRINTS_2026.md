@@ -305,7 +305,7 @@ Objectif : remplacer le HTML généré par une application maintenable et access
 
 ## Backlog
 
-- [ ] `S7-01` — Initialiser React/Next.js, TypeScript et design tokens. `4 pts`
+- [x] `S7-01` — Initialiser React/Next.js, TypeScript et design tokens. `4 pts`
 - [ ] `S7-02` — Implémenter projets, tâches, runs et health. `5 pts`
 - [ ] `S7-03` — Consommer le client OpenAPI et les événements SSE. `4 pts`
 - [ ] `S7-04` — Ajouter états loading/empty/error et reprise réseau. `3 pts`
