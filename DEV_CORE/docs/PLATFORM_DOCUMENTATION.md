@@ -904,6 +904,15 @@ dc verify --ci --json
 - Un bind public (`0.0.0.0`, `::` ou vide) exige `DEVCORE_ALLOW_PUBLIC_BIND=1`.
 - `test_network_bind_contract.ps1` bloque les regressions vers un bind toutes interfaces implicite.
 
+### Authentification locale Dashboard API
+
+- `dashboard_api.py` protege les endpoints API par token Bearer local.
+- Les chemins publics restent limites a `/`, `/index.html` et `/api/status`.
+- Le token est stocke hors configuration versionnee dans `DEV_CORE_DATA\Security\dashboard_api_token.json`.
+- Le bootstrap local pour le cockpit est stocke dans `DEV_CORE_DATA\Security\dashboard_api_token.bootstrap`.
+- `rotate_dashboard_token.ps1` regenere le token local et affiche la nouvelle valeur une seule fois dans le terminal.
+- `test_dashboard_auth_contract.ps1` et `test_dashboard_api.py` bloquent les regressions : absence de token, mauvais schema `Authorization`, rotation et anciens tokens invalides.
+
 ### Etat v10.0
 
 - Aucun `Invoke-Expression` dans le chemin principal du CLI.

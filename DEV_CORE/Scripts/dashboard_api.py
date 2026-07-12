@@ -7,6 +7,9 @@ from pathlib import Path
 import os
 import re
 import sys
+import hmac
+import hashlib
+import secrets
 from datetime import datetime
 import time
 import random
@@ -18,6 +21,8 @@ API_SCHEMA_VERSION = 1
 DASHBOARD_COMMAND_TIMEOUT_SEC = 90.0
 PLUGIN_ID_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]*$")
 PUBLIC_BIND_HOSTS = {"0.0.0.0", "::", ""}
+PUBLIC_PATHS = {"/", "/index.html", "/api/status"}
+TOKEN_BYTES = 32
 
 
 def _read_network_config():
@@ -46,6 +51,103 @@ def get_bind_host():
     if host in PUBLIC_BIND_HOSTS and os.getenv("DEVCORE_ALLOW_PUBLIC_BIND") != "1":
         raise ValueError("Public bind requires DEVCORE_ALLOW_PUBLIC_BIND=1")
     return host or "127.0.0.1"
+
+
+def get_token_store_path():
+    return Path(DATA_ROOT) / "Security" / "dashboard_api_token.json"
+
+
+def hash_token(token):
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+
+def write_token_record(token):
+    token_path = get_token_store_path()
+    token_path.parent.mkdir(parents=True, exist_ok=True)
+    record = {
+        "schema_version": 1,
+        "token_hash": hash_token(token),
+        "created_at": datetime.now().isoformat(),
+        "rotated_at": datetime.now().isoformat(),
+    }
+    write_json_with_retry(token_path, record)
+
+
+def read_token_record():
+    token_path = get_token_store_path()
+    if not token_path.exists():
+        return None
+    return read_json_with_retry(token_path)
+
+
+def ensure_api_token():
+    record = read_token_record()
+    bootstrap_path = Path(DATA_ROOT) / "Security" / "dashboard_api_token.bootstrap"
+    if record and record.get("token_hash"):
+        if bootstrap_path.exists():
+            return bootstrap_path.read_text(encoding="utf-8").strip()
+        return ""
+
+    token = secrets.token_urlsafe(TOKEN_BYTES)
+    write_token_record(token)
+    bootstrap_path.parent.mkdir(parents=True, exist_ok=True)
+    bootstrap_path.write_text(token, encoding="utf-8")
+    return token
+
+
+def rotate_api_token():
+    token = secrets.token_urlsafe(TOKEN_BYTES)
+    write_token_record(token)
+    bootstrap_path = Path(DATA_ROOT) / "Security" / "dashboard_api_token.bootstrap"
+    bootstrap_path.parent.mkdir(parents=True, exist_ok=True)
+    bootstrap_path.write_text(token, encoding="utf-8")
+    return token
+
+
+def validate_api_token(token):
+    if not token:
+        return False
+    record = read_token_record()
+    if not record or not record.get("token_hash"):
+        return False
+    return hmac.compare_digest(hash_token(token), str(record["token_hash"]))
+
+
+def requires_authentication(path):
+    return path not in PUBLIC_PATHS
+
+
+def is_authorized(headers):
+    authorization = headers.get("Authorization") if hasattr(headers, "get") else None
+    if not authorization or not authorization.startswith("Bearer "):
+        return False
+    token = authorization[len("Bearer "):].strip()
+    return validate_api_token(token)
+
+
+def inject_auth_fetch(html_content):
+    token = ensure_api_token()
+    if not token:
+        return html_content
+    snippet = f"""
+<script>
+window.DEVCORE_API_TOKEN = {json.dumps(token)};
+(function() {{
+  const originalFetch = window.fetch;
+  window.fetch = function(resource, options) {{
+    options = options || {{}};
+    const url = typeof resource === 'string' ? resource : (resource && resource.url) || '';
+    if (url.startsWith('/api/') || url.includes('127.0.0.1:20129/api/') || url.includes('localhost:20129/api/')) {{
+      options.headers = Object.assign({{}}, options.headers || {{}}, {{ Authorization: 'Bearer ' + window.DEVCORE_API_TOKEN }});
+    }}
+    return originalFetch(resource, options);
+  }};
+}})();
+</script>
+"""
+    if "</head>" in html_content:
+        return html_content.replace("</head>", snippet + "\n</head>", 1)
+    return snippet + html_content
 
 def read_json_with_retry(file_path, retries=5, delay=0.05):
     for attempt in range(retries):
@@ -202,6 +304,10 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
         path = parsed_url.path
         query = urllib.parse.parse_qs(parsed_url.query)
 
+        if requires_authentication(path) and not is_authorized(self.headers):
+            self.send_auth_error_response()
+            return
+
         if path == "/api/settings":
             try:
                 settings = self.get_settings()
@@ -245,7 +351,7 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
                 index_path = Path(PLATFORM_ROOT) / "Dashboard" / "index.html"
                 if index_path.exists():
                     with open(index_path, "r", encoding="utf-8") as f:
-                        html_content = f.read()
+                        html_content = inject_auth_fetch(f.read())
                     self.send_response(200)
                     self.send_header("Content-Type", "text/html; charset=utf-8")
                     self.end_headers()
@@ -322,6 +428,10 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
         parsed_url = urllib.parse.urlparse(self.path)
         path = parsed_url.path
 
+        if requires_authentication(path) and not is_authorized(self.headers):
+            self.send_auth_error_response()
+            return
+
         if path == "/api/settings":
             content_length = int(self.headers.get('Content-Length', 0))
             post_data = self.rfile.read(content_length)
@@ -359,6 +469,16 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
             self.send_header("Content-Type", "application/json")
             self.end_headers()
             self.wfile.write(json.dumps({"success": False, "error": error}).encode("utf-8"))
+        except ConnectionError:
+            pass
+
+    def send_auth_error_response(self):
+        try:
+            self.send_response(401)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("WWW-Authenticate", "Bearer")
+            self.end_headers()
+            self.wfile.write(json.dumps({"success": False, "error": "Unauthorized"}).encode("utf-8"))
         except ConnectionError:
             pass
 
@@ -447,6 +567,12 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
             return False, str(e)
 
 def main():
+    if "--rotate-token" in sys.argv:
+        token = rotate_api_token()
+        print(token)
+        return
+
+    ensure_api_token()
     server_class = http.server.HTTPServer
     if hasattr(http.server, "ThreadingHTTPServer"):
         server_class = http.server.ThreadingHTTPServer

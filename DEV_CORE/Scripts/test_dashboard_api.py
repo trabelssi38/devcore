@@ -131,6 +131,40 @@ def test_dashboard_api_rejects_wildcard_bind_without_explicit_opt_in():
             os.environ["DEVCORE_DASHBOARD_BIND"] = previous
 
 
+def test_local_auth_token_lifecycle(tmp_path):
+    dashboard_api = load_dashboard_api()
+    dashboard_api.DATA_ROOT = str(tmp_path)
+
+    token = dashboard_api.ensure_api_token()
+    assert len(token) >= 32
+    assert dashboard_api.validate_api_token(token) is True
+    assert dashboard_api.validate_api_token("bad-token") is False
+
+    rotated = dashboard_api.rotate_api_token()
+    assert rotated != token
+    assert dashboard_api.validate_api_token(rotated) is True
+    assert dashboard_api.validate_api_token(token) is False
+
+
+def test_authorization_header_requires_bearer_token(tmp_path):
+    dashboard_api = load_dashboard_api()
+    dashboard_api.DATA_ROOT = str(tmp_path)
+    token = dashboard_api.ensure_api_token()
+
+    assert dashboard_api.is_authorized({"Authorization": f"Bearer {token}"}) is True
+    assert dashboard_api.is_authorized({"Authorization": token}) is False
+    assert dashboard_api.is_authorized({}) is False
+
+
+def test_public_paths_do_not_require_authentication():
+    dashboard_api = load_dashboard_api()
+    assert dashboard_api.requires_authentication("/") is False
+    assert dashboard_api.requires_authentication("/index.html") is False
+    assert dashboard_api.requires_authentication("/api/status") is False
+    assert dashboard_api.requires_authentication("/api/settings") is True
+    assert dashboard_api.requires_authentication("/api/done") is True
+
+
 def test_gen_dashboard_payload_includes_context_composition(tmp_path):
     platform_root = MODULE_PATH.parents[1]
     data_root = tmp_path / "DEV_CORE_DATA"
