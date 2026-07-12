@@ -1161,6 +1161,16 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - `devcore_worker_runs_total` compte les executions worker par resultat.
 - `DEV_CORE\Metrics\grafana\devcore-api-worker.json` versionne le dashboard Grafana API/worker.
 - `DEV_CORE\API\test_prometheus_metrics.py` verrouille l'endpoint Prometheus et le dashboard Grafana.
+
+### LLMOps / Langfuse
+
+`DEV_CORE\API\devcore_api\llmops.py` ajoute une couche LLMOps compatible Langfuse.
+
+- `LangfuseEvent.from_generation(...)` relie generation LLM, modele, usage, cout et `CorrelationContext`.
+- `as_langfuse_payload()` produit un payload compatible Langfuse : `traceId`, `model`, `usage`, `metadata`.
+- `LlmOpsClient.capture(...)` envoie via transport injecte si `LANGFUSE_PUBLIC_KEY` et `LANGFUSE_SECRET_KEY` sont configures.
+- Sans configuration Langfuse, les evenements sont buffers localement et ne bloquent pas l'execution.
+- `DEV_CORE\API\test_llmops_langfuse.py` couvre payload, buffering et transport.
 - `-Action Sync` : fusionne les suggestions detectees depuis un fichier JSON, avec generation d'ID et deduplication par ID/titre.
 
 `task_add.ps1`, `task_next.ps1`, `task_done.ps1`, `task_step_done.ps1` et `task_sync.ps1` sont maintenant des adaptateurs vers `task_service.ps1`, ce qui garde les mutations de `tasks.json` dans un seul service.
