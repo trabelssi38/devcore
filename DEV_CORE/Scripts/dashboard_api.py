@@ -23,6 +23,14 @@ PLUGIN_ID_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]*$")
 PUBLIC_BIND_HOSTS = {"0.0.0.0", "::", ""}
 PUBLIC_PATHS = {"/", "/index.html", "/api/status"}
 TOKEN_BYTES = 32
+CSRF_BYTES = 32
+CSRF_HEADER = "X-CSRF-Token"
+DEFAULT_ALLOWED_ORIGINS = ["http://127.0.0.1:20129", "http://localhost:20129"]
+DEFAULT_MAX_REQUEST_BODY_BYTES = 1024 * 1024
+
+
+class RequestTooLarge(ValueError):
+    pass
 
 
 def _read_network_config():
@@ -53,8 +61,65 @@ def get_bind_host():
     return host or "127.0.0.1"
 
 
+def _read_security_config():
+    config_path = Path(PLATFORM_ROOT) / "Config" / "security.json"
+    if not config_path.exists():
+        return {}
+    try:
+        return read_json_with_retry(config_path)
+    except Exception as exc:
+        print(f"[DashboardAPI] Unable to read security config {config_path}: {exc}")
+        return {}
+
+
+def get_allowed_origins():
+    env_value = os.getenv("DEVCORE_CORS_ALLOWED_ORIGINS", "").strip()
+    if env_value:
+        return [item.strip() for item in env_value.split(",") if item.strip()]
+    config = _read_security_config()
+    origins = config.get("cors", {}).get("allowed_origins")
+    if isinstance(origins, list) and origins:
+        return [str(origin).strip() for origin in origins if str(origin).strip()]
+    return list(DEFAULT_ALLOWED_ORIGINS)
+
+
+def is_origin_allowed(origin):
+    if not origin:
+        return True
+    return origin in get_allowed_origins()
+
+
+def get_max_request_body_bytes():
+    env_value = os.getenv("DEVCORE_MAX_REQUEST_BODY_BYTES", "").strip()
+    if env_value:
+        try:
+            return max(1, int(env_value))
+        except ValueError:
+            return DEFAULT_MAX_REQUEST_BODY_BYTES
+    config = _read_security_config()
+    value = config.get("limits", {}).get("max_request_body_bytes", DEFAULT_MAX_REQUEST_BODY_BYTES)
+    try:
+        return max(1, int(value))
+    except (TypeError, ValueError):
+        return DEFAULT_MAX_REQUEST_BODY_BYTES
+
+
+def is_request_too_large(headers):
+    raw_value = headers.get("Content-Length") if hasattr(headers, "get") else None
+    if raw_value in (None, ""):
+        return False
+    try:
+        return int(raw_value) > get_max_request_body_bytes()
+    except ValueError:
+        return True
+
+
 def get_token_store_path():
     return Path(DATA_ROOT) / "Security" / "dashboard_api_token.json"
+
+
+def get_csrf_store_path():
+    return Path(DATA_ROOT) / "Security" / "dashboard_api_csrf.json"
 
 
 def hash_token(token):
@@ -78,6 +143,49 @@ def read_token_record():
     if not token_path.exists():
         return None
     return read_json_with_retry(token_path)
+
+
+def write_csrf_record(token):
+    token_path = get_csrf_store_path()
+    token_path.parent.mkdir(parents=True, exist_ok=True)
+    record = {
+        "schema_version": 1,
+        "token_hash": hash_token(token),
+        "created_at": datetime.now().isoformat(),
+        "rotated_at": datetime.now().isoformat(),
+    }
+    write_json_with_retry(token_path, record)
+
+
+def read_csrf_record():
+    token_path = get_csrf_store_path()
+    if not token_path.exists():
+        return None
+    return read_json_with_retry(token_path)
+
+
+def ensure_csrf_token():
+    record = read_csrf_record()
+    bootstrap_path = Path(DATA_ROOT) / "Security" / "dashboard_api_csrf.bootstrap"
+    if record and record.get("token_hash"):
+        if bootstrap_path.exists():
+            return bootstrap_path.read_text(encoding="utf-8").strip()
+        return ""
+
+    token = secrets.token_urlsafe(CSRF_BYTES)
+    write_csrf_record(token)
+    bootstrap_path.parent.mkdir(parents=True, exist_ok=True)
+    bootstrap_path.write_text(token, encoding="utf-8")
+    return token
+
+
+def validate_csrf_token(token):
+    if not token:
+        return False
+    record = read_csrf_record()
+    if not record or not record.get("token_hash"):
+        return False
+    return hmac.compare_digest(hash_token(token), str(record["token_hash"]))
 
 
 def ensure_api_token():
@@ -125,20 +233,36 @@ def is_authorized(headers):
     return validate_api_token(token)
 
 
+def requires_csrf(method, path):
+    if method.upper() in {"GET", "HEAD", "OPTIONS"}:
+        return False
+    return path.startswith("/api/")
+
+
+def is_csrf_authorized(headers):
+    token = headers.get(CSRF_HEADER) if hasattr(headers, "get") else None
+    return validate_csrf_token(token)
+
+
 def inject_auth_fetch(html_content):
     token = ensure_api_token()
+    csrf_token = ensure_csrf_token()
     if not token:
         return html_content
     snippet = f"""
 <script>
 window.DEVCORE_API_TOKEN = {json.dumps(token)};
+window.DEVCORE_CSRF_TOKEN = {json.dumps(csrf_token)};
 (function() {{
   const originalFetch = window.fetch;
   window.fetch = function(resource, options) {{
     options = options || {{}};
     const url = typeof resource === 'string' ? resource : (resource && resource.url) || '';
     if (url.startsWith('/api/') || url.includes('127.0.0.1:20129/api/') || url.includes('localhost:20129/api/')) {{
-      options.headers = Object.assign({{}}, options.headers || {{}}, {{ Authorization: 'Bearer ' + window.DEVCORE_API_TOKEN }});
+      options.headers = Object.assign({{}}, options.headers || {{}}, {{
+        Authorization: 'Bearer ' + window.DEVCORE_API_TOKEN,
+        'X-CSRF-Token': window.DEVCORE_CSRF_TOKEN
+      }});
     }}
     return originalFetch(resource, options);
   }};
@@ -241,14 +365,22 @@ def build_dashboard_payload():
 
 class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
     def end_headers(self):
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type')
+        origin = self.headers.get("Origin")
+        if origin and is_origin_allowed(origin):
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-CSRF-Token, X-Requested-With')
         super().end_headers()
 
     def do_OPTIONS(self):
         try:
-            self.send_response(200)
+            origin = self.headers.get("Origin")
+            if origin and not is_origin_allowed(origin):
+                self.send_response(403)
+                self.end_headers()
+                return
+            self.send_response(204)
             self.end_headers()
         except ConnectionError:
             pass
@@ -302,6 +434,7 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
     def _handle_get(self):
         parsed_url = urllib.parse.urlparse(self.path)
         path = parsed_url.path
+        query = urllib.parse.parse_qs(parsed_url.query)
         if requires_authentication(path) and not is_authorized(self.headers):
             self.send_auth_error_response()
             return
@@ -409,12 +542,17 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
         if requires_authentication(path) and not is_authorized(self.headers):
             self.send_auth_error_response()
             return
+        if requires_csrf("POST", path) and not is_csrf_authorized(self.headers):
+            self.send_csrf_error_response()
+            return
 
         if path == "/api/settings":
             try:
                 data = self.read_json_body()
                 self.save_settings(data)
                 self.send_success_response("Settings saved successfully")
+            except RequestTooLarge as e:
+                self.send_payload_too_large_response(str(e))
             except Exception as e:
                 self.send_error_response(str(e))
         elif path == "/api/done":
@@ -431,6 +569,8 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
                     self.send_success_response(msg)
                 else:
                     self.send_error_response(msg)
+            except RequestTooLarge as e:
+                self.send_payload_too_large_response(str(e))
             except Exception as e:
                 self.send_error_response(str(e))
         else:
@@ -450,6 +590,9 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
         if requires_authentication(path) and not is_authorized(self.headers):
             self.send_auth_error_response()
             return
+        if requires_csrf("DELETE", path) and not is_csrf_authorized(self.headers):
+            self.send_csrf_error_response()
+            return
 
         if path == "/api/delete":
             try:
@@ -465,6 +608,8 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
                     self.send_success_response(msg)
                 else:
                     self.send_error_response(msg)
+            except RequestTooLarge as e:
+                self.send_payload_too_large_response(str(e))
             except Exception as e:
                 self.send_error_response(str(e))
         else:
@@ -472,6 +617,8 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
             self.end_headers()
 
     def read_json_body(self):
+        if is_request_too_large(self.headers):
+            raise RequestTooLarge(f"Request body exceeds {get_max_request_body_bytes()} bytes")
         content_length = int(self.headers.get('Content-Length', 0))
         if content_length <= 0:
             return {}
@@ -512,6 +659,24 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
             self.send_header("WWW-Authenticate", "Bearer")
             self.end_headers()
             self.wfile.write(json.dumps({"success": False, "error": "Unauthorized"}).encode("utf-8"))
+        except ConnectionError:
+            pass
+
+    def send_csrf_error_response(self):
+        try:
+            self.send_response(403)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"success": False, "error": "CSRF validation failed"}).encode("utf-8"))
+        except ConnectionError:
+            pass
+
+    def send_payload_too_large_response(self, error):
+        try:
+            self.send_response(413)
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(json.dumps({"success": False, "error": error}).encode("utf-8"))
         except ConnectionError:
             pass
 
@@ -616,6 +781,7 @@ def main():
         return
 
     ensure_api_token()
+    ensure_csrf_token()
     server_class = http.server.HTTPServer
     if hasattr(http.server, "ThreadingHTTPServer"):
         server_class = http.server.ThreadingHTTPServer

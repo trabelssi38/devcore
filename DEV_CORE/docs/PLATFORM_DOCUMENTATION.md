@@ -918,6 +918,16 @@ dc verify --ci --json
 - Les anciens GET `/api/done` et `/api/delete` retournent `405 Method Not Allowed`.
 - `test_dashboard_mutation_methods.ps1` bloque les regressions vers des mutations par query-string GET.
 
+### CORS, CSRF et limites de taille
+
+- `DEV_CORE\Config\security.json` declare la politique HTTP locale.
+- CORS n'utilise plus `*` : les origines autorisees par defaut sont `http://127.0.0.1:20129` et `http://localhost:20129`.
+- Les preflights `OPTIONS` refusent les origines non allowlist avec `403`.
+- Les mutations API (`POST`, `DELETE`, `PATCH`, `PUT`) exigent `X-CSRF-Token`.
+- Le cockpit injecte `Authorization: Bearer ...` et `X-CSRF-Token` sur les appels `/api/*`.
+- La limite de body par defaut est `1048576` octets ; les depassements retournent `413 Payload Too Large`.
+- `test_dashboard_security_contract.ps1` et `test_dashboard_api.py` couvrent allowlist CORS, CSRF et limites de taille.
+
 ### Etat v10.0
 
 - Aucun `Invoke-Expression` dans le chemin principal du CLI.

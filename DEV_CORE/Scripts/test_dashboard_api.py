@@ -165,6 +165,41 @@ def test_public_paths_do_not_require_authentication():
     assert dashboard_api.requires_authentication("/api/done") is True
 
 
+def test_cors_defaults_to_local_allowlist():
+    dashboard_api = load_dashboard_api()
+    origins = dashboard_api.get_allowed_origins()
+    assert "*" not in origins
+    assert "http://127.0.0.1:20129" in origins
+    assert "http://localhost:20129" in origins
+    assert dashboard_api.is_origin_allowed("http://127.0.0.1:20129") is True
+    assert dashboard_api.is_origin_allowed("https://evil.example") is False
+
+
+def test_csrf_token_lifecycle(tmp_path):
+    dashboard_api = load_dashboard_api()
+    dashboard_api.DATA_ROOT = str(tmp_path)
+
+    token = dashboard_api.ensure_csrf_token()
+    assert len(token) >= 32
+    assert dashboard_api.validate_csrf_token(token) is True
+    assert dashboard_api.validate_csrf_token("bad-token") is False
+
+
+def test_mutating_requests_require_csrf():
+    dashboard_api = load_dashboard_api()
+    assert dashboard_api.requires_csrf("GET", "/api/dashboard") is False
+    assert dashboard_api.requires_csrf("OPTIONS", "/api/done") is False
+    assert dashboard_api.requires_csrf("POST", "/api/done") is True
+    assert dashboard_api.requires_csrf("DELETE", "/api/delete") is True
+
+
+def test_request_body_limit_is_bounded():
+    dashboard_api = load_dashboard_api()
+    assert dashboard_api.get_max_request_body_bytes() <= 1024 * 1024
+    assert dashboard_api.is_request_too_large({"Content-Length": str(1024 * 1024 + 1)}) is True
+    assert dashboard_api.is_request_too_large({"Content-Length": "128"}) is False
+
+
 def test_gen_dashboard_payload_includes_context_composition(tmp_path):
     platform_root = MODULE_PATH.parents[1]
     data_root = tmp_path / "DEV_CORE_DATA"

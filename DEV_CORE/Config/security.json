@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "cors": {
+    "allowed_origins": [
+      "http://127.0.0.1:20129",
+      "http://localhost:20129"
+    ]
+  },
+  "csrf": {
+    "header": "X-CSRF-Token"
+  },
+  "limits": {
+    "max_request_body_bytes": 1048576
+  }
+}
