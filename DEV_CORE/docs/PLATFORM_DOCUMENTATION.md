@@ -888,8 +888,10 @@ dc verify --ci --json
 - `dc verify --ci` échoue sur un code enfant non nul ou un marqueur textuel `[FAIL]`.
 - `dc verify --ci --json` produit un rapport versionné avec le détail de chaque check.
 - `dc health --json` et `dc verify --ci --json` exposent `platform_version` depuis `DEV_CORE\Config\platform.json`.
-- Le profil `dc verify --ci` est portable CI : lint PowerShell/Python, tests Python, tests PowerShell, secret scan et contrats.
+- Le profil `dc verify --ci` est portable CI : lint PowerShell/Python, tests Python, tests PowerShell, secret scan, contrats et benchmarks.
 - Le workflow GitHub Actions `.github/workflows/ci.yml` exécute les mêmes gates sur `windows-latest`.
+- `benchmark_reference.ps1` produit un artefact JSON `DEV_CORE_DATA\Logs\benchmarks\benchmark-reference-*.json`, uploadé par GitHub Actions.
+- Les benchmarks de référence actuels couvrent `dashboard_payload_size` et `verify_config_load`.
 - Le profil local `verify.ps1 -Json` inclut un contrat Qdrant live : collections 768d, embedding 768d, upsert et search temporaires.
 - `diagnose.ps1` integre le scan de secrets des fichiers suivis par Git.
 

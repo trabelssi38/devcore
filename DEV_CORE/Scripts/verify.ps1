@@ -33,7 +33,8 @@ function Get-CiChecks {
         [pscustomobject]@{ name = "python-tests"; script = (Join-Path $SCRIPTS "ci_python_tests.ps1"); arguments = @() },
         [pscustomobject]@{ name = "powershell-tests"; script = (Join-Path $SCRIPTS "ci_powershell_tests.ps1"); arguments = @() },
         [pscustomobject]@{ name = "secret-scan"; script = (Join-Path $SCRIPTS "secret_scan.ps1"); arguments = @("-Path", (Split-Path -Parent $DEV_CORE)) },
-        [pscustomobject]@{ name = "contracts"; script = (Join-Path $SCRIPTS "ci_contract_tests.ps1"); arguments = @() }
+        [pscustomobject]@{ name = "contracts"; script = (Join-Path $SCRIPTS "ci_contract_tests.ps1"); arguments = @() },
+        [pscustomobject]@{ name = "benchmarks"; script = (Join-Path $SCRIPTS "benchmark_reference.ps1"); arguments = @("-Json") }
     )
 }
 

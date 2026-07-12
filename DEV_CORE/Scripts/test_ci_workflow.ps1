@@ -22,6 +22,8 @@ foreach ($required in @(
     "ci_powershell_tests.ps1",
     "secret_scan.ps1",
     "ci_contract_tests.ps1",
+    "benchmark_reference.ps1",
+    "actions/upload-artifact",
     "verify --ci --json"
 )) {
     Assert-True ($workflow -match [regex]::Escape($required)) "CI workflow missing required command: $required"
@@ -33,7 +35,8 @@ foreach ($requiredCheck in @(
     "python-tests",
     "powershell-tests",
     "secret-scan",
-    "contracts"
+    "contracts",
+    "benchmarks"
 )) {
     Assert-True ($verifySource -match "name\s*=\s*`"$requiredCheck`"") "verify.ps1 missing CI check: $requiredCheck"
 }
