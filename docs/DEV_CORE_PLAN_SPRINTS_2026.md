@@ -195,7 +195,7 @@ Objectif : créer un monolithe modulaire à interfaces stables.
 
 ## Backlog
 
-- [ ] `S3-01` — Introduire FastAPI, Pydantic et une API `/api/v1`. `5 pts`
+- [x] `S3-01` — Introduire FastAPI, Pydantic et une API `/api/v1`. `5 pts`
 - [ ] `S3-02` — Définir les contrats Task, Run, Event, Plugin et Health. `5 pts`
 - [ ] `S3-03` — Encapsuler les services existants derrière des ports Python. `5 pts`
 - [ ] `S3-04` — Transformer PowerShell en adaptateurs de compatibilité. `3 pts`

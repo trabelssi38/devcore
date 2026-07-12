@@ -1024,6 +1024,18 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 
 `dc.ps1` reste l'interface utilisateur, mais délègue ces commandes au Gateway pour centraliser validation et dispatch.
 
+### FastAPI Gateway v1
+
+`DEV_CORE\API\devcore_api` introduit le gateway HTTP moderne pour les prochains contrats de domaine.
+
+- `create_app()` construit l'application FastAPI.
+- Le prefixe versionne est `/api/v1`.
+- `GET /api/v1/health` retourne un contrat Pydantic stable : `schema_version`, `service`, `status`, `api_version`, `trace_id`.
+- OpenAPI est expose sur `/api/v1/openapi.json`; docs locales sur `/api/v1/docs`.
+- Les erreurs HTTP et validations suivent une enveloppe stable : `schema_version`, `error.code`, `error.message`, `error.details`, `trace_id`.
+- `DEV_CORE\API\run_api.py` demarre le gateway local sur `127.0.0.1:20131`.
+- `DEV_CORE\API\test_api_v1.py` couvre health, OpenAPI versionne et enveloppe d'erreur.
+
 ### Task Service
 
 `task_service.ps1` centralise les premiers contrats du cycle de taches :
