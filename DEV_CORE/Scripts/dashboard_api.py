@@ -2,6 +2,7 @@ import http.server
 import socketserver
 import urllib.parse
 import json
+import gzip
 import subprocess
 from pathlib import Path
 import os
@@ -30,6 +31,8 @@ DEFAULT_ALLOWED_ORIGINS = ["http://127.0.0.1:20129", "http://localhost:20129"]
 DEFAULT_MAX_REQUEST_BODY_BYTES = 1024 * 1024
 DEFAULT_DASHBOARD_RESOURCE_PAGE_SIZE = 20
 MAX_DASHBOARD_RESOURCE_PAGE_SIZE = 100
+CACHE_CONTROL_HEADER = "private, max-age=5, must-revalidate"
+GZIP_MIN_RESPONSE_BYTES = 1024
 SENSITIVE_SETTING_KEYS = {"gemini_api_key", "anthropic_api_key"}
 RUNTIME_SETTING_KEYS = {"active_client"}
 DEFAULT_PUBLIC_SETTINGS = {
@@ -82,6 +85,43 @@ def validate_safe_id(value, label):
     ):
         raise ValueError(f"Invalid {label}: {value}")
     return value
+
+
+def header_value(headers, name, default=""):
+    if not headers or not hasattr(headers, "get"):
+        return default
+    return headers.get(name) or headers.get(name.lower()) or default
+
+
+def make_response_etag(body):
+    return f'"sha256-{hashlib.sha256(body).hexdigest()}"'
+
+
+def client_accepts_gzip(headers):
+    accepted = header_value(headers, "Accept-Encoding", "")
+    return "gzip" in [item.strip().split(";", 1)[0].lower() for item in accepted.split(",")]
+
+
+def build_cached_json_response(payload, request_headers):
+    body = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    etag = make_response_etag(body)
+    response_headers = {
+        "Content-Type": "application/json; charset=utf-8",
+        "ETag": etag,
+        "Cache-Control": CACHE_CONTROL_HEADER,
+        "Vary": "Accept-Encoding",
+    }
+
+    if header_value(request_headers, "If-None-Match", "").strip() == etag:
+        response_headers["Content-Length"] = "0"
+        return {"status": 304, "headers": response_headers, "body": b""}
+
+    if client_accepts_gzip(request_headers) and len(body) >= GZIP_MIN_RESPONSE_BYTES:
+        body = gzip.compress(body)
+        response_headers["Content-Encoding"] = "gzip"
+
+    response_headers["Content-Length"] = str(len(body))
+    return {"status": 200, "headers": response_headers, "body": body}
 
 
 def get_project_tasks_file(project):
@@ -697,10 +737,7 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
         elif path == "/api/dashboard":
             try:
                 payload = build_dashboard_payload()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json; charset=utf-8")
-                self.end_headers()
-                self.wfile.write(json.dumps(payload, ensure_ascii=False).encode("utf-8"))
+                self.send_cached_json_response(payload)
             except subprocess.TimeoutExpired as te:
                 print(f"[DashboardAPI] Timeout calling gen_dashboard.ps1 -Json: {te}")
                 self.send_error_response(f"Dashboard payload generation timed out after {DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s")
@@ -714,7 +751,7 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
                     page=query.get("page", ["1"])[0],
                     page_size=query.get("page_size", [str(DEFAULT_DASHBOARD_RESOURCE_PAGE_SIZE)])[0],
                 )
-                self.send_json_response(payload)
+                self.send_cached_json_response(payload)
             except Exception as e:
                 self.send_error_response(str(e))
         elif path == "/api/plugin/check":
@@ -856,6 +893,18 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.end_headers()
             self.wfile.write(json.dumps(payload, ensure_ascii=False).encode("utf-8"))
+        except ConnectionError:
+            pass
+
+    def send_cached_json_response(self, payload):
+        try:
+            response = build_cached_json_response(payload, self.headers)
+            self.send_response(response["status"])
+            for key, value in response["headers"].items():
+                self.send_header(key, value)
+            self.end_headers()
+            if response["body"]:
+                self.wfile.write(response["body"])
         except ConnectionError:
             pass
 

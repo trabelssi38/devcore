@@ -968,6 +968,14 @@ dc verify --ci --json
 - La regeneration dashboard est explicite via `POST /api/refresh`, qui lance `gen_dashboard.ps1 -Json`, met a jour `dashboard_payload.json`, puis retourne le payload.
 - `test_dashboard_api.py` bloque les regressions : les builders de lecture n'appellent pas `subprocess.run`.
 
+### Cache HTTP dashboard
+
+- `GET /api/dashboard` et `GET /api/dashboard/resource` renvoient un `ETag` stable calcule sur le JSON non compresse.
+- Les clients qui renvoient `If-None-Match` avec le meme `ETag` recoivent `304 Not Modified` avec un corps vide.
+- Les reponses JSON volumineuses sont compressees en `gzip` quand `Accept-Encoding` annonce `gzip`.
+- Les headers `Cache-Control: private, max-age=5, must-revalidate` et `Vary: Accept-Encoding` encadrent le cache local sans exposer de donnees partagees.
+- `test_dashboard_api.py` couvre le contrat `ETag`, `304` et compression gzip.
+
 ### Etat v10.0
 
 - Aucun `Invoke-Expression` dans le chemin principal du CLI.

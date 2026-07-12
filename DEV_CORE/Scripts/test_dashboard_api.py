@@ -1,4 +1,5 @@
 import importlib.util
+import gzip
 import json
 import os
 from pathlib import Path
@@ -144,6 +145,32 @@ def test_dashboard_get_paths_do_not_call_powershell_subprocess():
 
     assert "subprocess.run" not in dashboard_api.build_dashboard_payload.__code__.co_names
     assert "subprocess.run" not in dashboard_api.build_dashboard_resource.__code__.co_names
+
+
+def test_cached_json_response_returns_304_for_matching_etag():
+    dashboard_api = load_dashboard_api()
+    payload = {"schema_version": 1, "items": [{"id": "evt-1"}]}
+
+    first = dashboard_api.build_cached_json_response(payload, {})
+    second = dashboard_api.build_cached_json_response(payload, {"If-None-Match": first["headers"]["ETag"]})
+
+    assert first["status"] == 200
+    assert first["headers"]["ETag"].startswith('"sha256-')
+    assert second["status"] == 304
+    assert second["body"] == b""
+    assert second["headers"]["ETag"] == first["headers"]["ETag"]
+
+
+def test_cached_json_response_gzips_when_client_accepts_gzip():
+    dashboard_api = load_dashboard_api()
+    payload = {"items": [{"text": "x" * 2048}]}
+
+    response = dashboard_api.build_cached_json_response(payload, {"Accept-Encoding": "br, gzip"})
+
+    assert response["status"] == 200
+    assert response["headers"]["Content-Encoding"] == "gzip"
+    assert response["headers"]["Vary"] == "Accept-Encoding"
+    assert json.loads(gzip.decompress(response["body"]).decode("utf-8")) == payload
 
 
 def test_run_plugin_check_invokes_dc_plugin_check_json():
