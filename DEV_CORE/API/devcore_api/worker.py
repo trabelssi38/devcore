@@ -6,6 +6,7 @@ from time import monotonic
 from typing import Literal, Protocol
 
 from .contracts import RunStatus
+from .correlation import CorrelationContext
 from .observability import SpanRecorder, recorded_span
 
 
@@ -14,6 +15,8 @@ class WorkerRun:
     id: str
     task_id: str
     status: RunStatus
+    project_id: str | None = None
+    trace_id: str | None = None
 
 
 class RunRepository(Protocol):
@@ -45,7 +48,13 @@ class Worker:
         if run.status == "paused":
             return "paused"
 
-        with recorded_span(self.span_recorder, "worker.run", {"run_id": run.id, "task_id": run.task_id}):
+        correlation = CorrelationContext(
+            trace_id=run.trace_id or run.id,
+            run_id=run.id,
+            task_id=run.task_id,
+            project_id=run.project_id,
+        )
+        with recorded_span(self.span_recorder, "worker.run", correlation.as_span_attributes()):
             self.repository.transition(run.id, "start")
             try:
                 started = monotonic()

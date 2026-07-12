@@ -278,7 +278,7 @@ Objectif : corréler comportement, coût, qualité et incidents.
 ## Backlog
 
 - [x] `S6-01` — Instrumenter API, services et workers avec OpenTelemetry. `5 pts`
-- [ ] `S6-02` — Standardiser `trace_id`, `run_id`, `task_id`, `project_id`. `3 pts`
+- [x] `S6-02` — Standardiser `trace_id`, `run_id`, `task_id`, `project_id`. `3 pts`
 - [ ] `S6-03` — Exposer métriques Prometheus et dashboards Grafana. `4 pts`
 - [ ] `S6-04` — Brancher une couche LLMOps compatible Langfuse. `4 pts`
 - [ ] `S6-05` — Créer datasets et évaluations de routage/contexte. `4 pts`
