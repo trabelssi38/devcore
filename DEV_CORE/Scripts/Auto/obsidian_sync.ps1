@@ -11,7 +11,11 @@ if (-not (Test-Path $notePath)) { Log "Daily Note absente -- creee par launch.ps
 $content = Get-Content $notePath -Raw
 # Ajouter les metriques du jour si section vide
 if ($content -match "<!-- Auto-complete par endday -->") {
-    $metricsBlock = "Total : -- tokens | Cache : --% | Client : $((Get-Content "$DEV_CORE\Config\active_client.txt" -ErrorAction SilentlyContinue))"
+    $activeClient = Get-Content "$DEV_CORE_DATA\Runtime\active_client.txt" -ErrorAction SilentlyContinue
+    if (-not $activeClient) {
+        $activeClient = Get-Content "$DEV_CORE\Config\active_client.txt" -ErrorAction SilentlyContinue
+    }
+    $metricsBlock = "Total : -- tokens | Cache : --% | Client : $activeClient"
     $content = $content -replace "<!-- Auto-complete par endday -->", $metricsBlock
     $content | Set-Content $notePath -Encoding UTF8
     Log "Daily Note mise a jour : $notePath" "Green"

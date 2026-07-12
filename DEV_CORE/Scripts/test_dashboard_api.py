@@ -222,6 +222,51 @@ def test_project_tasks_file_is_confined_to_memory_root(tmp_path):
     assert tasks_file.relative_to((tmp_path / "Memory").resolve())
 
 
+def test_dashboard_settings_do_not_return_secret_keys(tmp_path):
+    dashboard_api = load_dashboard_api()
+    dashboard_api.PLATFORM_ROOT = str(tmp_path / "DEV_CORE")
+    dashboard_api.DATA_ROOT = str(tmp_path / "DEV_CORE_DATA")
+
+    handler = object.__new__(dashboard_api.DashboardAPIHandler)
+    settings = handler.get_settings()
+
+    assert "gemini_api_key" not in settings
+    assert "anthropic_api_key" not in settings
+
+
+def test_dashboard_settings_separate_config_secrets_and_runtime_state(tmp_path):
+    dashboard_api = load_dashboard_api()
+    dashboard_api.PLATFORM_ROOT = str(tmp_path / "DEV_CORE")
+    dashboard_api.DATA_ROOT = str(tmp_path / "DEV_CORE_DATA")
+
+    handler = object.__new__(dashboard_api.DashboardAPIHandler)
+    handler.save_settings(
+        {
+            "active_client": "codex",
+            "auto_refresh_seconds": 30,
+            "gemini_api_key": "GEMINI_SECRET_VALUE",
+            "anthropic_api_key": "ANTHROPIC_SECRET_VALUE",
+            "services": {"dashboard_api": True},
+        }
+    )
+
+    config_text = (tmp_path / "DEV_CORE" / "Config" / "settings.json").read_text(encoding="utf-8")
+    config = json.loads(config_text)
+    secrets = json.loads(
+        (tmp_path / "DEV_CORE_DATA" / "Security" / "dashboard_settings_secrets.json").read_text(encoding="utf-8")
+    )
+    active_client = (tmp_path / "DEV_CORE_DATA" / "Runtime" / "active_client.txt").read_text(encoding="utf-8")
+
+    assert "GEMINI_SECRET_VALUE" not in config_text
+    assert "ANTHROPIC_SECRET_VALUE" not in config_text
+    assert "gemini_api_key" not in config
+    assert "anthropic_api_key" not in config
+    assert secrets["gemini_api_key"] == "GEMINI_SECRET_VALUE"
+    assert secrets["anthropic_api_key"] == "ANTHROPIC_SECRET_VALUE"
+    assert active_client == "codex"
+    assert not (tmp_path / "DEV_CORE" / "Config" / "active_client.txt").exists()
+
+
 def test_gen_dashboard_payload_includes_context_composition(tmp_path):
     platform_root = MODULE_PATH.parents[1]
     data_root = tmp_path / "DEV_CORE_DATA"

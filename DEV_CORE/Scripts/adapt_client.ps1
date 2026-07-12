@@ -15,7 +15,9 @@ $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     
 $PLATFORM = Get-DevCorePlatformInfo
 $SKILLS_DIR    = "$DEV_CORE\Skills"
 $CONFIG_DIR    = "$DEV_CORE\Config"
-$ACTIVE_FILE   = "$CONFIG_DIR\active_client.txt"
+$RUNTIME_DIR   = "$DEV_CORE_DATA\Runtime"
+$ACTIVE_FILE   = "$RUNTIME_DIR\active_client.txt"
+$LEGACY_ACTIVE_FILE = "$CONFIG_DIR\active_client.txt"
 
 # -- Source boot par client
 # CLAUDE.md  -> Claude Code
@@ -54,12 +56,16 @@ function Detect-Client {
         if (Get-Process -Name $c -ErrorAction SilentlyContinue) { return $c }
     }
     if (Test-Path $ACTIVE_FILE) { return (Get-Content $ACTIVE_FILE -Raw).Trim() }
+    if (Test-Path $LEGACY_ACTIVE_FILE) { return (Get-Content $LEGACY_ACTIVE_FILE -Raw).Trim() }
     return "claude"
 }
 
 # -- Resolution client
 $resolved = if ($Client -eq "auto") { Detect-Client } else { $Client }
-if (-not $DryRun) { $resolved | Set-Content $ACTIVE_FILE -Encoding UTF8 }
+if (-not $DryRun) {
+    New-Item -ItemType Directory -Path $RUNTIME_DIR -Force | Out-Null
+    $resolved | Set-Content $ACTIVE_FILE -Encoding UTF8
+}
 
 Write-Host "  [adapt_client] Client : $resolved" -ForegroundColor Cyan
 

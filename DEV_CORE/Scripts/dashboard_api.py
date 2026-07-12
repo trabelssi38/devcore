@@ -28,6 +28,19 @@ CSRF_BYTES = 32
 CSRF_HEADER = "X-CSRF-Token"
 DEFAULT_ALLOWED_ORIGINS = ["http://127.0.0.1:20129", "http://localhost:20129"]
 DEFAULT_MAX_REQUEST_BODY_BYTES = 1024 * 1024
+SENSITIVE_SETTING_KEYS = {"gemini_api_key", "anthropic_api_key"}
+RUNTIME_SETTING_KEYS = {"active_client"}
+DEFAULT_PUBLIC_SETTINGS = {
+    "auto_refresh_seconds": 15,
+    "services": {
+        "qdrant": True,
+        "gemini_router": True,
+        "dashboard_api": True,
+        "headroom": True,
+        "hermes_daemon": True,
+        "repowise": True,
+    },
+}
 
 
 class RequestTooLarge(ValueError):
@@ -73,6 +86,59 @@ def get_project_tasks_file(project):
     safe_project = validate_safe_id(project, "project")
     memory_root = get_data_path("Memory")
     return ensure_within_root(memory_root / safe_project / "tasks.json", memory_root)
+
+
+def get_settings_file_path():
+    return get_platform_path("Config", "settings.json")
+
+
+def get_settings_secrets_path():
+    return get_data_path("Security", "dashboard_settings_secrets.json")
+
+
+def get_active_client_runtime_path():
+    return get_data_path("Runtime", "active_client.txt")
+
+
+def sanitize_public_settings(data):
+    return {
+        key: value
+        for key, value in dict(data or {}).items()
+        if key not in SENSITIVE_SETTING_KEYS and key not in RUNTIME_SETTING_KEYS
+    }
+
+
+def extract_setting_secrets(data):
+    return {
+        key: str(data.get(key)).strip()
+        for key in SENSITIVE_SETTING_KEYS
+        if str(data.get(key, "")).strip()
+    }
+
+
+def read_active_client(default="antigravity"):
+    runtime_path = get_active_client_runtime_path()
+    if runtime_path.exists():
+        value = runtime_path.read_text(encoding="utf-8").strip()
+        if value:
+            return value
+
+    legacy_path = get_platform_path("Config", "active_client.txt")
+    if legacy_path.exists():
+        value = legacy_path.read_text(encoding="utf-8").strip()
+        if value:
+            return value
+
+    return default
+
+
+def write_active_client(value):
+    value = str(value or "").strip()
+    if not value:
+        return
+    runtime_path = get_active_client_runtime_path()
+    runtime_path.parent.mkdir(parents=True, exist_ok=True)
+    runtime_path.write_text(value, encoding="utf-8")
 
 
 def _read_network_config():
@@ -433,39 +499,33 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
         pass
 
     def get_settings(self):
-        settings_file = get_platform_path("Config", "settings.json")
+        settings_file = get_settings_file_path()
         if not settings_file.exists():
-            defaults = {
-                "active_client": "antigravity",
-                "auto_refresh_seconds": 15,
-                "gemini_api_key": "",
-                "anthropic_api_key": "",
-                "services": {
-                    "qdrant": True,
-                    "gemini_router": True,
-                    "dashboard_api": True,
-                    "headroom": True,
-                    "hermes_daemon": True,
-                    "repowise": True
-                }
-            }
+            defaults = dict(DEFAULT_PUBLIC_SETTINGS)
+            defaults["active_client"] = read_active_client()
             return defaults
         try:
-            return read_json_with_retry(settings_file)
+            settings = sanitize_public_settings(read_json_with_retry(settings_file))
+            settings.setdefault("auto_refresh_seconds", DEFAULT_PUBLIC_SETTINGS["auto_refresh_seconds"])
+            settings.setdefault("services", DEFAULT_PUBLIC_SETTINGS["services"])
+            settings["active_client"] = read_active_client()
+            return settings
         except Exception:
             return {}
 
     def save_settings(self, data):
-        settings_file = get_platform_path("Config", "settings.json")
+        settings_file = get_settings_file_path()
         settings_file.parent.mkdir(parents=True, exist_ok=True)
-        write_json_with_retry(settings_file, data)
-        
-        # Sync active client file
+        write_json_with_retry(settings_file, sanitize_public_settings(data))
+
+        secrets_data = extract_setting_secrets(data)
+        if secrets_data:
+            secrets_file = get_settings_secrets_path()
+            secrets_file.parent.mkdir(parents=True, exist_ok=True)
+            write_json_with_retry(secrets_file, secrets_data)
+
         active_client = data.get("active_client")
-        if active_client:
-            client_file = get_platform_path("Config", "active_client.txt")
-            with open(client_file, "w", encoding="utf-8") as f:
-                f.write(active_client)
+        write_active_client(active_client)
 
     def do_GET(self):
         try:

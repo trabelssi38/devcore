@@ -144,7 +144,7 @@ Objectif : rendre l'exposition locale sûre avant d'étendre l'API.
 - [x] `S1-03` — Remplacer les mutations GET par POST/PATCH/DELETE. `3 pts`
 - [x] `S1-04` — Introduire CORS allowlist, CSRF et limites de taille. `3 pts`
 - [x] `S1-05` — Canonicaliser les chemins et imposer les racines autorisées. `5 pts`
-- [ ] `S1-06` — Séparer secrets, configuration versionnée et état runtime. `4 pts`
+- [x] `S1-06` — Séparer secrets, configuration versionnée et état runtime. `4 pts`
 
 ## Gate de sortie
 

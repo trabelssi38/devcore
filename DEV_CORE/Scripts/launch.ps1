@@ -321,7 +321,11 @@ $rpt = "$DEV_CORE_DATA\Logs\token_reports\$yesterday-report.html"
 if (Test-Path $rpt) { Log "  Rapport veille disponible : $rpt" "Green" }
 else { Log "  Pas de rapport pour $yesterday" "Gray" }
 
-$activeClient = Get-Content "$DEV_CORE\Config\active_client.txt" -ErrorAction SilentlyContinue
+$activeClient = Get-Content "$DEV_CORE_DATA\Runtime\active_client.txt" -ErrorAction SilentlyContinue
+if (-not $activeClient) {
+    $activeClient = Get-Content "$DEV_CORE\Config\active_client.txt" -ErrorAction SilentlyContinue
+}
+if (-not $activeClient) { $activeClient = "unknown" }
 Write-Host ""
 Write-Host "  ========================================" -ForegroundColor Green
 Write-Host ("  ||  {0} - PRET{1}||" -f $PLATFORM_TITLE, (" " * [Math]::Max(1, 26 - ($PLATFORM_TITLE.Length)))) -ForegroundColor Green

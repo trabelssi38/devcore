@@ -9,6 +9,7 @@ $tests = @(
     "test_dashboard_auth_contract.ps1",
     "test_dashboard_mutation_methods.ps1",
     "test_dashboard_security_contract.ps1",
+    "test_runtime_state_contract.ps1",
     "test_test_exit_contract.ps1",
     "test_platform_version.ps1",
     "test_embedding_contract.ps1",

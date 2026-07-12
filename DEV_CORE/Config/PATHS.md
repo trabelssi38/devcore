@@ -28,7 +28,7 @@ MEMORY_MD       = C:\devcore\DEV_CORE_DATA\Memory\MEMORY.md
 TASKS_JSON      = C:\devcore\DEV_CORE_DATA\Memory\tasks.json
 DECISIONS_MD    = C:\devcore\DEV_CORE_DATA\Memory\DECISIONS.md
 GLOBAL_STATE_MD = C:\devcore\DEV_CORE_DATA\Memory\GLOBAL_STATE.md
-ACTIVE_CLIENT   = C:\devcore\DEV_CORE\Config\active_client.txt
+ACTIVE_CLIENT   = C:\devcore\DEV_CORE_DATA\Runtime\active_client.txt
 SKILLS_REGISTRY = C:\devcore\DEV_CORE\Skills\skills_registry.json
 SESSION_CONTEXT = C:\devcore\DEV_CORE_DATA\Logs\scripts\session_context.txt
 

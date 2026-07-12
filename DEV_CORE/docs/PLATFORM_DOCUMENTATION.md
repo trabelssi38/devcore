@@ -936,6 +936,14 @@ dc verify --ci --json
 - Le serveur MCP `obsidian-vault` resout les chemins relatifs depuis la racine du vault et bloque les traversals hors `DEV_CORE_DATA\Vault`.
 - `test_dashboard_api.py` et `test_obsidian_vault_paths.py` couvrent les cas negatifs `../` et les chemins valides sous racine.
 
+### Separation secrets, configuration versionnee et etat runtime
+
+- `/api/settings` ne retourne plus les cles sensibles `gemini_api_key` et `anthropic_api_key`.
+- `dashboard_api.py` ecrit la configuration publique dans `DEV_CORE\Config\settings.json`.
+- Les secrets saisis via le dashboard sont stockes localement hors Git dans `DEV_CORE_DATA\Security\dashboard_settings_secrets.json`.
+- L'etat runtime `active_client` est stocke dans `DEV_CORE_DATA\Runtime\active_client.txt`, avec lecture legacy de `DEV_CORE\Config\active_client.txt` pour compatibilite.
+- `test_dashboard_api.py` bloque les regressions : secret dans settings publics, secret dans config versionnee, et etat runtime ecrit dans `Config`.
+
 ### Etat v10.0
 
 - Aucun `Invoke-Expression` dans le chemin principal du CLI.
