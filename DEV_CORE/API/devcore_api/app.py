@@ -5,6 +5,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from .contracts import ContractCatalog, build_contract_catalog
 from .schemas import ErrorBody, ErrorResponse, HealthResponse
 
 
@@ -45,6 +46,10 @@ def create_app() -> FastAPI:
     @app.get(f"{API_PREFIX}/health", response_model=HealthResponse, tags=["health"])
     async def health(request: Request) -> HealthResponse:
         return HealthResponse(trace_id=get_trace_id(request))
+
+    @app.get(f"{API_PREFIX}/contracts", response_model=ContractCatalog, tags=["contracts"])
+    async def contracts() -> ContractCatalog:
+        return build_contract_catalog()
 
     @app.exception_handler(StarletteHTTPException)
     @app.exception_handler(HTTPException)
