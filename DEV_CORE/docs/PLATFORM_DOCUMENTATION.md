@@ -1074,6 +1074,10 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - Les extensions evolutives passent par `metadata`, `payload` et `details` en `jsonb`.
 - Les indexes operationnels couvrent les lectures courantes : taches par projet/statut, runs par tache/statut, evenements/audit par projet/date.
 - `DEV_CORE\Database\test_postgres_schema_contract.py` verrouille le contrat avant l'introduction SQLAlchemy/Alembic.
+- `DEV_CORE\Database\devcore_db\models.py` expose le meme contrat sous forme de `MetaData` SQLAlchemy.
+- `DEV_CORE\Database\devcore_db\config.py` lit `DEVCORE_DATABASE_URL` avec un defaut local `127.0.0.1:5432/devcore`.
+- `DEV_CORE\Database\alembic.ini` et `DEV_CORE\Database\alembic\env.py` initialisent les migrations Alembic locales.
+- `DEV_CORE\Database\test_sqlalchemy_alembic_setup.py` verrouille la config locale, les tables core et le branchement Alembic.
 - `-Action Sync` : fusionne les suggestions detectees depuis un fichier JSON, avec generation d'ID et deduplication par ID/titre.
 
 `task_add.ps1`, `task_next.ps1`, `task_done.ps1`, `task_step_done.ps1` et `task_sync.ps1` sont maintenant des adaptateurs vers `task_service.ps1`, ce qui garde les mutations de `tasks.json` dans un seul service.
