@@ -8,6 +8,7 @@ $tests = @(
     "DEV_CORE/API/test_domain_contracts.py",
     "DEV_CORE/API/test_dual_read_cutover.py",
     "DEV_CORE/API/test_openapi_client_generation.py",
+    "DEV_CORE/API/test_observability_instrumentation.py",
     "DEV_CORE/API/test_ports.py",
     "DEV_CORE/API/test_run_pause_resume_cancel.py",
     "DEV_CORE/API/test_run_state_machine.py",

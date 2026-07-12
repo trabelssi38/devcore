@@ -1139,6 +1139,16 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - `OutboxRepository.mark_failed(...)` replanifie un message ou le passe en `dead_letter` apres `max_attempts`.
 - `Worker(..., timeout_seconds=...)` convertit un depassement de temps en transition `timeout`.
 - `DEV_CORE\Database\test_outbox_retry_dlq.py` couvre backoff, retry, dead-letter et timeout worker.
+
+### Observability
+
+`DEV_CORE\API\devcore_api\observability.py` centralise l'instrumentation API/worker.
+
+- `configure_observability(app, recorder=...)` ajoute un middleware HTTP avec propagation `X-Trace-Id`.
+- Le middleware enregistre un span `http.request` avec `trace_id`, `method`, `path`, `status_code`.
+- `Worker(..., span_recorder=...)` enregistre un span `worker.run` avec `run_id` et `task_id`.
+- `InMemorySpanRecorder` fournit un backend de test deterministic; un exporteur OpenTelemetry reel peut s'y brancher ensuite.
+- `DEV_CORE\API\test_observability_instrumentation.py` verrouille l'instrumentation HTTP et worker.
 - `-Action Sync` : fusionne les suggestions detectees depuis un fichier JSON, avec generation d'ID et deduplication par ID/titre.
 
 `task_add.ps1`, `task_next.ps1`, `task_done.ps1`, `task_step_done.ps1` et `task_sync.ps1` sont maintenant des adaptateurs vers `task_service.ps1`, ce qui garde les mutations de `tasks.json` dans un seul service.
