@@ -1042,6 +1042,9 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - `DEV_CORE\API\devcore_api\ports.py` introduit les premiers ports Python : `TaskRepository` et `HealthPort`.
 - `FileTaskRepository` est l'adaptateur de compatibilite lecture seule vers `DEV_CORE_DATA\Memory\<project>\tasks.json`.
 - `DEV_CORE\API\test_ports.py` couvre l'adaptateur fichier, l'injection de repository et l'erreur stable `task_board_not_found`.
+- `DEV_CORE\API\compat_task_list.py` fournit un CLI de compatibilite base sur le port Python.
+- `task_list.ps1` devient un wrapper PowerShell fin vers ce CLI et ne lit plus `tasks.json` directement.
+- `test_task_list_adapter.ps1` bloque les regressions vers une lecture directe du JSON par PowerShell.
 
 ### Task Service
 

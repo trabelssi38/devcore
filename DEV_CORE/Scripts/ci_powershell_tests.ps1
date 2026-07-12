@@ -18,6 +18,7 @@ $tests = @(
     "test_secret_scan.ps1",
     "test_dc_dispatch.ps1",
     "test_task_service.ps1",
+    "test_task_list_adapter.ps1",
     "test_gateway.ps1",
     "test_context_service.ps1",
     "test_memory_service.ps1",

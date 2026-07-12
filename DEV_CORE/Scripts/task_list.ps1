@@ -1,30 +1,19 @@
-# task_list.ps1 -- DEV_CORE single client
+# task_list.ps1 -- compatibility adapter to Python API ports
+param(
+    [string]$Project = "",
+    [switch]$Json
+)
+
+$ErrorActionPreference = "Stop"
 $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
-. "$DEV_CORE\Scripts\platform_version.ps1"
-$PLATFORM = Get-DevCorePlatformInfo
-$tFile = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
-if (-not (Test-Path $tFile)) { Write-Host "  Aucun tasks.json." -ForegroundColor Yellow; exit 0 }
+$adapter = Join-Path $DEV_CORE "API\compat_task_list.py"
 
-$board = Get-Content $tFile -Raw | ConvertFrom-Json
-$todos = $board.tasks | Where-Object { $_.status -in @("todo","active","paused") }
-
-Write-Host ""
-Write-Host "  $($PLATFORM.title) -- Backlog (todo)" -ForegroundColor Cyan
-Write-Host "  -------------------------------------------------------" -ForegroundColor DarkGray
-Write-Host ("  {0,-6} {1,-12} {2,-10} {3}" -f "ID","Mode","Status","Titre") -ForegroundColor DarkGray
-Write-Host "  -------------------------------------------------------" -ForegroundColor DarkGray
-
-foreach ($t in $todos) {
-    $icon  = switch ($t.status) { "active"{"[active]"}; "paused"{"[paused]"}; default{"[todo]  "} }
-    $color = switch ($t.status) { "active"{"Cyan"}; "paused"{"Yellow"}; default{"Gray"} }
-    $title = $t.title
-    if ($title.Length -gt 40) { $title = $title.Substring(0,37) + "..." }
-    $pre   = if ($t.id -eq $board.current_task) { ">" } else { " " }
-    Write-Host ("$pre {0,-6} {1,-12} " -f $t.id, $t.mode) -NoNewline -ForegroundColor White
-    Write-Host ("{0,-10} " -f $icon) -NoNewline -ForegroundColor $color
-    Write-Host $title -ForegroundColor White
+if ([string]::IsNullOrWhiteSpace($Project)) {
+    $Project = & (Join-Path $PSScriptRoot "Get-ActiveProject.ps1")
 }
-Write-Host "  -------------------------------------------------------" -ForegroundColor DarkGray
-Write-Host ""
 
+$arguments = @($adapter, "--project", $Project)
+if ($Json) { $arguments += "--json" }
+
+& python @arguments
+exit $LASTEXITCODE
