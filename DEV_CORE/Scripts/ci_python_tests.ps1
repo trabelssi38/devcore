@@ -29,7 +29,8 @@ $tests = @(
     "DEV_CORE/MCP/obsidian-vault/test_obsidian_vault_paths.py",
     "DEV_CORE/Scripts/Auto/test_model_pricing_sync.py",
     "DEV_CORE/Scripts/Auto/test_token_report_clients.py",
-    "DEV_CORE/Web/test_frontend_scaffold.py"
+    "DEV_CORE/Web/test_frontend_scaffold.py",
+    "DEV_CORE/Web/test_dashboard_components.py"
 )
 
 $existingTests = @()

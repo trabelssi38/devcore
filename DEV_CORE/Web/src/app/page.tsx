@@ -1,8 +1,7 @@
-const cards = [
-  { label: "API", value: "Gateway v1", tone: "var(--color-success)" },
-  { label: "Workers", value: "Durable runs", tone: "var(--color-accent)" },
-  { label: "Observability", value: "Trace + metrics", tone: "var(--color-warning)" },
-];
+import { HealthPanel } from "../components/HealthPanel";
+import { ProjectSummary } from "../components/ProjectSummary";
+import { RunTimeline } from "../components/RunTimeline";
+import { TaskList } from "../components/TaskList";
 
 export default function HomePage() {
   return (
@@ -17,14 +16,10 @@ export default function HomePage() {
       </section>
 
       <section className="grid" aria-label="Modules principaux">
-        {cards.map((card) => (
-          <article className="card" key={card.label}>
-            <p className="eyebrow" style={{ color: card.tone }}>
-              {card.label}
-            </p>
-            <h2>{card.value}</h2>
-          </article>
-        ))}
+        <ProjectSummary />
+        <TaskList />
+        <RunTimeline />
+        <HealthPanel />
       </section>
     </main>
   );

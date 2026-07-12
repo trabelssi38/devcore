@@ -1172,6 +1172,9 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - Shell initial : `src\app\layout.tsx`, `src\app\page.tsx`, `src\app\globals.css`.
 - Accessibilité initiale : `lang="fr"`, landmark `<main>`, focus visible, contraste dark AA.
 - `DEV_CORE\Web\test_frontend_scaffold.py` verrouille package, tokens et shell accessible.
+- Composants dashboard : `ProjectSummary`, `TaskList`, `RunTimeline`, `HealthPanel`.
+- Les composants utilisent des landmarks/labels ARIA explicites pour les domaines projets, tâches, runs et health.
+- `DEV_CORE\Web\test_dashboard_components.py` verrouille la composition des composants core.
 
 ### LLMOps / Langfuse
 
