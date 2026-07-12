@@ -1082,6 +1082,10 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - `SqlTaskRepository` expose `list_tasks(project)` compatible avec les contrats API existants et `create_task(...)` pour les futures mutations transactionnelles.
 - `UnitOfWork` commit automatiquement en succes, rollback en exception, et ferme toujours la session.
 - `DEV_CORE\Database\test_repositories_transactions.py` couvre le mapping repository et les garanties transactionnelles sans exiger PostgreSQL local.
+- `DEV_CORE\Database\devcore_db\importer.py` importe un `tasks.json` existant vers les tables `projects` et `tasks`.
+- L'import genere un `ReconciliationReport` avec `tasks_seen`, `tasks_imported`, `tasks_skipped`, `warnings` et statut `ok|partial`.
+- Les taches invalides sont ignorees avec warning au lieu de bloquer toute la migration.
+- `DEV_CORE\Database\test_importer_reconciliation.py` couvre l'import nominal et les erreurs de reconciliation.
 - `-Action Sync` : fusionne les suggestions detectees depuis un fichier JSON, avec generation d'ID et deduplication par ID/titre.
 
 `task_add.ps1`, `task_next.ps1`, `task_done.ps1`, `task_step_done.ps1` et `task_sync.ps1` sont maintenant des adaptateurs vers `task_service.ps1`, ce qui garde les mutations de `tasks.json` dans un seul service.

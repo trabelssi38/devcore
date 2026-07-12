@@ -2,6 +2,5 @@
 
 from .config import get_database_url
 from .models import metadata
-from .repositories import SqlTaskRepository, UnitOfWork
 
-__all__ = ["SqlTaskRepository", "UnitOfWork", "get_database_url", "metadata"]
+__all__ = ["get_database_url", "metadata"]
