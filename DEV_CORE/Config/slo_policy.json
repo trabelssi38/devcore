@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "slo": {
+    "api_availability_target": 0.995,
+    "worker_success_target": 0.99,
+    "eval_route_accuracy_target": 0.9,
+    "eval_context_recall_target": 0.9
+  },
+  "alerts": {
+    "latency_p95_ms": 1500,
+    "worker_failure_rate": 0.02,
+    "dead_letter_messages": 1
+  },
+  "cost_budgets": {
+    "daily_usd": 10.0,
+    "monthly_usd": 250.0,
+    "run_usd": 1.0
+  }
+}

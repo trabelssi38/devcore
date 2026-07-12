@@ -16,6 +16,7 @@ $tests = @(
     "DEV_CORE/API/test_prometheus_metrics.py",
     "DEV_CORE/API/test_run_pause_resume_cancel.py",
     "DEV_CORE/API/test_run_state_machine.py",
+    "DEV_CORE/API/test_slo_budget_policy.py",
     "DEV_CORE/API/test_worker_execution.py",
     "DEV_CORE/Database/test_backup_restore_downgrade.py",
     "DEV_CORE/Database/test_importer_reconciliation.py",

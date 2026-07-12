@@ -1180,6 +1180,16 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - `evaluate_cases(...)` calcule `route_accuracy` et `context_recall`.
 - `DEV_CORE\Evals\routing_context_dataset.json` versionne les premiers cas de routage/contexte.
 - `DEV_CORE\API\test_eval_datasets.py` verrouille chargement, validite JSON et scoring.
+
+### SLO, alerts and cost budgets
+
+`DEV_CORE\Config\slo_policy.json` definit les objectifs de service, alertes et budgets cout.
+
+- SLO : disponibilite API, succes worker, accuracy routage, recall contexte.
+- Alertes : latence p95, taux d'echec worker, messages dead-letter.
+- Budgets : cout quotidien, mensuel et par run.
+- `DEV_CORE\API\devcore_api\slo.py` evalue un snapshot de metriques contre la politique.
+- `DEV_CORE\API\test_slo_budget_policy.py` verrouille la politique et les breaches latence/cout.
 - `-Action Sync` : fusionne les suggestions detectees depuis un fichier JSON, avec generation d'ID et deduplication par ID/titre.
 
 `task_add.ps1`, `task_next.ps1`, `task_done.ps1`, `task_step_done.ps1` et `task_sync.ps1` sont maintenant des adaptateurs vers `task_service.ps1`, ce qui garde les mutations de `tasks.json` dans un seul service.

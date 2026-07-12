@@ -282,7 +282,7 @@ Objectif : corréler comportement, coût, qualité et incidents.
 - [x] `S6-03` — Exposer métriques Prometheus et dashboards Grafana. `4 pts`
 - [x] `S6-04` — Brancher une couche LLMOps compatible Langfuse. `4 pts`
 - [x] `S6-05` — Créer datasets et évaluations de routage/contexte. `4 pts`
-- [ ] `S6-06` — Définir SLO, alertes et budgets de coût. `2 pts`
+- [x] `S6-06` — Définir SLO, alertes et budgets de coût. `2 pts`
 
 ## Gate de sortie
 
