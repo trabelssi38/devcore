@@ -13,7 +13,10 @@ export function HealthPanel() {
         {checks.map((check) => (
           <li key={check.name}>
             <span>{check.name}</span>
-            <span className="badge">{check.statusText}</span>
+            <span className="badge">
+              <span className="sr-only">Statut : </span>
+              {check.statusText}
+            </span>
           </li>
         ))}
       </ul>

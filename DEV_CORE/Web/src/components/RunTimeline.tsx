@@ -12,7 +12,10 @@ export function RunTimeline() {
         {runs.map((run) => (
           <li key={run.id}>
             <span className="mono">{run.id}</span>
-            <span className="badge">{run.statusText}</span>
+            <span className="badge">
+              <span className="sr-only">Statut : </span>
+              {run.statusText}
+            </span>
           </li>
         ))}
       </ol>

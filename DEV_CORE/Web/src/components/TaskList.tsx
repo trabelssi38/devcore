@@ -13,7 +13,10 @@ export function TaskList() {
           <li key={task.id}>
             <span className="mono">{task.id}</span>
             <span>{task.title}</span>
-            <span className="badge">{task.statusText}</span>
+            <span className="badge">
+              <span className="sr-only">Statut : </span>
+              {task.statusText}
+            </span>
           </li>
         ))}
       </ul>

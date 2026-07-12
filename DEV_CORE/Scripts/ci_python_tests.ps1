@@ -33,7 +33,8 @@ $tests = @(
     "DEV_CORE/Web/test_frontend_scaffold.py",
     "DEV_CORE/Web/test_dashboard_components.py",
     "DEV_CORE/Web/test_api_client_sse.py",
-    "DEV_CORE/Web/test_ui_states_network_recovery.py"
+    "DEV_CORE/Web/test_ui_states_network_recovery.py",
+    "DEV_CORE/Web/test_responsive_accessibility.py"
 )
 
 $existingTests = @()

@@ -1201,6 +1201,9 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - `DEV_CORE\Web\src\components\UiStates.tsx` fournit `LoadingState`, `EmptyState`, `ErrorState` et `RetryButton`.
 - `DEV_CORE\Web\src\hooks\useApiResource.ts` gère `loading`, `empty`, `error`, `retry`, `AbortController` et reprise sur événement `online`.
 - `DEV_CORE\Web\test_ui_states_network_recovery.py` verrouille les états UI et la reprise réseau.
+- Responsive : breakpoints `768px` et `480px`, grille mono-colonne mobile et cartes compactes.
+- WCAG AA : focus visible, zones interactives `44px`, badges avec texte accessible et indicateur non-couleur.
+- `DEV_CORE\Web\test_responsive_accessibility.py` verrouille responsive, focus visible et indices non-couleur.
 
 ### LLMOps / Langfuse
 

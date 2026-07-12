@@ -309,7 +309,7 @@ Objectif : remplacer le HTML généré par une application maintenable et access
 - [x] `S7-02` — Implémenter projets, tâches, runs et health. `5 pts`
 - [x] `S7-03` — Consommer le client OpenAPI et les événements SSE. `4 pts`
 - [x] `S7-04` — Ajouter états loading/empty/error et reprise réseau. `3 pts`
-- [ ] `S7-05` — Rendre l'interface responsive et WCAG AA. `3 pts`
+- [x] `S7-05` — Rendre l'interface responsive et WCAG AA. `3 pts`
 - [ ] `S7-06` — Ajouter tests composants et E2E Playwright. `3 pts`
 
 ## Gate de sortie
