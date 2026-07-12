@@ -128,3 +128,27 @@ a {
   font-family: var(--font-mono);
   font-size: 0.75rem;
 }
+
+.state-card {
+  margin-top: var(--space-4);
+}
+
+.danger {
+  color: var(--color-danger);
+}
+
+.button {
+  min-height: 44px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  padding: var(--space-2) var(--space-4);
+  color: var(--color-text-1);
+  background: var(--color-accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.button:hover {
+  filter: brightness(1.08);
+}

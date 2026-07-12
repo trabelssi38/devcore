@@ -1198,6 +1198,9 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - `DEV_CORE\Web\src\lib\apiClient.ts` encapsule le client OpenAPI TypeScript généré.
 - `DEV_CORE\Web\src\hooks\useDevCoreEvents.ts` consomme les événements SSE via `EventSource`.
 - `DEV_CORE\Web\test_api_client_sse.py` verrouille l'intégration client OpenAPI et SSE.
+- `DEV_CORE\Web\src\components\UiStates.tsx` fournit `LoadingState`, `EmptyState`, `ErrorState` et `RetryButton`.
+- `DEV_CORE\Web\src\hooks\useApiResource.ts` gère `loading`, `empty`, `error`, `retry`, `AbortController` et reprise sur événement `online`.
+- `DEV_CORE\Web\test_ui_states_network_recovery.py` verrouille les états UI et la reprise réseau.
 
 ### LLMOps / Langfuse
 

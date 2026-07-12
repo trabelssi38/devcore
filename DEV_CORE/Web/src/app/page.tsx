@@ -4,12 +4,14 @@ import { HealthPanel } from "../components/HealthPanel";
 import { ProjectSummary } from "../components/ProjectSummary";
 import { RunTimeline } from "../components/RunTimeline";
 import { TaskList } from "../components/TaskList";
+import { EmptyState, ErrorState, LoadingState } from "../components/UiStates";
+import { useApiResource } from "../hooks/useApiResource";
 import { useDevCoreEvents } from "../hooks/useDevCoreEvents";
 import { getHealth } from "../lib/apiClient";
 
 export default function HomePage() {
   const events = useDevCoreEvents();
-  void getHealth;
+  const health = useApiResource(() => getHealth());
 
   return (
     <main className="shell" aria-label="Vue synthétique DEV_CORE">
@@ -34,6 +36,16 @@ export default function HomePage() {
         <h2>Événements récents</h2>
         <p>{events.length} événement(s) reçus</p>
       </section>
+
+      {health.status === "loading" ? (
+        <LoadingState title="Connexion à l’API" description="Chargement des données plateforme." />
+      ) : null}
+      {health.status === "empty" ? (
+        <EmptyState title="Aucune donnée" description="L’API est joignable mais ne retourne pas encore de contenu." />
+      ) : null}
+      {health.status === "error" ? (
+        <ErrorState title="Connexion interrompue" description={health.error} onRetry={health.retry} />
+      ) : null}
     </main>
   );
 }
