@@ -201,3 +201,63 @@ Avant de générer du code UI, toujours dans cet ordre :
 - **Couleurs sémantiques inversées** : rouge = succès ou vert = danger
 - **Toasts qui disparaissent trop vite** : minimum 4 secondes, 6 si message long
 - **CTA fantôme** : bouton outline trop discret pour une action principale
+
+---
+
+## Règles DEV_CORE Dashboard
+
+Ces règles adaptent `nextlevelbuilder/ui-ux-pro-max-skill` au produit DEV_CORE. Le repo externe sert de référence de raisonnement UI/UX, pas de dépendance runtime.
+
+### Positionnement produit
+
+- Style cible : **Dark Tech opérationnel**.
+- Usage : dashboard interne pour projets, tâches, runs, workers, santé, coûts, alertes et observabilité.
+- Priorité : lisibilité opérationnelle, diagnostic rapide, accessibilité, stabilité visuelle.
+- ne pas ajouter de dépendance runtime UI juste pour appliquer ces règles ; préférer CSS variables, composants React simples et tests statiques.
+
+### Contrat design tokens
+
+Les tokens DEV_CORE doivent rester stables entre composants :
+
+```css
+--color-bg: #0f1117;
+--color-surface: #1a1d27;
+--color-border: #2d3148;
+--color-accent: #6366f1;
+--color-success: #22c55e;
+--color-warning: #f59e0b;
+--color-danger: #ef4444;
+--color-text-1: #f8fafc;
+--color-text-2: #94a3b8;
+--font-sans: "Inter", system-ui, sans-serif;
+--font-mono: "JetBrains Mono", monospace;
+```
+
+- Espacement obligatoire : `4 / 8 / 12 / 16 / 24 / 32 / 48`.
+- Rayon par défaut : cartes `12px`, badges/pills `999px`.
+- Couleur = sémantique : succès, warning, danger, accent. Ne pas utiliser la couleur seule pour transmettre l'information.
+
+### Patterns dashboard à privilégier
+
+- Layout : shell + cards + grille responsive.
+- Données temps réel : badge statut + horodatage + trace/run/task/project ID.
+- Runs et workers : timeline compacte, état textuel, action principale visible.
+- Santé système : résumé en haut, détails en drill-down, jamais noyés dans des tableaux trop denses.
+- SSE : les événements `EventSource` doivent afficher loading, reconnecting, empty et error.
+
+### Accessibilité obligatoire
+
+- WCAG AA minimum pour tous les textes.
+- Focus visible sur tous les éléments interactifs.
+- Touch target minimum 44px.
+- Landmarks explicites : `main`, `section`, `aria-label` précis.
+- Les statuts doivent avoir un texte lisible en plus de la couleur.
+
+### Checklist avant commit frontend
+
+- [ ] Tokens utilisés, pas de couleurs hardcodées hors token.
+- [ ] Responsive vérifié mentalement pour 375 / 768 / 1280px.
+- [ ] Loading / empty / error présents si données distantes.
+- [ ] Reprise réseau prévue pour SSE ou fetch.
+- [ ] Aucun HTML métier généré par PowerShell.
+- [ ] Tests statiques mis à jour pour verrouiller les composants et tokens.
