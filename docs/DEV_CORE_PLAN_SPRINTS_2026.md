@@ -254,7 +254,7 @@ Objectif : rendre les runs persistants, reprenables et contrôlables.
 - [x] `S5-02` — Extraire un worker d'exécution hors du processus HTTP. `5 pts`
 - [x] `S5-03` — Ajouter outbox transactionnelle et consommateurs idempotents. `5 pts`
 - [x] `S5-04` — Implémenter timeout, retry/backoff et dead-letter queue. `4 pts`
-- [ ] `S5-05` — Ajouter pause, annulation et reprise après redémarrage. `4 pts`
+- [x] `S5-05` — Ajouter pause, annulation et reprise après redémarrage. `4 pts`
 
 ## Gate de sortie
 

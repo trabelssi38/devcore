@@ -20,7 +20,7 @@ class RunRepository(Protocol):
     def transition(self, run_id: str, action: str) -> None: ...
 
 
-WorkerResult = Literal["idle", "succeeded", "failed", "timed_out"]
+WorkerResult = Literal["idle", "paused", "succeeded", "failed", "timed_out"]
 
 
 class Worker:
@@ -33,6 +33,8 @@ class Worker:
         run = self.repository.claim_next_queued()
         if run is None:
             return "idle"
+        if run.status == "paused":
+            return "paused"
 
         self.repository.transition(run.id, "start")
         try:
@@ -47,3 +49,9 @@ class Worker:
 
         self.repository.transition(run.id, "succeed")
         return "succeeded"
+
+    def resume_after_restart(self) -> int:
+        resume = getattr(self.repository, "resume_interrupted", None)
+        if resume is None:
+            return 0
+        return int(resume())

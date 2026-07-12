@@ -16,10 +16,14 @@ class RunStateMachine:
     TRANSITIONS: dict[tuple[str, RunAction], RunStatus] = {
         ("queued", "start"): "running",
         ("queued", "cancel"): "cancelled",
+        ("queued", "pause"): "paused",
         ("running", "succeed"): "succeeded",
         ("running", "fail"): "failed",
         ("running", "timeout"): "timed_out",
         ("running", "cancel"): "cancelled",
+        ("running", "pause"): "paused",
+        ("paused", "resume"): "running",
+        ("paused", "cancel"): "cancelled",
     }
 
     def transition(self, status: RunStatus, action: RunAction) -> RunStatus:

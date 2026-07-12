@@ -1109,8 +1109,9 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 `DEV_CORE\API\devcore_api\run_state.py` definit les transitions durables des runs.
 
 - Etats actifs : `queued`, `running`.
+- Etat suspendu : `paused`.
 - Etats terminaux : `succeeded`, `failed`, `cancelled`, `timed_out`.
-- Transitions autorisees : `queued/start`, `queued/cancel`, `running/succeed`, `running/fail`, `running/timeout`, `running/cancel`.
+- Transitions autorisees : `queued/start`, `queued/cancel`, `queued/pause`, `running/succeed`, `running/fail`, `running/timeout`, `running/cancel`, `running/pause`, `paused/resume`, `paused/cancel`.
 - Les transitions invalides levent `InvalidRunTransition`.
 - `DEV_CORE\API\test_run_state_machine.py` verrouille les transitions et les etats terminaux.
 
@@ -1120,8 +1121,10 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 
 - `Worker.run_once()` reclame un run `queued`, applique `start`, execute un handler, puis applique `succeed` ou `fail`.
 - Sans run disponible, le worker retourne `idle`.
+- Un run `paused` est ignore par `run_once()` et peut etre repris via `resume_after_restart()`.
 - Le worker depend d'un port `RunRepository`, pas de FastAPI.
 - `DEV_CORE\API\test_worker_execution.py` couvre succes, echec handler et absence de run.
+- `DEV_CORE\API\test_run_pause_resume_cancel.py` couvre pause, annulation et reprise apres redemarrage.
 
 ### Transactional outbox
 

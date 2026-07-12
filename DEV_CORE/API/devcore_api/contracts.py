@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 TaskStatus = Literal["todo", "active", "paused", "done", "skipped"]
 TaskMode = Literal["reasoning", "coding", "bulk"]
-RunStatus = Literal["queued", "running", "succeeded", "failed", "cancelled", "timed_out"]
+RunStatus = Literal["queued", "running", "paused", "succeeded", "failed", "cancelled", "timed_out"]
 HealthStatus = Literal["ok", "degraded", "down"]
 
 
