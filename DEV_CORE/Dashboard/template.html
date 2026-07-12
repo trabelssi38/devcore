@@ -601,13 +601,21 @@ function handleConfirmClick() {
 
 const API_BASE = window.location.protocol === 'file:' ? 'http://127.0.0.1:20129' : '';
 
+function apiFetch(url, options) {
+  return fetch(url, options || {});
+}
+
 function completeTask(project, id) {
   showConfirmModal(
     "Clôture de tâche",
     `Voulez-vous clôturer la tâche <b>${id}</b> du projet <b>${project}</b> ?`,
     false,
     function() {
-      fetch(`${API_BASE}/api/done?project=${encodeURIComponent(project)}&id=${encodeURIComponent(id)}`)
+      apiFetch(`${API_BASE}/api/done`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ project, id })
+        })
         .then(r => r.json())
         .then(data => {
           if (data.success) {
@@ -627,7 +635,11 @@ function deleteTask(project, id) {
     `Êtes-vous sûr de vouloir supprimer la tâche <b>${id}</b> du projet <b>${project}</b> ?<br/><span style="color:#f87171;font-size:11px;margin-top:8px;display:block;">Cette action est irréversible.</span>`,
     true,
     function() {
-      fetch(`${API_BASE}/api/delete?project=${encodeURIComponent(project)}&id=${encodeURIComponent(id)}`)
+      apiFetch(`${API_BASE}/api/delete`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ project, id })
+        })
         .then(r => r.json())
         .then(data => {
           if (data.success) {

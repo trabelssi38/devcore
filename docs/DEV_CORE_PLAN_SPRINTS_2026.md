@@ -141,7 +141,7 @@ Objectif : rendre l'exposition locale sûre avant d'étendre l'API.
 
 - [x] `S1-01` — Écouter sur `127.0.0.1` par défaut et rendre le bind explicite. `2 pts`
 - [x] `S1-02` — Ajouter authentification locale et rotation des tokens. `5 pts`
-- [ ] `S1-03` — Remplacer les mutations GET par POST/PATCH/DELETE. `3 pts`
+- [x] `S1-03` — Remplacer les mutations GET par POST/PATCH/DELETE. `3 pts`
 - [ ] `S1-04` — Introduire CORS allowlist, CSRF et limites de taille. `3 pts`
 - [ ] `S1-05` — Canonicaliser les chemins et imposer les racines autorisées. `5 pts`
 - [ ] `S1-06` — Séparer secrets, configuration versionnée et état runtime. `4 pts`

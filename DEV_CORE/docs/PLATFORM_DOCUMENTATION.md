@@ -912,6 +912,11 @@ dc verify --ci --json
 - Le bootstrap local pour le cockpit est stocke dans `DEV_CORE_DATA\Security\dashboard_api_token.bootstrap`.
 - `rotate_dashboard_token.ps1` regenere le token local et affiche la nouvelle valeur une seule fois dans le terminal.
 - `test_dashboard_auth_contract.ps1` et `test_dashboard_api.py` bloquent les regressions : absence de token, mauvais schema `Authorization`, rotation et anciens tokens invalides.
+- Les mutations dashboard n'utilisent plus GET :
+  - cloture de tache : `POST /api/done` avec body JSON `{ "project": "...", "id": "T-..." }`;
+  - suppression de tache : `DELETE /api/delete` avec body JSON `{ "project": "...", "id": "T-..." }`.
+- Les anciens GET `/api/done` et `/api/delete` retournent `405 Method Not Allowed`.
+- `test_dashboard_mutation_methods.ps1` bloque les regressions vers des mutations par query-string GET.
 
 ### Etat v10.0
 

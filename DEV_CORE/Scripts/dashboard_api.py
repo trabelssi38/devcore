@@ -302,8 +302,6 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
     def _handle_get(self):
         parsed_url = urllib.parse.urlparse(self.path)
         path = parsed_url.path
-        query = urllib.parse.parse_qs(parsed_url.query)
-
         if requires_authentication(path) and not is_authorized(self.headers):
             self.send_auth_error_response()
             return
@@ -321,30 +319,10 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
 
 
         if path == "/api/done":
-            project = query.get("project", [""])[0]
-            task_id = query.get("id", [""])[0]
-            if not project or not task_id:
-                self.send_error_response("Missing project or id")
-                return
-
-            success, msg = self.complete_task(project, task_id)
-            if success:
-                self.send_success_response(msg)
-            else:
-                self.send_error_response(msg)
+            self.send_method_not_allowed_response("POST")
 
         elif path == "/api/delete":
-            project = query.get("project", [""])[0]
-            task_id = query.get("id", [""])[0]
-            if not project or not task_id:
-                self.send_error_response("Missing project or id")
-                return
-
-            success, msg = self.delete_task(project, task_id)
-            if success:
-                self.send_success_response(msg)
-            else:
-                self.send_error_response(msg)
+            self.send_method_not_allowed_response("DELETE")
 
         elif path in ["/", "/index.html"]:
             try:
@@ -433,17 +411,72 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
             return
 
         if path == "/api/settings":
-            content_length = int(self.headers.get('Content-Length', 0))
-            post_data = self.rfile.read(content_length)
             try:
-                data = json.loads(post_data.decode('utf-8'))
+                data = self.read_json_body()
                 self.save_settings(data)
                 self.send_success_response("Settings saved successfully")
+            except Exception as e:
+                self.send_error_response(str(e))
+        elif path == "/api/done":
+            try:
+                data = self.read_json_body()
+                project = data.get("project", "")
+                task_id = data.get("id", "")
+                if not project or not task_id:
+                    self.send_error_response("Missing project or id")
+                    return
+
+                success, msg = self.complete_task(project, task_id)
+                if success:
+                    self.send_success_response(msg)
+                else:
+                    self.send_error_response(msg)
             except Exception as e:
                 self.send_error_response(str(e))
         else:
             self.send_response(404)
             self.end_headers()
+
+    def do_DELETE(self):
+        try:
+            self._handle_delete()
+        except ConnectionError:
+            pass
+
+    def _handle_delete(self):
+        parsed_url = urllib.parse.urlparse(self.path)
+        path = parsed_url.path
+
+        if requires_authentication(path) and not is_authorized(self.headers):
+            self.send_auth_error_response()
+            return
+
+        if path == "/api/delete":
+            try:
+                data = self.read_json_body()
+                project = data.get("project", "")
+                task_id = data.get("id", "")
+                if not project or not task_id:
+                    self.send_error_response("Missing project or id")
+                    return
+
+                success, msg = self.delete_task(project, task_id)
+                if success:
+                    self.send_success_response(msg)
+                else:
+                    self.send_error_response(msg)
+            except Exception as e:
+                self.send_error_response(str(e))
+        else:
+            self.send_response(404)
+            self.end_headers()
+
+    def read_json_body(self):
+        content_length = int(self.headers.get('Content-Length', 0))
+        if content_length <= 0:
+            return {}
+        post_data = self.rfile.read(content_length)
+        return json.loads(post_data.decode('utf-8'))
 
     def send_success_response(self, message):
         try:
@@ -479,6 +512,16 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
             self.send_header("WWW-Authenticate", "Bearer")
             self.end_headers()
             self.wfile.write(json.dumps({"success": False, "error": "Unauthorized"}).encode("utf-8"))
+        except ConnectionError:
+            pass
+
+    def send_method_not_allowed_response(self, allowed_method):
+        try:
+            self.send_response(405)
+            self.send_header("Content-Type", "application/json")
+            self.send_header("Allow", allowed_method)
+            self.end_headers()
+            self.wfile.write(json.dumps({"success": False, "error": "Method Not Allowed"}).encode("utf-8"))
         except ConnectionError:
             pass
 
