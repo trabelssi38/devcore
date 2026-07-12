@@ -1033,11 +1033,15 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - `GET /api/v1/health` retourne un contrat Pydantic stable : `schema_version`, `service`, `status`, `api_version`, `trace_id`.
 - `GET /api/v1/contracts` expose le catalogue initial des contrats de domaine.
 - Les contrats Pydantic initiaux couvrent `TaskContract`, `RunContract`, `DomainEvent`, `PluginContract` et `HealthContract`.
+- `GET /api/v1/tasks?project=<id>` lit la board taches via le port `TaskRepository`.
 - OpenAPI est expose sur `/api/v1/openapi.json`; docs locales sur `/api/v1/docs`.
 - Les erreurs HTTP et validations suivent une enveloppe stable : `schema_version`, `error.code`, `error.message`, `error.details`, `trace_id`.
 - `DEV_CORE\API\run_api.py` demarre le gateway local sur `127.0.0.1:20131`.
 - `DEV_CORE\API\test_api_v1.py` couvre health, OpenAPI versionne et enveloppe d'erreur.
 - `DEV_CORE\API\test_domain_contracts.py` couvre les modeles de domaine et leur presence dans OpenAPI.
+- `DEV_CORE\API\devcore_api\ports.py` introduit les premiers ports Python : `TaskRepository` et `HealthPort`.
+- `FileTaskRepository` est l'adaptateur de compatibilite lecture seule vers `DEV_CORE_DATA\Memory\<project>\tasks.json`.
+- `DEV_CORE\API\test_ports.py` couvre l'adaptateur fichier, l'injection de repository et l'erreur stable `task_board_not_found`.
 
 ### Task Service
 

@@ -55,6 +55,12 @@ class HealthContract(BaseModel):
     checks: dict = Field(default_factory=dict)
 
 
+class TaskListResponse(BaseModel):
+    schema_version: Literal[1] = 1
+    project: str = Field(min_length=1)
+    tasks: list[TaskContract]
+
+
 class ContractCatalog(BaseModel):
     schema_version: Literal[1] = 1
     api_version: Literal["v1"] = "v1"

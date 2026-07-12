@@ -5,6 +5,7 @@ $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $tests = @(
     "DEV_CORE/API/test_api_v1.py",
     "DEV_CORE/API/test_domain_contracts.py",
+    "DEV_CORE/API/test_ports.py",
     "DEV_CORE/Scripts/test_dashboard_api.py",
     "DEV_CORE/MCP/obsidian-vault/test_obsidian_vault_paths.py",
     "DEV_CORE/Scripts/Auto/test_model_pricing_sync.py",
