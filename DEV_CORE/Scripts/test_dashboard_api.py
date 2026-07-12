@@ -17,8 +17,9 @@ def load_dashboard_api():
     return module
 
 
-def test_build_dashboard_payload_uses_stable_json_contract():
+def test_build_dashboard_payload_uses_stable_json_contract(tmp_path):
     dashboard_api = load_dashboard_api()
+    dashboard_api.DATA_ROOT = str(tmp_path)
     payload = {
         "schema_version": 1,
         "generated_at": "2026-07-09T10:00:00+01:00",
@@ -37,15 +38,14 @@ def test_build_dashboard_payload_uses_stable_json_contract():
         "task_details": {"devcore_T-113": "details"},
         "token_metrics": {"total": {"tokens": 10}},
     }
+    payload_path = dashboard_api.get_cached_dashboard_payload_path()
+    payload_path.parent.mkdir(parents=True, exist_ok=True)
+    payload_path.write_text(json.dumps(payload), encoding="utf-8")
 
     with patch.object(dashboard_api.subprocess, "run") as run:
-        run.return_value = SimpleNamespace(
-            returncode=0,
-            stdout=json.dumps(payload),
-            stderr="",
-        )
-
         result = dashboard_api.build_dashboard_payload()
+    run.assert_not_called()
+
 
     assert result["schema_version"] == 1
     assert result["sections"]["tasks_pipeline"] == "<div>tasks</div>"
@@ -55,28 +55,21 @@ def test_build_dashboard_payload_uses_stable_json_contract():
     assert result["sections"]["knowledge_graph_summary"] == "<div>knowledge</div>"
     assert result["sections"]["plugin_status"] == "<div>plugins</div>"
     assert result["task_details"]["devcore_T-113"] == "details"
-    command = run.call_args.args[0]
-    assert "gen_dashboard.ps1" in command[5]
-    assert "-Json" in command
-    assert "-SkipTokenRefresh" in command
-    assert run.call_args.kwargs["timeout"] >= 45
 
 
-def test_build_dashboard_payload_rejects_unknown_schema():
+def test_build_dashboard_payload_rejects_unknown_schema(tmp_path):
     dashboard_api = load_dashboard_api()
-    with patch.object(dashboard_api.subprocess, "run") as run:
-        run.return_value = SimpleNamespace(
-            returncode=0,
-            stdout=json.dumps({"schema_version": 999}),
-            stderr="",
-        )
+    dashboard_api.DATA_ROOT = str(tmp_path)
+    payload_path = dashboard_api.get_cached_dashboard_payload_path()
+    payload_path.parent.mkdir(parents=True, exist_ok=True)
+    payload_path.write_text(json.dumps({"schema_version": 999}), encoding="utf-8")
 
-        try:
-            dashboard_api.build_dashboard_payload()
-        except RuntimeError as exc:
-            assert "Unsupported dashboard schema" in str(exc)
-        else:
-            raise AssertionError("build_dashboard_payload should reject unknown schemas")
+    try:
+        dashboard_api.build_dashboard_payload()
+    except RuntimeError as exc:
+        assert "Unsupported dashboard schema" in str(exc)
+    else:
+        raise AssertionError("build_dashboard_payload should reject unknown schemas")
 
 
 def test_load_dashboard_read_model_uses_runtime_snapshot(tmp_path):
@@ -144,6 +137,13 @@ def test_dashboard_resource_rejects_invalid_pagination(tmp_path):
         assert "page" in str(exc)
     else:
         raise AssertionError("invalid pagination should be rejected")
+
+
+def test_dashboard_get_paths_do_not_call_powershell_subprocess():
+    dashboard_api = load_dashboard_api()
+
+    assert "subprocess.run" not in dashboard_api.build_dashboard_payload.__code__.co_names
+    assert "subprocess.run" not in dashboard_api.build_dashboard_resource.__code__.co_names
 
 
 def test_run_plugin_check_invokes_dc_plugin_check_json():

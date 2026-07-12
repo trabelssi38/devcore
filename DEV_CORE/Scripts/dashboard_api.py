@@ -453,11 +453,39 @@ def get_dashboard_read_model_path():
     return get_data_path("Dashboard", "read_model.json")
 
 
+def get_cached_dashboard_payload_path():
+    return get_data_path("Dashboard", "dashboard_payload.json")
+
+
 def load_dashboard_read_model():
     read_model_path = get_dashboard_read_model_path()
     if not read_model_path.exists():
         return None
     return read_json_with_retry(read_model_path)
+
+
+def build_fallback_dashboard_payload():
+    return {
+        "schema_version": API_SCHEMA_VERSION,
+        "generated_at": datetime.now().isoformat(),
+        "sections": {},
+        "task_details": {},
+        "token_metrics": {},
+        "read_model": load_dashboard_read_model(),
+        "cache": {"hit": False},
+    }
+
+
+def read_cached_dashboard_payload():
+    cache_path = get_cached_dashboard_payload_path()
+    if not cache_path.exists():
+        return None
+    payload = read_json_with_retry(cache_path)
+    if payload.get("schema_version") != API_SCHEMA_VERSION:
+        raise RuntimeError(f"Unsupported dashboard schema: {payload.get('schema_version')}")
+    payload["read_model"] = load_dashboard_read_model()
+    payload["cache"] = {"hit": True, "path": str(cache_path)}
+    return payload
 
 
 def get_nested_value(data, dotted_path):
@@ -524,6 +552,13 @@ def build_dashboard_resource(resource_name, page=1, page_size=DEFAULT_DASHBOARD_
 
 
 def build_dashboard_payload():
+    cached = read_cached_dashboard_payload()
+    if cached:
+        return cached
+    return build_fallback_dashboard_payload()
+
+
+def refresh_dashboard_payload_cache():
     dashboard_script = get_platform_path("Scripts", "gen_dashboard.ps1")
     cmd = [
         "powershell.exe",
@@ -548,6 +583,9 @@ def build_dashboard_payload():
     if payload.get("schema_version") != API_SCHEMA_VERSION:
         raise RuntimeError(f"Unsupported dashboard schema: {payload.get('schema_version')}")
     payload["read_model"] = load_dashboard_read_model()
+    cache_path = get_cached_dashboard_payload_path()
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    write_json_with_retry(cache_path, payload)
     return payload
 
 class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
@@ -693,31 +731,7 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
             except Exception as e:
                 self.send_error_response(str(e))
         elif path == "/api/refresh":
-            try:
-                dashboard_script = get_platform_path("Scripts", "gen_dashboard.ps1")
-                cmd = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", 
-                       str(dashboard_script)]
-                print(f"[DashboardAPI] Running gen_dashboard.ps1 (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
-                subprocess.run(cmd, capture_output=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC)
-                
-                index_path = get_platform_path("Dashboard", "index.html")
-                if index_path.exists():
-                    with open(index_path, "r", encoding="utf-8") as f:
-                        html_content = f.read()
-                    self.send_response(200)
-                    self.send_header("Content-Type", "text/html; charset=utf-8")
-                    self.end_headers()
-                    self.wfile.write(html_content.encode("utf-8"))
-                else:
-                    self.send_error_response("index.html not found after regeneration")
-            except ConnectionError:
-                # Connection was aborted by client; do not try to send an error response
-                pass
-            except subprocess.TimeoutExpired as te:
-                print(f"[DashboardAPI] Timeout calling gen_dashboard.ps1: {te}")
-                self.send_error_response(f"Dashboard regeneration timed out after {DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s")
-            except Exception as e:
-                self.send_error_response(str(e))
+            self.send_method_not_allowed_response("POST")
         else:
             self.send_response(404)
             self.end_headers()
@@ -764,6 +778,15 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
                     self.send_error_response(msg)
             except RequestTooLarge as e:
                 self.send_payload_too_large_response(str(e))
+            except Exception as e:
+                self.send_error_response(str(e))
+        elif path == "/api/refresh":
+            try:
+                payload = refresh_dashboard_payload_cache()
+                self.send_json_response(payload)
+            except subprocess.TimeoutExpired as te:
+                print(f"[DashboardAPI] Timeout calling gen_dashboard.ps1: {te}")
+                self.send_error_response(f"Dashboard regeneration timed out after {DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s")
             except Exception as e:
                 self.send_error_response(str(e))
         else:

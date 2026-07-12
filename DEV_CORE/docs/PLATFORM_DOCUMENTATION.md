@@ -960,6 +960,14 @@ dc verify --ci --json
 - La reponse contient `schema_version`, `resource`, `page`, `page_size`, `total`, `has_next` et `items`.
 - `test_dashboard_api.py` couvre la pagination et verifie que l'appel n'invoque pas de sous-processus.
 
+### Lectures dashboard sans sous-processus
+
+- `GET /api/dashboard` lit `DEV_CORE_DATA\Dashboard\dashboard_payload.json` quand le cache existe.
+- En absence de cache, `GET /api/dashboard` retourne un payload minimal avec `read_model` sans appeler PowerShell.
+- `GET /api/refresh` retourne maintenant `405 Method Not Allowed`.
+- La regeneration dashboard est explicite via `POST /api/refresh`, qui lance `gen_dashboard.ps1 -Json`, met a jour `dashboard_payload.json`, puis retourne le payload.
+- `test_dashboard_api.py` bloque les regressions : les builders de lecture n'appellent pas `subprocess.run`.
+
 ### Etat v10.0
 
 - Aucun `Invoke-Expression` dans le chemin principal du CLI.
