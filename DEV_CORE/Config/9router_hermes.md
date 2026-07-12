@@ -51,7 +51,7 @@ Solution: Hermes exécute les tâches selon le mode detectado.
 Hermes peut invoquer différents providers selon le mode:
 
 ```yaml
-# ~/.hermes/config.yaml
+# Windows Hermes v0.18+ : %LOCALAPPDATA%\hermes\config.yaml
 model:
   provider: "openai"
   base_url: "https://api.anthropic.com/v1"

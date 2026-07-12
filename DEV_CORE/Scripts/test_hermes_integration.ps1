@@ -12,7 +12,7 @@ $ErrorActionPreference = "Continue"
 $DEVCORE_ROOT = "C:\devcore\DEV_CORE"
 . "$DEVCORE_ROOT\Scripts\platform_version.ps1"
 $PLATFORM = Get-DevCorePlatformInfo
-$HERMES_BIN = "C:\devcore\hermes_temp\.venv\Scripts\hermes.exe"
+$HERMES_BIN = "C:\devcore\hermes\.venv\Scripts\hermes.exe"
 $passed = 0
 $failed = 0
 

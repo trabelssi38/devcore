@@ -8,10 +8,9 @@ import sys
 import time
 import logging
 from pathlib import Path
-from datetime import datetime
 
-# Append hermes_temp to path to import native cron scheduler APIs
-HERMES_HOME = Path("C:/devcore/hermes_temp")
+# Append Hermes checkout to path to import native cron scheduler APIs
+HERMES_HOME = Path("C:/devcore/hermes")
 sys.path.append(str(HERMES_HOME))
 
 # Configure logging
@@ -38,7 +37,7 @@ def main():
         from cron.scheduler import tick
         logger.info("Successfully imported Hermes cron scheduler.")
     except ImportError as e:
-        logger.error(f"Failed to import Hermes cron scheduler: {e}")
+        logger.error(f"Failed to import Hermes cron scheduler from {HERMES_HOME}: {e}")
         sys.exit(1)
 
     # Infinite tick loop

@@ -450,20 +450,22 @@ Hermes Agent (Nous Research) est un agent IA autonome qui fonctionne en daemon e
 
 ```powershell
 # Cloner Hermes
-git clone https://github.com/nousresearch/hermes-agent.git C:\devcore\hermes_temp
-cd C:\devcore\hermes_temp
+git clone https://github.com/nousresearch/hermes-agent.git C:\devcore\hermes
+cd C:\devcore\hermes
 
 # Installer
 uv venv .venv
 uv pip install .
 uv pip install pip
 
-# Configurer API keys dans ~/.hermes/.env
+# Configurer API keys dans le home Hermes natif.
+# Windows Hermes v0.18+ : $env:LOCALAPPDATA\hermes\.env
+# Anciennes installations : ~/.hermes/.env
 ```
 
 ### Configuration
 
-`~/.hermes/config.yaml`:
+`$env:LOCALAPPDATA\hermes\config.yaml`:
 ```yaml
 agent:
   name: "DEV_CORE Assistant"
@@ -490,14 +492,18 @@ context:
 .\hermes-daemon.ps1 -Test       # Test configuration
 ```
 
+Notes d'exploitation :
+- `launch.ps1` demarre les services DEV_CORE principaux, mais ne lance pas le tick loop Hermes.
+- `launch_all.ps1` demarre `launch.ps1` puis `hermes-daemon.ps1 -Start`.
+- `hermes-daemon.ps1` resout Python dynamiquement dans cet ordre : `HERMES_PYTHON`, `DEVCORE_PYTHON`, `C:\devcore\hermes\.venv\Scripts\python.exe`, `python` du PATH, puis `py`.
+- Si `hermes-daemon.ps1 -Test` affiche `Python binaire: NON TROUVE`, definir `HERMES_PYTHON` vers un `python.exe` valide ou corriger le PATH avant `-Start`.
+
 ### Cron Tasks (Windows Scheduled Tasks)
 
 | Task | Schedule | Script | Description |
 |------|----------|--------|-------------|
-| `DEV_CORE_Daily_Launch` | 10:00 daily | `launch.ps1` | Demarrage quotidien |
-| `DEV_CORE_Daily_Endday` | 04:00 daily | `endday.ps1` | Cloture + sync |
-| `DEV_CORE_Weekly_Maintenance` | Sunday 05:00 | `weekly_maintenance.ps1` | Maintenance hebdo |
-| `HERMES_Daemon` | AtLogOn | `hermes-daemon.ps1 -Start` | Redemarrage auto |
+| `HERMES_Daemon` | AtLogOn | `hermes-daemon.ps1 -Start` | Redemarrage auto du tick loop |
+| Jobs Hermes `%LOCALAPPDATA%\hermes\cron\jobs.json` | Cron expressions | wrappers DEV_CORE | Daily Launch, Endday, scan, sync, maintenance |
 
 ### Fichiers Hermes
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Syncs DevCore hermes_cron.yaml jobs into ~/.hermes/cron/jobs.json natively.
+"""Syncs DevCore hermes_cron.yaml jobs into the native Hermes cron store.
 Preserves telemetry (completed runs, last status, last error) for existing jobs.
 """
 import os
@@ -7,20 +7,23 @@ import sys
 import yaml
 import shutil
 from pathlib import Path
+from datetime import datetime
+from croniter import croniter
 
-# Append hermes_temp to path to import native cron database APIs
-HERMES_HOME = Path("C:/devcore/hermes_temp")
+# Append Hermes checkout to path to import native cron database APIs
+HERMES_HOME = Path("C:/devcore/hermes")
 sys.path.append(str(HERMES_HOME))
 
 try:
     from cron.jobs import load_jobs, save_jobs, create_job, remove_job
     print("Natively imported Hermes cron jobs module successfully.")
 except ImportError as e:
-    print(f"Error importing Hermes cron module: {e}")
+    print(f"Error importing Hermes cron module from {HERMES_HOME}: {e}")
     sys.exit(1)
 
 YAML_PATH = Path("C:/devcore/DEV_CORE/Scripts/hermes_cron.yaml")
-SCRIPTS_DIR = Path(os.path.expanduser("~/.hermes/scripts"))
+HERMES_RUNTIME_HOME = Path(os.environ.get("HERMES_HOME") or os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "hermes"))
+SCRIPTS_DIR = HERMES_RUNTIME_HOME / "scripts"
 
 def main():
     if not YAML_PATH.exists():
@@ -58,7 +61,7 @@ def main():
         workdir = task.get("workdir")
         enabled = task.get("enabled", True)
         
-        # If the script file exists in DevCore Scripts, copy it to ~/.hermes/scripts/
+        # If the script file exists in DevCore Scripts, copy it to Hermes scripts.
         if script:
             source_candidates = [
                 Path(f"C:/devcore/DEV_CORE/Scripts/{script}"),
@@ -106,6 +109,21 @@ def main():
                 job_dict["last_error"] = old_job.get("last_error")
                 job_dict["last_delivery_error"] = old_job.get("last_delivery_error")
                 
+            next_run_at = job_dict.get("next_run_at")
+            if next_run_at:
+                try:
+                    next_run_dt = datetime.fromisoformat(next_run_at)
+                    if next_run_dt <= datetime.now(next_run_dt.tzinfo):
+                        repaired_next = croniter(job_dict["schedule_display"], datetime.now(next_run_dt.tzinfo)).get_next(datetime).isoformat()
+                        if repaired_next:
+                            job_dict["next_run_at"] = repaired_next
+                            print(f"  Repaired expired next_run_at -> {repaired_next}")
+                except ValueError:
+                    repaired_next = croniter(job_dict["schedule_display"], datetime.now().astimezone()).get_next(datetime).isoformat()
+                    if repaired_next:
+                        job_dict["next_run_at"] = repaired_next
+                        print(f"  Repaired invalid next_run_at -> {repaired_next}")
+
             job_dict["enabled"] = enabled
             new_jobs_list.append(job_dict)
             print(f"  Job successfully registered: ID={job_dict['id']}, Next Run={job_dict['next_run_at']}")

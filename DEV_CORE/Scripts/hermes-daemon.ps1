@@ -12,9 +12,8 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$HERMES_HOME  = "$env:USERPROFILE\.hermes"
+$HERMES_HOME  = if ($env:HERMES_HOME) { $env:HERMES_HOME } else { "$env:LOCALAPPDATA\hermes" }
 $DEVCORE_ROOT = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
-$PYTHON_BIN   = "C:\devcore\hermes_temp\.venv\Scripts\python.exe"
 $LOG_DIR      = "$DEVCORE_ROOT\..\DEV_CORE_DATA\Logs\hermes"
 $LOG_FILE     = "$LOG_DIR\daemon_$(Get-Date -Format 'yyyy-MM-dd').log"
 
@@ -35,6 +34,70 @@ function Write-Log {
         default { "Gray" }
     }
     Write-Host "  $logLine" -ForegroundColor $color
+}
+
+function Test-PythonExecutable {
+    param([string]$Path)
+    if (-not $Path) { return $false }
+    try {
+        $psi = New-Object System.Diagnostics.ProcessStartInfo
+        $psi.FileName = $Path
+        $psi.Arguments = "-c `"import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)`""
+        $psi.UseShellExecute = $false
+        $psi.RedirectStandardOutput = $true
+        $psi.RedirectStandardError = $true
+        $psi.CreateNoWindow = $true
+        $p = [System.Diagnostics.Process]::Start($psi)
+        $p.WaitForExit(10000) | Out-Null
+        if (-not $p.HasExited) {
+            $p.Kill()
+            return $false
+        }
+        return $p.ExitCode -eq 0
+    } catch {
+        return $false
+    }
+}
+
+function Resolve-HermesPython {
+    $candidates = @()
+
+    if ($env:HERMES_PYTHON) { $candidates += $env:HERMES_PYTHON }
+    if ($env:DEVCORE_PYTHON) { $candidates += $env:DEVCORE_PYTHON }
+
+    $hermesPython = "C:\devcore\hermes\.venv\Scripts\python.exe"
+    if (Test-Path $hermesPython) { $candidates += $hermesPython }
+
+    $pathPython = Get-Command python -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($pathPython -and $pathPython.Source) { $candidates += $pathPython.Source }
+
+    $pyLauncher = Get-Command py -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($pyLauncher -and $pyLauncher.Source) { $candidates += $pyLauncher.Source }
+
+    foreach ($candidate in ($candidates | Where-Object { $_ } | Select-Object -Unique)) {
+        if ((Test-Path $candidate) -and (Test-PythonExecutable -Path $candidate)) {
+            return (Resolve-Path $candidate).Path
+        }
+    }
+
+    throw "Aucun Python compatible trouve. Definir HERMES_PYTHON ou DEVCORE_PYTHON vers python.exe."
+}
+
+function Quote-CommandArgument {
+    param([string]$Value)
+    return '"' + ($Value -replace '"', '\"') + '"'
+}
+
+function Get-HermesCronProcesses {
+    Get-CimInstance Win32_Process | Where-Object {
+        $_.Name -match '^(python|pythonw)\.exe$' -and $_.CommandLine -match 'hermes_cron_tick\.py'
+    }
+}
+
+function Get-HermesCronRootProcesses {
+    $procs = @(Get-HermesCronProcesses)
+    $ids = @($procs | Select-Object -ExpandProperty ProcessId)
+    $procs | Where-Object { $ids -notcontains $_.ParentProcessId }
 }
 
 # ========== COMMANDS ==========
@@ -58,9 +121,19 @@ function Do-Install {
     $trigger = New-ScheduledTaskTrigger -AtLogOn
     $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
 
-    Register-ScheduledTask -TaskName "HERMES_Daemon" `
-        -Action $action -Trigger $trigger -Settings $settings -Force | Out-Null
-    Write-Log "  Unique Scheduled Task 'HERMES_Daemon' creee avec succes" "SUCCESS"
+    try {
+        Register-ScheduledTask -TaskName "HERMES_Daemon" `
+            -Action $action -Trigger $trigger -Settings $settings -Force | Out-Null
+        Write-Log "  Unique Scheduled Task 'HERMES_Daemon' creee avec succes" "SUCCESS"
+    } catch {
+        Write-Log "  Scheduled Task HERMES_Daemon non creee ($($_.Exception.Message))" "WARN"
+        $startupDir = [Environment]::GetFolderPath("Startup")
+        $startupScript = Join-Path $startupDir "DEV_CORE_HERMES_Daemon.cmd"
+        $daemonScript = Join-Path $PSScriptRoot "hermes-daemon.ps1"
+        $cmd = "@echo off`r`npowershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$daemonScript`" -Start`r`n"
+        Set-Content -LiteralPath $startupScript -Value $cmd -Encoding ASCII
+        Write-Log "  Fallback non-admin cree dans Startup: $startupScript" "SUCCESS"
+    }
 
     # Synchroniser les tâches cron config
     Do-SyncJobs
@@ -81,6 +154,12 @@ function Do-Uninstall {
         }
     }
 
+    $startupScript = Join-Path ([Environment]::GetFolderPath("Startup")) "DEV_CORE_HERMES_Daemon.cmd"
+    if (Test-Path $startupScript) {
+        Remove-Item -LiteralPath $startupScript -Force
+        Write-Log "  Fallback Startup supprime: $startupScript" "INFO"
+    }
+
     Do-Stop
     Write-Log "Desinstallation terminee" "SUCCESS"
 }
@@ -89,7 +168,7 @@ function Do-Start {
     Write-Log "Demarrage du daemon HERMES Tick Loop" "INFO"
 
     # Verifier si deja running
-    $proc = Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'hermes_cron_tick.py' }
+    $proc = Get-HermesCronRootProcesses
     if ($proc) {
         Write-Log "  Le daemon HERMES tourne deja (PID: $($proc.ProcessId))" "WARN"
         return
@@ -109,23 +188,26 @@ function Do-Start {
     }
 
     # Lancer hermes_cron_tick.py en background (mode detache WMI)
-    if (Test-Path $PYTHON_BIN) {
-        $tickScript = "$DEVCORE_ROOT\Scripts\hermes_cron_tick.py"
-        Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = "$PYTHON_BIN $tickScript" } | Out-Null
-        Write-Log "  Daemon hermes_cron_tick.py lance avec succes en tâche de fond" "SUCCESS"
-    } else {
-        Write-Log "  Python binaire non trouve a $PYTHON_BIN" "ERROR"
+    $pythonBin = Resolve-HermesPython
+    $tickScript = "$DEVCORE_ROOT\Scripts\hermes_cron_tick.py"
+    if (-not (Test-Path $tickScript)) {
+        Write-Log "  Tick loop script non trouve a $tickScript" "ERROR"
+        return
     }
+
+    $commandLine = "$(Quote-CommandArgument $pythonBin) $(Quote-CommandArgument $tickScript)"
+    Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = $commandLine } | Out-Null
+    Write-Log "  Daemon hermes_cron_tick.py lance avec succes en tache de fond via $pythonBin" "SUCCESS"
 }
 
 function Do-Stop {
     Write-Log "Arret du daemon HERMES Tick Loop" "INFO"
 
     # Trouver et arreter la tache
-    $procs = Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'hermes_cron_tick.py' }
+    $procs = @(Get-HermesCronProcesses | Sort-Object ParentProcessId -Descending)
     if ($procs) {
         foreach ($p in $procs) {
-            Stop-Process -Id $p.ProcessId -Force
+            Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue
             Write-Log "  Daemon arrete (PID: $($p.ProcessId))" "SUCCESS"
         }
     } else {
@@ -137,10 +219,13 @@ function Do-Status {
     Write-Log "Status du daemon HERMES" "INFO"
 
     # Trouver le processus
-    $proc = Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match 'hermes_cron_tick.py' }
+    $proc = Get-HermesCronRootProcesses
     if ($proc) {
-        Write-Log "  Daemon Status: RUNNING (PID: $($proc.ProcessId))" "SUCCESS"
-        Write-Log "  Command line: $($proc.CommandLine)" "Gray"
+        $pids = ($proc | Select-Object -ExpandProperty ProcessId) -join ","
+        Write-Log "  Daemon Status: RUNNING (PID: $pids)" "SUCCESS"
+        foreach ($p in $proc) {
+            Write-Log "  Command line [$($p.ProcessId)]: $($p.CommandLine)" "Gray"
+        }
     } else {
         Write-Log "  Daemon Status: STOPPED" "WARN"
     }
@@ -165,13 +250,10 @@ function Do-Status {
 
 function Do-SyncJobs {
     Write-Log "Synchronisation des tâches dans Hermes..." "INFO"
-    if (Test-Path $PYTHON_BIN) {
-        $syncScript = "$DEVCORE_ROOT\Scripts\Auto\sync_cron_jobs.py"
-        $result = subprocess_run -FilePath $PYTHON_BIN -ArgumentList $syncScript
-        Write-Log "  Jobs synchronises avec jobs.json avec succes." "SUCCESS"
-    } else {
-        Write-Log "  Python binaire manquant" "ERROR"
-    }
+    $pythonBin = Resolve-HermesPython
+    $syncScript = "$DEVCORE_ROOT\Scripts\Auto\sync_cron_jobs.py"
+    $result = subprocess_run -FilePath $pythonBin -ArgumentList (Quote-CommandArgument $syncScript)
+    Write-Log "  Jobs synchronises avec jobs.json avec succes via $pythonBin." "SUCCESS"
 }
 
 # Helper pour executer de maniere synchrone sous powershell
@@ -197,10 +279,11 @@ function subprocess_run {
 
 function Do-Test {
     Write-Log "Test de la configuration du daemon" "INFO"
-    if (Test-Path $PYTHON_BIN) {
-        Write-Log "  Python binaire: OK" "SUCCESS"
-    } else {
-        Write-Log "  Python binaire: NON TROUVE" "ERROR"
+    try {
+        $pythonBin = Resolve-HermesPython
+        Write-Log "  Python binaire: OK ($pythonBin)" "SUCCESS"
+    } catch {
+        Write-Log "  Python binaire: NON TROUVE ($($_.Exception.Message))" "ERROR"
     }
     
     $tickScript = "$DEVCORE_ROOT\Scripts\hermes_cron_tick.py"
