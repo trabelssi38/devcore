@@ -1078,6 +1078,10 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - `DEV_CORE\Database\devcore_db\config.py` lit `DEVCORE_DATABASE_URL` avec un defaut local `127.0.0.1:5432/devcore`.
 - `DEV_CORE\Database\alembic.ini` et `DEV_CORE\Database\alembic\env.py` initialisent les migrations Alembic locales.
 - `DEV_CORE\Database\test_sqlalchemy_alembic_setup.py` verrouille la config locale, les tables core et le branchement Alembic.
+- `DEV_CORE\Database\devcore_db\repositories.py` introduit `SqlTaskRepository` et `UnitOfWork`.
+- `SqlTaskRepository` expose `list_tasks(project)` compatible avec les contrats API existants et `create_task(...)` pour les futures mutations transactionnelles.
+- `UnitOfWork` commit automatiquement en succes, rollback en exception, et ferme toujours la session.
+- `DEV_CORE\Database\test_repositories_transactions.py` couvre le mapping repository et les garanties transactionnelles sans exiger PostgreSQL local.
 - `-Action Sync` : fusionne les suggestions detectees depuis un fichier JSON, avec generation d'ID et deduplication par ID/titre.
 
 `task_add.ps1`, `task_next.ps1`, `task_done.ps1`, `task_step_done.ps1` et `task_sync.ps1` sont maintenant des adaptateurs vers `task_service.ps1`, ce qui garde les mutations de `tasks.json` dans un seul service.
