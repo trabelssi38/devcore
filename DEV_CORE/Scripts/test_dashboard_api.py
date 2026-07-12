@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import time
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -195,6 +196,39 @@ def test_sse_event_format_uses_named_event_and_json_data():
     assert b"id: abc\n" in event
     assert b"event: dashboard.delta\n" in event
     assert b'data: {"changed_keys":["events"]}\n' in event
+
+
+def test_dashboard_cached_payload_response_stays_under_transport_budget(tmp_path):
+    dashboard_api = load_dashboard_api()
+    dashboard_api.DATA_ROOT = str(tmp_path)
+    payload_path = dashboard_api.get_cached_dashboard_payload_path()
+    payload_path.parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / "Dashboard" / "read_model.json").write_text(
+        json.dumps({"schema_version": 1, "events": {"recent": [{"id": "evt-1"}]}}),
+        encoding="utf-8",
+    )
+    payload_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "generated_at": "2026-07-12T10:00:00+01:00",
+                "sections": {f"section_{idx}": "x" * 65536 for idx in range(8)},
+                "task_details": {},
+                "token_metrics": {},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    started = time.perf_counter()
+    payload = dashboard_api.build_dashboard_payload()
+    response = dashboard_api.build_cached_json_response(payload, {"Accept-Encoding": "gzip"})
+    elapsed = time.perf_counter() - started
+
+    assert payload["cache"]["hit"] is True
+    assert response["headers"]["Content-Encoding"] == "gzip"
+    assert int(response["headers"]["Content-Length"]) < 50 * 1024
+    assert elapsed < 0.5
 
 
 def test_run_plugin_check_invokes_dc_plugin_check_json():

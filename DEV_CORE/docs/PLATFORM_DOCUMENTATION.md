@@ -984,6 +984,12 @@ dc verify --ci --json
 - Le client dashboard consomme ce SSE via `fetch` streaming pour conserver les headers d'authentification injectes ; le polling periodique reste en fallback.
 - `test_dashboard_api.py` couvre la detection de delta et le format SSE.
 
+### Non-regression payload et latence dashboard
+
+- `test_dashboard_api.py` contient un garde-fou sur un payload dashboard cache representatif.
+- Le test verifie que la construction depuis cache reste sous 500 ms en local et que la reponse gzip reste sous 50 Ko pour un payload repetitif volumineux.
+- Ce test complete les benchmarks de reference en CI avec un contrat rapide, deterministe et bloquant.
+
 ### Etat v10.0
 
 - Aucun `Invoke-Expression` dans le chemin principal du CLI.
