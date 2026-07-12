@@ -9,6 +9,7 @@ import httpx
 import os
 import json
 import asyncio
+from pathlib import Path
 
 app = FastAPI(title="Gemini Router with Fallback")
 
@@ -29,6 +30,36 @@ def load_api_key() -> str:
     return ""
 
 API_KEY = load_api_key()
+PUBLIC_BIND_HOSTS = {"0.0.0.0", "::", ""}
+
+
+def read_network_config() -> dict:
+    config_path = Path(DEV_CORE) / "Config" / "network.json"
+    if not config_path.exists():
+        return {}
+    try:
+        with open(config_path, "r", encoding="utf-8-sig") as f:
+            return json.load(f)
+    except Exception as exc:
+        print(f"[GeminiRouter] Unable to read network config {config_path}: {exc}")
+        return {}
+
+
+def get_bind_host() -> str:
+    host = os.environ.get("DEVCORE_GEMINI_ROUTER_BIND", "").strip()
+    if not host:
+        config = read_network_config()
+        host = (
+            config.get("services", {})
+            .get("gemini_router", {})
+            .get("host")
+            or config.get("default_bind_host")
+            or "127.0.0.1"
+        )
+    host = str(host).strip()
+    if host in PUBLIC_BIND_HOSTS and os.environ.get("DEVCORE_ALLOW_PUBLIC_BIND") != "1":
+        raise ValueError("Public bind requires DEVCORE_ALLOW_PUBLIC_BIND=1")
+    return host or "127.0.0.1"
 
 GEMINI_BASE_URL = os.environ.get(
     "GEMINI_BASE_URL",
@@ -209,5 +240,6 @@ async def list_models():
     }
 
 if __name__ == "__main__":
-    print(f"Demarrage du Gemini Router sur le port 20130...")
-    uvicorn.run(app, host="127.0.0.1", port=20130)
+    bind_host = get_bind_host()
+    print(f"Demarrage du Gemini Router sur {bind_host}:20130...")
+    uvicorn.run(app, host=get_bind_host(), port=20130)

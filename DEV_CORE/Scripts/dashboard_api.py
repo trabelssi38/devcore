@@ -17,6 +17,35 @@ DATA_ROOT = os.getenv("DEVCORE_DATA_ROOT", "C:/devcore/DEV_CORE_DATA")
 API_SCHEMA_VERSION = 1
 DASHBOARD_COMMAND_TIMEOUT_SEC = 90.0
 PLUGIN_ID_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]*$")
+PUBLIC_BIND_HOSTS = {"0.0.0.0", "::", ""}
+
+
+def _read_network_config():
+    config_path = Path(PLATFORM_ROOT) / "Config" / "network.json"
+    if not config_path.exists():
+        return {}
+    try:
+        return read_json_with_retry(config_path)
+    except Exception as exc:
+        print(f"[DashboardAPI] Unable to read network config {config_path}: {exc}")
+        return {}
+
+
+def get_bind_host():
+    host = os.getenv("DEVCORE_DASHBOARD_BIND", "").strip()
+    if not host:
+        config = _read_network_config()
+        host = (
+            config.get("services", {})
+            .get("dashboard_api", {})
+            .get("host")
+            or config.get("default_bind_host")
+            or "127.0.0.1"
+        )
+    host = str(host).strip()
+    if host in PUBLIC_BIND_HOSTS and os.getenv("DEVCORE_ALLOW_PUBLIC_BIND") != "1":
+        raise ValueError("Public bind requires DEVCORE_ALLOW_PUBLIC_BIND=1")
+    return host or "127.0.0.1"
 
 def read_json_with_retry(file_path, retries=5, delay=0.05):
     for attempt in range(retries):
@@ -424,8 +453,9 @@ def main():
 
     socketserver.TCPServer.allow_reuse_address = True
     
-    with server_class(("", PORT), DashboardAPIHandler) as httpd:
-        print(f"DEV_CORE Dashboard API Server listening on port {PORT}...")
+    bind_host = get_bind_host()
+    with server_class((bind_host, PORT), DashboardAPIHandler) as httpd:
+        print(f"DEV_CORE Dashboard API Server listening on {bind_host}:{PORT}...")
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:

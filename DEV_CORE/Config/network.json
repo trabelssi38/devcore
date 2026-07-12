@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "default_bind_host": "127.0.0.1",
+  "services": {
+    "dashboard_api": {
+      "host": "127.0.0.1",
+      "port": 20129
+    },
+    "gemini_router": {
+      "host": "127.0.0.1",
+      "port": 20130
+    },
+    "headroom_proxy": {
+      "host": "127.0.0.1",
+      "port": 8787
+    },
+    "repowise": {
+      "host": "127.0.0.1",
+      "port": 7337
+    }
+  }
+}

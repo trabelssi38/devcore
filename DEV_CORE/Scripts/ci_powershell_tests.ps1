@@ -5,6 +5,7 @@ $tests = @(
     "test_verify_ci.ps1",
     "test_ci_workflow.ps1",
     "test_benchmark_pipeline.ps1",
+    "test_network_bind_contract.ps1",
     "test_test_exit_contract.ps1",
     "test_platform_version.ps1",
     "test_embedding_contract.ps1",

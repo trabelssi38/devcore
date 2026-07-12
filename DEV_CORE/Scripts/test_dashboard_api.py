@@ -108,6 +108,29 @@ def test_run_plugin_check_rejects_invalid_id():
         raise AssertionError("run_plugin_check should reject path-like plugin ids")
 
 
+def test_dashboard_api_defaults_to_loopback_bind():
+    dashboard_api = load_dashboard_api()
+    assert dashboard_api.get_bind_host() == "127.0.0.1"
+
+
+def test_dashboard_api_rejects_wildcard_bind_without_explicit_opt_in():
+    dashboard_api = load_dashboard_api()
+    previous = os.environ.get("DEVCORE_DASHBOARD_BIND")
+    os.environ["DEVCORE_DASHBOARD_BIND"] = "0.0.0.0"
+    try:
+        try:
+            dashboard_api.get_bind_host()
+        except ValueError as exc:
+            assert "DEVCORE_ALLOW_PUBLIC_BIND" in str(exc)
+        else:
+            raise AssertionError("wildcard bind should require explicit opt-in")
+    finally:
+        if previous is None:
+            os.environ.pop("DEVCORE_DASHBOARD_BIND", None)
+        else:
+            os.environ["DEVCORE_DASHBOARD_BIND"] = previous
+
+
 def test_gen_dashboard_payload_includes_context_composition(tmp_path):
     platform_root = MODULE_PATH.parents[1]
     data_root = tmp_path / "DEV_CORE_DATA"

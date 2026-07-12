@@ -895,6 +895,15 @@ dc verify --ci --json
 - Le profil local `verify.ps1 -Json` inclut un contrat Qdrant live : collections 768d, embedding 768d, upsert et search temporaires.
 - `diagnose.ps1` integre le scan de secrets des fichiers suivis par Git.
 
+### Contrat reseau local-first
+
+- `DEV_CORE\Config\network.json` declare les hosts et ports des services locaux.
+- Le host par defaut est `127.0.0.1`; `dashboard_api`, `gemini_router`, `headroom_proxy` et `repowise` sont declares en loopback.
+- `dashboard_api.py` lit `DEVCORE_DASHBOARD_BIND`, puis `network.json`, puis retombe sur `127.0.0.1`.
+- `gemini_router.py` lit `DEVCORE_GEMINI_ROUTER_BIND`, puis `network.json`, puis retombe sur `127.0.0.1`.
+- Un bind public (`0.0.0.0`, `::` ou vide) exige `DEVCORE_ALLOW_PUBLIC_BIND=1`.
+- `test_network_bind_contract.ps1` bloque les regressions vers un bind toutes interfaces implicite.
+
 ### Etat v10.0
 
 - Aucun `Invoke-Expression` dans le chemin principal du CLI.
