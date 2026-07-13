@@ -33,6 +33,7 @@ Log "1/8 Adaptation client ($Client)" "Cyan"
 & "$DEV_CORE\Scripts\adapt_client.ps1" -Client $Client
 & "$DEV_CORE\Scripts\ensure_repowise_mcp.ps1" -RepoRoot "C:\devcore"
 & "$DEV_CORE\Scripts\ensure_repowise_web_languages.ps1"
+& "$DEV_CORE\Scripts\ensure_repowise_web_proxy.ps1"
 & "$DEV_CORE\Scripts\ensure_repowise_watch.ps1" -RepoRoot "C:\devcore"
 
 # 2. Services check & launch (Qdrant, Gemini Router)
@@ -226,8 +227,9 @@ if (-not (Check-Port 7337)) {
     
     # Set mock embedder env var to bypass prompting on serve
     $env:REPOWISE_EMBEDDER = "mock"
+    & "$DEV_CORE\Scripts\ensure_repowise_web_proxy.ps1"
     
-    $proc = Start-Process -FilePath $repowisePath -ArgumentList "serve --ui-port 3100 --host localhost" -WorkingDirectory "C:\devcore" -WindowStyle Hidden -RedirectStandardOutput $logOut -RedirectStandardError $logErr -PassThru -ErrorAction SilentlyContinue
+    $proc = Start-Process -FilePath $repowisePath -ArgumentList "serve --host 127.0.0.1 --port 7337 --ui-port 3101" -WorkingDirectory "C:\devcore" -WindowStyle Hidden -RedirectStandardOutput $logOut -RedirectStandardError $logErr -PassThru -ErrorAction SilentlyContinue
     
     # Attendre que le port s'ouvre (timeout 15s)
     $repowiseOpen = $false
@@ -240,7 +242,8 @@ if (-not (Check-Port 7337)) {
     }
     
     if ($repowiseOpen) {
-        Log "  Repowise Server lance avec succes (API: 7337, UI: 3100)" "Green"
+        & "$DEV_CORE\Scripts\ensure_repowise_web_proxy.ps1"
+        Log "  Repowise Server lance avec succes (API: 7337, UI: 3101)" "Green"
     } else {
         Log "  [WARN] Repowise Server n'a pas repondu sur le port 7337 apres 15s." "Yellow"
     }

@@ -304,7 +304,8 @@ try {
         $logOut = "$DEV_CORE_DATA\Logs\scripts\repowise.log"
         $logErr = "$DEV_CORE_DATA\Logs\scripts\repowise_err.log"
         $env:REPOWISE_EMBEDDER = "mock"
-        Start-Process -FilePath $repowisePath -ArgumentList "serve --ui-port 3100 --host localhost" -WorkingDirectory "C:\devcore" -WindowStyle Hidden -RedirectStandardOutput $logOut -RedirectStandardError $logErr -ErrorAction SilentlyContinue
+        & "$DEV_CORE\Scripts\ensure_repowise_web_proxy.ps1"
+        Start-Process -FilePath $repowisePath -ArgumentList "serve --host 127.0.0.1 --port 7337 --ui-port 3101" -WorkingDirectory "C:\devcore" -WindowStyle Hidden -RedirectStandardOutput $logOut -RedirectStandardError $logErr -ErrorAction SilentlyContinue
         
         # Attendre que le port s'ouvre (timeout 10s)
         for ($i = 0; $i -lt 20; $i++) {
