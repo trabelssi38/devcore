@@ -35,6 +35,7 @@ $tests = @(
     "test_hermes_daemon.ps1",
     "test_repowise_workspace_hermes.ps1",
     "test_repowise_ui_proxy.ps1",
+    "test_repowise_ipv6_proxy.ps1",
     "test_repowise_watch_worker.ps1"
 )
 

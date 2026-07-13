@@ -34,6 +34,7 @@ Log "1/8 Adaptation client ($Client)" "Cyan"
 & "$DEV_CORE\Scripts\ensure_repowise_mcp.ps1" -RepoRoot "C:\devcore"
 & "$DEV_CORE\Scripts\ensure_repowise_web_languages.ps1"
 & "$DEV_CORE\Scripts\ensure_repowise_web_proxy.ps1"
+& "$DEV_CORE\Scripts\ensure_repowise_ipv6_proxy.ps1"
 & "$DEV_CORE\Scripts\ensure_repowise_watch.ps1" -RepoRoot "C:\devcore"
 
 # 2. Services check & launch (Qdrant, Gemini Router)
@@ -243,11 +244,13 @@ if (-not (Check-Port 7337)) {
     
     if ($repowiseOpen) {
         & "$DEV_CORE\Scripts\ensure_repowise_web_proxy.ps1"
+        & "$DEV_CORE\Scripts\ensure_repowise_ipv6_proxy.ps1"
         Log "  Repowise Server lance avec succes (API: 7337, UI: 3101)" "Green"
     } else {
         Log "  [WARN] Repowise Server n'a pas repondu sur le port 7337 apres 15s." "Yellow"
     }
 } else {
+    & "$DEV_CORE\Scripts\ensure_repowise_ipv6_proxy.ps1"
     Log "  Repowise Server OK (Port 7337 actif)" "Green"
 }
 
