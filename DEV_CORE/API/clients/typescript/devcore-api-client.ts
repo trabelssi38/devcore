@@ -125,6 +125,14 @@ export type TaskListResponse = {
   tasks: TaskContract[];
 };
 
+export type GitHubWebhookAccepted = {
+  schema_version: number;
+  provider: "github";
+  event: string;
+  delivery_id: string;
+  accepted: true;
+};
+
 export type DevCoreError = {
   error: {
     code: string;
@@ -168,11 +176,30 @@ export class DevCoreApiClient {
     return this.request<TaskListResponse>(`/api/v1/tasks?${query.toString()}`);
   }
 
-  private async request<T>(path: string): Promise<T> {
+  async githubWebhook(
+    body: string,
+    headers: { event: string; deliveryId: string; signature256: string }
+  ): Promise<GitHubWebhookAccepted> {
+    return this.request<GitHubWebhookAccepted>("/api/v1/integrations/github/webhook", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-GitHub-Event": headers.event,
+        "X-GitHub-Delivery": headers.deliveryId,
+        "X-Hub-Signature-256": headers.signature256,
+      },
+      body,
+    });
+  }
+
+  private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
     const headers: Record<string, string> = { Accept: "application/json" };
+    for (const [key, value] of Object.entries(init.headers ?? {})) {
+      headers[key] = String(value);
+    }
     if (this.traceId) headers["X-Trace-Id"] = this.traceId;
 
-    const response = await fetch(`${this.baseUrl}${path}`, { headers });
+    const response = await fetch(`${this.baseUrl}${path}`, { ...init, headers });
     const payload = await response.json();
     if (!response.ok) {
       throw new DevCoreApiError(response.status, payload as DevCoreError);

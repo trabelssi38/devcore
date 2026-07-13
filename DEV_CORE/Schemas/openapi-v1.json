@@ -123,6 +123,44 @@
         "title": "DomainEvent",
         "type": "object"
       },
+      "GitHubWebhookAccepted": {
+        "properties": {
+          "accepted": {
+            "const": true,
+            "default": true,
+            "title": "Accepted",
+            "type": "boolean"
+          },
+          "delivery_id": {
+            "minLength": 1,
+            "title": "Delivery Id",
+            "type": "string"
+          },
+          "event": {
+            "minLength": 1,
+            "title": "Event",
+            "type": "string"
+          },
+          "provider": {
+            "const": "github",
+            "default": "github",
+            "title": "Provider",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "event",
+          "delivery_id"
+        ],
+        "title": "GitHubWebhookAccepted",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -711,6 +749,27 @@
         "summary": "Health",
         "tags": [
           "health"
+        ]
+      }
+    },
+    "/api/v1/integrations/github/webhook": {
+      "post": {
+        "operationId": "github_webhook_api_v1_integrations_github_webhook_post",
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GitHubWebhookAccepted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Github Webhook",
+        "tags": [
+          "integrations"
         ]
       }
     },

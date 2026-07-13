@@ -1080,6 +1080,11 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 
 `DEV_CORE\API\devcore_api` introduit le gateway HTTP moderne pour les prochains contrats de domaine.
 
+- `POST /api/v1/integrations/github/webhook` accepte les webhooks GitHub signes avec `X-Hub-Signature-256`.
+- Le secret est lu depuis `DEVCORE_GITHUB_WEBHOOK_SECRET`; si absent, l'endpoint retourne `503 github_webhook_secret_missing`.
+- Les headers `X-GitHub-Event` et `X-GitHub-Delivery` deviennent le contrat stable minimal pour idempotence et routage futur.
+- `DEV_CORE\API\test_github_webhooks.py` couvre ping signe, signature invalide et configuration manquante.
+
 - `create_app()` construit l'application FastAPI.
 - Le prefixe versionne est `/api/v1`.
 - `GET /api/v1/health` retourne un contrat Pydantic stable : `schema_version`, `service`, `status`, `api_version`, `trace_id`.

@@ -6,6 +6,12 @@ from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .contracts import ContractCatalog, TaskListResponse, build_contract_catalog
+from .github_webhooks import (
+    GitHubWebhookAccepted,
+    build_github_webhook_response,
+    get_github_webhook_secret,
+    verify_github_signature,
+)
 from .ports import FileTaskRepository, TaskBoardNotFound, TaskRepository
 from .schemas import ErrorBody, ErrorResponse, HealthResponse
 
@@ -76,6 +82,25 @@ def create_app(task_repository: TaskRepository | None = None) -> FastAPI:
                 },
             ) from exc
         return TaskListResponse(project=project, tasks=tasks)
+
+    @app.post(
+        f"{API_PREFIX}/integrations/github/webhook",
+        response_model=GitHubWebhookAccepted,
+        status_code=202,
+        tags=["integrations"],
+    )
+    async def github_webhook(request: Request) -> GitHubWebhookAccepted:
+        body = await request.body()
+        secret = get_github_webhook_secret()
+        verify_github_signature(
+            secret=secret,
+            body=body,
+            signature=request.headers.get("x-hub-signature-256"),
+        )
+        return build_github_webhook_response(
+            event=request.headers.get("x-github-event"),
+            delivery_id=request.headers.get("x-github-delivery"),
+        )
 
     @app.exception_handler(StarletteHTTPException)
     @app.exception_handler(HTTPException)
