@@ -89,7 +89,71 @@
     },
     "permissions": {
       "type": "object",
-      "description": "Permission scopes are intentionally detailed by S8-02."
+      "additionalProperties": false,
+      "required": ["filesystem", "network", "secrets", "process"],
+      "properties": {
+        "filesystem": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "read": {
+              "type": "array",
+              "items": {
+                "enum": ["workspace", "project", "data", "cache", "templates", "logs", "vault"]
+              }
+            },
+            "write": {
+              "type": "array",
+              "items": {
+                "enum": ["workspace", "project", "data", "cache", "templates", "logs", "vault"]
+              }
+            }
+          }
+        },
+        "network": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "allow": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\\.)*[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?:\\d{1,5}$"
+              }
+            }
+          }
+        },
+        "secrets": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "read": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[A-Z][A-Z0-9_]{1,127}$"
+              }
+            }
+          }
+        },
+        "process": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "allow": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_.-]{1,64}$",
+                "not": { "const": "*" }
+              }
+            },
+            "allow_shell": {
+              "const": false
+            }
+          }
+        }
+      }
     }
   }
 }

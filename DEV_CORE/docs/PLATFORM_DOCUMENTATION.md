@@ -1169,7 +1169,11 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - Les entrypoints supportes sont `command`, `python_module` et `powershell_script`.
 - `DEV_CORE\Plugins\manifest_v2.schema.json` documente le schema JSON public.
 - `DEV_CORE\Plugins\test_manifest_v2_contract.py` verrouille le comportement attendu avant migration des plugins internes.
-- Les scopes detailles de `permissions` sont traites par S8-02.
+- Les permissions sont explicites et default-deny avec quatre scopes seulement : `filesystem`, `network`, `secrets`, `process`.
+- `filesystem.read/write` accepte uniquement des racines logiques connues : `workspace`, `project`, `data`, `cache`, `templates`, `logs`, `vault`.
+- `network.allow` accepte uniquement des cibles explicites `host:port`; les wildcards sont refusees.
+- `secrets.read` accepte uniquement des noms explicites de secrets style variable d'environnement.
+- `process.allow` accepte uniquement des executables nommes et `process.allow_shell` doit rester `false`.
 
 `DEV_CORE\API\devcore_api\run_state.py` definit les transitions durables des runs.
 

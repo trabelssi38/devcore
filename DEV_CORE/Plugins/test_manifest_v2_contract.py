@@ -31,7 +31,22 @@ def valid_manifest(**overrides):
             "widgets": [],
             "templates": [],
         },
-        "permissions": {},
+        "permissions": {
+            "filesystem": {
+                "read": ["workspace"],
+                "write": ["data"],
+            },
+            "network": {
+                "allow": ["api.openai.com:443"],
+            },
+            "secrets": {
+                "read": ["GEMINI_API_KEY"],
+            },
+            "process": {
+                "allow": ["python"],
+                "allow_shell": False,
+            },
+        },
     }
     manifest.update(overrides)
     return manifest
@@ -76,3 +91,47 @@ def test_manifest_v2_rejects_missing_required_contract_fields():
     else:
         raise AssertionError("missing entrypoint must be rejected")
 
+
+def test_manifest_v2_accepts_explicit_permission_scopes():
+    normalized = validate_manifest_v2(valid_manifest(), current_version="10.1.0")
+
+    assert normalized["permissions"]["filesystem"]["read"] == ["workspace"]
+    assert normalized["permissions"]["network"]["allow"] == ["api.openai.com:443"]
+    assert normalized["permissions"]["secrets"]["read"] == ["GEMINI_API_KEY"]
+    assert normalized["permissions"]["process"]["allow"] == ["python"]
+
+
+def test_manifest_v2_rejects_unknown_permission_scope():
+    manifest = valid_manifest()
+    manifest["permissions"]["admin"] = {"allow": True}
+
+    try:
+        validate_manifest_v2(manifest, current_version="10.1.0")
+    except ManifestValidationError as exc:
+        assert "permissions.admin" in str(exc)
+    else:
+        raise AssertionError("unknown permission scopes must be rejected")
+
+
+def test_manifest_v2_rejects_wildcard_filesystem_scope():
+    manifest = valid_manifest()
+    manifest["permissions"]["filesystem"]["read"] = ["*"]
+
+    try:
+        validate_manifest_v2(manifest, current_version="10.1.0")
+    except ManifestValidationError as exc:
+        assert "filesystem" in str(exc)
+    else:
+        raise AssertionError("filesystem wildcards must be rejected")
+
+
+def test_manifest_v2_rejects_shell_process_permission():
+    manifest = valid_manifest()
+    manifest["permissions"]["process"]["allow_shell"] = True
+
+    try:
+        validate_manifest_v2(manifest, current_version="10.1.0")
+    except ManifestValidationError as exc:
+        assert "allow_shell" in str(exc)
+    else:
+        raise AssertionError("plugins must not request shell execution in Manifest v2")
