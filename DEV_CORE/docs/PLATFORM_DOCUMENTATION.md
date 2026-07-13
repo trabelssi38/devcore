@@ -1142,6 +1142,9 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - `DEV_CORE\Database\devcore_db\workspace_isolation.py` centralise les racines isolees par workspace : `Data`, `Secrets`, `Artifacts` et `Indexes` sous `DEV_CORE_DATA\Workspaces\<workspace_id>`.
 - Le helper refuse les `workspace_id` invalides et toute resolution de chemin qui sort de la racine du workspace.
 - Les noms de collections/index Qdrant peuvent etre derives par workspace avec le prefixe `<workspace_id>_<collection>`.
+- `DEV_CORE\Database\devcore_db\audit_log.py` construit les requetes de lecture audit filtrables par workspace, projet, acteur, action, entite, dates et pagination bornee.
+- Le service exporte les resultats audit en JSONL ou CSV avec colonnes stables et redaction recursive des champs sensibles (`secret`, `token`, `password`, `api_key`, `key`).
+- `DEV_CORE\Database\test_audit_log_service.py` couvre le contrat de requete workspace/project, les limites de pagination et les exports JSONL/CSV.
 - L'import genere un `ReconciliationReport` avec `tasks_seen`, `tasks_imported`, `tasks_skipped`, `warnings` et statut `ok|partial`.
 - Les taches invalides sont ignorees avec warning au lieu de bloquer toute la migration.
 - `DEV_CORE\Database\test_importer_reconciliation.py` couvre l'import nominal et les erreurs de reconciliation.

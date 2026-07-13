@@ -19,6 +19,7 @@ $tests = @(
     "DEV_CORE/API/test_slo_budget_policy.py",
     "DEV_CORE/API/test_worker_execution.py",
     "DEV_CORE/Database/test_backup_restore_downgrade.py",
+    "DEV_CORE/Database/test_audit_log_service.py",
     "DEV_CORE/Database/test_importer_reconciliation.py",
     "DEV_CORE/Database/test_outbox_idempotency.py",
     "DEV_CORE/Database/test_outbox_retry_dlq.py",
