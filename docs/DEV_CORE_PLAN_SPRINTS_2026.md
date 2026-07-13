@@ -365,7 +365,7 @@ Objectif : passer du cockpit personnel à une bêta utilisable en équipe.
 - [x] `S9-03` — Isoler données, secrets, artefacts et index par workspace. `5 pts`
 - [x] `S9-04` — Ajouter quotas de runs, modèles et stockage. `3 pts`
 - [x] `S9-05` — Construire audit log consultable et exportable. `3 pts`
-- [ ] `S9-06` — Ajouter tests systématiques d'isolation tenant. `2 pts`
+- [x] `S9-06` — Ajouter tests systématiques d'isolation tenant. `2 pts`
 
 ## Gate de sortie
 
