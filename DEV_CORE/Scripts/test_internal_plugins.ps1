@@ -25,12 +25,23 @@ try {
     foreach ($pluginId in $expectedPlugins) {
         $manifestPath = Join-Path $pluginsRoot "$pluginId\plugin.json"
         Assert-True (Test-Path -LiteralPath $manifestPath) "Internal plugin manifest missing: $pluginId"
+        $manifest = Get-Content -LiteralPath $manifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        Assert-True ($manifest.manifest_version -eq 2) "Internal plugin should use Manifest v2: $pluginId"
+        Assert-True ($manifest.devcore_min_version -match "^\d+\.\d+\.\d+") "Internal plugin should declare devcore_min_version: $pluginId"
+        Assert-True ($manifest.devcore_max_version -match "^\d+\.\d+\.\d+") "Internal plugin should declare devcore_max_version: $pluginId"
+        Assert-True ($null -ne $manifest.entrypoint) "Internal plugin should declare entrypoint: $pluginId"
+        Assert-True ($null -ne $manifest.permissions.PSObject.Properties["filesystem"]) "Internal plugin should declare filesystem scope: $pluginId"
+        Assert-True ($null -ne $manifest.permissions.PSObject.Properties["network"]) "Internal plugin should declare network scope: $pluginId"
+        Assert-True ($null -ne $manifest.permissions.PSObject.Properties["secrets"]) "Internal plugin should declare secrets scope: $pluginId"
+        Assert-True ($null -ne $manifest.permissions.PSObject.Properties["process"]) "Internal plugin should declare process scope: $pluginId"
+        Assert-True ($manifest.permissions.process.allow_shell -eq $false) "Internal plugin should not request shell process permission: $pluginId"
 
         $installJson = & $pluginServiceScript -Action Install -ManifestPath $manifestPath -Json | Out-String
         $install = $installJson | ConvertFrom-Json
         Assert-True ($install.ok -eq $true) "Internal plugin should install: $pluginId"
         Assert-True ($install.plugin.id -eq $pluginId) "Installed plugin id mismatch: $pluginId"
         Assert-True ($install.plugin.enabled -eq $true) "Internal plugin should be enabled by default: $pluginId"
+        Assert-True (@($install.plugin.permissions.write_roots).Count -gt 0) "Manifest v2 filesystem write scopes should be translated for installer: $pluginId"
     }
 
     $listJson = & $pluginServiceScript -Action List -Json | Out-String

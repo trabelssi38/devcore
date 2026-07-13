@@ -338,7 +338,7 @@ Objectif : permettre l'extension sans donner un accès implicite à toute la mac
 - [x] `S8-03` — Exécuter les plugins dans un processus isolé. `5 pts`
 - [x] `S8-04` — Ajouter signature, provenance et checksum des packages. `3 pts`
 - [x] `S8-05` — Ajouter installation atomique, rollback et migrations. `3 pts`
-- [ ] `S8-06` — Migrer les trois plugins internes et tester les permissions. `3 pts`
+- [x] `S8-06` — Migrer les trois plugins internes et tester les permissions. `3 pts`
 
 ## Gate de sortie
 

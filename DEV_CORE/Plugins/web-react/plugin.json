@@ -1,9 +1,15 @@
 {
-  "schema_version": 1,
+  "manifest_version": 2,
   "id": "web-react",
   "name": "Web React",
   "version": "0.1.0",
   "description": "Internal DEV_CORE plugin for React and web UI project workflows.",
+  "devcore_min_version": "10.0.0",
+  "devcore_max_version": "10.99.0",
+  "entrypoint": {
+    "type": "command",
+    "command": "web-react:health"
+  },
   "capabilities": {
     "commands": [
       "web-react:new-component",
@@ -39,11 +45,29 @@
     ]
   },
   "permissions": {
-    "write_roots": [
-      "data",
-      "cache",
-      "templates"
-    ],
-    "allow_out_of_scope_write": false
+    "filesystem": {
+      "read": [
+        "workspace",
+        "templates"
+      ],
+      "write": [
+        "data",
+        "cache",
+        "templates"
+      ]
+    },
+    "network": {
+      "allow": []
+    },
+    "secrets": {
+      "read": []
+    },
+    "process": {
+      "allow": [
+        "node",
+        "npm"
+      ],
+      "allow_shell": false
+    }
   }
 }

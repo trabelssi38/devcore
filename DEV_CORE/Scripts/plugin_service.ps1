@@ -324,6 +324,27 @@ function Get-MigrationsField {
     }
 }
 
+function Get-PluginWriteRoots {
+    param($Permissions)
+
+    if ($Permissions -and $Permissions.PSObject.Properties["filesystem"] -and $Permissions.filesystem) {
+        return Get-ArrayField -Object $Permissions.filesystem -Name "write"
+    }
+    return Get-ArrayField -Object $Permissions -Name "write_roots"
+}
+
+function Get-AllowOutOfScopeWrite {
+    param($Permissions)
+
+    if ($Permissions -and $Permissions.PSObject.Properties["filesystem"]) {
+        return $false
+    }
+    if ($Permissions -and $Permissions.PSObject.Properties["allow_out_of_scope_write"]) {
+        return [bool]$Permissions.allow_out_of_scope_write
+    }
+    return $false
+}
+
 function Normalize-PluginManifest {
     param($Manifest, [string]$SourcePath)
 
@@ -391,8 +412,9 @@ function Normalize-PluginManifest {
         }
         migrations = Get-MigrationsField -Object $capabilities -Name "migrations"
         permissions = [pscustomobject][ordered]@{
-            write_roots = Get-ArrayField -Object $permissions -Name "write_roots"
-            allow_out_of_scope_write = if ($permissions.PSObject.Properties["allow_out_of_scope_write"]) { [bool]$permissions.allow_out_of_scope_write } else { $false }
+            write_roots = Get-PluginWriteRoots -Permissions $permissions
+            allow_out_of_scope_write = Get-AllowOutOfScopeWrite -Permissions $permissions
+            scopes = $permissions
         }
     }
 }

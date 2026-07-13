@@ -1,9 +1,15 @@
 {
-  "schema_version": 1,
+  "manifest_version": 2,
   "id": "python-fastapi",
   "name": "Python FastAPI",
   "version": "0.1.0",
   "description": "Internal DEV_CORE plugin for Python FastAPI project workflows.",
+  "devcore_min_version": "10.0.0",
+  "devcore_max_version": "10.99.0",
+  "entrypoint": {
+    "type": "command",
+    "command": "python-api:health"
+  },
   "capabilities": {
     "commands": [
       "python-api:new-endpoint",
@@ -38,11 +44,29 @@
     ]
   },
   "permissions": {
-    "write_roots": [
-      "data",
-      "cache",
-      "templates"
-    ],
-    "allow_out_of_scope_write": false
+    "filesystem": {
+      "read": [
+        "workspace",
+        "templates"
+      ],
+      "write": [
+        "data",
+        "cache",
+        "templates"
+      ]
+    },
+    "network": {
+      "allow": []
+    },
+    "secrets": {
+      "read": []
+    },
+    "process": {
+      "allow": [
+        "python",
+        "pytest"
+      ],
+      "allow_shell": false
+    }
   }
 }
