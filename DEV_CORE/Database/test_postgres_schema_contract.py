@@ -15,6 +15,7 @@ def test_postgres_schema_declares_core_tables() -> None:
         "organizations",
         "users",
         "workspaces",
+        "workspace_memberships",
         "projects",
         "tasks",
         "runs",
@@ -32,6 +33,9 @@ def test_postgres_schema_declares_identity_and_foreign_keys() -> None:
     assert "projects" in schema and "id text primary key" in schema
     assert "organization_id text not null references organizations(id)" in schema
     assert "workspace_id text not null references workspaces(id)" in schema
+    assert "user_id text not null references users(id)" in schema
+    assert "role text not null" in schema
+    assert "role in ('owner', 'admin', 'developer', 'viewer')" in schema
     assert "project_id text not null references projects(id)" in schema
     assert "task_id text references tasks(id)" in schema
     assert "run_id text references runs(id)" in schema
@@ -44,6 +48,7 @@ def test_postgres_schema_declares_operational_indexes() -> None:
     for index in [
         "idx_tasks_project_status",
         "idx_workspaces_organization_status",
+        "idx_workspace_memberships_workspace_role",
         "idx_runs_task_status",
         "idx_events_project_created",
         "idx_audit_log_project_created",

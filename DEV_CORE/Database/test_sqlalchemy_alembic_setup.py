@@ -33,6 +33,7 @@ def test_sqlalchemy_metadata_declares_core_tables() -> None:
         "organizations",
         "users",
         "workspaces",
+        "workspace_memberships",
         "projects",
         "tasks",
         "runs",
@@ -43,6 +44,8 @@ def test_sqlalchemy_metadata_declares_core_tables() -> None:
 
     assert expected_tables.issubset(set(metadata.tables))
     assert metadata.tables["workspaces"].c.organization_id.foreign_keys
+    assert metadata.tables["workspace_memberships"].c.workspace_id.foreign_keys
+    assert metadata.tables["workspace_memberships"].c.user_id.foreign_keys
     assert metadata.tables["projects"].c.workspace_id.foreign_keys
     assert metadata.tables["tasks"].c.project_id.foreign_keys
     assert metadata.tables["events"].c.payload.type.__class__.__name__ == "JSONB"

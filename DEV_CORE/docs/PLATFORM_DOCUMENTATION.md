@@ -1085,6 +1085,7 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - `GET /api/v1/health` retourne un contrat Pydantic stable : `schema_version`, `service`, `status`, `api_version`, `trace_id`.
 - `GET /api/v1/contracts` expose le catalogue initial des contrats de domaine.
 - Les contrats Pydantic initiaux couvrent `TaskContract`, `RunContract`, `DomainEvent`, `PluginContract`, `HealthContract`, `UserContract`, `OrganizationContract` et `WorkspaceContract`.
+- `WorkspaceMembershipContract` definit l'appartenance utilisateur/workspace avec role borne a `owner`, `admin`, `developer` ou `viewer`.
 - `GET /api/v1/tasks?project=<id>` lit la board taches via le port `TaskRepository`.
 - OpenAPI est expose sur `/api/v1/openapi.json`; docs locales sur `/api/v1/docs`.
 - Les erreurs HTTP et validations suivent une enveloppe stable : `schema_version`, `error.code`, `error.message`, `error.details`, `trace_id`.
@@ -1121,7 +1122,7 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 
 `DEV_CORE\Database\postgres_schema_v1.sql` definit le contrat cible pour Sprint 4.
 
-- Tables canoniques : `organizations`, `users`, `workspaces`, `projects`, `tasks`, `runs`, `events`, `plugins`, `audit_log`.
+- Tables canoniques : `organizations`, `users`, `workspaces`, `workspace_memberships`, `projects`, `tasks`, `runs`, `events`, `plugins`, `audit_log`.
 - Les relations utilisent `organization_id`, `workspace_id`, `project_id`, `task_id`, `run_id` et `plugin_id` avec cles etrangeres explicites.
 - Les extensions evolutives passent par `metadata`, `payload` et `details` en `jsonb`.
 - Les indexes operationnels couvrent les lectures courantes : taches par projet/statut, runs par tache/statut, evenements/audit par projet/date.
@@ -1135,6 +1136,7 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - `UnitOfWork` commit automatiquement en succes, rollback en exception, et ferme toujours la session.
 - `DEV_CORE\Database\test_repositories_transactions.py` couvre le mapping repository et les garanties transactionnelles sans exiger PostgreSQL local.
 - `DEV_CORE\Database\devcore_db\importer.py` importe un `tasks.json` existant vers `organizations`, `users`, `workspaces`, `projects` et `tasks` avec une organisation et un workspace par defaut.
+- L'import ajoute aussi une appartenance `usr_system` owner du workspace par defaut pour initialiser le modele RBAC sans bloquer le mode mono-utilisateur.
 - L'import genere un `ReconciliationReport` avec `tasks_seen`, `tasks_imported`, `tasks_skipped`, `warnings` et statut `ok|partial`.
 - Les taches invalides sont ignorees avec warning au lieu de bloquer toute la migration.
 - `DEV_CORE\Database\test_importer_reconciliation.py` couvre l'import nominal et les erreurs de reconciliation.

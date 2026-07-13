@@ -19,6 +19,7 @@ def test_domain_contract_models_validate_required_fields():
         RunContract,
         TaskContract,
         UserContract,
+        WorkspaceMembershipContract,
         WorkspaceContract,
     )
 
@@ -30,6 +31,12 @@ def test_domain_contract_models_validate_required_fields():
     user = UserContract(id="usr_01", email="user@example.com", display_name="User Example")
     organization = OrganizationContract(id="org_01", name="DEV_CORE")
     workspace = WorkspaceContract(id="wks_01", organization_id=organization.id, name="Core Workspace")
+    membership = WorkspaceMembershipContract(
+        id="mem_01",
+        workspace_id=workspace.id,
+        user_id=user.id,
+        role="owner",
+    )
 
     assert task.schema_version == 1
     assert run.task_id == "T-156"
@@ -38,6 +45,7 @@ def test_domain_contract_models_validate_required_fields():
     assert health.status == "ok"
     assert user.email == "user@example.com"
     assert workspace.organization_id == "org_01"
+    assert membership.role == "owner"
 
 
 def test_task_contract_rejects_invalid_status():
@@ -69,6 +77,7 @@ def test_contract_catalog_endpoint_and_openapi_components():
         "User",
         "Organization",
         "Workspace",
+        "WorkspaceMembership",
     ]
 
     openapi = client.get("/api/v1/openapi.json").json()
@@ -82,6 +91,7 @@ def test_contract_catalog_endpoint_and_openapi_components():
         "UserContract",
         "OrganizationContract",
         "WorkspaceContract",
+        "WorkspaceMembershipContract",
     ]:
         assert name in schemas
 
@@ -95,3 +105,19 @@ def test_workspace_contract_rejects_invalid_status():
         assert "status" in str(exc)
     else:
         raise AssertionError("WorkspaceContract should reject unknown status")
+
+
+def test_workspace_membership_rejects_invalid_role():
+    from devcore_api.contracts import WorkspaceMembershipContract
+
+    try:
+        WorkspaceMembershipContract(
+            id="mem_01",
+            workspace_id="wks_01",
+            user_id="usr_01",
+            role="superadmin",
+        )
+    except ValidationError as exc:
+        assert "role" in str(exc)
+    else:
+        raise AssertionError("WorkspaceMembershipContract should reject unknown role")

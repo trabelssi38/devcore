@@ -10,6 +10,7 @@ RunStatus = Literal["queued", "running", "paused", "succeeded", "failed", "cance
 HealthStatus = Literal["ok", "degraded", "down"]
 WorkspaceStatus = Literal["active", "archived", "suspended"]
 UserStatus = Literal["active", "disabled"]
+WorkspaceRole = Literal["owner", "admin", "developer", "viewer"]
 
 
 class UserContract(BaseModel):
@@ -33,6 +34,14 @@ class WorkspaceContract(BaseModel):
     organization_id: str = Field(pattern=r"^org_[a-zA-Z0-9_-]+$")
     name: str = Field(min_length=1)
     status: WorkspaceStatus = "active"
+
+
+class WorkspaceMembershipContract(BaseModel):
+    schema_version: Literal[1] = 1
+    id: str = Field(pattern=r"^mem_[a-zA-Z0-9_-]+$")
+    workspace_id: str = Field(pattern=r"^wks_[a-zA-Z0-9_-]+$")
+    user_id: str = Field(pattern=r"^usr_[a-zA-Z0-9_-]+$")
+    role: WorkspaceRole
 
 
 class TaskContract(BaseModel):
@@ -99,6 +108,7 @@ class ContractCatalog(BaseModel):
             "User",
             "Organization",
             "Workspace",
+            "WorkspaceMembership",
         ]
     ]
     task: TaskContract
@@ -109,11 +119,22 @@ class ContractCatalog(BaseModel):
     user: UserContract
     organization: OrganizationContract
     workspace: WorkspaceContract
+    workspace_membership: WorkspaceMembershipContract
 
 
 def build_contract_catalog() -> ContractCatalog:
     return ContractCatalog(
-        contracts=["Task", "Run", "Event", "Plugin", "Health", "User", "Organization", "Workspace"],
+        contracts=[
+            "Task",
+            "Run",
+            "Event",
+            "Plugin",
+            "Health",
+            "User",
+            "Organization",
+            "Workspace",
+            "WorkspaceMembership",
+        ],
         task=TaskContract(id="T-1", title="Example task", status="todo", mode="coding"),
         run=RunContract(id="run-1", task_id="T-1", status="queued"),
         event=DomainEvent(id="evt-1", type="TaskCreated", source="task_service"),
@@ -122,4 +143,10 @@ def build_contract_catalog() -> ContractCatalog:
         user=UserContract(id="usr_system", email="system@devcore.local", display_name="System"),
         organization=OrganizationContract(id="org_default", name="Default Organization"),
         workspace=WorkspaceContract(id="wks_default", organization_id="org_default", name="Default Workspace"),
+        workspace_membership=WorkspaceMembershipContract(
+            id="mem_default_owner",
+            workspace_id="wks_default",
+            user_id="usr_system",
+            role="owner",
+        ),
     )

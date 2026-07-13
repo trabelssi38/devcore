@@ -19,7 +19,8 @@
                 "Health",
                 "User",
                 "Organization",
-                "Workspace"
+                "Workspace",
+                "WorkspaceMembership"
               ],
               "type": "string"
             },
@@ -55,6 +56,9 @@
           },
           "workspace": {
             "$ref": "#/components/schemas/WorkspaceContract"
+          },
+          "workspace_membership": {
+            "$ref": "#/components/schemas/WorkspaceMembershipContract"
           }
         },
         "required": [
@@ -66,7 +70,8 @@
           "health",
           "user",
           "organization",
-          "workspace"
+          "workspace",
+          "workspace_membership"
         ],
         "title": "ContractCatalog",
         "type": "object"
@@ -571,6 +576,49 @@
           "name"
         ],
         "title": "WorkspaceContract",
+        "type": "object"
+      },
+      "WorkspaceMembershipContract": {
+        "properties": {
+          "id": {
+            "pattern": "^mem_[a-zA-Z0-9_-]+$",
+            "title": "Id",
+            "type": "string"
+          },
+          "role": {
+            "enum": [
+              "owner",
+              "admin",
+              "developer",
+              "viewer"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "user_id": {
+            "pattern": "^usr_[a-zA-Z0-9_-]+$",
+            "title": "User Id",
+            "type": "string"
+          },
+          "workspace_id": {
+            "pattern": "^wks_[a-zA-Z0-9_-]+$",
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "workspace_id",
+          "user_id",
+          "role"
+        ],
+        "title": "WorkspaceMembershipContract",
         "type": "object"
       }
     }

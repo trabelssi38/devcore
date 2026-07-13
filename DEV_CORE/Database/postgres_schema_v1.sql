@@ -31,6 +31,18 @@ create table if not exists workspaces (
     unique (organization_id, name)
 );
 
+create table if not exists workspace_memberships (
+    id text primary key,
+    workspace_id text not null references workspaces(id) on delete cascade,
+    user_id text not null references users(id) on delete cascade,
+    role text not null,
+    metadata jsonb not null default '{}'::jsonb,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    constraint workspace_memberships_role check (role in ('owner', 'admin', 'developer', 'viewer')),
+    unique (workspace_id, user_id)
+);
+
 create table if not exists projects (
     id text primary key,
     workspace_id text not null references workspaces(id) on delete cascade,
@@ -130,6 +142,9 @@ create index if not exists idx_tasks_project_status
 
 create index if not exists idx_workspaces_organization_status
     on workspaces (organization_id, status, updated_at desc);
+
+create index if not exists idx_workspace_memberships_workspace_role
+    on workspace_memberships (workspace_id, role);
 
 create index if not exists idx_runs_task_status
     on runs (task_id, status, updated_at desc);
