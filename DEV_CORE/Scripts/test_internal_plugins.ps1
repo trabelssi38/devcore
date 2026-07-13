@@ -19,7 +19,8 @@ try {
     $expectedPlugins = @(
         "python-fastapi",
         "web-react",
-        "android-gradle"
+        "android-gradle",
+        "notifications-webhook"
     )
 
     foreach ($pluginId in $expectedPlugins) {
@@ -35,6 +36,13 @@ try {
         Assert-True ($null -ne $manifest.permissions.PSObject.Properties["secrets"]) "Internal plugin should declare secrets scope: $pluginId"
         Assert-True ($null -ne $manifest.permissions.PSObject.Properties["process"]) "Internal plugin should declare process scope: $pluginId"
         Assert-True ($manifest.permissions.process.allow_shell -eq $false) "Internal plugin should not request shell process permission: $pluginId"
+        if ($pluginId -eq "notifications-webhook") {
+            Assert-True ($manifest.permissions.network.allow -contains "hooks.slack.com:443") "Notifications plugin should allow Slack webhook host"
+            Assert-True ($manifest.permissions.network.allow -contains "outlook.office.com:443") "Notifications plugin should allow Teams webhook host"
+            Assert-True ($manifest.permissions.secrets.read -contains "SLACK_WEBHOOK_URL") "Notifications plugin should read Slack webhook secret"
+            Assert-True ($manifest.permissions.secrets.read -contains "TEAMS_WEBHOOK_URL") "Notifications plugin should read Teams webhook secret"
+            Assert-True ($manifest.capabilities.commands -contains "notifications:send") "Notifications plugin should expose send command"
+        }
 
         $installJson = & $pluginServiceScript -Action Install -ManifestPath $manifestPath -Json | Out-String
         $install = $installJson | ConvertFrom-Json
@@ -46,7 +54,7 @@ try {
 
     $listJson = & $pluginServiceScript -Action List -Json | Out-String
     $list = $listJson | ConvertFrom-Json
-    Assert-True ($list.plugins_count -eq 3) "List should include three internal plugins"
+    Assert-True ($list.plugins_count -eq 4) "List should include four internal plugins"
 
     foreach ($pluginId in $expectedPlugins) {
         $diagnoseJson = & $pluginServiceScript -Action Diagnose -Id $pluginId -Json | Out-String

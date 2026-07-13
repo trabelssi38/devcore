@@ -390,7 +390,7 @@ Objectif : connecter DEV_CORE au cycle d'ingénierie réel.
 
 - [x] `S10-01` — Ajouter intégration GitHub App/webhooks. `5 pts`
 - [x] `S10-02` — Ajouter schedules persistants avec historique. `4 pts`
-- [ ] `S10-03` — Ajouter notifications Slack ou Teams via plugin. `3 pts`
+- [x] `S10-03` — Ajouter notifications Slack ou Teams via plugin. `3 pts`
 - [ ] `S10-04` — Créer templates de workflows versionnés. `4 pts`
 - [ ] `S10-05` — Construire onboarding, diagnostic et recovery guidés. `3 pts`
 - [ ] `S10-06` — Publier documentation API et guide opérateur. `3 pts`

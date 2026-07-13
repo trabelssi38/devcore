@@ -1207,7 +1207,9 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - L'installation plugin est atomique : le manifeste normalise est d'abord ecrit dans `DEV_CORE_DATA\Plugins\staging`, puis deplace vers `installed`.
 - En cas d'echec pendant l'installation, `plugin_service.ps1` restaure le repertoire installe et le registre depuis un snapshot rollback.
 - Les migrations declarees dans `capabilities.migrations` sont normalisees et auditees dans `plugin.migrations` avec `applied_count`, `items`, `status` et `applied_at`.
-- Les trois plugins internes `python-fastapi`, `web-react` et `android-gradle` sont declares en Manifest v2.
+- Les quatre plugins internes `python-fastapi`, `web-react`, `android-gradle` et `notifications-webhook` sont declares en Manifest v2.
+- `notifications-webhook` expose `notifications:send` et les hooks `task.done`, `run.failed`, `schedule.failed` avec permissions reseau explicites vers `hooks.slack.com:443` et `outlook.office.com:443`.
+- Les secrets de notification restent hors depot : `SLACK_WEBHOOK_URL` et `TEAMS_WEBHOOK_URL` sont declares comme secrets lisibles par le plugin.
 - `plugin_service.ps1` traduit les scopes v2 `permissions.filesystem.write` en racines d'ecriture internes pour conserver la compatibilite d'installation.
 - `DEV_CORE\Scripts\test_internal_plugins.ps1` verifie Manifest v2, les quatre scopes de permission, `allow_shell=false`, l'installation et le diagnostic sans violation de scope.
 
