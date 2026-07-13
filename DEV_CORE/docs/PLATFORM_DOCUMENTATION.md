@@ -1084,7 +1084,7 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - Le prefixe versionne est `/api/v1`.
 - `GET /api/v1/health` retourne un contrat Pydantic stable : `schema_version`, `service`, `status`, `api_version`, `trace_id`.
 - `GET /api/v1/contracts` expose le catalogue initial des contrats de domaine.
-- Les contrats Pydantic initiaux couvrent `TaskContract`, `RunContract`, `DomainEvent`, `PluginContract` et `HealthContract`.
+- Les contrats Pydantic initiaux couvrent `TaskContract`, `RunContract`, `DomainEvent`, `PluginContract`, `HealthContract`, `UserContract`, `OrganizationContract` et `WorkspaceContract`.
 - `GET /api/v1/tasks?project=<id>` lit la board taches via le port `TaskRepository`.
 - OpenAPI est expose sur `/api/v1/openapi.json`; docs locales sur `/api/v1/docs`.
 - Les erreurs HTTP et validations suivent une enveloppe stable : `schema_version`, `error.code`, `error.message`, `error.details`, `trace_id`.
@@ -1121,8 +1121,8 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 
 `DEV_CORE\Database\postgres_schema_v1.sql` definit le contrat cible pour Sprint 4.
 
-- Tables canoniques : `projects`, `tasks`, `runs`, `events`, `plugins`, `audit_log`.
-- Les relations utilisent `project_id`, `task_id`, `run_id` et `plugin_id` avec cles etrangeres explicites.
+- Tables canoniques : `organizations`, `users`, `workspaces`, `projects`, `tasks`, `runs`, `events`, `plugins`, `audit_log`.
+- Les relations utilisent `organization_id`, `workspace_id`, `project_id`, `task_id`, `run_id` et `plugin_id` avec cles etrangeres explicites.
 - Les extensions evolutives passent par `metadata`, `payload` et `details` en `jsonb`.
 - Les indexes operationnels couvrent les lectures courantes : taches par projet/statut, runs par tache/statut, evenements/audit par projet/date.
 - `DEV_CORE\Database\test_postgres_schema_contract.py` verrouille le contrat avant l'introduction SQLAlchemy/Alembic.
@@ -1134,7 +1134,7 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - `SqlTaskRepository` expose `list_tasks(project)` compatible avec les contrats API existants et `create_task(...)` pour les futures mutations transactionnelles.
 - `UnitOfWork` commit automatiquement en succes, rollback en exception, et ferme toujours la session.
 - `DEV_CORE\Database\test_repositories_transactions.py` couvre le mapping repository et les garanties transactionnelles sans exiger PostgreSQL local.
-- `DEV_CORE\Database\devcore_db\importer.py` importe un `tasks.json` existant vers les tables `projects` et `tasks`.
+- `DEV_CORE\Database\devcore_db\importer.py` importe un `tasks.json` existant vers `organizations`, `users`, `workspaces`, `projects` et `tasks` avec une organisation et un workspace par defaut.
 - L'import genere un `ReconciliationReport` avec `tasks_seen`, `tasks_imported`, `tasks_skipped`, `warnings` et statut `ok|partial`.
 - Les taches invalides sont ignorees avec warning au lieu de bloquer toute la migration.
 - `DEV_CORE\Database\test_importer_reconciliation.py` couvre l'import nominal et les erreurs de reconciliation.
@@ -1153,7 +1153,7 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 
 - `DEV_CORE\Database\devcore_db\backup.py` construit des commandes explicites `pg_dump` et `pg_restore` sans shell interpolation.
 - `DEV_CORE\Database\alembic\versions\0001_schema_v1.py` applique `postgres_schema_v1.sql` en upgrade.
-- La migration descendante supprime les tables dans l'ordre inverse des dependances : `audit_log`, `events`, `plugins`, `runs`, `tasks`, `projects`.
+- La migration descendante supprime les tables dans l'ordre inverse des dependances : `audit_log`, `events`, `plugins`, `runs`, `tasks`, `projects`, `workspaces`, `users`, `organizations`.
 - `DEV_CORE\Database\test_backup_restore_downgrade.py` verrouille les commandes backup/restore et la presence du downgrade.
 
 ### Run state machine

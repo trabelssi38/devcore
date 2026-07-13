@@ -20,11 +20,44 @@ export type ContractDefinition = {
 };
 
 export type ContractCatalog = {
-  version: string;
-  contracts: ContractDefinition[];
+  schema_version: number;
+  api_version: string;
+  contracts: string[];
+  task: TaskContract;
+  run: RunContract;
+  event: DomainEvent;
+  plugin: PluginContract;
+  health: HealthContract;
+  user: UserContract;
+  organization: OrganizationContract;
+  workspace: WorkspaceContract;
+};
+
+export type UserContract = {
+  schema_version: number;
+  id: string;
+  email: string;
+  display_name: string;
+  status: string;
+};
+
+export type OrganizationContract = {
+  schema_version: number;
+  id: string;
+  name: string;
+  status: string;
+};
+
+export type WorkspaceContract = {
+  schema_version: number;
+  id: string;
+  organization_id: string;
+  name: string;
+  status: string;
 };
 
 export type TaskContract = {
+  schema_version: number;
   id: string;
   title: string;
   status: string;
@@ -33,6 +66,40 @@ export type TaskContract = {
   steps_total: number;
   depends_on?: string | null;
   worktree?: string | null;
+};
+
+export type RunContract = {
+  schema_version: number;
+  id: string;
+  task_id: string;
+  status: string;
+  started_at?: string | null;
+  finished_at?: string | null;
+  trace_id?: string | null;
+};
+
+export type DomainEvent = {
+  schema_version: number;
+  id: string;
+  type: string;
+  source: string;
+  occurred_at: string;
+  payload: Record<string, unknown>;
+};
+
+export type PluginContract = {
+  schema_version: number;
+  id: string;
+  name: string;
+  enabled: boolean;
+  version?: string | null;
+  capabilities: Record<string, unknown>;
+};
+
+export type HealthContract = {
+  schema_version: number;
+  status: string;
+  checks: Record<string, unknown>;
 };
 
 export type TaskListResponse = {

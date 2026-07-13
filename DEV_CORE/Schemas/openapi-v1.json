@@ -16,7 +16,10 @@
                 "Run",
                 "Event",
                 "Plugin",
-                "Health"
+                "Health",
+                "User",
+                "Organization",
+                "Workspace"
               ],
               "type": "string"
             },
@@ -28,6 +31,9 @@
           },
           "health": {
             "$ref": "#/components/schemas/HealthContract"
+          },
+          "organization": {
+            "$ref": "#/components/schemas/OrganizationContract"
           },
           "plugin": {
             "$ref": "#/components/schemas/PluginContract"
@@ -43,6 +49,12 @@
           },
           "task": {
             "$ref": "#/components/schemas/TaskContract"
+          },
+          "user": {
+            "$ref": "#/components/schemas/UserContract"
+          },
+          "workspace": {
+            "$ref": "#/components/schemas/WorkspaceContract"
           }
         },
         "required": [
@@ -51,7 +63,10 @@
           "run",
           "event",
           "plugin",
-          "health"
+          "health",
+          "user",
+          "organization",
+          "workspace"
         ],
         "title": "ContractCatalog",
         "type": "object"
@@ -176,6 +191,42 @@
           "trace_id"
         ],
         "title": "HealthResponse",
+        "type": "object"
+      },
+      "OrganizationContract": {
+        "properties": {
+          "id": {
+            "pattern": "^org_[a-zA-Z0-9_-]+$",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "status": {
+            "default": "active",
+            "enum": [
+              "active",
+              "archived",
+              "suspended"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "OrganizationContract",
         "type": "object"
       },
       "PluginContract": {
@@ -399,6 +450,47 @@
         "title": "TaskListResponse",
         "type": "object"
       },
+      "UserContract": {
+        "properties": {
+          "display_name": {
+            "minLength": 1,
+            "title": "Display Name",
+            "type": "string"
+          },
+          "email": {
+            "pattern": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+            "title": "Email",
+            "type": "string"
+          },
+          "id": {
+            "pattern": "^usr_[a-zA-Z0-9_-]+$",
+            "title": "Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "status": {
+            "default": "active",
+            "enum": [
+              "active",
+              "disabled"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "display_name"
+        ],
+        "title": "UserContract",
+        "type": "object"
+      },
       "ValidationError": {
         "properties": {
           "ctx": {
@@ -437,6 +529,48 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "WorkspaceContract": {
+        "properties": {
+          "id": {
+            "pattern": "^wks_[a-zA-Z0-9_-]+$",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "organization_id": {
+            "pattern": "^org_[a-zA-Z0-9_-]+$",
+            "title": "Organization Id",
+            "type": "string"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "status": {
+            "default": "active",
+            "enum": [
+              "active",
+              "archived",
+              "suspended"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "organization_id",
+          "name"
+        ],
+        "title": "WorkspaceContract",
         "type": "object"
       }
     }

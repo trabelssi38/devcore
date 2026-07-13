@@ -11,7 +11,18 @@ def read_schema() -> str:
 def test_postgres_schema_declares_core_tables() -> None:
     schema = read_schema()
 
-    for table in ["projects", "tasks", "runs", "events", "plugins", "audit_log", "outbox_messages"]:
+    for table in [
+        "organizations",
+        "users",
+        "workspaces",
+        "projects",
+        "tasks",
+        "runs",
+        "events",
+        "plugins",
+        "audit_log",
+        "outbox_messages",
+    ]:
         assert f"create table if not exists {table}" in schema
 
 
@@ -19,6 +30,8 @@ def test_postgres_schema_declares_identity_and_foreign_keys() -> None:
     schema = read_schema()
 
     assert "projects" in schema and "id text primary key" in schema
+    assert "organization_id text not null references organizations(id)" in schema
+    assert "workspace_id text not null references workspaces(id)" in schema
     assert "project_id text not null references projects(id)" in schema
     assert "task_id text references tasks(id)" in schema
     assert "run_id text references runs(id)" in schema
@@ -30,6 +43,7 @@ def test_postgres_schema_declares_operational_indexes() -> None:
 
     for index in [
         "idx_tasks_project_status",
+        "idx_workspaces_organization_status",
         "idx_runs_task_status",
         "idx_events_project_created",
         "idx_audit_log_project_created",

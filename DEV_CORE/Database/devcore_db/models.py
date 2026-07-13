@@ -21,10 +21,50 @@ from sqlalchemy.dialects.postgresql import JSONB
 metadata = MetaData()
 
 
+organizations = Table(
+    "organizations",
+    metadata,
+    Column("id", Text, primary_key=True),
+    Column("name", Text, nullable=False),
+    Column("status", String, nullable=False, server_default="active"),
+    Column("metadata", JSONB, nullable=False, server_default="{}"),
+    Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+)
+
+
+users = Table(
+    "users",
+    metadata,
+    Column("id", Text, primary_key=True),
+    Column("email", Text, nullable=False, unique=True),
+    Column("display_name", Text, nullable=False),
+    Column("status", String, nullable=False, server_default="active"),
+    Column("metadata", JSONB, nullable=False, server_default="{}"),
+    Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+)
+
+
+workspaces = Table(
+    "workspaces",
+    metadata,
+    Column("id", Text, primary_key=True),
+    Column("organization_id", Text, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False),
+    Column("name", Text, nullable=False),
+    Column("status", String, nullable=False, server_default="active"),
+    Column("metadata", JSONB, nullable=False, server_default="{}"),
+    Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    UniqueConstraint("organization_id", "name", name="uq_workspaces_organization_name"),
+)
+
+
 projects = Table(
     "projects",
     metadata,
     Column("id", Text, primary_key=True),
+    Column("workspace_id", Text, ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False),
     Column("name", Text, nullable=False),
     Column("root_path", Text, nullable=False),
     Column("status", String, nullable=False, server_default="active"),
@@ -136,6 +176,7 @@ outbox_messages = Table(
 
 
 Index("idx_tasks_project_status", tasks.c.project_id, tasks.c.status, tasks.c.updated_at.desc())
+Index("idx_workspaces_organization_status", workspaces.c.organization_id, workspaces.c.status, workspaces.c.updated_at.desc())
 Index("idx_runs_task_status", runs.c.task_id, runs.c.status, runs.c.updated_at.desc())
 Index("idx_events_project_created", events.c.project_id, events.c.created_at.desc())
 Index("idx_audit_log_project_created", audit_log.c.project_id, audit_log.c.created_at.desc())

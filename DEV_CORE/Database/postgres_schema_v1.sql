@@ -1,8 +1,39 @@
 -- DEV_CORE PostgreSQL schema v1
--- Source of truth target for projects, tasks, runs, events, plugins, and audit.
+-- Source of truth target for organizations, users, workspaces, projects, tasks, runs, events, plugins, and audit.
+
+create table if not exists organizations (
+    id text primary key,
+    name text not null,
+    status text not null default 'active',
+    metadata jsonb not null default '{}'::jsonb,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
+create table if not exists users (
+    id text primary key,
+    email text not null unique,
+    display_name text not null,
+    status text not null default 'active',
+    metadata jsonb not null default '{}'::jsonb,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now()
+);
+
+create table if not exists workspaces (
+    id text primary key,
+    organization_id text not null references organizations(id) on delete cascade,
+    name text not null,
+    status text not null default 'active',
+    metadata jsonb not null default '{}'::jsonb,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    unique (organization_id, name)
+);
 
 create table if not exists projects (
     id text primary key,
+    workspace_id text not null references workspaces(id) on delete cascade,
     name text not null,
     root_path text not null,
     status text not null default 'active',
@@ -96,6 +127,9 @@ create table if not exists outbox_messages (
 
 create index if not exists idx_tasks_project_status
     on tasks (project_id, status, updated_at desc);
+
+create index if not exists idx_workspaces_organization_status
+    on workspaces (organization_id, status, updated_at desc);
 
 create index if not exists idx_runs_task_status
     on runs (task_id, status, updated_at desc);

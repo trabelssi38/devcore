@@ -7,7 +7,7 @@ from typing import Any
 
 from sqlalchemy import insert
 
-from .models import projects, tasks
+from .models import organizations, projects, tasks, users, workspaces
 
 
 VALID_TASK_STATUS = {"todo", "active", "paused", "done", "skipped"}
@@ -49,10 +49,40 @@ class TaskBoardImporter:
         project_id = str(board.get("project") or "devcore")
         raw_tasks = list(board.get("tasks") or [])
         report = ReconciliationReport(project=project_id, source_path=str(path), tasks_seen=len(raw_tasks))
+        organization_id = "org_default"
+        workspace_id = f"wks_{project_id}"
+
+        self.session.execute(
+            insert(organizations).values(
+                id=organization_id,
+                name="Default Organization",
+                status="active",
+                metadata={"source": "tasks_json_import"},
+            )
+        )
+        self.session.execute(
+            insert(users).values(
+                id="usr_system",
+                email="system@devcore.local",
+                display_name="System",
+                status="active",
+                metadata={"source": "tasks_json_import"},
+            )
+        )
+        self.session.execute(
+            insert(workspaces).values(
+                id=workspace_id,
+                organization_id=organization_id,
+                name=project_id,
+                status="active",
+                metadata={"source": "tasks_json_import"},
+            )
+        )
 
         self.session.execute(
             insert(projects).values(
                 id=project_id,
+                workspace_id=workspace_id,
                 name=project_id,
                 root_path=root_path,
                 status="active",

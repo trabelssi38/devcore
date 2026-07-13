@@ -51,7 +51,13 @@ def test_task_board_importer_inserts_project_and_valid_tasks(tmp_path) -> None:
     assert report.tasks_imported == 1
     assert report.tasks_skipped == 0
     assert report.warnings == []
-    assert [statement.table.name for statement in session.statements] == ["projects", "tasks"]
+    assert [statement.table.name for statement in session.statements] == [
+        "organizations",
+        "users",
+        "workspaces",
+        "projects",
+        "tasks",
+    ]
 
 
 def test_task_board_importer_reports_invalid_tasks_without_crashing(tmp_path) -> None:

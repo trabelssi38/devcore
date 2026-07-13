@@ -360,7 +360,7 @@ Objectif : passer du cockpit personnel à une bêta utilisable en équipe.
 
 ## Backlog
 
-- [ ] `S9-01` — Introduire users, organizations et workspaces. `5 pts`
+- [x] `S9-01` — Introduire users, organizations et workspaces. `5 pts`
 - [ ] `S9-02` — Implémenter rôles owner/admin/developer/viewer. `4 pts`
 - [ ] `S9-03` — Isoler données, secrets, artefacts et index par workspace. `5 pts`
 - [ ] `S9-04` — Ajouter quotas de runs, modèles et stockage. `3 pts`

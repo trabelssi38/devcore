@@ -29,9 +29,21 @@ def test_database_config_prefers_environment_url(monkeypatch) -> None:
 def test_sqlalchemy_metadata_declares_core_tables() -> None:
     from devcore_db.models import metadata
 
-    expected_tables = {"projects", "tasks", "runs", "events", "plugins", "audit_log"}
+    expected_tables = {
+        "organizations",
+        "users",
+        "workspaces",
+        "projects",
+        "tasks",
+        "runs",
+        "events",
+        "plugins",
+        "audit_log",
+    }
 
     assert expected_tables.issubset(set(metadata.tables))
+    assert metadata.tables["workspaces"].c.organization_id.foreign_keys
+    assert metadata.tables["projects"].c.workspace_id.foreign_keys
     assert metadata.tables["tasks"].c.project_id.foreign_keys
     assert metadata.tables["events"].c.payload.type.__class__.__name__ == "JSONB"
     assert metadata.tables["audit_log"].c.details.type.__class__.__name__ == "JSONB"
