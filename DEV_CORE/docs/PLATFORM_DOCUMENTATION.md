@@ -1158,6 +1158,19 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 
 ### Run state machine
 
+### Plugin Manifest v2
+
+`DEV_CORE\Plugins\manifest_v2.py` definit le contrat minimal des plugins DEV_CORE v2.
+
+- `manifest_version` remplace `schema_version` pour éviter l'ambiguite entre schema interne et contrat public.
+- Les champs obligatoires sont : `id`, `name`, `version`, `description`, `devcore_min_version`, `devcore_max_version`, `entrypoint`, `capabilities`, `permissions`.
+- Les versions utilisent le format semver `MAJOR.MINOR.PATCH`.
+- La compatibilite est refusee si la version courante DEV_CORE est hors bornes `devcore_min_version` / `devcore_max_version`.
+- Les entrypoints supportes sont `command`, `python_module` et `powershell_script`.
+- `DEV_CORE\Plugins\manifest_v2.schema.json` documente le schema JSON public.
+- `DEV_CORE\Plugins\test_manifest_v2_contract.py` verrouille le comportement attendu avant migration des plugins internes.
+- Les scopes detailles de `permissions` sont traites par S8-02.
+
 `DEV_CORE\API\devcore_api\run_state.py` definit les transitions durables des runs.
 
 - Etats actifs : `queued`, `running`.

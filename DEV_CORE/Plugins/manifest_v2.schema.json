@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://devcore.local/schemas/plugin-manifest-v2.schema.json",
+  "title": "DEV_CORE Plugin Manifest v2",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "manifest_version",
+    "id",
+    "name",
+    "version",
+    "description",
+    "devcore_min_version",
+    "devcore_max_version",
+    "entrypoint",
+    "capabilities",
+    "permissions"
+  ],
+  "properties": {
+    "manifest_version": {
+      "const": 2
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{1,62}[a-z0-9]$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?$"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1
+    },
+    "devcore_min_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?$"
+    },
+    "devcore_max_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?$"
+    },
+    "entrypoint": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["type", "command"],
+          "properties": {
+            "type": { "const": "command" },
+            "command": { "type": "string", "minLength": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["type", "module"],
+          "properties": {
+            "type": { "const": "python_module" },
+            "module": { "type": "string", "minLength": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "required": ["type", "script"],
+          "properties": {
+            "type": { "const": "powershell_script" },
+            "script": { "type": "string", "minLength": 1 }
+          }
+        }
+      ]
+    },
+    "capabilities": {
+      "type": "object",
+      "required": ["commands", "hooks", "skills", "health_checks", "widgets", "templates"],
+      "properties": {
+        "commands": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "hooks": { "type": "array" },
+        "skills": { "type": "array" },
+        "health_checks": { "type": "array" },
+        "widgets": { "type": "array" },
+        "templates": { "type": "array" }
+      }
+    },
+    "permissions": {
+      "type": "object",
+      "description": "Permission scopes are intentionally detailed by S8-02."
+    }
+  }
+}
