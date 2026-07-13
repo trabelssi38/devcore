@@ -54,29 +54,84 @@ function Check-Port {
     }
 }
 
+function Get-DockerDesktopPath {
+    $candidates = @(
+        "C:\Program Files\Docker\Docker\Docker Desktop.exe",
+        "$env:LOCALAPPDATA\Programs\DockerDesktop\Docker Desktop.exe",
+        "$env:LOCALAPPDATA\Docker\Docker Desktop.exe"
+    )
+
+    $dockerCmd = Get-Command docker -ErrorAction SilentlyContinue
+    if ($dockerCmd -and $dockerCmd.Source) {
+        $dockerRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $dockerCmd.Source))
+        $candidates += (Join-Path $dockerRoot "Docker Desktop.exe")
+        $candidates += (Join-Path $dockerRoot "frontend\Docker Desktop.exe")
+        $candidates += (Join-Path $dockerRoot "resources\Docker desktop.exe")
+    }
+
+    foreach ($candidate in ($candidates | Where-Object { $_ } | Select-Object -Unique)) {
+        if (Test-Path -LiteralPath $candidate) {
+            return $candidate
+        }
+    }
+    return $null
+}
+
+function Test-DockerReady {
+    try {
+        $dockerInfo = docker info 2>$null
+        return ($LASTEXITCODE -eq 0 -and $dockerInfo)
+    } catch {
+        return $false
+    }
+}
+
+function Wait-DockerReady {
+    param([int]$TimeoutSeconds = 60)
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    while ((Get-Date) -lt $deadline) {
+        if (Test-DockerReady) { return $true }
+        Start-Sleep -Seconds 2
+    }
+    return (Test-DockerReady)
+}
+
+function Wait-QdrantReady {
+    param([int]$TimeoutSeconds = 60)
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    $lastError = ""
+    while ((Get-Date) -lt $deadline) {
+        try {
+            $q = Invoke-RestMethod "http://localhost:6333/collections" -TimeoutSec 5
+            if ($q -and $q.status -eq "ok") { return $q }
+        } catch {
+            $lastError = $_.Exception.Message
+        }
+        Start-Sleep -Seconds 2
+    }
+    if ($lastError) {
+        Log "  Qdrant readiness timeout: $lastError" "Yellow"
+    }
+    return $null
+}
+
 # 2.1 Qdrant / Docker
 if (-not (Check-Port 6333)) {
     Log "  Qdrant (Port 6333) est hors-ligne. Tentative de demarrage..." "Yellow"
-    $dockerInfo = docker info 2>$null
-    $dockerOk = ($LASTEXITCODE -eq 0 -and $dockerInfo)
+    $dockerOk = Test-DockerReady
     
     if (-not $dockerOk) {
         Log "  Docker Desktop ne semble pas etre demarre. Tentative de lancement..." "Yellow"
-        $dockerPath = "C:\Program Files\Docker\Docker\Docker Desktop.exe"
-        if (Test-Path $dockerPath) {
-            Start-Process -FilePath $dockerPath -ErrorAction SilentlyContinue
+        $dockerPath = Get-DockerDesktopPath
+        if ($dockerPath) {
+            Start-Process -FilePath $dockerPath -WindowStyle Hidden -ErrorAction SilentlyContinue
             Log "  Docker Desktop lance. Attente du demarrage (max 60s)..." "Gray"
-            for ($attempt = 1; $attempt -le 30; $attempt++) {
-                Start-Sleep -Seconds 2
-                $dockerInfo = docker info 2>$null
-                if ($LASTEXITCODE -eq 0 -and $dockerInfo) {
-                    $dockerOk = $true
-                    Log "  Docker Desktop demarre avec succes." "Green"
-                    break
-                }
+            if (Wait-DockerReady -TimeoutSeconds 60) {
+                $dockerOk = $true
+                Log "  Docker Desktop demarre avec succes." "Green"
             }
         } else {
-            Log "  [WARN] Impossible de trouver l'executable Docker Desktop a l'emplacement par defaut." "Yellow"
+            Log "  [WARN] Impossible de trouver l'executable Docker Desktop." "Yellow"
         }
     }
     
@@ -87,24 +142,18 @@ if (-not (Check-Port 6333)) {
             $cName = ($qdrantContainers | Select-Object -First 1).Split(" ")[1]
             Log "  Conteneur Qdrant existant trouve : $cName ($cId). Demarrage..." "Gray"
             docker start $cId | Out-Null
-            Start-Sleep -Seconds 3
         } else {
             Log "  Aucun conteneur Qdrant trouve. Lancement d'un nouveau conteneur..." "Gray"
             docker run -d -p 6333:6333 -v C:/devcore/DEV_CORE_DATA/qdrant_storage:/qdrant/storage qdrant/qdrant | Out-Null
-            Start-Sleep -Seconds 5
         }
     } else {
         Log "  [ERROR] Docker Desktop n'est pas actif. Impossible de demarrer Qdrant." "Red"
     }
 }
 
-if (Check-Port 6333) {
-    try {
-        $q = Invoke-RestMethod "http://localhost:6333/collections" -TimeoutSec 3
-        Log "  Qdrant OK - $($q.result.collections.Count) collections" "Green"
-    } catch {
-        Log "  Qdrant disponible mais erreur lors du chargement des collections" "Yellow"
-    }
+$qdrantStatus = Wait-QdrantReady -TimeoutSeconds 60
+if ($qdrantStatus) {
+    Log "  Qdrant OK - $($qdrantStatus.result.collections.Count) collections" "Green"
 } else {
     Log "  Qdrant non disponible" "Red"
 }
