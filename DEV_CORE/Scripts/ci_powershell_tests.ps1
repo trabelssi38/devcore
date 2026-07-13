@@ -28,6 +28,7 @@ $tests = @(
     "test_dashboard_read_model.ps1",
     "test_knowledge_graph.ps1",
     "test_plugin_service.ps1",
+    "test_plugin_isolation.ps1",
     "test_skills_runtime.ps1",
     "test_auto_skills_pipeline.ps1",
     "test_skill_agent_spec.ps1",

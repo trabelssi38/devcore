@@ -324,12 +324,41 @@ function Find-Plugin {
     return $registry.plugins | Where-Object { $_.id -eq $PluginId } | Select-Object -First 1
 }
 
+function Set-IsolatedProcessEnvironment {
+    param($ProcessStartInfo, $Plugin, $WorkingDirectory, $Check)
+
+    $ProcessStartInfo.EnvironmentVariables.Clear()
+
+    foreach ($name in @("SystemRoot", "WINDIR", "ComSpec", "TEMP", "TMP", "PATH", "PSModulePath")) {
+        $value = [System.Environment]::GetEnvironmentVariable($name)
+        if (-not [string]::IsNullOrWhiteSpace($value)) {
+            $ProcessStartInfo.EnvironmentVariables[$name] = $value
+        }
+    }
+
+    $ProcessStartInfo.EnvironmentVariables["DEVCORE_PLUGIN_ID"] = [string]$Plugin.id
+    $ProcessStartInfo.EnvironmentVariables["DEVCORE_PLUGIN_DATA_ROOT"] = $WorkingDirectory
+    $ProcessStartInfo.EnvironmentVariables["DEVCORE_PLUGIN_CHECK_ID"] = [string]$Check.id
+}
+
+function Stop-IsolatedProcess {
+    param($Process)
+
+    if (-not $Process -or $Process.HasExited) { return }
+    try {
+        $Process.Kill($true)
+    } catch {
+        try { $Process.Kill() } catch {}
+    }
+}
+
 function Invoke-HealthCheckCommand {
-    param($Check)
+    param($Plugin, $Check)
 
     $startedAt = Get-Date
     $command = [string]$Check.command
     $timeout = [int]$Check.timeout_seconds
+    $workingDirectory = Get-PluginDataRoot -PluginId ([string]$Plugin.id)
     if ($TimeoutSeconds -gt 0 -and $TimeoutSeconds -lt $timeout) { $timeout = $TimeoutSeconds }
     if ($timeout -lt 1) { $timeout = 1 }
 
@@ -340,6 +369,10 @@ function Invoke-HealthCheckCommand {
             required = [bool]$Check.required
             command = $command
             shell = [string]$Check.shell
+            isolated_process = $false
+            process_id = $null
+            working_directory = ""
+            environment_policy = "none"
             exit_code = $null
             timed_out = $false
             duration_ms = 0
@@ -351,22 +384,26 @@ function Invoke-HealthCheckCommand {
 
     $process = $null
     try {
+        New-Item -ItemType Directory -Path $workingDirectory -Force | Out-Null
         $encoded = [Convert]::ToBase64String([System.Text.Encoding]::Unicode.GetBytes($command))
         $psi = New-Object System.Diagnostics.ProcessStartInfo
         $psi.FileName = "powershell.exe"
         $psi.Arguments = "-NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand $encoded"
+        $psi.WorkingDirectory = $workingDirectory
         $psi.UseShellExecute = $false
         $psi.RedirectStandardOutput = $true
         $psi.RedirectStandardError = $true
         $psi.CreateNoWindow = $true
+        Set-IsolatedProcessEnvironment -ProcessStartInfo $psi -Plugin $Plugin -WorkingDirectory $workingDirectory -Check $Check
 
         $process = New-Object System.Diagnostics.Process
         $process.StartInfo = $psi
         [void]$process.Start()
+        $processId = $process.Id
         $completed = $process.WaitForExit($timeout * 1000)
         $timedOut = -not $completed
         if ($timedOut) {
-            try { $process.Kill() } catch {}
+            Stop-IsolatedProcess -Process $process
         }
 
         $stdout = $process.StandardOutput.ReadToEnd().Trim()
@@ -381,6 +418,10 @@ function Invoke-HealthCheckCommand {
             required = [bool]$Check.required
             command = $command
             shell = [string]$Check.shell
+            isolated_process = $true
+            process_id = $processId
+            working_directory = $workingDirectory
+            environment_policy = "minimal"
             exit_code = $exitCode
             timed_out = $timedOut
             duration_ms = $duration
@@ -396,6 +437,10 @@ function Invoke-HealthCheckCommand {
             required = [bool]$Check.required
             command = $command
             shell = [string]$Check.shell
+            isolated_process = $true
+            process_id = if ($process) { $process.Id } else { $null }
+            working_directory = $workingDirectory
+            environment_policy = "minimal"
             exit_code = $null
             timed_out = $false
             duration_ms = $duration
@@ -418,7 +463,7 @@ function Invoke-PluginHealthChecks {
 
     $results = @()
     foreach ($check in $checks) {
-        $results += Invoke-HealthCheckCommand -Check $check
+        $results += Invoke-HealthCheckCommand -Plugin $Plugin -Check $check
     }
 
     $requiredFailures = @($results | Where-Object { $_.required -eq $true -and $_.ok -ne $true })

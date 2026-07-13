@@ -1174,6 +1174,9 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - `network.allow` accepte uniquement des cibles explicites `host:port`; les wildcards sont refusees.
 - `secrets.read` accepte uniquement des noms explicites de secrets style variable d'environnement.
 - `process.allow` accepte uniquement des executables nommes et `process.allow_shell` doit rester `false`.
+- `DEV_CORE\Scripts\plugin_service.ps1` execute les health checks dans un processus enfant isole : `WorkingDirectory` pointe vers `DEV_CORE_DATA\Plugins\<plugin_id>`, l'environnement est minimal et expose seulement les variables DEV_CORE plugin explicites.
+- Le resultat de check publie `isolated_process`, `process_id`, `working_directory` et `environment_policy` pour audit dashboard.
+- Un timeout tue le processus enfant et son arbre quand la plateforme le supporte.
 
 `DEV_CORE\API\devcore_api\run_state.py` definit les transitions durables des runs.
 
