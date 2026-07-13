@@ -858,6 +858,31 @@ repowise watch --no-workspace <project-path>
 
 `--index-only` maintient le graphe, les symboles, l'historique git et le dead-code rapidement. Le refresh docs avec `--docs` force la generation des pages wiki utilisees par `get_answer()`. Si le repo a ete initialise en fast/index-only et que le wiki est vide, `--full --docs` backfill les pages LLM. Le worker charge aussi `DEV_CORE\Config\gemini_api_key.txt` comme fallback Gemini, comme `gemini_router.py`. Si aucun provider/API key non interactif n'est disponible, il journalise `provider_missing`, continue le watch index-only et retente au prochain lancement. `--no-workspace` force un scope par projet declare et evite de scanner des sous-repos non declares.
 
+### Dashboard Repowise local
+
+DEV_CORE démarre Repowise avec des ports explicites :
+
+| Composant | URL |
+|---|---|
+| API Repowise | `http://127.0.0.1:7337` |
+| UI Repowise | `http://127.0.0.1:3101` |
+| Compatibilité navigateur | `http://localhost:7337` via proxy `::1:7337 -> 127.0.0.1:7337` |
+
+Deux scripts rendent le dashboard robuste sous Windows :
+
+- `ensure_repowise_web_proxy.ps1` patche le cache UI Repowise (`%USERPROFILE%\.repowise\web`) pour remplacer les rewrites Next.js `http://localhost:7337` par `http://127.0.0.1:7337`, en conservant l'UTF-8 sans BOM.
+- `ensure_repowise_ipv6_proxy.ps1` lance `repowise_ipv6_proxy.py`, un proxy TCP local qui écoute `::1:7337` et redirige vers `127.0.0.1:7337`.
+
+Raison : selon la configuration Windows/Node/Chrome, `localhost` peut être résolu en IPv6 (`::1`). Repowise écoute en IPv4. Sans proxy, l'UI peut se charger mais afficher `0 repositories registered` parce que ses appels API échouent.
+
+Contrôles opérationnels :
+
+```powershell
+Invoke-WebRequest http://127.0.0.1:3101/api/repos
+Invoke-WebRequest http://localhost:7337/api/repos
+Get-NetTCPConnection -State Listen | Where-Object { $_.LocalPort -in 7337,3101 }
+```
+
 ### Commandes opérationnelles
 
 ```powershell
@@ -884,6 +909,7 @@ C:\devcore\DEV_CORE_DATA\Logs\scripts\repowise_watch\
 - Les clients déjà ouverts doivent être redémarrés pour charger le MCP Repowise.
 - Le scan continu met à jour l'index de code, pas les docs LLM.
 - Les docs Repowise complètes restent une action explicite : `repowise update --docs <repo>`.
+- Le dashboard Repowise doit exposer les repos via `http://127.0.0.1:3101/api/repos` et `http://localhost:7337/api/repos`.
 
 ---
 
@@ -1303,6 +1329,13 @@ Le contrat retourne :
 Le score combine pertinence, fraicheur et autorite de source. `memory_hierarchy.ps1 -Action Query` affiche les sources incluses dans un bloc `CONTEXT SOURCE SCORES` avant les contenus L3/L2/L1/L0.
 
 ## Changelog v9
+
+### 2026-07-13 — v10.0 Repowise Dashboard Windows Loopback Fix
+
+- ✅ **Dashboard Repowise non vide** : correction du cas Windows où l'UI Repowise se charge mais affiche `0 repositories registered` parce que `localhost:7337` est résolu vers IPv6 (`::1`) alors que l'API écoute en IPv4 (`127.0.0.1`).
+- ✅ **Proxy local IPv6 -> IPv4** : ajout de `repowise_ipv6_proxy.py` et `ensure_repowise_ipv6_proxy.ps1` pour rendre `http://localhost:7337` fonctionnel.
+- ✅ **Patch cache UI Repowise** : `ensure_repowise_web_proxy.ps1` remplace les rewrites Next.js `localhost:7337` par `127.0.0.1:7337` sans ajouter de BOM.
+- ✅ **Démarrage durable** : `launch.ps1` démarre Repowise avec `--host 127.0.0.1 --port 7337 --ui-port 3101` et applique les correctifs UI/proxy.
 
 ### 2026-07-08 — v9.2 Repowise MCP & Continuous Watch
 

@@ -174,6 +174,26 @@ Le worker charge aussi `DEV_CORE\Config\gemini_api_key.txt` comme fallback Gemin
 
 Le démarrage est idempotent : relancer `dc launch` ne crée pas de doublons.
 
+### Dashboard Repowise
+
+`launch.ps1` maintient aussi le dashboard Repowise local :
+
+- API Repowise : `http://127.0.0.1:7337`
+- UI Repowise : `http://127.0.0.1:3101`
+- Fallback navigateur : `http://localhost:7337` est supporté via `repowise_ipv6_proxy.py` (`::1:7337` -> `127.0.0.1:7337`)
+
+Pourquoi : sous Windows, `localhost` peut être résolu en IPv6 (`::1`) alors que Repowise écoute en IPv4 (`127.0.0.1`). DEV_CORE corrige ce cas avec :
+
+- `ensure_repowise_web_proxy.ps1` : patche le cache UI Repowise pour utiliser `127.0.0.1:7337`.
+- `ensure_repowise_ipv6_proxy.ps1` : démarre un proxy local IPv6 vers IPv4 pour les navigateurs qui gardent `localhost:7337` en cache.
+
+Diagnostic rapide :
+
+```powershell
+Invoke-WebRequest http://127.0.0.1:3101/api/repos
+Invoke-WebRequest http://localhost:7337/api/repos
+```
+
 ---
 
 ## 🛠️ Skills
