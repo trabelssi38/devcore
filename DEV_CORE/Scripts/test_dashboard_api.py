@@ -3,6 +3,7 @@ import gzip
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import time
 from types import SimpleNamespace
@@ -557,3 +558,72 @@ def test_gen_dashboard_payload_includes_context_composition(tmp_path):
     assert "Last check" in plugin_html
     assert "data-plugin-id=\"python-fastapi\"" in plugin_html
     assert "checkPlugin" in plugin_html
+
+
+def test_gen_dashboard_html_generation_writes_api_payload_cache(tmp_path):
+    source_platform_root = MODULE_PATH.parents[1]
+    platform_root = tmp_path / "DEV_CORE"
+    data_root = tmp_path / "DEV_CORE_DATA"
+    dashboard_root = platform_root / "Dashboard"
+    memory_root = data_root / "Memory"
+    project_root = memory_root / "devcore"
+    scenario_root = memory_root / "Scenarios"
+    dashboard_root.mkdir(parents=True)
+    project_root.mkdir(parents=True)
+    scenario_root.mkdir(parents=True)
+    shutil.copyfile(source_platform_root / "Dashboard" / "template.html", dashboard_root / "template.html")
+    (memory_root / "persona.md").write_text("api persona preference", encoding="utf-8")
+    (scenario_root / "coding.md").write_text("coding api context composition", encoding="utf-8")
+    (project_root / "tasks.json").write_text(
+        json.dumps(
+            {
+                "project": "devcore",
+                "current_task": "T-199",
+                "tasks": [
+                    {
+                        "id": "T-199",
+                        "title": "dashboard cache contract",
+                        "mode": "coding",
+                        "status": "done",
+                        "steps_done": 1,
+                        "steps_total": 1,
+                        "completed_at": "2026-07-13T12:30:00+01:00",
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    env = os.environ.copy()
+    env["DEVCORE_PLATFORM_ROOT"] = str(platform_root)
+    env["DEVCORE_DATA_ROOT"] = str(data_root)
+
+    subprocess.run(
+        [
+            "powershell.exe",
+            "-NoProfile",
+            "-NonInteractive",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-File",
+            str(source_platform_root / "Scripts" / "gen_dashboard.ps1"),
+            "-SkipTokenRefresh",
+        ],
+        cwd=source_platform_root.parent,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=90,
+        check=True,
+    )
+
+    payload_path = data_root / "Dashboard" / "dashboard_payload.json"
+    assert (dashboard_root / "index.html").exists()
+    assert payload_path.exists()
+    payload = json.loads(payload_path.read_text(encoding="utf-8-sig"))
+    assert payload["schema_version"] == 1
+    assert "T-199" in payload["sections"]["tasks_pipeline"]
+    assert "Composition du Contexte" in payload["sections"]["context_composition"]
+    assert payload["sections"]["metrics_service_summary"]
+    assert payload["sections"]["event_bus_recent"]

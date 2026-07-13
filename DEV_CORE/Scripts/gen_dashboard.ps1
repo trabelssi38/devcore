@@ -996,31 +996,32 @@ if (Test-Path $TEMPLATE_FILE) {
     }
     
     $tokenMetricsJson = if (Test-Path $jsonPath) { Get-Content $jsonPath -Raw -Encoding UTF8 } else { "{}" }
+    $tokenMetrics = try { $tokenMetricsJson | ConvertFrom-Json } catch { [pscustomobject]@{} }
+    $dashboardPayload = [ordered]@{
+        schema_version = 1
+        generated_at = (Get-Date).ToString("o")
+        sections = [ordered]@{
+            project_cards = $cardsHtml
+            tasks_pipeline = $tasksHtml
+            services_monitoring = $infraHtml
+            automation_hooks = $hooksHtml
+            token_activity_report = $tokenReportHtml
+            context_composition = $contextCompositionHtml
+            metrics_service_summary = $metricsServiceHtml
+            event_bus_recent = $eventBusHtml
+            knowledge_graph_summary = $knowledgeGraphHtml
+            plugin_status = $pluginStatusHtml
+        }
+        task_details = $allDetailsMap
+        token_metrics = $tokenMetrics
+    }
 
     if ($Json) {
-        $tokenMetrics = try { $tokenMetricsJson | ConvertFrom-Json } catch { [pscustomobject]@{} }
         $elapsed = ((Get-Date) - $dashboardStarted).TotalSeconds
         Record-DashboardMetric -MetricType "duration" -Value $elapsed -Unit "seconds" -Payload @{ status = "success"; output = "json" }
         Record-DashboardMetric -MetricType "dashboard_refresh" -Value 1 -Unit "count" -Payload @{ status = "success"; json = $true }
         Publish-DashboardEvent -EventType "DashboardRefreshed" -Payload @{ status = "success"; json = $true; duration_seconds = [math]::Round($elapsed, 3) } -Id "dashboard-refreshed-json-$(Get-Date -Format 'yyyyMMddHHmmssffff')"
-        [ordered]@{
-            schema_version = 1
-            generated_at = (Get-Date).ToString("o")
-            sections = [ordered]@{
-                project_cards = $cardsHtml
-                tasks_pipeline = $tasksHtml
-                services_monitoring = $infraHtml
-                automation_hooks = $hooksHtml
-                token_activity_report = $tokenReportHtml
-                context_composition = $contextCompositionHtml
-                metrics_service_summary = $metricsServiceHtml
-                event_bus_recent = $eventBusHtml
-                knowledge_graph_summary = $knowledgeGraphHtml
-                plugin_status = $pluginStatusHtml
-            }
-            task_details = $allDetailsMap
-            token_metrics = $tokenMetrics
-        } | ConvertTo-Json -Depth 30 -Compress
+        $dashboardPayload | ConvertTo-Json -Depth 30 -Compress
         return
     }
 
@@ -1037,6 +1038,13 @@ if (Test-Path $TEMPLATE_FILE) {
     $template = $template.Replace('{{PLUGIN_STATUS}}', $pluginStatusHtml)
     $template = $template.Replace('{{TASK_DETAILS_MAP}}', $detailsJson)
     $template = $template.Replace('{{TOKEN_METRICS_JSON}}', $tokenMetricsJson)
+
+    $payloadCachePath = Join-Path $DEV_CORE_DATA "Dashboard\dashboard_payload.json"
+    $payloadCacheDir = Split-Path -Parent $payloadCachePath
+    if (-not (Test-Path -LiteralPath $payloadCacheDir)) {
+        New-Item -ItemType Directory -Path $payloadCacheDir -Force | Out-Null
+    }
+    $dashboardPayload | ConvertTo-Json -Depth 30 -Compress | Set-Content $payloadCachePath -Encoding UTF8
 
     $template | Set-Content $OUTPUT_FILE -Encoding UTF8
     $elapsed = ((Get-Date) - $dashboardStarted).TotalSeconds
