@@ -23,7 +23,7 @@ DASHBOARD_COMMAND_TIMEOUT_SEC = 90.0
 PLUGIN_ID_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]*$")
 SAFE_ID_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]*$")
 PUBLIC_BIND_HOSTS = {"0.0.0.0", "::", ""}
-PUBLIC_PATHS = {"/", "/index.html", "/api/status"}
+PUBLIC_PATHS = {"/", "/index.html", "/favicon.ico", "/api/status"}
 TOKEN_BYTES = 32
 CSRF_BYTES = 32
 CSRF_HEADER = "X-CSRF-Token"
@@ -740,6 +740,12 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
         query = urllib.parse.parse_qs(parsed_url.query)
         if requires_authentication(path) and not is_authorized(self.headers):
             self.send_auth_error_response()
+            return
+
+        if path == "/favicon.ico":
+            self.send_response(204)
+            self.send_header("Cache-Control", "public, max-age=3600")
+            self.end_headers()
             return
 
         if path == "/api/settings":

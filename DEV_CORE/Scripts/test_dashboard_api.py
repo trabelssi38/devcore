@@ -312,9 +312,25 @@ def test_public_paths_do_not_require_authentication():
     dashboard_api = load_dashboard_api()
     assert dashboard_api.requires_authentication("/") is False
     assert dashboard_api.requires_authentication("/index.html") is False
+    assert dashboard_api.requires_authentication("/favicon.ico") is False
     assert dashboard_api.requires_authentication("/api/status") is False
     assert dashboard_api.requires_authentication("/api/settings") is True
     assert dashboard_api.requires_authentication("/api/done") is True
+
+
+def test_dashboard_template_token_report_is_null_safe():
+    template = (MODULE_PATH.parents[1] / "Dashboard" / "template.html").read_text(encoding="utf-8")
+
+    assert "metrics.totals.tokens" not in template
+    assert "const totals = metrics.totals || {};" in template
+    assert "Number(totals.tokens || 0)" in template
+
+
+def test_dashboard_template_password_inputs_have_hidden_username_context():
+    template = (MODULE_PATH.parents[1] / "Dashboard" / "template.html").read_text(encoding="utf-8")
+
+    assert 'autocomplete="username"' in template
+    assert 'value="devcore-dashboard-settings"' in template
 
 
 def test_cors_defaults_to_local_allowlist():

@@ -490,6 +490,7 @@ details{margin-bottom: 8px}
         
         <div style="margin-bottom: 16px;">
           <label style="display:block; font-size:10px; color:#64748b; text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; font-weight:600;">Cle API Gemini</label>
+          <input type="text" name="username" autocomplete="username" value="devcore-dashboard-settings" hidden aria-hidden="true" tabindex="-1" />
           <input type="password" id="setting-gemini-key" autocomplete="new-password" style="width:100%; padding:8px; background:#0b0d12; border:1px solid #2d3148; border-radius:6px; color:#e2e8f0; font-family:monospace; font-size:12px; box-sizing:border-box; outline:none;" placeholder="Laisser vide pour ne pas modifier" />
         </div>
 
@@ -990,22 +991,25 @@ function updateTokenReport(projectName) {
     console.error("Error parsing token metrics:", e);
     return;
   }
+  if (!metrics || typeof metrics !== 'object') return;
   
   let tokens = 0;
   let cacheHits = 0;
   let cost = 0;
+  const projects = metrics.projects || {};
+  const totals = metrics.totals || {};
   
   if (projectName) {
-    const projStats = metrics.projects[projectName.toLowerCase()];
+    const projStats = projects[projectName.toLowerCase()];
     if (projStats) {
-      tokens = projStats.tokens;
-      cacheHits = projStats.cache_hits;
-      cost = projStats.cost_usd;
+      tokens = Number(projStats.tokens || 0);
+      cacheHits = Number(projStats.cache_hits || 0);
+      cost = Number(projStats.cost_usd || 0);
     }
   } else {
-    tokens = metrics.totals.tokens;
-    cacheHits = metrics.totals.cache_hits;
-    cost = metrics.totals.cost_usd;
+    tokens = Number(totals.tokens || 0);
+    cacheHits = Number(totals.cache_hits || 0);
+    cost = Number(totals.cost_usd || 0);
   }
   
   const tokensStr = tokens > 1000000 ? (tokens / 1000000).toFixed(2) + 'M' : (tokens / 1000).toFixed(1) + 'K';
