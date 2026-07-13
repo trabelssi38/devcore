@@ -1137,6 +1137,9 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - `DEV_CORE\Database\test_repositories_transactions.py` couvre le mapping repository et les garanties transactionnelles sans exiger PostgreSQL local.
 - `DEV_CORE\Database\devcore_db\importer.py` importe un `tasks.json` existant vers `organizations`, `users`, `workspaces`, `projects` et `tasks` avec une organisation et un workspace par defaut.
 - L'import ajoute aussi une appartenance `usr_system` owner du workspace par defaut pour initialiser le modele RBAC sans bloquer le mode mono-utilisateur.
+- `DEV_CORE\Database\devcore_db\workspace_isolation.py` centralise les racines isolees par workspace : `Data`, `Secrets`, `Artifacts` et `Indexes` sous `DEV_CORE_DATA\Workspaces\<workspace_id>`.
+- Le helper refuse les `workspace_id` invalides et toute resolution de chemin qui sort de la racine du workspace.
+- Les noms de collections/index Qdrant peuvent etre derives par workspace avec le prefixe `<workspace_id>_<collection>`.
 - L'import genere un `ReconciliationReport` avec `tasks_seen`, `tasks_imported`, `tasks_skipped`, `warnings` et statut `ok|partial`.
 - Les taches invalides sont ignorees avec warning au lieu de bloquer toute la migration.
 - `DEV_CORE\Database\test_importer_reconciliation.py` couvre l'import nominal et les erreurs de reconciliation.

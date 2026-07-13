@@ -25,6 +25,7 @@ $tests = @(
     "DEV_CORE/Database/test_postgres_schema_contract.py",
     "DEV_CORE/Database/test_repositories_transactions.py",
     "DEV_CORE/Database/test_sqlalchemy_alembic_setup.py",
+    "DEV_CORE/Database/test_workspace_isolation.py",
     "DEV_CORE/Plugins/test_manifest_v2_contract.py",
     "DEV_CORE/Scripts/test_dashboard_api.py",
     "DEV_CORE/Skills/test_ui_ux_skill_devcore.py",
