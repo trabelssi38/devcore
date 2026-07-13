@@ -58,6 +58,7 @@ export type ContractCatalog = {
   organization: OrganizationContract;
   workspace: WorkspaceContract;
   workspace_membership: WorkspaceMembershipContract;
+  workspace_quota: WorkspaceQuotaContract;
 };
 
 export type UserContract = {
@@ -89,6 +90,14 @@ export type WorkspaceMembershipContract = {
   workspace_id: string;
   user_id: string;
   role: "owner" | "admin" | "developer" | "viewer" | string;
+};
+
+export type WorkspaceQuotaContract = {
+  schema_version: number;
+  workspace_id: string;
+  runs_per_day: number;
+  model_tokens_per_day: number;
+  storage_mb: number;
 };
 
 export type TaskContract = {

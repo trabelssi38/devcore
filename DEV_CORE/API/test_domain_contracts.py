@@ -20,6 +20,7 @@ def test_domain_contract_models_validate_required_fields():
         TaskContract,
         UserContract,
         WorkspaceMembershipContract,
+        WorkspaceQuotaContract,
         WorkspaceContract,
     )
 
@@ -37,6 +38,12 @@ def test_domain_contract_models_validate_required_fields():
         user_id=user.id,
         role="owner",
     )
+    quota = WorkspaceQuotaContract(
+        workspace_id=workspace.id,
+        runs_per_day=100,
+        model_tokens_per_day=1_000_000,
+        storage_mb=1024,
+    )
 
     assert task.schema_version == 1
     assert run.task_id == "T-156"
@@ -46,6 +53,7 @@ def test_domain_contract_models_validate_required_fields():
     assert user.email == "user@example.com"
     assert workspace.organization_id == "org_01"
     assert membership.role == "owner"
+    assert quota.storage_mb == 1024
 
 
 def test_task_contract_rejects_invalid_status():
@@ -78,6 +86,7 @@ def test_contract_catalog_endpoint_and_openapi_components():
         "Organization",
         "Workspace",
         "WorkspaceMembership",
+        "WorkspaceQuota",
     ]
 
     openapi = client.get("/api/v1/openapi.json").json()
@@ -92,6 +101,7 @@ def test_contract_catalog_endpoint_and_openapi_components():
         "OrganizationContract",
         "WorkspaceContract",
         "WorkspaceMembershipContract",
+        "WorkspaceQuotaContract",
     ]:
         assert name in schemas
 
@@ -121,3 +131,19 @@ def test_workspace_membership_rejects_invalid_role():
         assert "role" in str(exc)
     else:
         raise AssertionError("WorkspaceMembershipContract should reject unknown role")
+
+
+def test_workspace_quota_rejects_negative_limits():
+    from devcore_api.contracts import WorkspaceQuotaContract
+
+    try:
+        WorkspaceQuotaContract(
+            workspace_id="wks_01",
+            runs_per_day=-1,
+            model_tokens_per_day=1,
+            storage_mb=1,
+        )
+    except ValidationError as exc:
+        assert "runs_per_day" in str(exc)
+    else:
+        raise AssertionError("WorkspaceQuotaContract should reject negative limits")

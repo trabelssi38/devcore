@@ -75,6 +75,23 @@ workspace_memberships = Table(
 )
 
 
+workspace_quotas = Table(
+    "workspace_quotas",
+    metadata,
+    Column("workspace_id", Text, ForeignKey("workspaces.id", ondelete="CASCADE"), primary_key=True),
+    Column("runs_per_day", Integer, nullable=False),
+    Column("model_tokens_per_day", Integer, nullable=False),
+    Column("storage_mb", Integer, nullable=False),
+    Column("metadata", JSONB, nullable=False, server_default="{}"),
+    Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    CheckConstraint(
+        "runs_per_day >= 0 and model_tokens_per_day >= 0 and storage_mb >= 0",
+        name="workspace_quotas_non_negative",
+    ),
+)
+
+
 projects = Table(
     "projects",
     metadata,
@@ -193,6 +210,7 @@ outbox_messages = Table(
 Index("idx_tasks_project_status", tasks.c.project_id, tasks.c.status, tasks.c.updated_at.desc())
 Index("idx_workspaces_organization_status", workspaces.c.organization_id, workspaces.c.status, workspaces.c.updated_at.desc())
 Index("idx_workspace_memberships_workspace_role", workspace_memberships.c.workspace_id, workspace_memberships.c.role)
+Index("idx_workspace_quotas_workspace", workspace_quotas.c.workspace_id)
 Index("idx_runs_task_status", runs.c.task_id, runs.c.status, runs.c.updated_at.desc())
 Index("idx_events_project_created", events.c.project_id, events.c.created_at.desc())
 Index("idx_audit_log_project_created", audit_log.c.project_id, audit_log.c.created_at.desc())

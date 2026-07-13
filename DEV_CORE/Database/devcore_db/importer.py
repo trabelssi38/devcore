@@ -7,7 +7,7 @@ from typing import Any
 
 from sqlalchemy import insert
 
-from .models import organizations, projects, tasks, users, workspace_memberships, workspaces
+from .models import organizations, projects, tasks, users, workspace_memberships, workspace_quotas, workspaces
 
 
 VALID_TASK_STATUS = {"todo", "active", "paused", "done", "skipped"}
@@ -84,6 +84,15 @@ class TaskBoardImporter:
                 workspace_id=workspace_id,
                 user_id="usr_system",
                 role="owner",
+                metadata={"source": "tasks_json_import"},
+            )
+        )
+        self.session.execute(
+            insert(workspace_quotas).values(
+                workspace_id=workspace_id,
+                runs_per_day=100,
+                model_tokens_per_day=1_000_000,
+                storage_mb=1024,
                 metadata={"source": "tasks_json_import"},
             )
         )

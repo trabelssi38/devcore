@@ -1086,6 +1086,7 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - `GET /api/v1/contracts` expose le catalogue initial des contrats de domaine.
 - Les contrats Pydantic initiaux couvrent `TaskContract`, `RunContract`, `DomainEvent`, `PluginContract`, `HealthContract`, `UserContract`, `OrganizationContract` et `WorkspaceContract`.
 - `WorkspaceMembershipContract` definit l'appartenance utilisateur/workspace avec role borne a `owner`, `admin`, `developer` ou `viewer`.
+- `WorkspaceQuotaContract` definit les limites non negatives `runs_per_day`, `model_tokens_per_day` et `storage_mb`.
 - `GET /api/v1/tasks?project=<id>` lit la board taches via le port `TaskRepository`.
 - OpenAPI est expose sur `/api/v1/openapi.json`; docs locales sur `/api/v1/docs`.
 - Les erreurs HTTP et validations suivent une enveloppe stable : `schema_version`, `error.code`, `error.message`, `error.details`, `trace_id`.
@@ -1137,6 +1138,7 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - `DEV_CORE\Database\test_repositories_transactions.py` couvre le mapping repository et les garanties transactionnelles sans exiger PostgreSQL local.
 - `DEV_CORE\Database\devcore_db\importer.py` importe un `tasks.json` existant vers `organizations`, `users`, `workspaces`, `projects` et `tasks` avec une organisation et un workspace par defaut.
 - L'import ajoute aussi une appartenance `usr_system` owner du workspace par defaut pour initialiser le modele RBAC sans bloquer le mode mono-utilisateur.
+- L'import initialise `workspace_quotas` avec des quotas locaux par defaut pour runs, tokens modele et stockage.
 - `DEV_CORE\Database\devcore_db\workspace_isolation.py` centralise les racines isolees par workspace : `Data`, `Secrets`, `Artifacts` et `Indexes` sous `DEV_CORE_DATA\Workspaces\<workspace_id>`.
 - Le helper refuse les `workspace_id` invalides et toute resolution de chemin qui sort de la racine du workspace.
 - Les noms de collections/index Qdrant peuvent etre derives par workspace avec le prefixe `<workspace_id>_<collection>`.

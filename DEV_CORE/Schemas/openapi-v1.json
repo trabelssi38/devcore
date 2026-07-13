@@ -20,7 +20,8 @@
                 "User",
                 "Organization",
                 "Workspace",
-                "WorkspaceMembership"
+                "WorkspaceMembership",
+                "WorkspaceQuota"
               ],
               "type": "string"
             },
@@ -59,6 +60,9 @@
           },
           "workspace_membership": {
             "$ref": "#/components/schemas/WorkspaceMembershipContract"
+          },
+          "workspace_quota": {
+            "$ref": "#/components/schemas/WorkspaceQuotaContract"
           }
         },
         "required": [
@@ -71,7 +75,8 @@
           "user",
           "organization",
           "workspace",
-          "workspace_membership"
+          "workspace_membership",
+          "workspace_quota"
         ],
         "title": "ContractCatalog",
         "type": "object"
@@ -619,6 +624,44 @@
           "role"
         ],
         "title": "WorkspaceMembershipContract",
+        "type": "object"
+      },
+      "WorkspaceQuotaContract": {
+        "properties": {
+          "model_tokens_per_day": {
+            "minimum": 0.0,
+            "title": "Model Tokens Per Day",
+            "type": "integer"
+          },
+          "runs_per_day": {
+            "minimum": 0.0,
+            "title": "Runs Per Day",
+            "type": "integer"
+          },
+          "schema_version": {
+            "const": 1,
+            "default": 1,
+            "title": "Schema Version",
+            "type": "integer"
+          },
+          "storage_mb": {
+            "minimum": 0.0,
+            "title": "Storage Mb",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "pattern": "^wks_[a-zA-Z0-9_-]+$",
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workspace_id",
+          "runs_per_day",
+          "model_tokens_per_day",
+          "storage_mb"
+        ],
+        "title": "WorkspaceQuotaContract",
         "type": "object"
       }
     }

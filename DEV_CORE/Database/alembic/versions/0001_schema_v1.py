@@ -31,6 +31,7 @@ def downgrade() -> None:
     op.execute("drop table if exists runs cascade")
     op.execute("drop table if exists tasks cascade")
     op.execute("drop table if exists projects cascade")
+    op.execute("drop table if exists workspace_quotas cascade")
     op.execute("drop table if exists workspace_memberships cascade")
     op.execute("drop table if exists workspaces cascade")
     op.execute("drop table if exists users cascade")

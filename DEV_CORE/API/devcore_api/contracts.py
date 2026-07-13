@@ -44,6 +44,14 @@ class WorkspaceMembershipContract(BaseModel):
     role: WorkspaceRole
 
 
+class WorkspaceQuotaContract(BaseModel):
+    schema_version: Literal[1] = 1
+    workspace_id: str = Field(pattern=r"^wks_[a-zA-Z0-9_-]+$")
+    runs_per_day: int = Field(ge=0)
+    model_tokens_per_day: int = Field(ge=0)
+    storage_mb: int = Field(ge=0)
+
+
 class TaskContract(BaseModel):
     schema_version: Literal[1] = 1
     id: str = Field(pattern=r"^T-\d+$")
@@ -109,6 +117,7 @@ class ContractCatalog(BaseModel):
             "Organization",
             "Workspace",
             "WorkspaceMembership",
+            "WorkspaceQuota",
         ]
     ]
     task: TaskContract
@@ -120,6 +129,7 @@ class ContractCatalog(BaseModel):
     organization: OrganizationContract
     workspace: WorkspaceContract
     workspace_membership: WorkspaceMembershipContract
+    workspace_quota: WorkspaceQuotaContract
 
 
 def build_contract_catalog() -> ContractCatalog:
@@ -134,6 +144,7 @@ def build_contract_catalog() -> ContractCatalog:
             "Organization",
             "Workspace",
             "WorkspaceMembership",
+            "WorkspaceQuota",
         ],
         task=TaskContract(id="T-1", title="Example task", status="todo", mode="coding"),
         run=RunContract(id="run-1", task_id="T-1", status="queued"),
@@ -148,5 +159,11 @@ def build_contract_catalog() -> ContractCatalog:
             workspace_id="wks_default",
             user_id="usr_system",
             role="owner",
+        ),
+        workspace_quota=WorkspaceQuotaContract(
+            workspace_id="wks_default",
+            runs_per_day=100,
+            model_tokens_per_day=1_000_000,
+            storage_mb=1024,
         ),
     )

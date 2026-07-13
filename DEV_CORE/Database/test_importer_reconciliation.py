@@ -56,6 +56,7 @@ def test_task_board_importer_inserts_project_and_valid_tasks(tmp_path) -> None:
         "users",
         "workspaces",
         "workspace_memberships",
+        "workspace_quotas",
         "projects",
         "tasks",
     ]
