@@ -1180,6 +1180,9 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - L'installation calcule et persiste `package_integrity.algorithm`, `manifest_sha256`, `package_sha256`, `verified` et `verified_at`.
 - Si un manifeste declare `package_integrity.manifest_sha256` ou `package_integrity.package_sha256`, l'installation refuse le package si le checksum ne correspond pas.
 - La provenance installee conserve `source`, `publisher`, `installed_by`, `source_manifest_path` et `package_root`.
+- L'installation plugin est atomique : le manifeste normalise est d'abord ecrit dans `DEV_CORE_DATA\Plugins\staging`, puis deplace vers `installed`.
+- En cas d'echec pendant l'installation, `plugin_service.ps1` restaure le repertoire installe et le registre depuis un snapshot rollback.
+- Les migrations declarees dans `capabilities.migrations` sont normalisees et auditees dans `plugin.migrations` avec `applied_count`, `items`, `status` et `applied_at`.
 
 `DEV_CORE\API\devcore_api\run_state.py` definit les transitions durables des runs.
 

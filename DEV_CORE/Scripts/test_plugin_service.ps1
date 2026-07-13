@@ -42,6 +42,7 @@ try {
             )
             widgets = @()
             templates = @("fastapi-endpoint")
+            migrations = @("001-initial-install")
         }
         permissions = [ordered]@{
             write_roots = @("data", "cache")
@@ -66,6 +67,10 @@ try {
     Assert-True ($install.plugin.provenance.source -eq "local-test-package") "Install should preserve provenance source"
     Assert-True ($install.plugin.provenance.installed_by -eq "plugin_service") "Install should record installer provenance"
     Assert-True ($install.plugin.provenance.source_manifest_path -eq ([System.IO.Path]::GetFullPath($manifestPath))) "Install should record source manifest path"
+    Assert-True ($install.plugin.migrations.applied_count -eq 1) "Install should audit applied migrations"
+    Assert-True ($install.plugin.migrations.items[0].id -eq "001-initial-install") "Install should preserve migration id"
+    Assert-True ($install.transaction.atomic -eq $true) "Install should report atomic transaction"
+    Assert-True ($install.transaction.rollback_available -eq $true) "Install should report rollback availability"
 
     $listJson = & $pluginServiceScript -Action List -Json | Out-String
     $list = $listJson | ConvertFrom-Json
@@ -140,8 +145,52 @@ try {
     Assert-True ($LASTEXITCODE -ne 0) "Install should reject declared checksum mismatch"
     Assert-True ($tamperedOutput -match "checksum") "Checksum mismatch should mention checksum"
 
+    $upgradePackageRoot = Join-Path $tmpRoot "packages\python-fastapi-upgrade"
+    New-Item -ItemType Directory -Path $upgradePackageRoot -Force | Out-Null
+    $upgradeManifestPath = Join-Path $upgradePackageRoot "plugin.json"
+    [pscustomobject][ordered]@{
+        schema_version = 1
+        id = "python-fastapi"
+        name = "Python FastAPI"
+        version = "0.2.0"
+        description = "FastAPI project helpers upgrade"
+        capabilities = [ordered]@{
+            commands = @("python-api:new-endpoint")
+            skills = @("python_api")
+            health_checks = @()
+            widgets = @()
+            templates = @("fastapi-endpoint")
+            migrations = @(
+                [ordered]@{
+                    id = "002-upgrade"
+                    description = "Upgrade plugin metadata"
+                    required = $true
+                }
+            )
+        }
+        permissions = [ordered]@{
+            write_roots = @("data", "cache")
+            allow_out_of_scope_write = $false
+        }
+    } | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $upgradeManifestPath -Encoding UTF8
+
+    $env:DEVCORE_PLUGIN_INSTALL_FAIL_AT = "after_manifest"
+    $upgradeOutput = & $pluginServiceScript -Action Install -ManifestPath $upgradeManifestPath -Json 2>&1 | Out-String
+    Remove-Item Env:\DEVCORE_PLUGIN_INSTALL_FAIL_AT -ErrorAction SilentlyContinue
+    Assert-True ($LASTEXITCODE -ne 0) "Failed upgrade should return a non-zero exit code"
+    Assert-True ($upgradeOutput -match "rollback") "Failed upgrade should mention rollback"
+
+    $installedAfterRollback = Get-Content -LiteralPath $install.installed_manifest_path -Raw -Encoding UTF8 | ConvertFrom-Json
+    Assert-True ($installedAfterRollback.version -eq "0.1.0") "Rollback should restore installed manifest version"
+
+    $listAfterRollbackJson = & $pluginServiceScript -Action List -Json | Out-String
+    $listAfterRollback = $listAfterRollbackJson | ConvertFrom-Json
+    $pluginAfterRollback = $listAfterRollback.plugins | Where-Object { $_.id -eq "python-fastapi" } | Select-Object -First 1
+    Assert-True ($pluginAfterRollback.version -eq "0.1.0") "Rollback should restore registry plugin version"
+
     Write-Host "[OK] plugin service smoke tests passed"
 } finally {
+    Remove-Item Env:\DEVCORE_PLUGIN_INSTALL_FAIL_AT -ErrorAction SilentlyContinue
     if ($null -eq $oldDataRoot) {
         Remove-Item Env:\DEVCORE_DATA_ROOT -ErrorAction SilentlyContinue
     } else {

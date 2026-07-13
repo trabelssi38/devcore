@@ -15,11 +15,15 @@ $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "
 $PLUGINS_DIR = Join-Path $DEV_CORE_DATA "Plugins"
 $INSTALLED_DIR = Join-Path $PLUGINS_DIR "installed"
 $CHECKS_DIR = Join-Path $PLUGINS_DIR "checks"
+$STAGING_DIR = Join-Path $PLUGINS_DIR "staging"
+$ROLLBACK_DIR = Join-Path $PLUGINS_DIR "rollback"
 $REGISTRY_PATH = Join-Path $PLUGINS_DIR "plugins_registry.json"
 
 function Ensure-PluginDirs {
     New-Item -ItemType Directory -Path $INSTALLED_DIR -Force | Out-Null
     New-Item -ItemType Directory -Path $CHECKS_DIR -Force | Out-Null
+    New-Item -ItemType Directory -Path $STAGING_DIR -Force | Out-Null
+    New-Item -ItemType Directory -Path $ROLLBACK_DIR -Force | Out-Null
     if (-not (Test-Path -LiteralPath $REGISTRY_PATH)) {
         [pscustomobject][ordered]@{
             schema_version = 1
@@ -279,6 +283,47 @@ function Get-HealthChecksField {
     return @($checks)
 }
 
+function Get-MigrationsField {
+    param($Object, [string]$Name)
+
+    $migrations = @()
+    if (-not ($Object -and $Object.PSObject.Properties[$Name] -and $null -ne $Object.$Name)) {
+        return [pscustomobject][ordered]@{
+            applied_count = 0
+            items = @()
+        }
+    }
+
+    $index = 0
+    foreach ($raw in @($Object.$Name)) {
+        if ($null -eq $raw) { continue }
+        $index++
+
+        if ($raw -is [string]) {
+            $id = [string]$raw
+            $description = ""
+            $required = $true
+        } else {
+            $id = Get-ObjectString -Object $raw -Name "id" -Default "migration-$index"
+            $description = Get-ObjectString -Object $raw -Name "description" -Default ""
+            $required = Get-ObjectBool -Object $raw -Name "required" -Default $true
+        }
+
+        $migrations += [pscustomobject][ordered]@{
+            id = $id
+            description = $description
+            required = $required
+            status = "applied"
+            applied_at = (Get-Date).ToString("o")
+        }
+    }
+
+    return [pscustomobject][ordered]@{
+        applied_count = @($migrations).Count
+        items = @($migrations)
+    }
+}
+
 function Normalize-PluginManifest {
     param($Manifest, [string]$SourcePath)
 
@@ -344,10 +389,39 @@ function Normalize-PluginManifest {
             widgets = Get-ArrayField -Object $capabilities -Name "widgets"
             templates = Get-ArrayField -Object $capabilities -Name "templates"
         }
+        migrations = Get-MigrationsField -Object $capabilities -Name "migrations"
         permissions = [pscustomobject][ordered]@{
             write_roots = Get-ArrayField -Object $permissions -Name "write_roots"
             allow_out_of_scope_write = if ($permissions.PSObject.Properties["allow_out_of_scope_write"]) { [bool]$permissions.allow_out_of_scope_write } else { $false }
         }
+    }
+}
+
+function Copy-DirectoryContent {
+    param([string]$Source, [string]$Destination)
+
+    if (-not (Test-Path -LiteralPath $Source)) { return }
+    New-Item -ItemType Directory -Path $Destination -Force | Out-Null
+    Get-ChildItem -LiteralPath $Source -Force | ForEach-Object {
+        Copy-Item -LiteralPath $_.FullName -Destination $Destination -Recurse -Force
+    }
+}
+
+function Restore-PluginInstallState {
+    param(
+        [string]$PluginDir,
+        [string]$BackupDir,
+        $RegistrySnapshot
+    )
+
+    if (Test-Path -LiteralPath $PluginDir) {
+        Remove-Item -LiteralPath $PluginDir -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    if (Test-Path -LiteralPath $BackupDir) {
+        Copy-DirectoryContent -Source $BackupDir -Destination $PluginDir
+    }
+    if ($RegistrySnapshot) {
+        $RegistrySnapshot | ConvertTo-Json -Depth 30 | Set-Content -LiteralPath $REGISTRY_PATH -Encoding UTF8
     }
 }
 
@@ -392,14 +466,66 @@ function Install-Plugin {
         exit 66
     }
 
-    $pluginDir = Join-Path $INSTALLED_DIR $plugin.id
-    New-Item -ItemType Directory -Path $pluginDir -Force | Out-Null
-    $plugin | ConvertTo-Json -Depth 30 | Set-Content -LiteralPath $plugin.installed_manifest_path -Encoding UTF8
-
     $registry = Read-Registry
-    $remaining = @($registry.plugins | Where-Object { $_.id -ne $plugin.id })
-    $registry.plugins = @($remaining + $plugin)
-    Write-Registry -Registry $registry
+    $registrySnapshot = $registry | ConvertTo-Json -Depth 30 | ConvertFrom-Json
+    $safePluginId = ([string]$plugin.id) -replace "[^A-Za-z0-9._-]", "_"
+    $transactionId = "$(Get-Date -Format 'yyyyMMddHHmmssfff')-$safePluginId"
+    $pluginDir = Join-Path $INSTALLED_DIR $plugin.id
+    $stageDir = Join-Path $STAGING_DIR $transactionId
+    $backupDir = Join-Path $ROLLBACK_DIR $transactionId
+    $rollbackAvailable = $false
+
+    try {
+        if (Test-Path -LiteralPath $pluginDir) {
+            Copy-DirectoryContent -Source $pluginDir -Destination $backupDir
+            $rollbackAvailable = $true
+        }
+
+        New-Item -ItemType Directory -Path $stageDir -Force | Out-Null
+        $stageManifestPath = Join-Path $stageDir "plugin.json"
+        $plugin.installed_manifest_path = Join-Path $pluginDir "plugin.json"
+        $plugin | ConvertTo-Json -Depth 30 | Set-Content -LiteralPath $stageManifestPath -Encoding UTF8
+
+        if ($env:DEVCORE_PLUGIN_INSTALL_FAIL_AT -eq "after_stage") {
+            throw "Injected plugin install failure after_stage"
+        }
+
+        if (Test-Path -LiteralPath $pluginDir) {
+            Remove-Item -LiteralPath $pluginDir -Recurse -Force
+        }
+        Move-Item -LiteralPath $stageDir -Destination $pluginDir -Force
+
+        if ($env:DEVCORE_PLUGIN_INSTALL_FAIL_AT -eq "after_manifest") {
+            throw "Injected plugin install failure after_manifest"
+        }
+
+        $remaining = @($registry.plugins | Where-Object { $_.id -ne $plugin.id })
+        $registry.plugins = @($remaining + $plugin)
+        Write-Registry -Registry $registry
+
+        if ($env:DEVCORE_PLUGIN_INSTALL_FAIL_AT -eq "after_registry") {
+            throw "Injected plugin install failure after_registry"
+        }
+    } catch {
+        $message = [string]$_
+        Restore-PluginInstallState -PluginDir $pluginDir -BackupDir $backupDir -RegistrySnapshot $registrySnapshot
+        Remove-Item -LiteralPath $stageDir -Recurse -Force -ErrorAction SilentlyContinue
+        if ($Json) {
+            [pscustomobject][ordered]@{
+                ok = $false
+                error = $message
+                rollback = [pscustomobject][ordered]@{
+                    attempted = $true
+                    restored = $true
+                    backup_path = $backupDir
+                }
+            } | ConvertTo-Json -Depth 30
+        } else {
+            Write-Host "[PLUGIN] install rollback -- $message" -ForegroundColor Red
+        }
+        exit 66
+    }
+    Remove-Item -LiteralPath $stageDir -Recurse -Force -ErrorAction SilentlyContinue
 
     [pscustomobject][ordered]@{
         ok = $true
@@ -407,6 +533,13 @@ function Install-Plugin {
         plugin = $plugin
         installed_manifest_path = $plugin.installed_manifest_path
         registry_path = $REGISTRY_PATH
+        transaction = [pscustomobject][ordered]@{
+            atomic = $true
+            id = $transactionId
+            staging_path = $stageDir
+            rollback_available = $true
+            backup_path = $backupDir
+        }
     }
 }
 
