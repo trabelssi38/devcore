@@ -336,7 +336,7 @@ Objectif : permettre l'extension sans donner un accès implicite à toute la mac
 - [x] `S8-01` — Définir Manifest v2 et compatibilité de version. `3 pts`
 - [x] `S8-02` — Ajouter scopes filesystem/network/secrets/process. `5 pts`
 - [x] `S8-03` — Exécuter les plugins dans un processus isolé. `5 pts`
-- [ ] `S8-04` — Ajouter signature, provenance et checksum des packages. `3 pts`
+- [x] `S8-04` — Ajouter signature, provenance et checksum des packages. `3 pts`
 - [ ] `S8-05` — Ajouter installation atomique, rollback et migrations. `3 pts`
 - [ ] `S8-06` — Migrer les trois plugins internes et tester les permissions. `3 pts`
 

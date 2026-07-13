@@ -164,6 +164,69 @@ function Get-ObjectString {
     return $Default
 }
 
+function Get-Sha256HexFromText {
+    param([string]$Text)
+
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($Text)
+        $hash = $sha.ComputeHash($bytes)
+        return (($hash | ForEach-Object { $_.ToString("x2") }) -join "")
+    } finally {
+        $sha.Dispose()
+    }
+}
+
+function Get-FileSha256 {
+    param([string]$Path)
+
+    return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+}
+
+function Get-RelativePathCompat {
+    param([string]$BasePath, [string]$ChildPath)
+
+    $baseFull = [System.IO.Path]::GetFullPath($BasePath).TrimEnd("\") + "\"
+    $childFull = [System.IO.Path]::GetFullPath($ChildPath)
+    $baseUri = New-Object System.Uri($baseFull)
+    $childUri = New-Object System.Uri($childFull)
+    return [System.Uri]::UnescapeDataString($baseUri.MakeRelativeUri($childUri).ToString()).Replace("/", "\")
+}
+
+function Get-PackageSha256 {
+    param([string]$ManifestPath)
+
+    $packageRoot = Split-Path -Parent ([System.IO.Path]::GetFullPath($ManifestPath))
+    $files = @(Get-ChildItem -LiteralPath $packageRoot -File -Recurse | Sort-Object FullName)
+    $entries = @()
+    foreach ($file in $files) {
+        $relative = (Get-RelativePathCompat -BasePath $packageRoot -ChildPath $file.FullName).Replace("\", "/")
+        $entries += "$relative=$((Get-FileSha256 -Path $file.FullName))"
+    }
+    return Get-Sha256HexFromText -Text (($entries -join "`n") + "`n")
+}
+
+function Get-DeclaredIntegrityValue {
+    param($Manifest, [string]$Name)
+
+    if ($Manifest.PSObject.Properties["package_integrity"] -and $Manifest.package_integrity) {
+        return Get-ObjectString -Object $Manifest.package_integrity -Name $Name
+    }
+    return ""
+}
+
+function Assert-DeclaredChecksum {
+    param([string]$Declared, [string]$Actual, [string]$FieldName)
+
+    if ([string]::IsNullOrWhiteSpace($Declared)) { return }
+    if ($Declared -notmatch "^[A-Fa-f0-9]{64}$") {
+        throw "Plugin checksum '$FieldName' must be a 64 character SHA256 hex value."
+    }
+    if ($Declared.ToLowerInvariant() -ne $Actual) {
+        throw "Plugin checksum mismatch for '$FieldName'."
+    }
+}
+
 function Get-HealthChecksField {
     param($Object, [string]$Name)
 
@@ -236,6 +299,19 @@ function Normalize-PluginManifest {
         [pscustomobject]@{ write_roots = @(); allow_out_of_scope_write = $false }
     }
 
+    $sourceManifestPath = [System.IO.Path]::GetFullPath($SourcePath)
+    $packageRoot = Split-Path -Parent $sourceManifestPath
+    $manifestSha256 = Get-FileSha256 -Path $sourceManifestPath
+    $packageSha256 = Get-PackageSha256 -ManifestPath $sourceManifestPath
+    Assert-DeclaredChecksum -Declared (Get-DeclaredIntegrityValue -Manifest $Manifest -Name "manifest_sha256") -Actual $manifestSha256 -FieldName "manifest_sha256"
+    Assert-DeclaredChecksum -Declared (Get-DeclaredIntegrityValue -Manifest $Manifest -Name "package_sha256") -Actual $packageSha256 -FieldName "package_sha256"
+
+    $provenance = if ($Manifest.PSObject.Properties["provenance"] -and $Manifest.provenance) {
+        $Manifest.provenance
+    } else {
+        [pscustomobject]@{}
+    }
+
     [pscustomobject][ordered]@{
         schema_version = if ($Manifest.PSObject.Properties["schema_version"]) { [int]$Manifest.schema_version } else { 1 }
         id = $id
@@ -244,8 +320,22 @@ function Normalize-PluginManifest {
         description = if ($Manifest.PSObject.Properties["description"]) { [string]$Manifest.description } else { "" }
         enabled = $true
         installed_at = (Get-Date).ToString("o")
-        source_manifest_path = [System.IO.Path]::GetFullPath($SourcePath)
+        source_manifest_path = $sourceManifestPath
         installed_manifest_path = Join-Path (Join-Path $INSTALLED_DIR $id) "plugin.json"
+        provenance = [pscustomobject][ordered]@{
+            source = Get-ObjectString -Object $provenance -Name "source" -Default "local"
+            publisher = Get-ObjectString -Object $provenance -Name "publisher" -Default "unknown"
+            installed_by = "plugin_service"
+            source_manifest_path = $sourceManifestPath
+            package_root = $packageRoot
+        }
+        package_integrity = [pscustomobject][ordered]@{
+            algorithm = "SHA256"
+            manifest_sha256 = $manifestSha256
+            package_sha256 = $packageSha256
+            verified = $true
+            verified_at = (Get-Date).ToString("o")
+        }
         capabilities = [pscustomobject][ordered]@{
             commands = Get-ArrayField -Object $capabilities -Name "commands"
             hooks = Get-ArrayField -Object $capabilities -Name "hooks"
@@ -273,7 +363,20 @@ function Install-Plugin {
 
     Ensure-PluginDirs
     $manifest = Get-Content -LiteralPath $ManifestPath -Raw -Encoding UTF8 | ConvertFrom-Json
-    $plugin = Normalize-PluginManifest -Manifest $manifest -SourcePath $ManifestPath
+    try {
+        $plugin = Normalize-PluginManifest -Manifest $manifest -SourcePath $ManifestPath
+    } catch {
+        $message = [string]$_
+        if ($Json) {
+            [pscustomobject][ordered]@{
+                ok = $false
+                error = $message
+            } | ConvertTo-Json -Depth 20
+        } else {
+            Write-Host "[PLUGIN] install rejected -- $message" -ForegroundColor Red
+        }
+        exit 66
+    }
     $violations = @(Get-ScopeViolations -Plugin $plugin)
     if ($violations.Count -gt 0) {
         $message = "Plugin scope violation: $($violations[0].root)"

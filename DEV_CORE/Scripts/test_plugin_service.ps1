@@ -47,6 +47,10 @@ try {
             write_roots = @("data", "cache")
             allow_out_of_scope_write = $false
         }
+        provenance = [ordered]@{
+            source = "local-test-package"
+            publisher = "DEV_CORE Tests"
+        }
     } | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $manifestPath -Encoding UTF8
 
     Assert-True (Test-Path -LiteralPath $pluginServiceScript) "plugin_service.ps1 should exist"
@@ -56,6 +60,12 @@ try {
     Assert-True ($install.ok -eq $true) "Install should succeed for scoped plugin"
     Assert-True ($install.plugin.id -eq "python-fastapi") "Install should preserve plugin id"
     Assert-True (Test-Path -LiteralPath $install.installed_manifest_path) "Install should write installed manifest"
+    Assert-True ($install.plugin.package_integrity.algorithm -eq "SHA256") "Install should record package checksum algorithm"
+    Assert-True ($install.plugin.package_integrity.manifest_sha256 -match "^[a-f0-9]{64}$") "Install should record manifest sha256"
+    Assert-True ($install.plugin.package_integrity.package_sha256 -match "^[a-f0-9]{64}$") "Install should record package sha256"
+    Assert-True ($install.plugin.provenance.source -eq "local-test-package") "Install should preserve provenance source"
+    Assert-True ($install.plugin.provenance.installed_by -eq "plugin_service") "Install should record installer provenance"
+    Assert-True ($install.plugin.provenance.source_manifest_path -eq ([System.IO.Path]::GetFullPath($manifestPath))) "Install should record source manifest path"
 
     $listJson = & $pluginServiceScript -Action List -Json | Out-String
     $list = $listJson | ConvertFrom-Json
@@ -107,6 +117,28 @@ try {
     $badOutput = & $pluginServiceScript -Action Install -ManifestPath $badManifestPath -Json 2>&1 | Out-String
     Assert-True ($LASTEXITCODE -ne 0) "Install should reject out-of-scope write roots"
     Assert-True ($badOutput -match "scope") "Out-of-scope rejection should mention scope"
+
+    $tamperedPackageRoot = Join-Path $tmpRoot "packages\tampered-plugin"
+    New-Item -ItemType Directory -Path $tamperedPackageRoot -Force | Out-Null
+    $tamperedManifestPath = Join-Path $tamperedPackageRoot "plugin.json"
+    [pscustomobject][ordered]@{
+        schema_version = 1
+        id = "tampered-plugin"
+        name = "Tampered Plugin"
+        version = "0.1.0"
+        capabilities = [ordered]@{ commands = @(); skills = @(); health_checks = @(); widgets = @(); templates = @() }
+        permissions = [ordered]@{
+            write_roots = @("data")
+            allow_out_of_scope_write = $false
+        }
+        package_integrity = [ordered]@{
+            package_sha256 = "0000000000000000000000000000000000000000000000000000000000000000"
+        }
+    } | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $tamperedManifestPath -Encoding UTF8
+
+    $tamperedOutput = & $pluginServiceScript -Action Install -ManifestPath $tamperedManifestPath -Json 2>&1 | Out-String
+    Assert-True ($LASTEXITCODE -ne 0) "Install should reject declared checksum mismatch"
+    Assert-True ($tamperedOutput -match "checksum") "Checksum mismatch should mention checksum"
 
     Write-Host "[OK] plugin service smoke tests passed"
 } finally {

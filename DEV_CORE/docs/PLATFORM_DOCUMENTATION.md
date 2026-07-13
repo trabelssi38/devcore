@@ -1177,6 +1177,9 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - `DEV_CORE\Scripts\plugin_service.ps1` execute les health checks dans un processus enfant isole : `WorkingDirectory` pointe vers `DEV_CORE_DATA\Plugins\<plugin_id>`, l'environnement est minimal et expose seulement les variables DEV_CORE plugin explicites.
 - Le resultat de check publie `isolated_process`, `process_id`, `working_directory` et `environment_policy` pour audit dashboard.
 - Un timeout tue le processus enfant et son arbre quand la plateforme le supporte.
+- L'installation calcule et persiste `package_integrity.algorithm`, `manifest_sha256`, `package_sha256`, `verified` et `verified_at`.
+- Si un manifeste declare `package_integrity.manifest_sha256` ou `package_integrity.package_sha256`, l'installation refuse le package si le checksum ne correspond pas.
+- La provenance installee conserve `source`, `publisher`, `installed_by`, `source_manifest_path` et `package_root`.
 
 `DEV_CORE\API\devcore_api\run_state.py` definit les transitions durables des runs.
 
