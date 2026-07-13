@@ -1,0 +1,131 @@
+{
+  "registry_version": "2026.07.13",
+  "schema_version": 1,
+  "templates": [
+    {
+      "description": "Safe bugfix workflow with reproduction, regression test, minimal fix and release note.",
+      "id": "bugfix-safe",
+      "inputs": [
+        {
+          "default": "coding",
+          "description": "Execution mode used by the agent.",
+          "name": "mode",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "default": "",
+          "description": "Observable failure or user-visible bug.",
+          "name": "problem",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "status": "active",
+      "steps": [
+        {
+          "id": "reproduce",
+          "title": "Reproduce the failure with a focused test or command",
+          "type": "gate"
+        },
+        {
+          "id": "fix",
+          "title": "Apply the smallest safe code change",
+          "type": "manual"
+        },
+        {
+          "id": "verify",
+          "title": "Run the regression test and adjacent checks",
+          "type": "script"
+        },
+        {
+          "id": "document",
+          "title": "Document the fix when behavior or operations changed",
+          "type": "manual"
+        }
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "description": "Feature implementation workflow aligned with DEV_CORE sprint tasks and TDD.",
+      "id": "feature-sprint",
+      "inputs": [
+        {
+          "default": "coding",
+          "description": "Execution mode used by the agent.",
+          "name": "mode",
+          "required": true,
+          "type": "string"
+        },
+        {
+          "default": "",
+          "description": "Sprint backlog item such as S10-04.",
+          "name": "sprint_item",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "status": "active",
+      "steps": [
+        {
+          "id": "contract",
+          "title": "Write or update the contract test first",
+          "type": "gate"
+        },
+        {
+          "id": "implementation",
+          "title": "Implement the smallest production path",
+          "type": "manual"
+        },
+        {
+          "id": "ci",
+          "title": "Run targeted tests and CI slice",
+          "type": "script"
+        },
+        {
+          "id": "commit",
+          "title": "Commit with the active DEV_CORE task tag",
+          "type": "manual"
+        }
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "description": "Release hardening workflow for gates, rollback readiness and operator-facing notes.",
+      "id": "release-hardening",
+      "inputs": [
+        {
+          "default": "v1",
+          "description": "Target release train or milestone.",
+          "name": "release",
+          "required": true,
+          "type": "string"
+        }
+      ],
+      "status": "active",
+      "steps": [
+        {
+          "id": "gates",
+          "title": "Run release gates and collect failures",
+          "type": "script"
+        },
+        {
+          "id": "rollback",
+          "title": "Verify rollback and recovery procedures",
+          "type": "gate"
+        },
+        {
+          "id": "notes",
+          "title": "Prepare release notes and support runbook updates",
+          "type": "manual"
+        },
+        {
+          "id": "notify",
+          "title": "Notify stakeholders through configured plugin channels",
+          "type": "notification"
+        }
+      ],
+      "version": "1.0.0"
+    }
+  ]
+}

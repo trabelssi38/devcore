@@ -1093,6 +1093,14 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - `SqlScheduleRepository` centralise `create_schedule`, `record_history` et `list_due_schedules`.
 - `DEV_CORE\Database\test_schedules_persistence.py` verrouille le contrat schema + repository.
 
+### Templates de workflows versionnes
+
+- `DEV_CORE\Templates\workflow_templates.json` declare le registre versionne des workflows reutilisables.
+- Le registre est date-versionne via `registry_version` et chaque template utilise une version `MAJOR.MINOR.PATCH`.
+- Les templates initiaux couvrent `bugfix-safe`, `feature-sprint` et `release-hardening`.
+- `DEV_CORE\Templates\workflow_templates.py` valide schema, unicite `id@version`, statut, inputs et steps.
+- `DEV_CORE\Templates\test_workflow_templates.py` verrouille le contrat et le format JSON stable.
+
 - `create_app()` construit l'application FastAPI.
 - Le prefixe versionne est `/api/v1`.
 - `GET /api/v1/health` retourne un contrat Pydantic stable : `schema_version`, `service`, `status`, `api_version`, `trace_id`.
