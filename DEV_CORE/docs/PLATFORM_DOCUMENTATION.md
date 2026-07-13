@@ -1085,6 +1085,14 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - Les headers `X-GitHub-Event` et `X-GitHub-Delivery` deviennent le contrat stable minimal pour idempotence et routage futur.
 - `DEV_CORE\API\test_github_webhooks.py` couvre ping signe, signature invalide et configuration manquante.
 
+### Schedules persistants
+
+- Le schema PostgreSQL expose `schedules` pour les definitions planifiees par projet et `schedule_history` pour tracer creations, executions, echecs et reprises.
+- `schedules` stocke `cron`, `timezone`, `status`, `next_run_at`, `last_run_at` et `metadata`.
+- `schedule_history` référence `schedule_id`, optionnellement `run_id`, puis conserve `event_type`, `status`, `details` et `occurred_at`.
+- `SqlScheduleRepository` centralise `create_schedule`, `record_history` et `list_due_schedules`.
+- `DEV_CORE\Database\test_schedules_persistence.py` verrouille le contrat schema + repository.
+
 - `create_app()` construit l'application FastAPI.
 - Le prefixe versionne est `/api/v1`.
 - `GET /api/v1/health` retourne un contrat Pydantic stable : `schema_version`, `service`, `status`, `api_version`, `trace_id`.

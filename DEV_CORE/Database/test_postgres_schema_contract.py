@@ -23,6 +23,8 @@ def test_postgres_schema_declares_core_tables() -> None:
         "events",
         "plugins",
         "audit_log",
+        "schedules",
+        "schedule_history",
         "outbox_messages",
     ]:
         assert f"create table if not exists {table}" in schema
@@ -44,6 +46,9 @@ def test_postgres_schema_declares_identity_and_foreign_keys() -> None:
     assert "task_id text references tasks(id)" in schema
     assert "run_id text references runs(id)" in schema
     assert "plugin_id text references plugins(id)" in schema
+    assert "schedule_id text not null references schedules(id)" in schema
+    assert "cron text not null" in schema
+    assert "timezone text not null" in schema
 
 
 def test_postgres_schema_declares_operational_indexes() -> None:
@@ -57,6 +62,8 @@ def test_postgres_schema_declares_operational_indexes() -> None:
         "idx_runs_task_status",
         "idx_events_project_created",
         "idx_audit_log_project_created",
+        "idx_schedules_project_status_next_run",
+        "idx_schedule_history_schedule_occurred",
         "idx_outbox_messages_status_created",
     ]:
         assert f"create index if not exists {index}" in schema

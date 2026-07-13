@@ -41,6 +41,8 @@ def test_sqlalchemy_metadata_declares_core_tables() -> None:
         "events",
         "plugins",
         "audit_log",
+        "schedules",
+        "schedule_history",
     }
 
     assert expected_tables.issubset(set(metadata.tables))
@@ -52,6 +54,8 @@ def test_sqlalchemy_metadata_declares_core_tables() -> None:
     assert metadata.tables["tasks"].c.project_id.foreign_keys
     assert metadata.tables["events"].c.payload.type.__class__.__name__ == "JSONB"
     assert metadata.tables["audit_log"].c.details.type.__class__.__name__ == "JSONB"
+    assert metadata.tables["schedules"].c.project_id.foreign_keys
+    assert metadata.tables["schedule_history"].c.schedule_id.foreign_keys
 
 
 def test_alembic_config_points_to_local_migrations() -> None:

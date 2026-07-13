@@ -25,6 +25,8 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.execute("drop table if exists outbox_messages cascade")
+    op.execute("drop table if exists schedule_history cascade")
+    op.execute("drop table if exists schedules cascade")
     op.execute("drop table if exists audit_log cascade")
     op.execute("drop table if exists events cascade")
     op.execute("drop table if exists plugins cascade")

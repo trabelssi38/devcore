@@ -192,6 +192,37 @@ audit_log = Table(
 )
 
 
+schedules = Table(
+    "schedules",
+    metadata,
+    Column("id", Text, primary_key=True),
+    Column("project_id", Text, ForeignKey("projects.id", ondelete="CASCADE"), nullable=False),
+    Column("name", Text, nullable=False),
+    Column("cron", Text, nullable=False),
+    Column("timezone", Text, nullable=False),
+    Column("status", String, nullable=False, server_default="active"),
+    Column("next_run_at", DateTime(timezone=True)),
+    Column("last_run_at", DateTime(timezone=True)),
+    Column("metadata", JSONB, nullable=False, server_default="{}"),
+    Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    CheckConstraint("status in ('active', 'paused', 'disabled')", name="schedules_status"),
+)
+
+
+schedule_history = Table(
+    "schedule_history",
+    metadata,
+    Column("id", Text, primary_key=True),
+    Column("schedule_id", Text, ForeignKey("schedules.id", ondelete="CASCADE"), nullable=False),
+    Column("run_id", Text, ForeignKey("runs.id", ondelete="SET NULL")),
+    Column("event_type", Text, nullable=False),
+    Column("status", Text, nullable=False),
+    Column("details", JSONB, nullable=False, server_default="{}"),
+    Column("occurred_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+)
+
+
 outbox_messages = Table(
     "outbox_messages",
     metadata,
@@ -214,4 +245,6 @@ Index("idx_workspace_quotas_workspace", workspace_quotas.c.workspace_id)
 Index("idx_runs_task_status", runs.c.task_id, runs.c.status, runs.c.updated_at.desc())
 Index("idx_events_project_created", events.c.project_id, events.c.created_at.desc())
 Index("idx_audit_log_project_created", audit_log.c.project_id, audit_log.c.created_at.desc())
+Index("idx_schedules_project_status_next_run", schedules.c.project_id, schedules.c.status, schedules.c.next_run_at.asc())
+Index("idx_schedule_history_schedule_occurred", schedule_history.c.schedule_id, schedule_history.c.occurred_at.desc())
 Index("idx_outbox_messages_status_created", outbox_messages.c.status, outbox_messages.c.created_at.asc())

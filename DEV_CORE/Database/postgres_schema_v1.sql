@@ -138,6 +138,31 @@ create table if not exists audit_log (
     created_at timestamptz not null default now()
 );
 
+create table if not exists schedules (
+    id text primary key,
+    project_id text not null references projects(id) on delete cascade,
+    name text not null,
+    cron text not null,
+    timezone text not null,
+    status text not null default 'active',
+    next_run_at timestamptz,
+    last_run_at timestamptz,
+    metadata jsonb not null default '{}'::jsonb,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    constraint schedules_status check (status in ('active', 'paused', 'disabled'))
+);
+
+create table if not exists schedule_history (
+    id text primary key,
+    schedule_id text not null references schedules(id) on delete cascade,
+    run_id text references runs(id) on delete set null,
+    event_type text not null,
+    status text not null,
+    details jsonb not null default '{}'::jsonb,
+    occurred_at timestamptz not null default now()
+);
+
 create table if not exists outbox_messages (
     id text primary key,
     topic text not null,
@@ -170,6 +195,12 @@ create index if not exists idx_events_project_created
 
 create index if not exists idx_audit_log_project_created
     on audit_log (project_id, created_at desc);
+
+create index if not exists idx_schedules_project_status_next_run
+    on schedules (project_id, status, next_run_at asc);
+
+create index if not exists idx_schedule_history_schedule_occurred
+    on schedule_history (schedule_id, occurred_at desc);
 
 create index if not exists idx_outbox_messages_status_created
     on outbox_messages (status, created_at asc);
