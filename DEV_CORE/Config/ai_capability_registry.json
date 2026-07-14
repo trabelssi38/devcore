@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "default_candidate": "devcore-coding",
+  "mode_defaults": {
+    "reasoning": "devcore-reasoning",
+    "plan": "devcore-reasoning",
+    "coding": "devcore-coding",
+    "bulk": "devcore-bulk"
+  },
+  "aliases": {
+    "devcore-always-on": "devcore-coding",
+    "devcore-reasoning": "devcore-reasoning",
+    "devcore-coding": "devcore-coding",
+    "devcore-bulk": "devcore-bulk",
+    "gemini-pro": "devcore-coding",
+    "gemini-flash": "devcore-bulk",
+    "gemini-2.5-pro": "devcore-coding",
+    "gemini-2.5-flash": "devcore-bulk"
+  },
+  "candidates": {
+    "devcore-reasoning": {
+      "type": "model",
+      "provider": "google",
+      "backend_model": "gemini-2.5-pro",
+      "enabled": true,
+      "workflow_modes": ["reasoning", "plan"],
+      "languages": ["python", "powershell", "typescript", "javascript", "kotlin", "sql"],
+      "specialties": ["architecture", "planning", "debug", "review", "long-context"],
+      "context_tokens": 1048576,
+      "cost_tier": 3,
+      "speed_tier": 3,
+      "quality_tier": 5,
+      "notes": "Default deep reasoning candidate for specs, analysis, and architecture decisions."
+    },
+    "devcore-coding": {
+      "type": "model",
+      "provider": "google",
+      "backend_model": "gemini-2.5-pro",
+      "enabled": true,
+      "workflow_modes": ["coding"],
+      "languages": ["python", "powershell", "typescript", "javascript", "kotlin", "sql"],
+      "specialties": ["implementation", "tdd", "debug", "refactor", "api", "frontend"],
+      "context_tokens": 1048576,
+      "cost_tier": 3,
+      "speed_tier": 3,
+      "quality_tier": 4,
+      "notes": "Balanced implementation candidate compatible with the existing devcore-coding profile."
+    },
+    "devcore-bulk": {
+      "type": "model",
+      "provider": "google",
+      "backend_model": "gemini-2.5-flash",
+      "enabled": true,
+      "workflow_modes": ["bulk", "coding"],
+      "languages": ["python", "powershell", "typescript", "javascript", "markdown", "json"],
+      "specialties": ["bulk-edit", "summarization", "tests", "docs", "migration"],
+      "context_tokens": 1048576,
+      "cost_tier": 1,
+      "speed_tier": 5,
+      "quality_tier": 3,
+      "notes": "Fast low-cost candidate for volume work."
+    },
+    "gpt-5.6-sol": {
+      "type": "model",
+      "provider": "openai",
+      "backend_model": "gemini-2.5-pro",
+      "enabled": false,
+      "workflow_modes": ["reasoning", "coding"],
+      "languages": ["python", "powershell", "typescript", "javascript"],
+      "specialties": ["solution-design", "debug", "review"],
+      "context_tokens": 0,
+      "cost_tier": 3,
+      "speed_tier": 3,
+      "quality_tier": 4,
+      "notes": "Observed model identifier. Disabled for Gemini Router until a direct backend adapter exists."
+    }
+  }
+}

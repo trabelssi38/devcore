@@ -31,3 +31,23 @@ def test_model_profile_names_are_supported():
 
     mapped = router.map_for_gemini({"messages": [], "model": "devcore-reasoning"}, is_chat=True)
     assert mapped["model"] == "gemini-2.5-pro"
+
+
+def test_capability_requirements_can_override_mode_default():
+    router = load_router()
+
+    mapped = router.map_for_gemini(
+        {
+            "messages": [],
+            "mode": "coding",
+            "capability_requirements": {
+                "languages": ["javascript"],
+                "specialties": ["tests"],
+                "optimize_for": "speed",
+            },
+        },
+        is_chat=True,
+    )
+
+    assert mapped["model"] == "gemini-2.5-flash"
+    assert "capability_requirements" not in mapped

@@ -10,6 +10,7 @@ import os
 import json
 import asyncio
 from pathlib import Path
+from ai_capability_registry import load_capability_registry, select_backend_model
 
 app = FastAPI(title="Gemini Router with Fallback")
 
@@ -95,11 +96,26 @@ def map_for_gemini(body: dict, is_chat: bool) -> dict:
     if is_chat:
         requested_mode = str(body.get("mode") or "").strip().lower()
         original_model = body.get("model") or MODE_MODEL_MAP.get(requested_mode) or "devcore-always-on"
-        mapped["model"] = MODEL_MAP.get(original_model, "gemini-2.5-flash")
+        selection_body = body.copy()
+        if body.get("model"):
+            selection_body["model"] = original_model
+        backend_model, selected = select_backend_model(selection_body, load_capability_registry())
+        mapped["model"] = backend_model or MODEL_MAP.get(original_model, "gemini-2.5-flash")
         mapped.pop("mode", None)
         # Supprimer max_tokens si trop petit pour éviter les erreurs Gemini
         if "max_tokens" in mapped and mapped["max_tokens"] < 50:
             del mapped["max_tokens"]
+        for internal_key in (
+            "workflow_step",
+            "capability_requirements",
+            "requirements",
+            "workflow_requirements",
+            "language",
+            "specialty",
+            "optimize_for",
+            "min_context_tokens",
+        ):
+            mapped.pop(internal_key, None)
     else:
         mapped["model"] = "gemini-embedding-001"
     return mapped
@@ -257,6 +273,7 @@ async def routing_profiles():
         "object": "devcore.routing_profiles",
         "modes": MODE_MODEL_MAP,
         "models": MODEL_MAP,
+        "capability_registry": load_capability_registry(),
     }
 
 if __name__ == "__main__":
