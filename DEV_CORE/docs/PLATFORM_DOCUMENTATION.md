@@ -237,6 +237,10 @@ Les deux documents sont couverts par `DEV_CORE/docs/test_operator_docs.py` et ex
 
 `DEV_CORE/Performance/devcore_load.py` fournit un harnais de charge contractuel CI-friendly pour API, SSE, workers et repositories DB. Il mesure des p95 locaux sur des boucles courtes via `test_load_contracts.py`; ce n'est pas un soak test production, mais un garde-fou de régression rapide pour Sprint 11.
 
+### Tests de panne locaux
+
+`DEV_CORE/Performance/devcore_chaos.py` fournit des drills non destructifs pour Sprint 11 : process kill simulé, restart DB simulé et Qdrant indisponible simulé. Les tests vérifient les contrats de reprise sans arrêter Docker, Qdrant ni la base réelle.
+
 ### Scripts automatiques (Auto/)
 
 | Script | Fréquence | Description |
