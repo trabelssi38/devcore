@@ -223,6 +223,16 @@ T-01 (reasoning) → T-02 (coding) → T-03 (bulk) → T-04 (reasoning)
 | `ensure_repowise_watch.ps1` | launch / manuel | Démarre, vérifie ou arrête les watchers Repowise des projets déclarés |
 | `repowise_watch_worker.ps1` | interne | Worker long-running `repowise update` + `repowise watch` par projet |
 
+### Documentation opérateur et API
+
+| Document | Usage |
+|---|---|
+| `API_REFERENCE.md` | Référence API v1, endpoints publics, headers webhook GitHub, client `DevCoreApiClient` et contrat OpenAPI. |
+| `OPERATOR_GUIDE.md` | Procédures opérateur pour first run, `dc launch`, guides onboarding/diagnostic/recovery, checks et endday. |
+| `DEV_CORE/Schemas/openapi-v1.json` | Source de vérité OpenAPI 3.1 du gateway. |
+
+Les deux documents sont couverts par `DEV_CORE/docs/test_operator_docs.py` et exécutés dans `ci_python_tests.ps1`.
+
 ### Scripts automatiques (Auto/)
 
 | Script | Fréquence | Description |
