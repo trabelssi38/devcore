@@ -212,9 +212,11 @@ if (Test-Path $jsonPath) {
 
 # 1. & 2. Parcourir les projets et extraire les donnees
 $projects = @()
+$ExcludedDashboardProjects = @("scripts")
 if (Test-Path $MEMORY_DIR) {
     $folders = Get-ChildItem -Path $MEMORY_DIR -Directory
     foreach ($folder in $folders) {
+        if ($ExcludedDashboardProjects -contains $folder.Name) { continue }
         $tasksFile = Join-Path $folder.FullName "tasks.json"
         if (Test-Path $tasksFile) {
             $board = Get-Content $tasksFile -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -621,8 +623,10 @@ function Format-TimeAgo {
 
 function Get-StatusHTML {
     param($Title, $Desc, $IsOk, $Perf = $null, $Solic = $null, $Impact = $null)
-    $statusClass = if ($IsOk -eq "degraded") { "status-warn status-degraded" } elseif ($IsOk) { "status-ok" } else { "status-error" }
-    $statusIcon = if ($IsOk -eq "degraded") { "DEGRADED" } elseif ($IsOk) { "&#10003;" } else { "&#10007;" }
+    $isDegraded = ($IsOk -is [string]) -and ($IsOk -eq "degraded")
+    $statusClass = if ($isDegraded) { "status-degraded-badge" } elseif ($IsOk) { "status-ok" } else { "status-error" }
+    $statusIcon = if ($isDegraded) { "DEGRADED" } elseif ($IsOk) { "&#10003;" } else { "&#10007;" }
+    $statusLabel = if ($isDegraded) { "Service degraded" } elseif ($IsOk) { "Service healthy" } else { "Service unavailable" }
     
     $metricsHtml = ""
     if ($Perf -or $Solic -or $Impact) {
@@ -642,7 +646,7 @@ function Get-StatusHTML {
       <div class="component-name" style="font-size:12px; font-weight:600; color:#f1f5f9; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">$Title</div>
       <div class="component-detail" style="font-size:10px; color:#94a3b8; margin-top:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">$Desc</div>
     </div>
-    <div class="$statusClass" style="flex-shrink: 0; margin-left: 12px;">$statusIcon</div>
+    <div class="$statusClass" aria-label="$statusLabel" title="$statusLabel" style="flex-shrink: 0; margin-left: 12px;">$statusIcon</div>
   </div>
   $metricsHtml
 </div>
@@ -875,10 +879,13 @@ if ($tokenSummary) {
         $projectAllocHtml += '<div class="project-bar-container" style="display:flex; height:6px; border-radius:3px; overflow:hidden; background:#1e293b; margin:12px 0 8px;">'
         $colors = @("#6366f1", "#10b981", "#fbbf24", "#ec4899", "#8b5cf6")
         $idx = 0
-        $projList = $tokenSummary.projects.PSObject.Properties
+        $projList = @($tokenSummary.projects.PSObject.Properties | Where-Object { $ExcludedDashboardProjects -notcontains $_.Name })
+        $visibleTokenTotal = 0.0
+        foreach ($proj in $projList) { $visibleTokenTotal += [double]$proj.Value.tokens }
+        $projectTokenTotal = if ($visibleTokenTotal -gt 0) { $visibleTokenTotal } else { $totTokens }
         
         foreach ($proj in $projList) {
-            $pct = [math]::Round(($proj.Value.tokens / $totTokens) * 100)
+            $pct = [math]::Round(($proj.Value.tokens / $projectTokenTotal) * 100)
             if ($pct -gt 0) {
                 $col = $colors[$idx % $colors.Count]
                 $projectAllocHtml += "<div style='width:$pct%; background:$col;' title='$($proj.Name): $pct% ($([int]$proj.Value.tokens/1000)k tks)'></div>"
@@ -890,7 +897,7 @@ if ($tokenSummary) {
         $projectAllocHtml += '<div style="display:flex; flex-wrap:wrap; gap:10px; font-size:10px; color:#94a3b8; margin-bottom:16px;">'
         $idx = 0
         foreach ($proj in $projList) {
-            $pct = [math]::Round(($proj.Value.tokens / $totTokens) * 100)
+            $pct = [math]::Round(($proj.Value.tokens / $projectTokenTotal) * 100)
             if ($pct -gt 0) {
                 $col = $colors[$idx % $colors.Count]
                 $projectAllocHtml += "<span style='display:flex; align-items:center; gap:4px;'><span style='width:6px; height:6px; border-radius:50%; background:$col;'></span>$($proj.Name) ($pct%)</span>"
@@ -921,7 +928,7 @@ if ($tokenSummary) {
     
     # Sessions
     $sessionsHtml = ""
-    $recentSess = $tokenSummary.sessions
+    $recentSess = @($tokenSummary.sessions | Where-Object { $ExcludedDashboardProjects -notcontains $_.project })
     if (-not $recentSess -or $recentSess.Count -eq 0) {
         $sessionsHtml = '<div style="font-size: 11px; font-style: italic; color: #64748b; text-align: center; padding: 10px;">Aucune session active enregistrée.</div>'
     } else {
