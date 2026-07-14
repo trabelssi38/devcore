@@ -24,10 +24,28 @@ foreach ($required in @(
     "secret_scan.ps1",
     "ci_contract_tests.ps1",
     "benchmark_reference.ps1",
-    "actions/upload-artifact",
-    "verify --ci --json"
+    "actions/upload-artifact"
 )) {
     Assert-True ($workflow -match [regex]::Escape($required)) "CI workflow missing required command: $required"
+}
+
+Assert-True ($workflow -match "(?m)^\s*timeout-minutes:\s*15\s*$") "CI verify job should have a bounded total timeout"
+Assert-True (-not ($workflow -match [regex]::Escape('dc.ps1 "verify --ci --json"'))) "CI workflow should not re-run the full verify gate after explicit steps"
+
+foreach ($step in @(
+    "Checkout",
+    "Setup Python",
+    "Install Python test dependencies",
+    "Lint PowerShell and Python",
+    "Run Python tests",
+    "Run PowerShell tests",
+    "Secret scan",
+    "Contract checks",
+    "Reference benchmarks",
+    "Upload benchmark artifacts"
+)) {
+    $pattern = "(?ms)- name:\s*" + [regex]::Escape($step) + "\s*\r?\n\s*timeout-minutes:\s*\d+"
+    Assert-True ($workflow -match $pattern) "CI workflow step should have timeout-minutes: $step"
 }
 
 $verifySource = Get-Content -LiteralPath $verifyScript -Raw -Encoding UTF8

@@ -89,6 +89,12 @@ function Quote-ProcessArgument {
     return '"' + ($Value -replace '\\', '\\' -replace '"', '\"') + '"'
 }
 
+function Quote-PowerShellLiteral {
+    param([string]$Value)
+    if ($null -eq $Value) { return "''" }
+    return "'" + ($Value -replace "'", "''") + "'"
+}
+
 function Invoke-CheckProcess {
     param(
         [string]$ScriptPath,
@@ -96,18 +102,20 @@ function Invoke-CheckProcess {
         [int]$TimeoutSeconds
     )
 
-    $argumentList = @(
-        "-NoProfile",
-        "-NonInteractive",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-File",
-        (Quote-ProcessArgument $ScriptPath)
-    )
-    foreach ($arg in $Arguments) { $argumentList += (Quote-ProcessArgument $arg) }
     $stdoutPath = Join-Path ([System.IO.Path]::GetTempPath()) ("devcore-verify-out-" + [guid]::NewGuid().ToString("N") + ".log")
     $stderrPath = Join-Path ([System.IO.Path]::GetTempPath()) ("devcore-verify-err-" + [guid]::NewGuid().ToString("N") + ".log")
-    $process = Start-Process -FilePath "powershell" -ArgumentList $argumentList -NoNewWindow -PassThru -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
+    $commandParts = @("&", (Quote-PowerShellLiteral $ScriptPath))
+    foreach ($arg in $Arguments) { $commandParts += (Quote-PowerShellLiteral $arg) }
+    $command = (($commandParts -join " ") + " 1> " + (Quote-PowerShellLiteral $stdoutPath) + " 2> " + (Quote-PowerShellLiteral $stderrPath) + "; exit `$LASTEXITCODE")
+    $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+    $startInfo.FileName = "powershell"
+    $startInfo.Arguments = (("-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", $command | ForEach-Object { Quote-ProcessArgument $_ }) -join " ")
+    $startInfo.UseShellExecute = $false
+    $startInfo.CreateNoWindow = $true
+
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo = $startInfo
+    [void]$process.Start()
     $completed = $process.WaitForExit($TimeoutSeconds * 1000)
     if (-not $completed) {
         Stop-ProcessTree -ProcessId $process.Id
@@ -121,6 +129,7 @@ function Invoke-CheckProcess {
         }
     }
 
+    $process.WaitForExit()
     $process.Refresh()
     $stdout = if (Test-Path -LiteralPath $stdoutPath) { Get-Content -LiteralPath $stdoutPath -Raw -ErrorAction SilentlyContinue } else { "" }
     $stderr = if (Test-Path -LiteralPath $stderrPath) { Get-Content -LiteralPath $stderrPath -Raw -ErrorAction SilentlyContinue } else { "" }
