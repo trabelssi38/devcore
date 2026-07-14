@@ -9,6 +9,8 @@ import time
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import pytest
+
 
 MODULE_PATH = Path(__file__).with_name("dashboard_api.py")
 
@@ -437,6 +439,9 @@ def test_dashboard_settings_separate_config_secrets_and_runtime_state(tmp_path):
 
 
 def test_gen_dashboard_payload_includes_context_composition(tmp_path):
+    if os.environ.get("DEVCORE_SKIP_DASHBOARD") == "1":
+        pytest.skip("dashboard generation integration is skipped in bounded CI")
+
     platform_root = MODULE_PATH.parents[1]
     data_root = tmp_path / "DEV_CORE_DATA"
     memory_root = data_root / "Memory"
@@ -561,6 +566,9 @@ def test_gen_dashboard_payload_includes_context_composition(tmp_path):
 
 
 def test_gen_dashboard_html_generation_writes_api_payload_cache(tmp_path):
+    if os.environ.get("DEVCORE_SKIP_DASHBOARD") == "1":
+        pytest.skip("dashboard generation integration is skipped in bounded CI")
+
     source_platform_root = MODULE_PATH.parents[1]
     platform_root = tmp_path / "DEV_CORE"
     data_root = tmp_path / "DEV_CORE_DATA"

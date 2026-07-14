@@ -5,6 +5,7 @@ $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $workflowPath = Join-Path $repoRoot ".github\workflows\ci.yml"
 $verifyScript = Join-Path $PSScriptRoot "verify.ps1"
 $pythonRunner = Join-Path $PSScriptRoot "ci_python_tests.ps1"
+$dashboardApiTests = Join-Path $PSScriptRoot "test_dashboard_api.py"
 
 function Assert-True {
     param(
@@ -69,5 +70,9 @@ Assert-True ($pythonRunnerSource.Contains('[string[]]$Include')) "Python CI runn
 Assert-True ($pythonRunnerSource.Contains('[string[]]$Exclude')) "Python CI runner should support Exclude filtering"
 Assert-True ($pythonRunnerSource.Contains('$Include -contains $_')) "Python CI runner should filter included test paths"
 Assert-True ($pythonRunnerSource.Contains('$Exclude -notcontains $_')) "Python CI runner should filter excluded test paths"
+
+$dashboardApiTestsSource = Get-Content -LiteralPath $dashboardApiTests -Raw -Encoding UTF8
+Assert-True ($dashboardApiTestsSource.Contains('DEVCORE_SKIP_DASHBOARD')) "Dashboard integration tests should honor DEVCORE_SKIP_DASHBOARD in CI"
+Assert-True ($dashboardApiTestsSource.Contains('pytest.skip("dashboard generation integration is skipped in bounded CI")')) "Dashboard generation integration skips should explain bounded CI behavior"
 
 Write-Host "[OK] CI workflow contract tests passed" -ForegroundColor Green
