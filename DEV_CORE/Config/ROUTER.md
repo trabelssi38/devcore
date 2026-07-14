@@ -1,6 +1,8 @@
 # ROUTER.md v3 -- DEV_CORE v9.0
 # Single client · Mode-based routing · Model-agnostic
-# DEV_CORE detecte le mode -- Headroom compresse -- Gemini Router choisit le modele
+# DEV_CORE detecte le mode -- Headroom compresse -- AI Capability Registry choisit le candidat -- Gemini Router appelle le backend
+
+Voir aussi : `DEV_CORE/docs/AI_CAPABILITY_REGISTRY.md` et `DEV_CORE/docs/SYSTEM_OVERVIEW.md`.
 
 ## Architecture de routage & Offloading (DevCore v9.0)
 
@@ -14,6 +16,9 @@
                        [Headroom Proxy] (Port 8787) (Compression KV)
                                      |
                                      v
+                       [AI Capability Registry] (capacites, cout, vitesse, contexte)
+                                     |
+                                     v
                        [Gemini Router] (Port 20130) (Primary / Retries 429)
                                      |
                                      v
@@ -23,12 +28,14 @@
 
 - **TencentDB Agent Memory Canvas** : Décharge de contexte sémantique hiérarchique (L0-L3 via Mermaid et SQLite FTS5) pour préserver le contexte de l'agent.
 - **Headroom Proxy (Port 8787)** : Compression de jetons transparente (JSON, Code, Logs) et gestion de cache.
+- **AI Capability Registry** : Selection declarative du meilleur agent ou modele selon les capacites requises, le cout, la vitesse, le contexte maximal et les specialites.
 - **Gemini Router (Port 20130)** : Proxy de communication directe avec l'API Google Gemini, gérant le Rate-Limiting (HTTP 429) par retries avec backoff exponentiel.
 
 
 ### Couche profile/model DEV_CORE
 
-La source de verite runtime est `DEV_CORE/Config/routing_profiles.json`.
+La source de verite de compatibilite est `DEV_CORE/Config/routing_profiles.json`.
+La source de verite de selection modele/agent est `DEV_CORE/Config/ai_capability_registry.json`.
 
 Le resolver `DEV_CORE/Scripts/routing_profile.ps1` transforme un mode en profil :
 
@@ -51,6 +58,19 @@ Pour les services controles par DEV_CORE, le Gemini Router accepte maintenant :
 - `{"mode":"coding"}` -> `gemini-2.5-pro`
 - `{"mode":"bulk"}` -> `gemini-2.5-flash`
 - `{"model":"devcore-bulk"}` -> `gemini-2.5-flash`
+
+Selection avancee par capacites :
+
+```json
+{
+  "capability_requirements": {
+    "languages": ["python", "powershell"],
+    "specialties": ["tests", "documentation"],
+    "min_context_tokens": 32000,
+    "optimize_for": "balanced"
+  }
+}
+```
 
 ---
 

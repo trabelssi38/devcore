@@ -1,4 +1,4 @@
-﻿# DEV_CORE v10.0 - Documentation Complete
+# DEV_CORE v10.0 - Documentation Complete
 
 > **Single Client Mode** — Plateforme d'orchestration IA pour le développement logiciel
 > 
@@ -7,6 +7,17 @@
 **Version** : 10.0
 **Updated** : 2026-07-09
 **Mode** : Single Client (Multi-Projets / Zero Switch)
+
+---
+
+## Documentation Map
+
+- `SYSTEM_OVERVIEW.md` : vue systeme navigable, composants, flux runtime et verification.
+- `IMPLEMENTATION_HISTORY.md` : chronologie consolidee des implementations et plans precedents.
+- `ARCHITECTURE_DECISIONS.md` : decisions structurantes et consequences.
+- `AI_CAPABILITY_REGISTRY.md` : registry declaratif des capacites agents/modeles et selection runtime.
+- `API_REFERENCE.md` : contrats HTTP publics et OpenAPI.
+- `OPERATOR_GUIDE.md` : exploitation quotidienne, diagnostic et recovery.
 
 ---
 

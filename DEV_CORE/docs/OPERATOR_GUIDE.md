@@ -2,7 +2,7 @@
 
 Guide d'exploitation pour démarrer, diagnostiquer et récupérer DEV_CORE sans modifier manuellement l'état runtime.
 
-Voir aussi : `API_REFERENCE.md` pour le gateway API et `PLATFORM_DOCUMENTATION.md` pour l'architecture complète.
+Voir aussi : `API_REFERENCE.md` pour le gateway API, `PLATFORM_DOCUMENTATION.md` pour l'architecture complete, `SYSTEM_OVERVIEW.md` pour la carte systeme, `IMPLEMENTATION_HISTORY.md` pour la chronologie, `ARCHITECTURE_DECISIONS.md` pour les ADR et `AI_CAPABILITY_REGISTRY.md` pour la selection runtime.
 
 ## First run
 

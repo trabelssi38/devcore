@@ -1,0 +1,140 @@
+# DEV_CORE Implementation History
+
+Chronologie consolidee des implementations et plans. Source principale : historique Git tagge `[T-XX]`, documentation existante et fichiers de contrats.
+
+## Lecture rapide
+
+| Periode / tranche | Theme | Resultat |
+|---|---|---|
+| Mai 2026 | Migration single client, tasks, hooks, cockpit initial | Base DEV_CORE autonome avec tasks, dashboard, Qdrant, Obsidian, Hermes |
+| T-100 a T-118 | Stabilisation v10, diagnostic, services memoire/contexte | Gateway de diagnostic, task service, memory service, dashboard stable |
+| T-119 a T-138 | Observabilite, event bus, plugins, skills, CI | Metrics, event bus, knowledge graph, auto skills, plugin SDK, verify gate |
+| T-139 a T-154 | Securite dashboard, API dashboard, CI portable | CORS/CSRF/body limits, local auth, stable dashboard API, non-blocking endday |
+| T-155 a T-177 | API/DB/workers/LLMOps/evals/SLO | FastAPI v1, contrats domaine, SQLAlchemy/Alembic, run state machine, observabilite |
+| T-178 a T-185 | Frontend dashboard moderne | Next scaffold, OpenAPI client, SSE, states, responsive/accessibility, Playwright |
+| T-186 a T-193 | Hermes/Repowise/plugins v2 | Runtime daemon restaure, Repowise loopback, manifest v2, health isolation |
+| T-194 a T-208 | Workspace, integrations, docs operateur/API | Identity, memberships, quota, audit logs, GitHub webhook, schedules, docs API |
+| T-209 a T-222 | Release hardening, CI bornes, routing IA | Load/failure tests, SBOM, release package, runbook, routing profiles, capability registry |
+
+## Mai 2026 - fondations
+
+### Single Client et Tasks
+
+- Remplacement des missions multi-agent par des tasks `[T-XX]`.
+- Archivage des anciens scripts `mission_*`.
+- `tasks.json` devient la source de verite par projet.
+- Les modes `reasoning`, `coding`, `bulk` remplacent les handoffs entre agents.
+
+### Hooks et autonomie
+
+- `session_start`, `post-commit`, `session_end` installes pour scanner, synchroniser, incrementer les steps et generer le contexte.
+- `qdrant_sync.ps1`, `obsidian_sync.ps1`, `lesson_extractor.ps1` structurent la memoire.
+- Integration TOON pour compacter certains artefacts.
+
+### Cockpit et API locale
+
+- `gen_dashboard.ps1` genere `Dashboard\index.html`.
+- `dashboard_api.py` sert le cockpit et les mutations locales.
+- Ajout du refresh dynamique pour eviter le reload complet de la page.
+
+## T-100 a T-118 - stabilisation core v10
+
+| Task | Implementation | Impact |
+|---|---|---|
+| T-100/T-102/T-103 | Diagnostic gateway, dry-run gate | Separations check, fix, gate release |
+| T-104 a T-112 | Task service et memory service | Mutations centralisees, adapters minces |
+| T-113 | Dashboard API stable | `GET /api/dashboard`, payload stable |
+| T-114 | Model pricing registry/report | Cout par modele, aliases, detection timeline |
+| T-115 a T-117 | Context scoring/offload/composition | Justification des sources et visibilite cockpit |
+| T-118 | Roadmap sprint | Planification suivante |
+
+## T-119 a T-138 - observabilite, plugins, CI
+
+| Task | Implementation | Impact |
+|---|---|---|
+| T-119 | Metrics service | Snapshots et metriques runtime |
+| T-120 | Event bus v1 | Evenements append-only |
+| T-121 | Knowledge graph v1 | Relations entre entites DEV_CORE |
+| T-122 a T-124 | Repowise/wiki/model key fixes | Indexation docs plus robuste |
+| T-125 | Learning service v1 | Base d'apprentissage/corrections |
+| T-126 a T-130 | Skills registry, auto skills, plugin SDK | Extensibilite locale |
+| T-131 a T-133 | Plugin checks/status dashboard | Health checks cockpit |
+| T-134 | Retrait Graphify | Reduction dependance obsolete |
+| T-135 | Roadmap plateforme | Plan sprint documente |
+| T-136/T-137 | CI verify gate et exit codes | Tests bloquants fiables |
+| T-138 | Platform version et headers | Version centralisee |
+
+## T-139 a T-154 - securite dashboard et CI portable
+
+| Task | Implementation | Impact |
+|---|---|---|
+| T-139/T-141 | CI portable + benchmarks | Gates reproductibles |
+| T-140 | Qdrant embedding dimension contract | Dimension 768 verrouillee |
+| T-142 | Bind loopback par defaut | Surface reseau reduite |
+| T-143 | Dashboard token auth | Auth locale cockpit |
+| T-144 a T-147 | Mutations off GET, CORS/CSRF/body limits, paths confine | Securite API dashboard |
+| T-148/T-149 | Dashboard read model + pagination | Lecture plus scalable |
+| T-150/T-151/T-152 | Reads sans PowerShell, cache HTTP, SSE deltas | Performance dashboard |
+| T-153 | Latency budget dashboard | Non-regression perf |
+| T-154 | Endday non bloquant | Fin de session agent-safe |
+
+## T-155 a T-177 - API, DB, execution durable
+
+| Task | Implementation | Impact |
+|---|---|---|
+| T-155 a T-160 | FastAPI gateway, ports, contracts, task list port, OpenAPI/client, versioning | API v1 stable |
+| T-161 a T-166 | Postgres schema, SQLAlchemy/Alembic, repositories, import reconciliation, dual read, backup/restore | Base DB transitionnelle |
+| T-167 a T-171 | Run state machine, worker durable, outbox, retry/DLQ, pause/cancel/resume | Execution durable |
+| T-172 a T-177 | Observability, correlation IDs, Prometheus/Grafana, LLMOps, eval datasets, SLO/cost budgets | Exploitabilite et mesure |
+
+## T-178 a T-185 - frontend dashboard
+
+| Task | Implementation | Impact |
+|---|---|---|
+| T-178/T-179 | Next/React scaffold et composants dashboard | Frontend moderne amorce |
+| T-180 | OpenAPI client + SSE | Client typé et flux live |
+| T-181/T-182 | Agent skills spec + UI/UX skill adapte | Qualite skills et design |
+| T-183/T-184 | Loading/empty/error + responsive/WCAG states | UX robuste |
+| T-185 | Playwright components/e2e | Verifications navigateur |
+
+## T-186 a T-193 - Hermes, Repowise et plugins v2
+
+| Task | Implementation | Impact |
+|---|---|---|
+| T-186 | Hermes daemon runtime restaure | Cron et daemon utilisables |
+| T-187 | Repowise dashboard loopback/IPv6/proxy | UI Repowise fiable sous Windows |
+| T-188/T-193 | Manifest v2 et migration plugins | Contrats plugins versionnes |
+| T-189 a T-192 | Permission scopes, health isolation, package integrity, atomic install rollback | Securite et rollback plugins |
+
+## T-194 a T-208 - workspaces, integrations, documentation
+
+| Task | Implementation | Impact |
+|---|---|---|
+| T-194 a T-197 | Workspace identity, membership, isolation, quotas | Base multi-tenant |
+| T-198/T-199 | Dashboard refresh/token cache hardening | Cockpit plus robuste |
+| T-200 | Qdrant startup hardening | Launch plus fiable |
+| T-201/T-202 | Audit log exports + tenant isolation matrix | Compliance/test isolation |
+| T-203/T-205 | GitHub webhook + notifications webhook plugin | Integrations externes |
+| T-204/T-206/T-207 | Schedules, workflow templates, onboarding recovery | Automatisation operateur |
+| T-208 | API reference + operator guide | Documentation publique |
+
+## T-209 a T-222 - release, support, routing IA
+
+| Task | Implementation | Impact |
+|---|---|---|
+| T-209/T-210 | Load contracts + failure drills | Tests locaux de resilience |
+| T-211 | SBOM + security review gate | Release securisee |
+| T-212/T-213 | Backup/rollback plan + packaging reproducible | Release reproducible |
+| T-214 | Routing profile layer + Hermes hardening + cockpit status fix | Routage mode/profil et monitoring correct |
+| T-215 | Incident runbook support criteria | Support exploitable |
+| T-216 a T-220 | CI timeouts, deps, generated docs, bounded verify | Gates bornes et moins fragiles |
+| T-221 | Sync worktree | Consolidation artefacts |
+| T-222 | AI Capability Registry | Abstraction model/agent declarative |
+
+## Plans actifs et suite logique
+
+1. Faire du AI Capability Registry la source de verite unique du routage runtime.
+2. Ajouter des adapters directs pour providers non Gemini avant d'activer leurs candidats.
+3. Reduire la dette cockpit HTML genere en poursuivant la migration React/Next.
+4. Maintenir ces docs comme index court, et garder `PLATFORM_DOCUMENTATION.md` comme reference longue.
+5. Ajouter une generation automatique partielle de `IMPLEMENTATION_HISTORY.md` depuis `git log` et `tasks.json`.

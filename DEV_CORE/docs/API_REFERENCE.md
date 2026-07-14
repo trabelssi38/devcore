@@ -2,7 +2,7 @@
 
 Référence publique du gateway API DEV_CORE v1. Le contrat canonique est l'OpenAPI versionné `DEV_CORE/Schemas/openapi-v1.json`; cette page sert de guide opérable pour les intégrations humaines et clients.
 
-Voir aussi : `OPERATOR_GUIDE.md` pour les commandes d'exploitation et `PLATFORM_DOCUMENTATION.md` pour l'architecture globale.
+Voir aussi : `OPERATOR_GUIDE.md` pour les commandes d'exploitation, `PLATFORM_DOCUMENTATION.md` pour l'architecture globale, `SYSTEM_OVERVIEW.md` pour la carte systeme, `ARCHITECTURE_DECISIONS.md` pour les ADR et `AI_CAPABILITY_REGISTRY.md` pour la selection runtime.
 
 ## Artefacts versionnés
 
