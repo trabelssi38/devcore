@@ -1,3 +1,8 @@
+param(
+    [string[]]$Include,
+    [string[]]$Exclude
+)
+
 # ci_python_tests.ps1 -- portable Python test runner
 $ErrorActionPreference = "Stop"
 
@@ -57,6 +62,13 @@ foreach ($test in $tests) {
     if (Test-Path -LiteralPath (Join-Path $repoRoot $test)) {
         $existingTests += $test
     }
+}
+
+if ($Include -and $Include.Count -gt 0) {
+    $existingTests = @($existingTests | Where-Object { $Include -contains $_ })
+}
+if ($Exclude -and $Exclude.Count -gt 0) {
+    $existingTests = @($existingTests | Where-Object { $Exclude -notcontains $_ })
 }
 
 if ($existingTests.Count -eq 0) {

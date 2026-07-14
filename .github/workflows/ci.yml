@@ -36,10 +36,15 @@ jobs:
         shell: pwsh
         run: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File DEV_CORE\Scripts\ci_lint.ps1
 
-      - name: Run Python tests
-        timeout-minutes: 20
+      - name: Run Python core tests
+        timeout-minutes: 8
         shell: pwsh
-        run: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File DEV_CORE\Scripts\ci_python_tests.ps1
+        run: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File DEV_CORE\Scripts\ci_python_tests.ps1 -Exclude DEV_CORE/Scripts/test_dashboard_api.py
+
+      - name: Run Python dashboard API tests
+        timeout-minutes: 25
+        shell: pwsh
+        run: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File DEV_CORE\Scripts\ci_python_tests.ps1 -Include DEV_CORE/Scripts/test_dashboard_api.py
 
       - name: Run PowerShell tests
         timeout-minutes: 10

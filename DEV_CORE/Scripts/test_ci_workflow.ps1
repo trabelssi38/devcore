@@ -4,6 +4,7 @@ $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $workflowPath = Join-Path $repoRoot ".github\workflows\ci.yml"
 $verifyScript = Join-Path $PSScriptRoot "verify.ps1"
+$pythonRunner = Join-Path $PSScriptRoot "ci_python_tests.ps1"
 
 function Assert-True {
     param(
@@ -20,6 +21,8 @@ foreach ($required in @(
     "ci_lint.ps1",
     "DEV_CORE\requirements-ci.txt",
     "ci_python_tests.ps1",
+    "-Exclude DEV_CORE/Scripts/test_dashboard_api.py",
+    "-Include DEV_CORE/Scripts/test_dashboard_api.py",
     "ci_powershell_tests.ps1",
     "secret_scan.ps1",
     "ci_contract_tests.ps1",
@@ -37,7 +40,8 @@ foreach ($step in @(
     "Setup Python",
     "Install Python test dependencies",
     "Lint PowerShell and Python",
-    "Run Python tests",
+    "Run Python core tests",
+    "Run Python dashboard API tests",
     "Run PowerShell tests",
     "Secret scan",
     "Contract checks",
@@ -59,5 +63,11 @@ foreach ($requiredCheck in @(
 )) {
     Assert-True ($verifySource -match "name\s*=\s*`"$requiredCheck`"") "verify.ps1 missing CI check: $requiredCheck"
 }
+
+$pythonRunnerSource = Get-Content -LiteralPath $pythonRunner -Raw -Encoding UTF8
+Assert-True ($pythonRunnerSource.Contains('[string[]]$Include')) "Python CI runner should support Include filtering"
+Assert-True ($pythonRunnerSource.Contains('[string[]]$Exclude')) "Python CI runner should support Exclude filtering"
+Assert-True ($pythonRunnerSource.Contains('$Include -contains $_')) "Python CI runner should filter included test paths"
+Assert-True ($pythonRunnerSource.Contains('$Exclude -notcontains $_')) "Python CI runner should filter excluded test paths"
 
 Write-Host "[OK] CI workflow contract tests passed" -ForegroundColor Green
