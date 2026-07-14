@@ -1,0 +1,13 @@
+# DEV_CORE CI Python dependencies
+#
+# Keep this file explicit: GitHub Actions starts from a clean Python image,
+# while local DEV_CORE machines usually already have these packages installed.
+fastapi>=0.138.0
+pydantic>=2.12.0
+sqlalchemy>=2.0.0
+alembic>=1.18.0
+httpx>=0.28.0
+uvicorn>=0.38.0
+PyYAML>=6.0.0
+requests>=2.28.0
+mcp>=1.0.0

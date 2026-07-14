@@ -18,6 +18,7 @@ Assert-True (Test-Path -LiteralPath $workflowPath) "CI workflow should exist at 
 $workflow = Get-Content -LiteralPath $workflowPath -Raw -Encoding UTF8
 foreach ($required in @(
     "ci_lint.ps1",
+    "DEV_CORE\requirements-ci.txt",
     "ci_python_tests.ps1",
     "ci_powershell_tests.ps1",
     "secret_scan.ps1",

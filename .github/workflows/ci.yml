@@ -23,7 +23,9 @@ jobs:
 
       - name: Install Python test dependencies
         shell: pwsh
-        run: python -m pip install --upgrade pip pytest
+        run: |
+          python -m pip install --upgrade pip pytest
+          python -m pip install -r DEV_CORE\requirements-ci.txt
 
       - name: Lint PowerShell and Python
         shell: pwsh
