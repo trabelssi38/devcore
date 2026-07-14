@@ -1210,9 +1210,10 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 ### Database backup, restore, downgrade
 
 - `DEV_CORE\Database\devcore_db\backup.py` construit des commandes explicites `pg_dump` et `pg_restore` sans shell interpolation.
+- `build_release_procedure_plan()` produit une procédure dry-run ordonnée : preflight, backup, upgrade, verify, rollback, restore.
 - `DEV_CORE\Database\alembic\versions\0001_schema_v1.py` applique `postgres_schema_v1.sql` en upgrade.
 - La migration descendante supprime les tables dans l'ordre inverse des dependances : `audit_log`, `events`, `plugins`, `runs`, `tasks`, `projects`, `workspaces`, `users`, `organizations`.
-- `DEV_CORE\Database\test_backup_restore_downgrade.py` verrouille les commandes backup/restore et la presence du downgrade.
+- `DEV_CORE\Database\test_backup_restore_downgrade.py` verrouille les commandes backup/restore, la presence du downgrade, l'ordre de procedure upgrade/rollback et le rejet des chemins de backup non controles.
 
 ### Run state machine
 
