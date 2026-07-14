@@ -48,11 +48,20 @@ if (-not $active) {
 }
 
 if (-not $active) {
+    if ($board.current_task) {
+        $board.current_task = $null
+        $board | ConvertTo-Json -Depth 10 | Set-Content $tFile -Encoding UTF8
+    }
     Write-Host "  [DEV_CORE] Aucune tache active" -ForegroundColor Yellow
+    $projName = & "$DEV_CORE\Scripts\Get-ActiveProject.ps1"
+    $projDir = "$DEV_CORE_DATA\Memory\$projName"
+    New-Item -ItemType Directory -Path (Split-Path -Parent $CONTEXT_FILE) -Force | Out-Null
+    New-Item -ItemType Directory -Path $projDir -Force | Out-Null
     @"
 [DEV_CORE] Aucune tache active
 [DEV_CORE] Commencer par: dc new task 'description' -mode reasoning|coding|bulk
 "@ | Set-Content $CONTEXT_FILE -Encoding UTF8
+    Copy-Item -LiteralPath $CONTEXT_FILE -Destination "$projDir\session_context.txt" -Force
     exit 0
 }
 

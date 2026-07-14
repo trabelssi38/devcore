@@ -1,7 +1,9 @@
 # verify.ps1 -- DEV_CORE deterministic CI verification gate
 param(
     [switch]$Ci,
-    [switch]$Json
+    [switch]$Json,
+    [int]$CheckTimeoutSeconds = 0,
+    [int]$TotalTimeoutSeconds = 0
 )
 
 $ErrorActionPreference = "Stop"
@@ -10,6 +12,13 @@ $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else 
 $SCRIPTS = Join-Path $DEV_CORE "Scripts"
 . "$SCRIPTS\platform_version.ps1"
 $platform = Get-DevCorePlatformInfo
+
+if ($CheckTimeoutSeconds -le 0) {
+    $CheckTimeoutSeconds = if ($env:DEVCORE_VERIFY_CHECK_TIMEOUT_SECONDS) { [int]$env:DEVCORE_VERIFY_CHECK_TIMEOUT_SECONDS } else { 600 }
+}
+if ($TotalTimeoutSeconds -le 0) {
+    $TotalTimeoutSeconds = if ($env:DEVCORE_VERIFY_TOTAL_TIMEOUT_SECONDS) { [int]$env:DEVCORE_VERIFY_TOTAL_TIMEOUT_SECONDS } else { 1200 }
+}
 
 function Get-DefaultChecks {
     return @(
@@ -65,6 +74,73 @@ function Limit-Output {
     return $trimmed.Substring($trimmed.Length - $Limit)
 }
 
+function Stop-ProcessTree {
+    param([int]$ProcessId)
+    $children = @(Get-CimInstance Win32_Process -Filter "ParentProcessId = $ProcessId" -ErrorAction SilentlyContinue)
+    foreach ($child in $children) {
+        Stop-ProcessTree -ProcessId ([int]$child.ProcessId)
+    }
+    Stop-Process -Id $ProcessId -Force -ErrorAction SilentlyContinue
+}
+
+function Quote-ProcessArgument {
+    param([string]$Value)
+    if ($null -eq $Value) { return '""' }
+    return '"' + ($Value -replace '\\', '\\' -replace '"', '\"') + '"'
+}
+
+function Invoke-CheckProcess {
+    param(
+        [string]$ScriptPath,
+        [string[]]$Arguments,
+        [int]$TimeoutSeconds
+    )
+
+    $argumentList = @(
+        "-NoProfile",
+        "-NonInteractive",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        (Quote-ProcessArgument $ScriptPath)
+    )
+    foreach ($arg in $Arguments) { $argumentList += (Quote-ProcessArgument $arg) }
+    $stdoutPath = Join-Path ([System.IO.Path]::GetTempPath()) ("devcore-verify-out-" + [guid]::NewGuid().ToString("N") + ".log")
+    $stderrPath = Join-Path ([System.IO.Path]::GetTempPath()) ("devcore-verify-err-" + [guid]::NewGuid().ToString("N") + ".log")
+    $process = Start-Process -FilePath "powershell" -ArgumentList $argumentList -NoNewWindow -PassThru -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
+    $completed = $process.WaitForExit($TimeoutSeconds * 1000)
+    if (-not $completed) {
+        Stop-ProcessTree -ProcessId $process.Id
+        $stdout = if (Test-Path -LiteralPath $stdoutPath) { Get-Content -LiteralPath $stdoutPath -Raw -ErrorAction SilentlyContinue } else { "" }
+        $stderr = if (Test-Path -LiteralPath $stderrPath) { Get-Content -LiteralPath $stderrPath -Raw -ErrorAction SilentlyContinue } else { "" }
+        Remove-Item -LiteralPath $stdoutPath, $stderrPath -Force -ErrorAction SilentlyContinue
+        return [pscustomobject]@{
+            exit_code = 124
+            reason = "timeout"
+            output = (($stdout, $stderr) -join "`n")
+        }
+    }
+
+    $process.Refresh()
+    $stdout = if (Test-Path -LiteralPath $stdoutPath) { Get-Content -LiteralPath $stdoutPath -Raw -ErrorAction SilentlyContinue } else { "" }
+    $stderr = if (Test-Path -LiteralPath $stderrPath) { Get-Content -LiteralPath $stderrPath -Raw -ErrorAction SilentlyContinue } else { "" }
+    Remove-Item -LiteralPath $stdoutPath, $stderrPath -Force -ErrorAction SilentlyContinue
+    $output = (($stdout, $stderr) -join "`n")
+    $exitCode = [int]$process.ExitCode
+    $reason = if ($exitCode -ne 0) {
+        "exit_code"
+    } elseif ($output -match "(?mi)^\s*\[FAIL\]") {
+        "failure_marker"
+    } else {
+        "passed"
+    }
+    return [pscustomobject]@{
+        exit_code = [int]$exitCode
+        reason = $reason
+        output = $output
+    }
+}
+
 $results = @()
 $configuredChecks = @(Get-ConfiguredChecks)
 if ($configuredChecks.Count -eq 0) {
@@ -87,20 +163,19 @@ foreach ($check in $configuredChecks) {
     $output = ""
     $reason = "missing_script"
 
-    if (Test-Path -LiteralPath $scriptPath) {
+    $elapsedSeconds = ((Get-Date) - $started).TotalSeconds
+    if ($elapsedSeconds -ge $TotalTimeoutSeconds) {
+        $exitCode = 124
+        $reason = "total_timeout"
+        $output = "Verify total timeout reached before running $name"
+    } elseif (Test-Path -LiteralPath $scriptPath) {
         try {
-            $previousErrorActionPreference = $ErrorActionPreference
-            $ErrorActionPreference = "Continue"
-            $output = & powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $scriptPath @arguments 2>&1 | Out-String
-            $ErrorActionPreference = $previousErrorActionPreference
-            $exitCode = $LASTEXITCODE
-            if ($exitCode -ne 0) {
-                $reason = "exit_code"
-            } elseif ($output -match "(?mi)^\s*\[FAIL\]") {
-                $reason = "failure_marker"
-            } else {
-                $reason = "passed"
-            }
+            $remainingTotal = [Math]::Max(1, [int]($TotalTimeoutSeconds - $elapsedSeconds))
+            $effectiveTimeout = [Math]::Min($CheckTimeoutSeconds, $remainingTotal)
+            $checkResult = Invoke-CheckProcess -ScriptPath $scriptPath -Arguments $arguments -TimeoutSeconds $effectiveTimeout
+            $exitCode = [int]$checkResult.exit_code
+            $reason = [string]$checkResult.reason
+            $output = [string]$checkResult.output
         } catch {
             $ErrorActionPreference = "Stop"
             $exitCode = 70
@@ -133,6 +208,8 @@ $report = [pscustomobject]@{
     ok = $okCount
     fail = $failCount
     duration_ms = [int]((Get-Date) - $started).TotalMilliseconds
+    check_timeout_seconds = $CheckTimeoutSeconds
+    total_timeout_seconds = $TotalTimeoutSeconds
     checks = @($results)
 }
 

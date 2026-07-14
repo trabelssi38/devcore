@@ -20,6 +20,27 @@ if (-not $current) {
     $total = $board.tasks.Count
     if ($done -eq $total -and $total -gt 0) { Write-Host "  Toutes les taches accomplies !" -ForegroundColor Green }
     else { Write-Host "  Aucune tache disponible -- verifier les dependances (dc ts)" -ForegroundColor Yellow }
+    $projName = & "$PSScriptRoot\Get-ActiveProject.ps1"
+    $projDir = "$DEV_CORE_DATA\Memory\$projName"
+    New-Item -ItemType Directory -Path "$DEV_CORE_DATA\Logs\scripts" -Force | Out-Null
+    New-Item -ItemType Directory -Path $projDir -Force | Out-Null
+    $ctx = @"
+[DEV_CORE] Aucune tache active
+[DEV_CORE] Toutes les taches accomplies : $done/$total
+[DEV_CORE] Commencer par: dc new task 'description' -mode reasoning|coding|bulk
+"@
+    $ctx | Set-Content "$DEV_CORE_DATA\Logs\scripts\session_context.txt" -Encoding UTF8
+    $ctx | Set-Content "$projDir\session_context.txt" -Encoding UTF8
+    $toonCtx = @"
+session:
+  active_task: null
+  status: no_active_task
+  done: $done
+  total: $total
+  project: $($board.project)
+"@
+    $toonCtx | Set-Content "$DEV_CORE_DATA\Logs\scripts\session_context.toon" -Encoding UTF8
+    $toonCtx | Set-Content "$projDir\session_context.toon" -Encoding UTF8
     exit 0
 }
 

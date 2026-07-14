@@ -253,6 +253,12 @@ Les deux documents sont couverts par `DEV_CORE/docs/test_operator_docs.py` et ex
 
 `DEV_CORE\Support\INCIDENT_RUNBOOK.md` définit le workflow de triage, l'escalade `SEV1`/`SEV2`/`SEV3`, l'evidence bundle attendu et les critères d'acceptation support. `DEV_CORE\Support\support_policy.json` expose le même contrat en JSON pour automatisation future. `test_incident_runbook.py` verrouille les liens vers `PLATFORM_DOCUMENTATION.md`, `OPERATOR_GUIDE.md`, `API_REFERENCE.md`, les commandes `dc health --json`, `dc check --gate`, `dc guide diagnostic`, `dc guide recovery` et les artefacts `security-review.json` / `release-manifest.json`.
 
+### CI bornée et diagnostic de timeout
+
+`DEV_CORE\Scripts\ci_powershell_tests.ps1` exécute chaque test PowerShell dans un processus enfant borné par `-PerTestTimeoutSeconds` (120 secondes par défaut). En cas de timeout, le runner tue l'arbre enfant, retourne `exit 1` et expose `reason = timeout`, `duration_ms`, `exit_code = 124` et la sortie tronquée. `-Json` produit un rapport machine-readable.
+
+`DEV_CORE\Scripts\verify.ps1 -CI` borne aussi chaque check via `-CheckTimeoutSeconds` / `DEVCORE_VERIFY_CHECK_TIMEOUT_SECONDS` (600 secondes par défaut) et le gate complet via `-TotalTimeoutSeconds` / `DEVCORE_VERIFY_TOTAL_TIMEOUT_SECONDS` (1200 secondes par défaut). Le contexte de session est rafraîchi même quand aucune tâche active n'existe afin d'éviter un `session_context.txt` stale.
+
 ### Hermes cron hardening
 
 - Le cockpit ne classe plus Hermes uniquement depuis `cron_tick.log.LastWriteTime`.
