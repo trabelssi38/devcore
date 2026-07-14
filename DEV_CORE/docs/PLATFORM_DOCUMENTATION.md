@@ -241,6 +241,10 @@ Les deux documents sont couverts par `DEV_CORE/docs/test_operator_docs.py` et ex
 
 `DEV_CORE/Performance/devcore_chaos.py` fournit des drills non destructifs pour Sprint 11 : process kill simulé, restart DB simulé et Qdrant indisponible simulé. Les tests vérifient les contrats de reprise sans arrêter Docker, Qdrant ni la base réelle.
 
+### Security review et SBOM
+
+`DEV_CORE/Security/security_review.py` génère un inventaire SBOM CycloneDX-like depuis `package.json`, `Web/package.json` et `MCP/requirements.txt`. Le rapport `security-review.json` valide les contrôles minimaux de release : secret scan disponible, SBOM présent, inventaire dépendances et zéro finding critique ou élevé accepté. `test_security_review.py` couvre la stabilité JSON et l'inventaire npm/pip.
+
 ### Scripts automatiques (Auto/)
 
 | Script | Fréquence | Description |

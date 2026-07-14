@@ -1,0 +1,170 @@
+{
+  "bomFormat": "CycloneDX",
+  "components": [
+    {
+      "bom-ref": "npm:@playwright/test",
+      "name": "@playwright/test",
+      "properties": [
+        {
+          "name": "devcore:source",
+          "value": "Web/package.json"
+        }
+      ],
+      "purl": "pkg:npm/@playwright/test@1.49.0",
+      "scope": "optional",
+      "type": "library",
+      "version": "1.49.0"
+    },
+    {
+      "bom-ref": "npm:@toon-format/cli",
+      "name": "@toon-format/cli",
+      "properties": [
+        {
+          "name": "devcore:source",
+          "value": "package.json"
+        }
+      ],
+      "purl": "pkg:npm/@toon-format/cli@2.2.0",
+      "scope": "optional",
+      "type": "library",
+      "version": "2.2.0"
+    },
+    {
+      "bom-ref": "npm:@types/node",
+      "name": "@types/node",
+      "properties": [
+        {
+          "name": "devcore:source",
+          "value": "Web/package.json"
+        }
+      ],
+      "purl": "pkg:npm/@types/node@22.10.0",
+      "scope": "optional",
+      "type": "library",
+      "version": "22.10.0"
+    },
+    {
+      "bom-ref": "npm:@types/react",
+      "name": "@types/react",
+      "properties": [
+        {
+          "name": "devcore:source",
+          "value": "Web/package.json"
+        }
+      ],
+      "purl": "pkg:npm/@types/react@19.0.0",
+      "scope": "optional",
+      "type": "library",
+      "version": "19.0.0"
+    },
+    {
+      "bom-ref": "npm:@types/react-dom",
+      "name": "@types/react-dom",
+      "properties": [
+        {
+          "name": "devcore:source",
+          "value": "Web/package.json"
+        }
+      ],
+      "purl": "pkg:npm/@types/react-dom@19.0.0",
+      "scope": "optional",
+      "type": "library",
+      "version": "19.0.0"
+    },
+    {
+      "bom-ref": "npm:next",
+      "name": "next",
+      "properties": [
+        {
+          "name": "devcore:source",
+          "value": "Web/package.json"
+        }
+      ],
+      "purl": "pkg:npm/next@15.1.0",
+      "scope": "required",
+      "type": "library",
+      "version": "15.1.0"
+    },
+    {
+      "bom-ref": "npm:react",
+      "name": "react",
+      "properties": [
+        {
+          "name": "devcore:source",
+          "value": "Web/package.json"
+        }
+      ],
+      "purl": "pkg:npm/react@19.0.0",
+      "scope": "required",
+      "type": "library",
+      "version": "19.0.0"
+    },
+    {
+      "bom-ref": "npm:react-dom",
+      "name": "react-dom",
+      "properties": [
+        {
+          "name": "devcore:source",
+          "value": "Web/package.json"
+        }
+      ],
+      "purl": "pkg:npm/react-dom@19.0.0",
+      "scope": "required",
+      "type": "library",
+      "version": "19.0.0"
+    },
+    {
+      "bom-ref": "npm:typescript",
+      "name": "typescript",
+      "properties": [
+        {
+          "name": "devcore:source",
+          "value": "Web/package.json"
+        }
+      ],
+      "purl": "pkg:npm/typescript@5.7.0",
+      "scope": "optional",
+      "type": "library",
+      "version": "5.7.0"
+    },
+    {
+      "bom-ref": "pypi:mcp",
+      "name": "mcp",
+      "properties": [
+        {
+          "name": "devcore:source",
+          "value": "MCP/requirements.txt"
+        }
+      ],
+      "purl": "pkg:pypi/mcp@1.0.0",
+      "scope": "required",
+      "type": "library",
+      "version": "1.0.0"
+    },
+    {
+      "bom-ref": "pypi:requests",
+      "name": "requests",
+      "properties": [
+        {
+          "name": "devcore:source",
+          "value": "MCP/requirements.txt"
+        }
+      ],
+      "purl": "pkg:pypi/requests@2.28.0",
+      "scope": "required",
+      "type": "library",
+      "version": "2.28.0"
+    }
+  ],
+  "metadata": {
+    "component": {
+      "name": "DEV_CORE",
+      "type": "application",
+      "version": "10.0"
+    },
+    "timestamp": "2026-07-14T00:00:00Z"
+  },
+  "serialNumber": "urn:uuid:00000000-0000-0000-0000-devcore000001",
+  "specVersion": "1.5",
+  "version": 1
+}
