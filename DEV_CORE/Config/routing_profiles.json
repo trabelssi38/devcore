@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0",
+  "default_mode": "coding",
+  "profiles": {
+    "reasoning": {
+      "mode": "reasoning",
+      "budget": "32k tokens",
+      "profile": "deep-reasoning",
+      "model": "devcore-reasoning",
+      "gemini_model": "gemini-2.5-pro",
+      "codex_behavior": "Architecture, analyse, decision, spec et plan. Ne change pas le modele Codex Desktop.",
+      "hint": "Skill dev-methodology. Brainstorm -> spec -> plan. Attends validation si la demande n'est pas deja explicite."
+    },
+    "coding": {
+      "mode": "coding",
+      "budget": "8k tokens",
+      "profile": "implementation",
+      "model": "devcore-coding",
+      "gemini_model": "gemini-2.5-pro",
+      "codex_behavior": "Implementation precise, TDD, verification locale, commits atomiques.",
+      "hint": "Skill dev-methodology. TDD. Commit [T-XX] apres chaque etape validee."
+    },
+    "bulk": {
+      "mode": "bulk",
+      "budget": "16k tokens",
+      "profile": "high-throughput",
+      "model": "devcore-bulk",
+      "gemini_model": "gemini-2.5-flash",
+      "codex_behavior": "Traitement de volume, generation en masse, sortie compressee.",
+      "hint": "Skill fabric-patterns. Mode bulk -- genere tout sans validation intermediaire quand le scope est clair."
+    }
+  },
+  "aliases": {
+    "plan": "reasoning",
+    "analyse": "reasoning",
+    "analysis": "reasoning",
+    "implement": "coding",
+    "implementation": "coding",
+    "batch": "bulk",
+    "mass": "bulk"
+  }
+}

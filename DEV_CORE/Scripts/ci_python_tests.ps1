@@ -3,6 +3,7 @@ $ErrorActionPreference = "Stop"
 
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $tests = @(
+    "DEV_CORE/Scripts/test_gemini_router_routing_profile.py",
     "DEV_CORE/API/test_api_v1.py",
     "DEV_CORE/API/test_api_versioning_policy.py",
     "DEV_CORE/API/test_correlation_context.py",

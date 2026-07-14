@@ -12,6 +12,7 @@ param(
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
 . "$PSScriptRoot\platform_version.ps1"
+. "$PSScriptRoot\routing_profile.ps1"
 $PLATFORM = Get-DevCorePlatformInfo
 $SKILLS_DIR    = "$DEV_CORE\Skills"
 $CONFIG_DIR    = "$DEV_CORE\Config"
@@ -121,10 +122,17 @@ if (Test-Path $tasksFile) {
         $board   = Get-Content $tasksFile -Raw | ConvertFrom-Json
         $current = $board.tasks | Where-Object { $_.status -eq "active" } | Select-Object -First 1
         if ($current) {
+            $routingProfile = Resolve-DevCoreRoutingProfile -Mode $current.mode
             $missionBlock = @"
 ## TASK ACTIVE INJECTEE -- $($current.id)
 Titre  : $($current.title)
 Mode   : $($current.mode)
+Profil : $($routingProfile.profile)
+Budget : $($routingProfile.budget)
+Mode resolu : $($routingProfile.mode)
+Modele DEV_CORE : $($routingProfile.model)
+Modele Gemini   : $($routingProfile.gemini_model)
+Codex : $($routingProfile.codex_behavior)
 Steps  : $($current.steps_done)/$($current.steps_total)
 Tag git: [$($current.id)]
 Action : dc task done quand steps_done = steps_total

@@ -77,14 +77,26 @@ MODEL_MAP = {
     "claude-3-haiku": "gemini-2.5-flash",
     "gpt-4o": "gemini-2.5-pro",
     "gpt-4o-mini": "gemini-2.5-flash",
-    "devcore-always-on": "gemini-2.5-pro"
+    "devcore-always-on": "gemini-2.5-pro",
+    "devcore-reasoning": "gemini-2.5-pro",
+    "devcore-coding": "gemini-2.5-pro",
+    "devcore-bulk": "gemini-2.5-flash",
+}
+
+MODE_MODEL_MAP = {
+    "reasoning": "devcore-reasoning",
+    "coding": "devcore-coding",
+    "bulk": "devcore-bulk",
+    "plan": "devcore-reasoning",
 }
 
 def map_for_gemini(body: dict, is_chat: bool) -> dict:
     mapped = body.copy()
     if is_chat:
-        original_model = body.get("model", "devcore-always-on")
+        requested_mode = str(body.get("mode") or "").strip().lower()
+        original_model = body.get("model") or MODE_MODEL_MAP.get(requested_mode) or "devcore-always-on"
         mapped["model"] = MODEL_MAP.get(original_model, "gemini-2.5-flash")
+        mapped.pop("mode", None)
         # Supprimer max_tokens si trop petit pour éviter les erreurs Gemini
         if "max_tokens" in mapped and mapped["max_tokens"] < 50:
             del mapped["max_tokens"]
@@ -237,6 +249,14 @@ async def list_models():
         "data": [
             {"id": k, "object": "model", "owned_by": "gemini-router"} for k in MODEL_MAP.keys()
         ]
+    }
+
+@app.get("/v1/devcore/routing-profiles")
+async def routing_profiles():
+    return {
+        "object": "devcore.routing_profiles",
+        "modes": MODE_MODEL_MAP,
+        "models": MODEL_MAP,
     }
 
 if __name__ == "__main__":

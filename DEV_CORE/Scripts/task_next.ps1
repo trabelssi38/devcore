@@ -46,13 +46,10 @@ session:
 
 try { & "$DEV_CORE\Scripts\toonify.ps1" -InputFile $tFile 2>$null | Out-Null } catch {}
 
-# Mode -> budget
-$budget = switch ($current.mode) {
-    "reasoning" { "32k tokens" }
-    "coding"    { "8k tokens"  }
-    "bulk"      { "16k tokens" }
-    default     { "8k tokens"  }
-}
+# Mode -> routing profile
+. "$PSScriptRoot\routing_profile.ps1"
+$routingProfile = Resolve-DevCoreRoutingProfile -Mode $current.mode
+$budget = $routingProfile.budget
 
 # Tache suivante
 $next = $board.tasks | Where-Object { $_.status -eq "todo" -and $_.id -ne $current.id } | Select-Object -First 1
@@ -66,6 +63,7 @@ Write-Host "  |  $($current.title.PadRight(40))  |" -ForegroundColor White
 Write-Host "  +------------------------------------------+" -ForegroundColor Cyan
 Write-Host "  |  Mode   : $($current.mode.PadRight(31))|" -ForegroundColor Gray
 Write-Host "  |  Budget : $($budget.PadRight(31))|" -ForegroundColor Gray
+Write-Host "  |  Profile: $($routingProfile.profile.PadRight(31))|" -ForegroundColor Gray
 Write-Host "  |  Steps  : $("$($current.steps_done)/$($current.steps_total)".PadRight(31))|" -ForegroundColor Gray
 if ($next) {
     Write-Host "  |  Suivant: $("$($next.id) [$($next.mode)]".PadRight(31))|" -ForegroundColor DarkGray
@@ -74,12 +72,7 @@ Write-Host "  +------------------------------------------+" -ForegroundColor Cya
 Write-Host ""
 
 # Mode hints
-$hint = switch ($current.mode) {
-    "reasoning" { "Skill dev-methodology. Brainstorm -> spec -> plan. Attends validation." }
-    "coding"    { "Skill dev-methodology. TDD. Commit [T-XX] apres chaque etape." }
-    "bulk"      { "Skill fabric-patterns. Mode bulk -- genere tout sans validation intermediaire." }
-    default     { "Charge les skills pertinents et commence." }
-}
+$hint = $routingProfile.hint
 Write-Host "  Hint : $hint" -ForegroundColor DarkGray
 Write-Host ""
 
@@ -89,7 +82,11 @@ $ctx = @"
 [DEV_CORE] Task active : $($current.id)
 [DEV_CORE] Titre  : $($current.title)
 [DEV_CORE] Mode   : $($current.mode)
+[DEV_CORE] Profile: $($routingProfile.profile)
 [DEV_CORE] Budget : $budget
+[DEV_CORE] Model  : $($routingProfile.model)
+[DEV_CORE] Gemini : $($routingProfile.gemini_model)
+[DEV_CORE] Codex  : $($routingProfile.codex_behavior)
 [DEV_CORE] Steps  : $($current.steps_done)/$($current.steps_total)
 [DEV_CORE] Tag git: [$($current.id)]
 "@
@@ -104,7 +101,12 @@ session:
   active_task: $($current.id)
   title: $($current.title)
   mode: $($current.mode)
+  resolved_mode: $($routingProfile.mode)
+  profile: $($routingProfile.profile)
   budget: $budget
+  model: $($routingProfile.model)
+  gemini_model: $($routingProfile.gemini_model)
+  codex_behavior: $($routingProfile.codex_behavior)
   steps_done: $($current.steps_done)
   steps_total: $($current.steps_total)
   git_tag: [$($current.id)]

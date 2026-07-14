@@ -26,6 +26,32 @@
 - **Gemini Router (Port 20130)** : Proxy de communication directe avec l'API Google Gemini, gérant le Rate-Limiting (HTTP 429) par retries avec backoff exponentiel.
 
 
+### Couche profile/model DEV_CORE
+
+La source de verite runtime est `DEV_CORE/Config/routing_profiles.json`.
+
+Le resolver `DEV_CORE/Scripts/routing_profile.ps1` transforme un mode en profil :
+
+```
+mode       profile          model DEV_CORE       Gemini
+---------------------------------------------------------------
+reasoning  deep-reasoning   devcore-reasoning    gemini-2.5-pro
+coding     implementation   devcore-coding       gemini-2.5-pro
+bulk       high-throughput  devcore-bulk         gemini-2.5-flash
+plan       alias            devcore-reasoning    gemini-2.5-pro
+```
+
+Limite explicite : cette couche ne change pas le modele interne de Codex Desktop.
+Pour Codex, elle injecte seulement le profil, le budget, le modele DEV_CORE cible
+et le comportement attendu dans `AGENTS.md` et `session_context`.
+
+Pour les services controles par DEV_CORE, le Gemini Router accepte maintenant :
+
+- `{"mode":"reasoning"}` -> `gemini-2.5-pro`
+- `{"mode":"coding"}` -> `gemini-2.5-pro`
+- `{"mode":"bulk"}` -> `gemini-2.5-flash`
+- `{"model":"devcore-bulk"}` -> `gemini-2.5-flash`
+
 ---
 
 ## Detection automatique du mode
