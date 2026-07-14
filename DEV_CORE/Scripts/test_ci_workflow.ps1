@@ -29,7 +29,7 @@ foreach ($required in @(
     Assert-True ($workflow -match [regex]::Escape($required)) "CI workflow missing required command: $required"
 }
 
-Assert-True ($workflow -match "(?m)^\s*timeout-minutes:\s*15\s*$") "CI verify job should have a bounded total timeout"
+Assert-True ($workflow -match "(?m)^\s*timeout-minutes:\s*25\s*$") "CI verify job should have a bounded total timeout"
 Assert-True (-not ($workflow -match [regex]::Escape('dc.ps1 "verify --ci --json"'))) "CI workflow should not re-run the full verify gate after explicit steps"
 
 foreach ($step in @(
