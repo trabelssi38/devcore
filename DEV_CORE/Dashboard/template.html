@@ -972,6 +972,20 @@ function getModelCosts(metrics, projectName) {
   return {};
 }
 
+function getUnregisteredModels(metrics, projectName) {
+  if (!metrics) return [];
+  if (projectName) {
+    const key = projectName.toLowerCase();
+    if (metrics.model_costs && metrics.model_costs.project_unregistered && Array.isArray(metrics.model_costs.project_unregistered[key])) {
+      return metrics.model_costs.project_unregistered[key];
+    }
+    const projectStats = metrics.projects && metrics.projects[key];
+    return Array.isArray(projectStats && projectStats.unregistered_models) ? projectStats.unregistered_models : [];
+  }
+  if (metrics.model_costs && Array.isArray(metrics.model_costs.unregistered)) return metrics.model_costs.unregistered;
+  return Array.isArray(metrics.totals && metrics.totals.unregistered_models) ? metrics.totals.unregistered_models : [];
+}
+
 function updateModelCostBreakdown(metrics, projectName) {
   const container = document.getElementById('token-report-model-costs');
   if (!container) return;
@@ -979,11 +993,15 @@ function updateModelCostBreakdown(metrics, projectName) {
   if (title) {
     title.textContent = projectName ? `Coût par modèle : ${projectName}` : 'Coût global par modèle';
   }
-  const entries = Object.entries(getModelCosts(metrics, projectName))
+  const unregistered = new Set(getUnregisteredModels(metrics, projectName));
+  const costEntries = Object.entries(getModelCosts(metrics, projectName))
     .map(([model, value]) => [model, Number(value) || 0])
     .filter(([, value]) => value > 0)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 12);
+    .sort((a, b) => b[1] - a[1]);
+  const selected = new Map();
+  costEntries.slice(0, 12).forEach(([model, value]) => selected.set(model, value));
+  costEntries.filter(([model]) => unregistered.has(model)).forEach(([model, value]) => selected.set(model, value));
+  const entries = Array.from(selected.entries()).sort((a, b) => b[1] - a[1]);
 
   if (!entries.length) {
     container.innerHTML = '<div style="font-size:10px; color:#64748b; padding:6px 0;">Aucun coût par modèle disponible.</div>';
@@ -993,6 +1011,7 @@ function updateModelCostBreakdown(metrics, projectName) {
   container.innerHTML = entries.map(([model, value]) => `
     <div class="model-cost-row" style="display:flex; justify-content:space-between; gap:10px; padding:5px 0; border-bottom:1px solid rgba(255,255,255,0.04); font-size:10px;">
       <span style="color:#cbd5e1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(model)}">${escapeHtml(model)}</span>
+      ${unregistered.has(model) ? '<span style="font-size:8px; color:#f59e0b; border:1px solid rgba(245,158,11,0.35); border-radius:3px; padding:1px 3px; flex-shrink:0;">fallback</span>' : ''}
       <span style="color:#fbbf24; font-family:monospace; flex-shrink:0;">$${value.toFixed(2)}</span>
     </div>
   `).join('');

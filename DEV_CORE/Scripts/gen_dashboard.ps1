@@ -915,11 +915,20 @@ if ($tokenSummary) {
         $globalCostByModel = $tokenSummary.totals.cost_by_model
     }
     if ($globalCostByModel) {
-        $modelCostRows = $globalCostByModel.PSObject.Properties | Sort-Object { [double]$_.Value } -Descending | Select-Object -First 12
+        $fallbackModelNames = @()
+        if ($tokenSummary.model_costs -and $tokenSummary.model_costs.unregistered) {
+            $fallbackModelNames = @($tokenSummary.model_costs.unregistered | ForEach-Object { [string]$_ })
+        } elseif ($tokenSummary.totals -and $tokenSummary.totals.unregistered_models) {
+            $fallbackModelNames = @($tokenSummary.totals.unregistered_models | ForEach-Object { [string]$_ })
+        }
+        $topModelRows = @($globalCostByModel.PSObject.Properties | Sort-Object { [double]$_.Value } -Descending | Select-Object -First 12)
+        $fallbackModelRows = @($globalCostByModel.PSObject.Properties | Where-Object { $fallbackModelNames -contains $_.Name })
+        $modelCostRows = @($topModelRows + $fallbackModelRows | Sort-Object Name -Unique | Sort-Object { [double]$_.Value } -Descending)
         foreach ($modelCost in $modelCostRows) {
             $modelName = [System.Net.WebUtility]::HtmlEncode($modelCost.Name)
             $modelCostFormatted = '{0:F2}' -f ([double]$modelCost.Value)
-            $modelCostHtml += "<div class='model-cost-row' style='display:flex; justify-content:space-between; gap:10px; padding:5px 0; border-bottom:1px solid rgba(255,255,255,0.04); font-size:10px;'><span style='color:#cbd5e1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;' title='$modelName'>$modelName</span><span style='color:#fbbf24; font-family:monospace; flex-shrink:0;'>`$$modelCostFormatted</span></div>"
+            $fallbackBadge = if ($fallbackModelNames -contains $modelCost.Name) { "<span style='font-size:8px; color:#f59e0b; border:1px solid rgba(245,158,11,0.35); border-radius:3px; padding:1px 3px; flex-shrink:0;'>fallback</span>" } else { "" }
+            $modelCostHtml += "<div class='model-cost-row' style='display:flex; justify-content:space-between; gap:10px; padding:5px 0; border-bottom:1px solid rgba(255,255,255,0.04); font-size:10px;'><span style='color:#cbd5e1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center; gap:5px;' title='$modelName'><span style='overflow:hidden; text-overflow:ellipsis; white-space:nowrap;'>$modelName</span>$fallbackBadge</span><span style='color:#fbbf24; font-family:monospace; flex-shrink:0;'>`$$modelCostFormatted</span></div>"
         }
     }
     if (-not $modelCostHtml) {

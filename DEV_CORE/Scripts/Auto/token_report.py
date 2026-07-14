@@ -364,7 +364,15 @@ def add_usage(left, right):
 
 
 def empty_model_usage():
-    return {"tokens": 0, "cache_hits": 0, "output_tokens": 0, "turns": 0, "cost_usd": 0.0, "sources": {}}
+    return {
+        "tokens": 0,
+        "cache_hits": 0,
+        "output_tokens": 0,
+        "turns": 0,
+        "cost_usd": 0.0,
+        "sources": {},
+        "pricing_fallback": False,
+    }
 
 
 def add_model_usage(collection, model_id, usage, source):
@@ -378,6 +386,7 @@ def add_model_usage(collection, model_id, usage, source):
     bucket["turns"] += turns
     bucket["cost_usd"] += float(usage.get("cost_usd") or 0)
     bucket["pricing_profile"] = usage.get("pricing_profile")
+    bucket["pricing_fallback"] = bool(bucket.get("pricing_fallback") or usage.get("pricing_fallback"))
     bucket["sources"][source] = bucket["sources"].get(source, 0) + max(turns, 1)
 
 
@@ -392,6 +401,7 @@ def merge_model_usage(left, right):
         bucket["turns"] += int(usage.get("turns", 0))
         bucket["cost_usd"] += float(usage.get("cost_usd") or 0)
         bucket["pricing_profile"] = usage.get("pricing_profile") or bucket.get("pricing_profile")
+        bucket["pricing_fallback"] = bool(bucket.get("pricing_fallback") or usage.get("pricing_fallback"))
         for source, count in usage.get("sources", {}).items():
             bucket["sources"][source] = bucket["sources"].get(source, 0) + int(count)
 
@@ -410,6 +420,14 @@ def cost_by_model(model_usage):
         model_id: round(float(usage.get("cost_usd") or 0), 4)
         for model_id, usage in sorted((model_usage or {}).items())
     }
+
+
+def fallback_models(model_usage):
+    return sorted(
+        model_id
+        for model_id, usage in (model_usage or {}).items()
+        if usage.get("pricing_fallback")
+    )
 
 
 def empty_bucket():
@@ -587,8 +605,10 @@ def parse_source(source, valid_projects, task_to_project, pricing_registry=None)
             detected_model, model_source = resolve_turn_model(explicit_model, current_model, client_default_model)
             pricing_profile_id, pricing_profile = resolve_model_pricing(detected_model, pricing_registry)
             model_id = normalize_model_name(detected_model) if detected_model else pricing_profile_id
+            default_profile_id = normalize_model_name((pricing_registry or {}).get("default_model") or "default-current")
             usage["model"] = model_id
             usage["pricing_profile"] = pricing_profile_id
+            usage["pricing_fallback"] = bool(detected_model and pricing_profile_id == default_profile_id and model_id != default_profile_id)
             usage["cost_usd"] = calculate_cost(
                 int(usage.get("tokens", 0)),
                 int(usage.get("cache_hits", 0)),
@@ -738,11 +758,13 @@ def aggregate_sessions(sessions):
     totals["cost_usd"] = round(totals["cost_usd"], 4)
     totals["model_usage"] = finalize_model_usage(totals["model_usage"])
     totals["cost_by_model"] = cost_by_model(totals["model_usage"])
+    totals["unregistered_models"] = fallback_models(totals["model_usage"])
     for collection in (projects_data, tasks_data, clients_data):
         for values in collection.values():
             values["cost_usd"] = round(values["cost_usd"], 4)
             values["model_usage"] = finalize_model_usage(values.get("model_usage", {}))
             values["cost_by_model"] = cost_by_model(values["model_usage"])
+            values["unregistered_models"] = fallback_models(values["model_usage"])
 
     return {
         "totals": totals,
@@ -751,9 +773,15 @@ def aggregate_sessions(sessions):
         "tasks": tasks_data,
         "model_costs": {
             "global": totals["cost_by_model"],
+            "unregistered": totals["unregistered_models"],
             "projects": {
                 project: values["cost_by_model"]
                 for project, values in sorted(projects_data.items())
+            },
+            "project_unregistered": {
+                project: values["unregistered_models"]
+                for project, values in sorted(projects_data.items())
+                if values.get("unregistered_models")
             },
         },
         "sessions": sorted(public_sessions, key=lambda x: x["date"] + " " + x["start_time"], reverse=True),

@@ -176,6 +176,10 @@ def test_multi_client_token_report(tmp_path):
     assert summary["projects"]["devcore"]["cost_by_model"]["claude-haiku-4-5"] == 0.0006
     assert summary["model_costs"]["global"]["gemini-3.5-flash"] > 0
     assert summary["model_costs"]["projects"]["devcore"]["gemini-3.5-flash"] > 0
+    assert summary["totals"]["model_usage"]["gemini-3.5-flash"]["pricing_fallback"] is True
+    assert summary["totals"]["unregistered_models"] == ["gemini-3.5-flash"]
+    assert summary["model_costs"]["unregistered"] == ["gemini-3.5-flash"]
+    assert summary["model_costs"]["project_unregistered"]["devcore"] == ["gemini-3.5-flash"]
     assert all("no-need-to-comment" not in model for model in summary["model_costs"]["global"])
     assert all("comment-on-this-change" not in model for model in summary["model_costs"]["global"])
     assert all("ask-about-it" not in model for model in summary["model_costs"]["global"])
