@@ -23,7 +23,40 @@ except ImportError as e:
 
 YAML_PATH = Path("C:/devcore/DEV_CORE/Scripts/hermes_cron.yaml")
 HERMES_RUNTIME_HOME = Path(os.environ.get("HERMES_HOME") or os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "hermes"))
+LEGACY_HERMES_RUNTIME_HOME = Path(os.path.expanduser("~/.hermes"))
 SCRIPTS_DIR = HERMES_RUNTIME_HOME / "scripts"
+
+def repair_next_run_at(job_dict):
+    next_run_at = job_dict.get("next_run_at")
+    if next_run_at:
+        try:
+            next_run_dt = datetime.fromisoformat(next_run_at)
+            if next_run_dt > datetime.now(next_run_dt.tzinfo):
+                return False
+            repaired_next = croniter(job_dict["schedule_display"], datetime.now(next_run_dt.tzinfo)).get_next(datetime).isoformat()
+        except ValueError:
+            repaired_next = croniter(job_dict["schedule_display"], datetime.now().astimezone()).get_next(datetime).isoformat()
+    else:
+        repaired_next = croniter(job_dict["schedule_display"], datetime.now().astimezone()).get_next(datetime).isoformat()
+    job_dict["next_run_at"] = repaired_next
+    print(f"  Repaired stale next_run_at -> {repaired_next}")
+    return True
+
+def mirror_jobs_to_legacy_home(jobs):
+    if LEGACY_HERMES_RUNTIME_HOME == HERMES_RUNTIME_HOME:
+        return
+    legacy_cron = LEGACY_HERMES_RUNTIME_HOME / "cron"
+    legacy_scripts = LEGACY_HERMES_RUNTIME_HOME / "scripts"
+    legacy_cron.mkdir(parents=True, exist_ok=True)
+    legacy_scripts.mkdir(parents=True, exist_ok=True)
+    with open(legacy_cron / "jobs.json", "w", encoding="utf-8") as f:
+        import json
+        json.dump({"jobs": jobs}, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+    for script_path in SCRIPTS_DIR.glob("*"):
+        if script_path.is_file():
+            shutil.copy2(script_path, legacy_scripts / script_path.name)
+    print(f"Mirrored synchronized jobs to legacy Hermes home: {legacy_cron / 'jobs.json'}")
 
 def main():
     if not YAML_PATH.exists():
@@ -109,20 +142,7 @@ def main():
                 job_dict["last_error"] = old_job.get("last_error")
                 job_dict["last_delivery_error"] = old_job.get("last_delivery_error")
                 
-            next_run_at = job_dict.get("next_run_at")
-            if next_run_at:
-                try:
-                    next_run_dt = datetime.fromisoformat(next_run_at)
-                    if next_run_dt <= datetime.now(next_run_dt.tzinfo):
-                        repaired_next = croniter(job_dict["schedule_display"], datetime.now(next_run_dt.tzinfo)).get_next(datetime).isoformat()
-                        if repaired_next:
-                            job_dict["next_run_at"] = repaired_next
-                            print(f"  Repaired expired next_run_at -> {repaired_next}")
-                except ValueError:
-                    repaired_next = croniter(job_dict["schedule_display"], datetime.now().astimezone()).get_next(datetime).isoformat()
-                    if repaired_next:
-                        job_dict["next_run_at"] = repaired_next
-                        print(f"  Repaired invalid next_run_at -> {repaired_next}")
+            repair_next_run_at(job_dict)
 
             job_dict["enabled"] = enabled
             new_jobs_list.append(job_dict)
@@ -134,6 +154,7 @@ def main():
     # 3. Save the final synchronized list to jobs.json
     print("\nSaving synchronized database...")
     save_jobs(new_jobs_list)
+    mirror_jobs_to_legacy_home(new_jobs_list)
     print("Database sync complete. jobs.json is now 100% synchronized with hermes_cron.yaml.")
 
 if __name__ == "__main__":

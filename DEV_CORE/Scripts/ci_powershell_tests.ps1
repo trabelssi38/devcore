@@ -36,6 +36,7 @@ $tests = @(
     "test_skill_agent_spec.ps1",
     "test_internal_plugins.ps1",
     "test_hermes_daemon.ps1",
+    "test_hermes_hardening.ps1",
     "test_repowise_workspace_hermes.ps1",
     "test_repowise_ui_proxy.ps1",
     "test_repowise_ipv6_proxy.ps1",

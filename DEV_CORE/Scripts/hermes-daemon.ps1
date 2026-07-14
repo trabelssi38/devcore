@@ -178,6 +178,13 @@ function Do-Start {
     $env:DEVCORE_PLATFORM_ROOT = "C:\devcore\DEV_CORE"
     $env:DEVCORE_DATA_ROOT = "C:\devcore\DEV_CORE_DATA"
 
+    # Reparer/resynchroniser jobs.json avant de lancer le tick loop.
+    try {
+        Do-SyncJobs | Out-Null
+    } catch {
+        Write-Log "  Sync jobs avant demarrage echouee: $($_.Exception.Message)" "WARN"
+    }
+
     # Lancer les services DEV_CORE (launch.ps1) en arrière-plan au démarrage
     $launchScript = "$DEVCORE_ROOT\Scripts\launch.ps1"
     if (Test-Path $launchScript) {

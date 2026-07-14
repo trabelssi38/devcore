@@ -249,6 +249,14 @@ Les deux documents sont couverts par `DEV_CORE/docs/test_operator_docs.py` et ex
 
 `DEV_CORE/Release/release_packaging.py` génère un manifeste d'archive déterministe et des release notes groupées par type de commit. Le manifeste exclut l'état runtime (`node_modules`, caches Python, archives, downloads) et liste chaque fichier par chemin trié, taille et SHA-256. `test_release_packaging.py` verrouille la reproductibilité, les exclusions et les noms stables `release-manifest.json` / `RELEASE_NOTES.md`.
 
+### Hermes cron hardening
+
+- Le cockpit ne classe plus Hermes uniquement depuis `cron_tick.log.LastWriteTime`.
+- `gen_dashboard.ps1` vérifie aussi le process `hermes_cron_tick.py` et utilise un seuil de tick vieux à 600 secondes.
+- Si le process vit mais que le tick est vieux, le cockpit affiche `DEGRADED` en jaune au lieu d'un statut rouge.
+- `hermes_cron_tick.py` utilise un lock fichier single-instance (`~\.hermes\cron\.tick.lock`) et une rotation de `cron_tick.log` à 5 MiB avec 3 backups.
+- `sync_cron_jobs.py` répare les `next_run_at` expirés et mirroir les jobs vers `~\.hermes\cron\jobs.json` pour éviter les lectures cockpit stale.
+
 ### Scripts automatiques (Auto/)
 
 | Script | Fréquence | Description |

@@ -621,8 +621,8 @@ function Format-TimeAgo {
 
 function Get-StatusHTML {
     param($Title, $Desc, $IsOk, $Perf = $null, $Solic = $null, $Impact = $null)
-    $statusClass = if ($IsOk) { "status-ok" } else { "status-error" }
-    $statusIcon = if ($IsOk) { "&#10003;" } else { "&#10007;" }
+    $statusClass = if ($IsOk -eq "degraded") { "status-warn status-degraded" } elseif ($IsOk) { "status-ok" } else { "status-error" }
+    $statusIcon = if ($IsOk -eq "degraded") { "DEGRADED" } elseif ($IsOk) { "&#10003;" } else { "&#10007;" }
     
     $metricsHtml = ""
     if ($Perf -or $Solic -or $Impact) {
@@ -659,6 +659,17 @@ if (-not (Check-Port $apiPort)) {
 
 $infraHtml = "<h2>Services & Infrastructure</h2>`n"
 $tickLog = "$DEV_CORE_DATA\Logs\hermes\cron_tick.log"
+$HERMES_TICK_WARN_SECONDS = 600
+
+function Get-HermesCronProcesses {
+    try {
+        return @(Get-CimInstance Win32_Process | Where-Object {
+            $_.Name -match '^(python|pythonw)\.exe$' -and $_.CommandLine -match 'hermes_cron_tick\.py'
+        })
+    } catch {
+        return @()
+    }
+}
 
 # 1. Qdrant Points Count
 $qdrantDesc = "Port 6333"
@@ -709,15 +720,19 @@ if ($headroomOk) {
 
 # 5. Hermes Cron Daemon Metrics
 $hermesDesc = "Tick Loop"
-$isDaemonRunning = $false
+$hermesStatus = $false
 $lastTickSec = 9999
+$hermesProcesses = @(Get-HermesCronProcesses)
+$isHermesProcessAlive = ($hermesProcesses.Count -gt 0)
 if (Test-Path $tickLog) {
     $lastWrite = (Get-Item $tickLog).LastWriteTime
     $ts = (Get-Date) - $lastWrite
     $lastTickSec = [math]::Round($ts.TotalSeconds)
-    if ($lastTickSec -lt 150) {
-        $isDaemonRunning = $true
-    }
+}
+if ($isHermesProcessAlive -and $lastTickSec -le $HERMES_TICK_WARN_SECONDS) {
+    $hermesStatus = $true
+} elseif ($isHermesProcessAlive) {
+    $hermesStatus = "degraded"
 }
 $jobCount = 0
 $jobsFile = "$env:USERPROFILE\.hermes\cron\jobs.json"
@@ -727,8 +742,10 @@ if (Test-Path $jobsFile) {
         $jobCount = $jobsJson.jobs.Count
     } catch {}
 }
-if ($isDaemonRunning) {
+if ($hermesStatus -eq $true) {
     $hermesDesc = "Ticking ($lastTickSec`s) | $jobCount jobs"
+} elseif ($hermesStatus -eq "degraded") {
+    $hermesDesc = "DEGRADED: process vivant, tick vieux ($lastTickSec`s) | $jobCount jobs"
 } else {
     $hermesDesc = "Inactif | $jobCount jobs"
 }
@@ -779,7 +796,7 @@ $hSolic = if ($headroomOk) { "Moyenne" } else { "Aucune" }
 $hImpact = if ($headroomOk) { "98% reduction" } else { "Perdu" }
 
 # 5. Hermes Cron Daemon
-$hermesPerf = if ($isDaemonRunning) { "Precis (0s lag)" } else { "HS" }
+$hermesPerf = if ($hermesStatus -eq $true) { "Precis (0s lag)" } elseif ($hermesStatus -eq "degraded") { "DEGRADED tick>$HERMES_TICK_WARN_SECONDS`s" } else { "HS" }
 $hermesSolic = "$jobCount jobs"
 $hermesImpact = "Orchestrateur"
 
@@ -791,7 +808,7 @@ $repImpact = "Analytics & MCP"
 $infraHtml += Get-StatusHTML "Gemini Router (Primary)" $geminiDesc $geminiOk $gPerf $gSolic $gImpact
 $infraHtml += Get-StatusHTML "Dashboard API Server" $apiDesc $apiOk $apiPerf $apiSolic $apiImpact
 $infraHtml += Get-StatusHTML "Headroom Proxy" $headroomDesc $headroomOk $hPerf $hSolic $hImpact
-$infraHtml += Get-StatusHTML "Hermes Cron Daemon" $hermesDesc $isDaemonRunning $hermesPerf $hermesSolic $hermesImpact
+$infraHtml += Get-StatusHTML "Hermes Cron Daemon" $hermesDesc $hermesStatus $hermesPerf $hermesSolic $hermesImpact
 $infraHtml += Get-StatusHTML "Qdrant Vector DB" $qdrantDesc $qdrantOk $qPerf $qSolic $qImpact
 $infraHtml += Get-StatusHTML "Repowise Server" $repowiseDesc $repowiseOk $repPerf $repSolic $repImpact
 
