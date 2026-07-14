@@ -245,6 +245,10 @@ Les deux documents sont couverts par `DEV_CORE/docs/test_operator_docs.py` et ex
 
 `DEV_CORE/Security/security_review.py` génère un inventaire SBOM CycloneDX-like depuis `package.json`, `Web/package.json` et `MCP/requirements.txt`. Le rapport `security-review.json` valide les contrôles minimaux de release : secret scan disponible, SBOM présent, inventaire dépendances et zéro finding critique ou élevé accepté. `test_security_review.py` couvre la stabilité JSON et l'inventaire npm/pip.
 
+### Packaging reproductible et release notes
+
+`DEV_CORE/Release/release_packaging.py` génère un manifeste d'archive déterministe et des release notes groupées par type de commit. Le manifeste exclut l'état runtime (`node_modules`, caches Python, archives, downloads) et liste chaque fichier par chemin trié, taille et SHA-256. `test_release_packaging.py` verrouille la reproductibilité, les exclusions et les noms stables `release-manifest.json` / `RELEASE_NOTES.md`.
+
 ### Scripts automatiques (Auto/)
 
 | Script | Fréquence | Description |

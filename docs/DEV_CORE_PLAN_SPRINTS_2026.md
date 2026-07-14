@@ -419,7 +419,7 @@ Objectif : démontrer que la plateforme peut être exploitée et mise à jour pr
 - [x] `S11-02` — Tests de panne : process kill, DB restart, Qdrant indisponible. `4 pts`
 - [x] `S11-03` — Security review, dépendances et SBOM. `4 pts`
 - [x] `S11-04` — Procédures backup/restore/upgrade/rollback automatisées. `4 pts`
-- [ ] `S11-05` — Packaging reproductible et release notes. `3 pts`
+- [x] `S11-05` — Packaging reproductible et release notes. `3 pts`
 - [ ] `S11-06` — Runbook incidents et critères de support. `3 pts`
 
 ## Gate de sortie
