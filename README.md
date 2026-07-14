@@ -1,4 +1,4 @@
-﻿# DEV_CORE v10 - README
+# DEV_CORE v10 - README
 
 **Single Client Mode** — Plateforme d'orchestration IA pour le développement logiciel
 
