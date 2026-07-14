@@ -249,6 +249,10 @@ Les deux documents sont couverts par `DEV_CORE/docs/test_operator_docs.py` et ex
 
 `DEV_CORE/Release/release_packaging.py` génère un manifeste d'archive déterministe et des release notes groupées par type de commit. Le manifeste exclut l'état runtime (`node_modules`, caches Python, archives, downloads) et liste chaque fichier par chemin trié, taille et SHA-256. `test_release_packaging.py` verrouille la reproductibilité, les exclusions et les noms stables `release-manifest.json` / `RELEASE_NOTES.md`.
 
+### Incident runbook et support
+
+`DEV_CORE\Support\INCIDENT_RUNBOOK.md` définit le workflow de triage, l'escalade `SEV1`/`SEV2`/`SEV3`, l'evidence bundle attendu et les critères d'acceptation support. `DEV_CORE\Support\support_policy.json` expose le même contrat en JSON pour automatisation future. `test_incident_runbook.py` verrouille les liens vers `PLATFORM_DOCUMENTATION.md`, `OPERATOR_GUIDE.md`, `API_REFERENCE.md`, les commandes `dc health --json`, `dc check --gate`, `dc guide diagnostic`, `dc guide recovery` et les artefacts `security-review.json` / `release-manifest.json`.
+
 ### Hermes cron hardening
 
 - Le cockpit ne classe plus Hermes uniquement depuis `cron_tick.log.LastWriteTime`.

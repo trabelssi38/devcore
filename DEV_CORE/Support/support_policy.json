@@ -1,0 +1,76 @@
+{
+  "schema_version": "1.0",
+  "owner": "DEV_CORE",
+  "timezone": "Africa/Lagos",
+  "severity_matrix": {
+    "SEV1": {
+      "description": "Plateforme indisponible, perte de données probable, faille critique exploitable ou blocage total des tâches DEV_CORE.",
+      "examples": [
+        "Gateway ou dashboard indisponible après launch.",
+        "Corruption du task board ou disparition massive de tâches done.",
+        "Qdrant, Hermes ou base de données bloquent une release ou un recovery."
+      ],
+      "initial_response_target_minutes": 15,
+      "status_update_interval_minutes": 30,
+      "resolution_target_hours": 4
+    },
+    "SEV2": {
+      "description": "Fonction majeure dégradée avec workaround disponible, données intactes et exécution partielle possible.",
+      "examples": [
+        "Hermes cron vivant mais ticks stale.",
+        "Dashboard partiellement dégradé.",
+        "Endday lent mais non bloquant."
+      ],
+      "initial_response_target_minutes": 60,
+      "status_update_interval_minutes": 120,
+      "resolution_target_hours": 24
+    },
+    "SEV3": {
+      "description": "Bug mineur, documentation incomplète, optimisation ou demande de support sans impact opérationnel immédiat.",
+      "examples": [
+        "Libellé dashboard incorrect.",
+        "Commande documentée avec exemple manquant.",
+        "Amélioration non urgente du packaging ou des guides."
+      ],
+      "initial_response_target_minutes": 240,
+      "status_update_interval_minutes": 1440,
+      "resolution_target_hours": 72
+    }
+  },
+  "required_evidence": [
+    "dc health --json",
+    "dc check --gate",
+    "latest_script_logs",
+    "hermes_cron_state",
+    "release_manifest",
+    "security_review"
+  ],
+  "accepted_issue_types": [
+    "availability",
+    "data_integrity",
+    "security",
+    "release",
+    "performance",
+    "operator_workflow",
+    "documentation"
+  ],
+  "unsupported_issue_types": [
+    "external_service_outage_without_local_symptom",
+    "unsupported_manual_database_mutation",
+    "unversioned_local_experiment_without_reproduction",
+    "third_party_plugin_without_manifest_v2_contract"
+  ],
+  "escalation": {
+    "owner": "DEV_CORE operator",
+    "handoff_required_fields": [
+      "severity",
+      "impact",
+      "started_at",
+      "last_known_good_commit",
+      "reproduction_steps",
+      "evidence_bundle_path",
+      "mitigation_applied",
+      "next_action"
+    ]
+  }
+}
