@@ -36,6 +36,12 @@ if (-not (Test-Path -LiteralPath $gatewayScript)) {
 $listJson = powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $gatewayScript -List -Json
 $commands = $listJson | ConvertFrom-Json
 Assert-Match (($commands.commands.command) -join "|") "^check\|check --fix\|check --gate" "gateway should expose diagnostic command registry"
+$commandNames = @($commands.commands.command)
+foreach ($requiredCommand in @("guide onboarding", "guide onboarding --json", "guide diagnostic", "guide recovery")) {
+    if ($commandNames -notcontains $requiredCommand) {
+        throw "gateway should expose guided operator flow: $requiredCommand"
+    }
+}
 
 $healthJson = powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $gatewayScript -Command "health --json" | Out-String
 $health = $healthJson | ConvertFrom-Json

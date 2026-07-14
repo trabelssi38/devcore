@@ -59,6 +59,46 @@ $commandMap = [ordered]@{
         parameters = @{ Ci = $true; Json = $true }
         description = "Gate CI deterministe JSON"
     }
+    "guide onboarding" = @{
+        script = "guided_recovery.ps1"
+        parameters = @{ Flow = "onboarding" }
+        description = "Guide premier lancement"
+    }
+    "guide onboarding --json" = @{
+        script = "guided_recovery.ps1"
+        parameters = @{ Flow = "onboarding"; Json = $true }
+        description = "Guide premier lancement JSON"
+    }
+    "guide diagnostic" = @{
+        script = "guided_recovery.ps1"
+        parameters = @{ Flow = "diagnostic" }
+        description = "Guide diagnostic runtime"
+    }
+    "guide diagnostic --json" = @{
+        script = "guided_recovery.ps1"
+        parameters = @{ Flow = "diagnostic"; Json = $true }
+        description = "Guide diagnostic runtime JSON"
+    }
+    "guide recovery" = @{
+        script = "guided_recovery.ps1"
+        parameters = @{ Flow = "recovery" }
+        description = "Guide recovery non destructif"
+    }
+    "guide recovery --json" = @{
+        script = "guided_recovery.ps1"
+        parameters = @{ Flow = "recovery"; Json = $true }
+        description = "Guide recovery non destructif JSON"
+    }
+    "guide list" = @{
+        script = "guided_recovery.ps1"
+        parameters = @{ List = $true }
+        description = "Liste les guides disponibles"
+    }
+    "guide list --json" = @{
+        script = "guided_recovery.ps1"
+        parameters = @{ List = $true; Json = $true }
+        description = "Liste les guides disponibles JSON"
+    }
 }
 
 $aliases = @{
@@ -70,6 +110,11 @@ $aliases = @{
     "check --dry-run --fix --gate" = "check --fix --gate --dry-run"
     "check --dry-run --gate --fix" = "check --fix --gate --dry-run"
     "verify --json --ci" = "verify --ci --json"
+    "guide --json" = "guide list --json"
+    "guide" = "guide list"
+    "guide --list" = "guide list"
+    "guide --list --json" = "guide list --json"
+    "guide --json --list" = "guide list --json"
 }
 
 function Normalize-Command {

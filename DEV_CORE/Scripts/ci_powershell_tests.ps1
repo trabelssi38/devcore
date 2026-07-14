@@ -16,6 +16,7 @@ $tests = @(
     "test_embedding_contract.ps1",
     "test_health_report.ps1",
     "test_diagnose_gate.ps1",
+    "test_guided_recovery.ps1",
     "test_secret_scan.ps1",
     "test_dc_dispatch.ps1",
     "test_task_service.ps1",

@@ -213,8 +213,9 @@ T-01 (reasoning) → T-02 (coding) → T-03 (bulk) → T-04 (reasoning)
 | `task_service.ps1` | `Path`, `Read`, `Add`, `Next`, `Complete`, `Step`, `Edit`, `Pause`, `Skip`, `Sync` | Service central pour lecture, mutation et transitions de taches |
 | `memory_service.ps1` | `Path`, `ReadText`, `WriteText`, `AppendText`, `EnsureMemory`, `RotateMemory` | Service central pour chemins et fichiers memoire L2/L3 |
 | `context_service.ps1` | `ScoreSources` | Service central pour scorer les sources de contexte |
-| `gateway.ps1` | `dc check*`, `dc health*`, `dc verify*` | Gateway typée pour commandes validées |
+| `gateway.ps1` | `dc check*`, `dc health*`, `dc verify*`, `dc guide*` | Gateway typée pour commandes validées |
 | `diagnose.ps1` | `dc check`, `dc check --gate`, `dc check --fix --dry-run` | Diagnostic complet, gate release locale et simulation de reparations |
+| `guided_recovery.ps1` | `dc guide onboarding`, `dc guide diagnostic`, `dc guide recovery` | Guides operateur non destructifs pour onboarding, diagnostic et recovery |
 | `health_report.ps1` | `dc health`, `dc health --json` | Rapport court services, secrets, task board et memoire |
 | `verify.ps1` | `dc verify --ci`, `dc verify --ci --json` | Agrégateur CI déterministe avec propagation des codes d'échec |
 | `hermes-daemon.ps1` | `-Install|-Start|-Status` | Daemon Hermes |
@@ -404,6 +405,9 @@ dc launch                       # Démarrage journée
 dc endday                       # Clôture + sync auto
 dc weekly                       # Maintenance hebdo
 dc check                        # Diagnostic complet
+dc guide onboarding             # Guide premier lancement
+dc guide diagnostic             # Guide diagnostic runtime
+dc guide recovery               # Guide recovery non destructif
 dc ask [prompt]                 # Routing mode auto
 dc rtk [commande]               # Execute et compresse la sortie (-40%)
 ```

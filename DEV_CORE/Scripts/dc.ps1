@@ -253,7 +253,7 @@ switch -Regex ($cmd) {
     "^plugins?($|\s+.*)" { Invoke-PluginSafe -OptionsText ($cmd -replace "^plugins?", ""); break }
 
     # -- DIAGNOSTIC
-    "^check($|\s+.*)|^health($|\s+.*)|^verify($|\s+.*)" {
+    "^check($|\s+.*)|^health($|\s+.*)|^verify($|\s+.*)|^guide($|\s+.*)" {
         & "$SCRIPTS\gateway.ps1" -Command $cmd
         exit $LASTEXITCODE
     }
@@ -311,6 +311,7 @@ switch -Regex ($cmd) {
         Write-Host "  dc health --json                Rapport health v10 JSON" -ForegroundColor Gray
         Write-Host "  dc verify --ci                  Gate CI deterministe" -ForegroundColor Gray
         Write-Host "  dc verify --ci --json           Gate CI JSON" -ForegroundColor Gray
+        Write-Host "  dc guide onboarding|diagnostic|recovery [--json]  Guides operateur" -ForegroundColor Gray
         Write-Host "  dc ask [prompt]                 Routing mode auto" -ForegroundColor Gray
         Write-Host "  dc skills status                Etat Auto-Skills" -ForegroundColor Gray
         Write-Host "  dc skills detect                Detecte candidates depuis events" -ForegroundColor Gray

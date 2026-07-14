@@ -1,0 +1,84 @@
+{
+  "flows": [
+    {
+      "description": "Premiere mise en route DEV_CORE avec verification non destructive.",
+      "id": "first-run",
+      "steps": [
+        {
+          "command": "dc launch",
+          "id": "launch",
+          "recovery_hint": "Si launch echoue, executer dc check --fix --dry-run puis dc check --fix.",
+          "title": "Demarrer les services DEV_CORE"
+        },
+        {
+          "command": "dc health --json",
+          "id": "health",
+          "recovery_hint": "Si un service est down, lancer dc check --fix --dry-run pour voir la correction proposee.",
+          "title": "Verifier le health court"
+        },
+        {
+          "command": "dc check --gate",
+          "id": "release-gate",
+          "recovery_hint": "Les FAIL bloquent la suite; corriger via dc check --fix ou appliquer le fix indique.",
+          "title": "Valider le gate diagnostic"
+        }
+      ],
+      "title": "Onboarding premier lancement",
+      "type": "onboarding"
+    },
+    {
+      "description": "Diagnostic guide quand le cockpit, Qdrant, le router ou les jobs semblent incoherents.",
+      "id": "runtime-diagnostic",
+      "steps": [
+        {
+          "command": "dc health --json",
+          "id": "health-json",
+          "recovery_hint": "Identifier le composant degraded/down avant toute modification.",
+          "title": "Collecter le statut machine-readable"
+        },
+        {
+          "command": "dc check",
+          "id": "diagnose",
+          "recovery_hint": "Lire les WARN/FAIL et ne lancer --fix qu'apres comprehension du composant touche.",
+          "title": "Executer le diagnostic complet"
+        },
+        {
+          "command": "dc plugin list --json",
+          "id": "plugins",
+          "recovery_hint": "Si un plugin est absent ou disabled, utiliser dc plugin diagnose <id>.",
+          "title": "Verifier les plugins installes"
+        }
+      ],
+      "title": "Diagnostic runtime guide",
+      "type": "diagnostic"
+    },
+    {
+      "description": "Recovery non destructif avant escalade manuelle.",
+      "id": "safe-recovery",
+      "steps": [
+        {
+          "command": "dc check --fix --dry-run",
+          "id": "dry-run",
+          "recovery_hint": "Verifier la liste des actions avant d'autoriser les corrections.",
+          "title": "Simuler les reparations"
+        },
+        {
+          "command": "dc check --fix",
+          "id": "apply-fixes",
+          "recovery_hint": "Relancer ensuite dc check --gate pour confirmer le retour a l'etat operationnel.",
+          "title": "Appliquer les corrections DEV_CORE connues"
+        },
+        {
+          "command": "dc launch",
+          "id": "restart-runtime",
+          "recovery_hint": "Si le redemarrage bloque, inspecter les logs sous DEV_CORE_DATA\\Logs\\scripts.",
+          "title": "Relancer le runtime"
+        }
+      ],
+      "title": "Recovery non destructif",
+      "type": "recovery"
+    }
+  ],
+  "playbook_version": "2026.07.13",
+  "schema_version": 1
+}
