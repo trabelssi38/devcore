@@ -31,6 +31,7 @@ $tests = @(
     "DEV_CORE/Database/test_tenant_isolation_matrix.py",
     "DEV_CORE/Database/test_workspace_isolation.py",
     "DEV_CORE/docs/test_operator_docs.py",
+    "DEV_CORE/Performance/test_load_contracts.py",
     "DEV_CORE/Plugins/test_manifest_v2_contract.py",
     "DEV_CORE/Templates/test_workflow_templates.py",
     "DEV_CORE/Scripts/test_dashboard_api.py",

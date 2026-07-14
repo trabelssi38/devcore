@@ -415,7 +415,7 @@ Objectif : démontrer que la plateforme peut être exploitée et mise à jour pr
 
 ## Backlog
 
-- [ ] `S11-01` — Tests de charge API, SSE, workers et DB. `4 pts`
+- [x] `S11-01` — Tests de charge API, SSE, workers et DB. `4 pts`
 - [ ] `S11-02` — Tests de panne : process kill, DB restart, Qdrant indisponible. `4 pts`
 - [ ] `S11-03` — Security review, dépendances et SBOM. `4 pts`
 - [ ] `S11-04` — Procédures backup/restore/upgrade/rollback automatisées. `4 pts`

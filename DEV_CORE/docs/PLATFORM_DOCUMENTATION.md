@@ -233,6 +233,10 @@ T-01 (reasoning) → T-02 (coding) → T-03 (bulk) → T-04 (reasoning)
 
 Les deux documents sont couverts par `DEV_CORE/docs/test_operator_docs.py` et exécutés dans `ci_python_tests.ps1`.
 
+### Tests de charge locaux
+
+`DEV_CORE/Performance/devcore_load.py` fournit un harnais de charge contractuel CI-friendly pour API, SSE, workers et repositories DB. Il mesure des p95 locaux sur des boucles courtes via `test_load_contracts.py`; ce n'est pas un soak test production, mais un garde-fou de régression rapide pour Sprint 11.
+
 ### Scripts automatiques (Auto/)
 
 | Script | Fréquence | Description |
