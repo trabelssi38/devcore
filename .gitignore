@@ -6,6 +6,16 @@
 # Data (do not version)
 DEV_CORE_DATA/
 
+# Generated runtime artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# Generated local client/dashboard state
+.claude/
+DEV_CORE/Dashboard/index.html
+
 # Logs
 DEV_CORE_DATA/Logs/**/*.log
 DEV_CORE_DATA/Logs/**/launch_*.log

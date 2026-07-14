@@ -1,3 +1,0 @@
-﻿[DEV_CORE] Aucune tache active
-[DEV_CORE] Toutes les taches accomplies : 127/127
-[DEV_CORE] Commencer par: dc new task 'description' -mode reasoning|coding|bulk
