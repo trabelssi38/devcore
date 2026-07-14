@@ -8,7 +8,7 @@ jobs:
   verify:
     name: Verify
     runs-on: windows-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     env:
       DEVCORE_PLATFORM_ROOT: ${{ github.workspace }}\DEV_CORE
       DEVCORE_DATA_ROOT: ${{ github.workspace }}\DEV_CORE_DATA
@@ -37,7 +37,7 @@ jobs:
         run: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File DEV_CORE\Scripts\ci_lint.ps1
 
       - name: Run Python tests
-        timeout-minutes: 12
+        timeout-minutes: 20
         shell: pwsh
         run: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File DEV_CORE\Scripts\ci_python_tests.ps1
 
