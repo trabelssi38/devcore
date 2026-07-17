@@ -86,8 +86,10 @@ Changement principal : Docker/Compose passe de P1 a P0. La conteneurisation n'es
 | Database | Postgres/Alembic present, URL par defaut `127.0.0.1` | Facile avec service `postgres` |
 | MCP qdrant-storage | Python, Qdrant hardcode `localhost:6333` | Facile apres env `QDRANT_URL` |
 | MCP devcore-scripts | Python mais execute `powershell.exe` | A remplacer par CLI Python |
-| Scripts core | 117 scripts `.ps1` detectes | Gros point de migration |
-| Python core | 122 fichiers `.py` detectes | Bonne base pour runtime container |
+| Scripts core | ~96 scripts `.ps1` detectes (117 si fichiers archives inclus) | Gros point de migration |
+| Python core | ~160 fichiers `.py` detectes | Bonne base pour runtime container |
+| CLI Python existant | 21 modules dans `Tools/devcore/` (cli, router, missions, memory, paths, session, telemetry) | Base solide pour Sprint 02 |
+| Dashboard monolithe | `Dashboard/index.html` = 14.7 MB (fichier unique) | Migration Next.js a dimensionner |
 | Hermes daemon | Scheduled Tasks, WMI/CIM, `LOCALAPPDATA`, `msvcrt` | Non portable tel quel |
 | Repowise | Executable local sur `127.0.0.1` | Containeriser si binaire Linux disponible, sinon adapter `CodeSearchProvider` |
 
@@ -109,6 +111,8 @@ Changement principal : Docker/Compose passe de P1 a P0. La conteneurisation n'es
 | `mcp-devcore` | image Python DEV_CORE | MCP DEV_CORE via CLI Python | `devcore_data` |
 
 Principe d'image : une image Python DEV_CORE unique pour `runtime`, `api`, `scheduler`, `worker` et `mcp-*`, avec commandes d'entree differentes.
+
+Principe de consolidation : fusionner les services Python a faible charge dans un meme conteneur si < 1 req/s et meme runtime. Candidats : `api` + `dashboard-api` + `scheduler` dans un seul process multi-worker (entry points distincts via uvicorn workers ou supervisord). Objectif : 8-9 services max en exploitation courante.
 
 ### 5.3 Matrice de conteneurisation
 
@@ -247,11 +251,15 @@ Livrables :
 - API FastAPI bindee sur `0.0.0.0` en container.
 - Variables : `DEVCORE_PLATFORM_ROOT=/app/DEV_CORE`, `DEVCORE_DATA_ROOT=/data`, `QDRANT_URL=http://qdrant:6333`, `DEVCORE_DATABASE_URL=...@postgres:5432/...`.
 - Healthchecks Qdrant, Postgres, API.
+- Bind mounts dev mode : `volumes: - ./DEV_CORE:/app/DEV_CORE` pour hot-reload Python sans rebuild image.
+- `mem_limit` par service dans Compose (budget RAM explicite, cible < 4 GB total).
 - Smoke test `docker compose up -d` puis `GET /api/v1/health`.
+- Reference : reutiliser les patterns du `Dockerfile` et `docker-compose.yml` existants dans `hermes/`.
 
 Critere d'acceptation :
 
 - Un environnement propre lance Qdrant, Postgres, API et Gemini Router sans `launch.ps1`.
+- Le temps de `docker compose up` reste < 60 secondes sur machine dev.
 
 ### Sprint 02 -- CLI Python foundation
 
@@ -261,6 +269,7 @@ Objectif : creer la colonne vertebrale Python qui remplacera progressivement les
 Livrables :
 
 - `dc.py` avec sous-commandes initiales : `next task`, `doctor`, `benchmark`, `profile`.
+- Point de depart : les 21 modules existants dans `DEV_CORE/Tools/devcore/` (cli.py, router.py, paths.py, session.py, etc.) — ne pas repartir de zero.
 - Wrappers `dc.ps1` minces vers Python.
 - Module commun de config, chemins, logs, erreurs.
 - Tests unitaires sur resolution projet actif, chemins DEV_CORE, codes de sortie.
@@ -318,15 +327,17 @@ Objectif : sortir les jobs systeme simples du chemin critique Hermes.
 
 Livrables :
 
-- Migration des jobs `no_agent: true`.
+- Migration des jobs `no_agent: true` (6 sur 7 jobs dans `hermes_cron.yaml` sont `no_agent: true`).
 - Comparaison shadow Hermes vs DEV_CORE.
 - Rapport de divergence.
 - Plan de rollback.
 - Dashboard health minimal du scheduler.
+- Strategie de migration des donnees historiques Hermes (run history, metriques, logs structures) vers le nouveau modele DEV_CORE.
 
 Critere d'acceptation :
 
 - Les jobs migres tournent via DEV_CORE pendant une periode de soak sans divergence critique.
+- L'historique des runs anterieurs est accessible depuis le nouveau scheduler (import ou read-only bridge).
 
 ### Sprint 06 -- Agent Runner abstraction et Hermes optionnel
 
@@ -346,23 +357,53 @@ Critere d'acceptation :
 
 - Hermes peut etre desactive sans casser scheduler, dashboard, diagnostics et jobs no-agent.
 
-### Sprint 07 -- Runtime orchestration core
+### Sprint 07a -- State engine et workflow schema
 
 Priorite : P1
-Objectif : transformer le plan runtime en integration du systeme existant, pas en reecriture.
+Objectif : poser le modele d'etat et le format de workflow avant l'integration.
 
 Livrables :
 
-- Gap analysis entre runtime cible et composants deja presents.
-- State engine minimal.
-- Workflow YAML schema v1.
-- Planner, executor, checker raccordes au state engine.
-- Event bus raccorde au read model existant.
-- Tests de workflow nominal, erreur, reprise.
+- Gap analysis entre runtime cible et composants deja presents (Planner, Orchestration, State existants).
+- State engine minimal : etats, transitions, persistence.
+- Workflow YAML schema v1 : structure, validation, exemples.
+- Tests unitaires du state engine et du parsing YAML.
 
 Critere d'acceptation :
 
-- Un workflow simple peut etre planifie, execute, verifie et repris apres interruption.
+- Un workflow YAML valide peut etre parse, valide et ses etats peuvent etre persistes et restaures.
+
+### Sprint 07b -- Planner, executor, checker integration
+
+Priorite : P1
+Objectif : raccorder les composants d'orchestration au state engine.
+
+Livrables :
+
+- Planner raccorde au state engine.
+- Executor raccorde au state engine.
+- Checker raccorde au state engine.
+- Tests d'integration : workflow nominal, erreur, timeout.
+
+Critere d'acceptation :
+
+- Un workflow simple peut etre planifie, execute et verifie via le state engine.
+
+### Sprint 07c -- Event bus et tests de reprise
+
+Priorite : P1
+Objectif : connecter le bus d'evenements et valider la robustesse.
+
+Livrables :
+
+- Event bus raccorde au read model existant (migration du bus JSONL dans `DEV_CORE/Bus/`).
+- Tests de reprise apres interruption (crash recovery).
+- Tests de workflow complet bout en bout.
+- Documentation des workflows disponibles.
+
+Critere d'acceptation :
+
+- Un workflow interrompu peut etre repris depuis le dernier etat persiste sans perte de donnees.
 
 ### Sprint 08 -- REST/API contracts et dashboard payload
 
@@ -387,18 +428,21 @@ Critere d'acceptation :
 Priorite : P1
 Objectif : completer la surface container apres la tranche core.
 
+Note : le dashboard actuel (`Dashboard/index.html`) est un monolithe HTML de 14.7 MB genere par `gen_dashboard.ps1`. La migration vers Next.js implique un travail de decomposition non trivial. Prevoir un sous-livrable de decoupe (composants, pages, API calls) avant la conteneurisation.
+
 Livrables :
 
 - Service `dashboard-api` sans mutation PowerShell.
-- Service `dashboard-web` Next/Nginx.
+- Service `dashboard-web` Next/Nginx (migration du monolithe 14.7 MB vers le projet Next.js existant dans `DEV_CORE/Web/`).
 - Service `mcp-qdrant` avec `QDRANT_URL`.
-- Service `mcp-devcore` via CLI Python, sans `powershell.exe`.
+- Service `mcp-devcore` via CLI Python, sans `powershell.exe` (remplacer les 11 tools PowerShell du MCP actuel).
 - Volumes `devcore_data`, `qdrant_storage`, `postgres_data`.
 - Tests smoke dashboard/API/MCP.
 
 Critere d'acceptation :
 
 - Dashboard, API, MCP Qdrant et runtime fonctionnent via Compose avec noms de services internes.
+- Le dashboard web charge en < 3 secondes (vs monolithe 14.7 MB actuel).
 
 ### Sprint 10 -- Skills/UI/Motion standards
 
@@ -494,33 +538,39 @@ Livrables :
 - Tests bout en bout `docker compose up` -> API health -> scheduler -> dashboard -> endday.
 - Tests rollback Hermes.
 - Documentation operateur container.
-- Documentation developpeur.
+- Documentation developpeur : workflow quotidien en mode container (edit -> hot-reload -> test -> commit).
 - Guide migration v9/v10.
 - Nettoyage des scripts obsoletes ou marquage deprecated.
+- CI/CD pipeline : build image, push registry (GHCR), run tests automatises (reutiliser `ci_lint.ps1`, `ci_python_tests.ps1`, `ci_contract_tests.ps1` existants migres en Python).
+- Mode `DEVCORE_MODE=local` documente pour fonctionnement sans Docker si necessaire.
 
 Critere d'acceptation :
 
 - DEV_CORE v10 fonctionne avec Hermes optionnel, runtime Python actif, API stable, Compose smoke OK, et PowerShell limite aux wrappers host Windows.
+- Un `git push` declenche build + tests en CI.
+- La documentation DX couvre le setup initial, le workflow quotidien et le troubleshooting.
 
 ## 8. Ordre de dependances
 
 ```mermaid
 flowchart TD
     A["Sprint 00: baseline + contrats"] --> B["Sprint 01: fondation container"]
-    B --> C["Sprint 02: CLI Python"]
+    B --> C["Sprint 02: CLI Python (base Tools/devcore/)"]
     C --> D["Sprint 03: scheduler model"]
     D --> E["Sprint 04: scheduler container"]
-    E --> F["Sprint 05: jobs Hermes no-agent"]
+    E --> F["Sprint 05: jobs Hermes no-agent + migration donnees"]
     F --> G["Sprint 06: AgentRunner / Hermes optionnel"]
-    C --> H["Sprint 07: runtime core"]
-    H --> I["Sprint 08: API / dashboard payload"]
-    I --> J["Sprint 09: dashboard + MCP containers"]
+    C --> H1["Sprint 07a: state engine + workflow YAML"]
+    H1 --> H2["Sprint 07b: planner/executor/checker"]
+    H2 --> H3["Sprint 07c: event bus + tests reprise"]
+    H3 --> I["Sprint 08: API / dashboard payload"]
+    I --> J["Sprint 09: dashboard (migration 14.7MB) + MCP containers"]
     J --> K["Sprint 10: UI standards"]
     K --> L["Sprint 11: UI gates"]
     A --> M["Sprint 12: perf profiling"]
     M --> N["Sprint 13: Rust hotspots"]
     G --> O["Sprint 14: Go daemon decision"]
-    J --> P["Sprint 15: hardening"]
+    J --> P["Sprint 15: hardening + CI/CD + doc DX"]
     L --> P
     N --> P
     O --> P
@@ -530,8 +580,8 @@ flowchart TD
 
 | Priorite | Sprints | Pourquoi |
 |---|---|---|
-| P0 | 00-06, 15 | Container core, base Python testable, remplacement Hermes, release hardening |
-| P1 | 07-09 | Runtime, API, dashboard/MCP containers |
+| P0 | 00-06, 15 | Container core, base Python testable, remplacement Hermes, release hardening, CI/CD |
+| P1 | 07a-07c, 08-09 | Runtime (decoupe en 3 sous-sprints), API, dashboard/MCP containers |
 | P2 | 10-13 | Qualite UI et performance ciblee |
 | P3 | 14 | Go seulement si besoin service confirme |
 
@@ -571,6 +621,11 @@ La roadmap est terminee quand :
 | Dashboard trop lourd | Lenteur percue | Read model borne, pagination, payload separe |
 | Skills UI trop nombreux | Bruit et lenteur | Commencer par standards, audit, gates P0/P1 |
 | Docker casse les usages Windows | Perte de compatibilite | Garder wrappers PowerShell host minces |
+| DX degradee en mode container | Boucle edit-test trop longue, frein adoption | Bind mounts dev, hot-reload, `mem_limit`, doc workflow quotidien |
+| Dashboard monolithe 14.7 MB | Migration Next.js sous-estimee | Decomposition planifiee au Sprint 09, budget temps dedie |
+| Absence CI/CD | Pas de garde-fou automatise, regressions silencieuses | Pipeline CI au Sprint 15, reutiliser scripts CI existants |
+| Perte historique Hermes | Donnees de runs perdues a la migration | Import ou bridge read-only au Sprint 05 |
+| Networking Docker Desktop Windows | DNS, WSL2/Hyper-V, ports en conflit | Tests smoke reseau au Sprint 01, doc troubleshooting |
 
 ## 12. Prochaine action recommandee
 
@@ -578,10 +633,26 @@ Demarrer par Sprint 00 avec un livrable unique : `DEV_CORE_v10_GAP_BASELINE_AND_
 
 Ce document doit contenir :
 
-- inventaire des composants existants ;
+- inventaire des composants existants (inclure les 21 modules `Tools/devcore/`, les 17 tests API, les scripts CI existants) ;
 - mapping vers les sprints ci-dessus ;
 - mesures actuelles ;
 - spec Compose cible minimal ;
 - liste des ports, volumes, variables et healthchecks ;
 - decisions "migrer maintenant / garder / mesurer / abandonner" ;
-- liste des tests manquants avant Sprint 01.
+- liste des tests manquants avant Sprint 01 ;
+- audit des Dockerfiles Hermes existants pour patterns reutilisables ;
+- estimation RAM/CPU par service pour valider le budget `mem_limit`.
+
+## 13. Changelog des amendements
+
+| Date | Source | Amendement |
+|---|---|---|
+| 2026-07-17 | Audit codebase automatise | Correction comptage : ~160 `.py`, ~96 `.ps1`, CLI Python 21 modules existants |
+| 2026-07-17 | Audit codebase automatise | Ajout : dashboard monolithe 14.7 MB identifie, dimensionnement Sprint 09 |
+| 2026-07-17 | Audit codebase automatise | Sprint 07 decoupe en 07a/07b/07c (state engine, integration, event bus) |
+| 2026-07-17 | Audit codebase automatise | Sprint 01 : ajout bind mounts dev, `mem_limit`, reference Dockerfiles Hermes |
+| 2026-07-17 | Audit codebase automatise | Sprint 02 : base explicite sur `Tools/devcore/` existant |
+| 2026-07-17 | Audit codebase automatise | Sprint 05 : ajout strategie migration donnees historiques Hermes |
+| 2026-07-17 | Audit codebase automatise | Sprint 15 : ajout CI/CD pipeline, mode `DEVCORE_MODE=local`, doc DX |
+| 2026-07-17 | Audit codebase automatise | §5.2 : ajout principe de consolidation services (cible 8-9 max) |
+| 2026-07-17 | Audit codebase automatise | §11 : 5 nouveaux risques (DX, monolithe, CI/CD, historique, networking) |
