@@ -215,3 +215,17 @@ La plateforme `DEV_CORE` contient code, schemas, configs non sensibles. Les donn
 - Ne pas committer secrets, caches, qdrant storage, dashboards runtime.
 - Les scripts doivent confiner les chemins.
 - `secret_scan.ps1` et security review doivent rester dans les gates.
+
+## ADR-013 - Container-First Architecture
+
+**Statut** : accepte
+
+DEV_CORE v10 adopte une architecture orientée conteneurs par défaut (container-first) pour uniformiser l'exécution locale et en production. Le code principal est exécuté via Docker Compose, éliminant la dépendance directe à Windows, PowerShell pour la logique métier, et aux tâches planifiées du système hôte.
+
+**Consequences**
+
+- L'environnement de dev utilise le mode Compose avec des *bind mounts* pour le hot-reload.
+- Les volumes Docker persistants abritent l'historique des runs, Qdrant et Postgres.
+- Les conteneurs s'adressent via les noms de services du Compose au lieu de `localhost`.
+- Les scripts PowerShell du host sont réduits à de simples wrappers d'amorçage.
+
