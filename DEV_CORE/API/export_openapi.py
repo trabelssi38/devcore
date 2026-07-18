@@ -159,6 +159,31 @@ export type GitHubWebhookAccepted = {
   accepted: true;
 };
 
+export type WorkflowStepState = {
+  id: string;
+  status: string;
+  starts_at?: string | null;
+  completed_at?: string | null;
+  error_message?: string | null;
+  output?: Record<string, unknown> | null;
+};
+
+export type WorkflowRunDetail = {
+  run_id: string;
+  name: string;
+  description?: string | null;
+  status: string;
+  created_at: string;
+  started_at?: string | null;
+  completed_at?: string | null;
+  step_definitions: Record<string, unknown>[];
+  steps: Record<string, WorkflowStepState>;
+};
+
+export type WorkflowListResponse = {
+  workflows: WorkflowRunDetail[];
+};
+
 export type DevCoreError = {
   error: {
     code: string;
@@ -185,7 +210,7 @@ export class DevCoreApiClient {
   readonly traceId?: string;
 
   constructor(baseUrl = "", traceId?: string) {
-    this.baseUrl = baseUrl.replace(/\\/$/, "");
+    this.baseUrl = baseUrl.replace(/\/$/, "");
     this.traceId = traceId;
   }
 
@@ -200,6 +225,14 @@ export class DevCoreApiClient {
   async tasks(project = "devcore"): Promise<TaskListResponse> {
     const query = new URLSearchParams({ project });
     return this.request<TaskListResponse>(`/api/v1/tasks?${query.toString()}`);
+  }
+
+  async listWorkflows(): Promise<WorkflowListResponse> {
+    return this.request<WorkflowListResponse>("/api/v1/workflows");
+  }
+
+  async getWorkflow(runId: string): Promise<WorkflowRunDetail> {
+    return this.request<WorkflowRunDetail>(`/api/v1/workflows/${runId}`);
   }
 
   async githubWebhook(

@@ -60,7 +60,7 @@ services:
       - DEVCORE_DATABASE_URL=postgresql+psycopg://devcore:devcore_secure_pass@postgres:5432/devcore
     volumes:
       - .:/app
-      - ./DEV_CORE_DATA:/data
+      - devcore_data:/data
     ports:
       - "20131:20131"
     depends_on:
@@ -89,7 +89,7 @@ services:
       - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
     volumes:
       - .:/app
-      - ./DEV_CORE_DATA:/data
+      - devcore_data:/data
     depends_on:
       postgres:
         condition: service_healthy
@@ -97,6 +97,68 @@ services:
         condition: service_started
     mem_limit: 256mb
 
+  dashboard-api:
+    build:
+      context: .
+      dockerfile: DEV_CORE/docker/Dockerfile.python
+    container_name: devcore-dashboard-api
+    command: python DEV_CORE/Scripts/dashboard_api.py
+    environment:
+      - DEVCORE_PLATFORM_ROOT=/app/DEV_CORE
+      - DEVCORE_DATA_ROOT=/data
+    volumes:
+      - .:/app
+      - devcore_data:/data
+    ports:
+      - "20129:20129"
+    depends_on:
+      - api
+    mem_limit: 256mb
+
+  web:
+    build:
+      context: .
+      dockerfile: DEV_CORE/Web/Dockerfile
+    container_name: devcore-web
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_DEVCORE_API_URL=http://localhost:20131
+      - NEXT_PUBLIC_DASHBOARD_API_URL=http://localhost:20129
+    depends_on:
+      - api
+      - dashboard-api
+    mem_limit: 512mb
+
+  mcp-qdrant:
+    build:
+      context: .
+      dockerfile: DEV_CORE/docker/Dockerfile.python
+    container_name: devcore-mcp-qdrant
+    command: python DEV_CORE/MCP/qdrant-storage/server.py
+    environment:
+      - QDRANT_URL=http://qdrant:6333
+    depends_on:
+      - qdrant
+    mem_limit: 128mb
+
+  mcp-devcore:
+    build:
+      context: .
+      dockerfile: DEV_CORE/docker/Dockerfile.python
+    container_name: devcore-mcp-devcore
+    command: python DEV_CORE/MCP/devcore-scripts/server.py
+    environment:
+      - DEVCORE_PLATFORM_ROOT=/app/DEV_CORE
+      - DEVCORE_DATA_ROOT=/data
+    volumes:
+      - .:/app
+      - devcore_data:/data
+    depends_on:
+      - api
+    mem_limit: 128mb
+
 volumes:
   postgres_data:
   qdrant_storage:
+  devcore_data:

@@ -2,11 +2,12 @@
 # Permet a Hermes de rechercher et stocker dans Qdrant
 
 import json
+import os
 import requests
 from typing import Any, Optional
 
 # Qdrant configuration
-QDRANT_URL = "http://localhost:6333"
+QDRANT_URL = os.environ.get("QDRANT_URL", "http://localhost:6333")
 COLLECTIONS = ["decisions", "patterns", "lessons", "codebase"]
 
 

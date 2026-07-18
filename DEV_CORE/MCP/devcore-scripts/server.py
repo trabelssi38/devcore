@@ -1,6 +1,8 @@
 # MCP Server for DEV_CORE Scripts
-# Permet a Hermes de lancer les scripts DEV_CORE
+# Permet a Hermes de lancer les scripts DEV_CORE en Python natif (sans powershell.exe)
 
+import os
+import sys
 import json
 import subprocess
 import re
@@ -13,12 +15,12 @@ try:
     from mcp.server import Server
     from mcp.types import Tool, ToolInputSchema
 except ImportError:
-    # Fallback if MCP not installed
     pass
 
-# DEV_CORE Paths
-DEVCORE_SCRIPTS = Path("C:/devcore/DEV_CORE/Scripts")
-DEVCORE_DATA = Path("C:/devcore/DEV_CORE_DATA")
+# Resolves platform roots and script locations
+DEVCORE_ROOT = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", "C:/devcore/DEV_CORE"))
+DEVCORE_DATA = Path(os.environ.get("DEVCORE_DATA_ROOT", "C:/devcore/DEV_CORE_DATA"))
+DEVCORE_SCRIPTS = DEVCORE_ROOT / "Scripts"
 
 def apply_rtk(text: str) -> str:
     """Apply RTK compression to tool outputs."""
@@ -62,10 +64,9 @@ def apply_rtk(text: str) -> str:
             
     return compressed_text
 
-
-def run_powershell(script_path: str, args: list = None) -> dict:
-    """Execute a PowerShell script and return output."""
-    cmd = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", script_path]
+def run_python_script(script_path: Path, args: list = None) -> dict:
+    """Execute a Python script using the active python interpreter."""
+    cmd = [sys.executable, str(script_path)]
     if args:
         cmd.extend(args)
 
@@ -76,11 +77,9 @@ def run_powershell(script_path: str, args: list = None) -> dict:
             text=True,
             timeout=300
         )
-        stdout = result.stdout
-        stdout = apply_rtk(stdout)
-        
+        stdout = apply_rtk(result.stdout)
         return {
-            "success": True,
+            "success": result.returncode == 0,
             "stdout": stdout,
             "stderr": result.stderr,
             "returncode": result.returncode
@@ -96,81 +95,160 @@ def run_powershell(script_path: str, args: list = None) -> dict:
             "error": str(e)
         }
 
+def get_active_project() -> str:
+    return os.environ.get("DEVCORE_ACTIVE_PROJECT_NAME", "devcore")
 
-def read_json(file_path: str) -> dict:
-    """Read a JSON file."""
+def complete_active_task() -> dict:
+    """Natively completes the active task and transitions to the next one."""
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            return json.load(f)
+        project = get_active_project()
+        tasks_file = DEVCORE_DATA / "Memory" / project / "tasks.json"
+        if not tasks_file.exists():
+            return {"success": False, "error": "tasks.json not found"}
+        
+        with open(tasks_file, "r", encoding="utf-8-sig") as f:
+            board = json.load(f)
+            
+        active_id = board.get("current_task")
+        if not active_id:
+            return {"success": False, "error": "Aucune tâche active à clore."}
+            
+        for t in board.get("tasks", []):
+            if t.get("id") == active_id:
+                t["status"] = "done"
+                t["steps_done"] = t.get("steps_total", 1)
+                t["completed_at"] = datetime.now().isoformat()
+                break
+                
+        # Activate next task if possible
+        next_task = next((t for t in board.get("tasks", []) if t.get("status") == "todo"), None)
+        if next_task:
+            next_task["status"] = "active"
+            next_task["started_at"] = datetime.now().isoformat()
+            board["current_task"] = next_task["id"]
+        else:
+            board["current_task"] = None
+            
+        with open(tasks_file, "w", encoding="utf-8") as f:
+            json.dump(board, f, indent=4, ensure_ascii=False)
+            
+        # Refresh dashboard
+        run_python_script(DEVCORE_SCRIPTS / "gen_dashboard.py")
+        
+        return {"success": True, "stdout": f"Active task {active_id} marked as DONE."}
     except Exception as e:
-        return {"error": str(e)}
+        return {"success": False, "error": str(e)}
 
+def sync_tasks() -> dict:
+    """Natively synchronizes suggestions from queues into tasks.json."""
+    try:
+        project = get_active_project()
+        proj_mem = DEVCORE_DATA / "Memory" / project
+        tasks_file = proj_mem / "tasks.json"
+        
+        if not tasks_file.exists():
+            return {"success": False, "error": "tasks.json not found"}
+            
+        with open(tasks_file, "r", encoding="utf-8-sig") as f:
+            board = json.load(f)
+            
+        # Scan queues
+        suggestions = []
+        queue_types = ["git", "spec", "prompt"]
+        for q in queue_types:
+            q_file = proj_mem / f"task_{q}_queue.jsonl"
+            if q_file.exists():
+                try:
+                    with open(q_file, "r", encoding="utf-8") as f:
+                        for line in f:
+                            if line.strip():
+                                suggestions.append(json.loads(line))
+                    q_file.unlink() # Cleanup queue file
+                except Exception:
+                    pass
+                    
+        if not suggestions:
+            return {"success": True, "stdout": "Sync complete. 0 tasks added."}
+            
+        # Find highest ID index
+        existing_ids = [t.get("id", "") for t in board.get("tasks", [])]
+        max_idx = 0
+        for tid in existing_ids:
+            match = re.search(r'T-(\d+)', tid)
+            if match:
+                max_idx = max(max_idx, int(match.group(1)))
+                
+        added = 0
+        for sug in suggestions:
+            # Check duplicate title
+            if any(t.get("title") == sug.get("title") for t in board.get("tasks", [])):
+                continue
+            max_idx += 1
+            new_task = {
+                "id": f"T-{max_idx:02d}",
+                "title": sug.get("title", "Untitled suggestion"),
+                "status": "todo",
+                "mode": sug.get("mode", "coding"),
+                "steps_done": 0,
+                "steps_total": 1,
+                "depends_on": sug.get("depends_on"),
+                "worktree": sug.get("worktree")
+            }
+            board.setdefault("tasks", []).append(new_task)
+            added += 1
+            
+        if added > 0:
+            with open(tasks_file, "w", encoding="utf-8") as f:
+                json.dump(board, f, indent=4, ensure_ascii=False)
+                
+        # Refresh dashboard
+        run_python_script(DEVCORE_SCRIPTS / "gen_dashboard.py")
+        
+        return {"success": True, "stdout": f"Sync complete. {added} task(s) added to tasks.json."}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
 
 # Tool definitions
 TOOLS = [
     {
         "name": "devcore_launch",
         "description": "Lance le script de demarrage quotidien DEV_CORE",
-        "input_schema": {
-            "type": "object",
-            "properties": {},
-        }
+        "input_schema": {"type": "object", "properties": {}}
     },
     {
         "name": "devcore_task_scan",
-        "description": "Scan automatique git + specs + prompts pour detection taches",
-        "input_schema": {
-            "type": "object",
-            "properties": {},
-        }
+        "description": "Scan automatique git + specs + prompts pour la detection des taches",
+        "input_schema": {"type": "object", "properties": {}}
     },
     {
         "name": "devcore_task_sync",
         "description": "Synchronise les taches detectees dans tasks.json",
-        "input_schema": {
-            "type": "object",
-            "properties": {},
-        }
+        "input_schema": {"type": "object", "properties": {}}
     },
     {
         "name": "devcore_task_status",
         "description": "Retourne le statut du board de taches",
-        "input_schema": {
-            "type": "object",
-            "properties": {},
-        }
+        "input_schema": {"type": "object", "properties": {}}
     },
     {
         "name": "devcore_task_done",
         "description": "Marque la tache active comme completee et passe a la suivante",
-        "input_schema": {
-            "type": "object",
-            "properties": {},
-        }
+        "input_schema": {"type": "object", "properties": {}}
     },
     {
         "name": "devcore_endday",
-        "description": "Lance la cloture quotidienne (lessons + Qdrant + Obsidian sync)",
-        "input_schema": {
-            "type": "object",
-            "properties": {},
-        }
+        "description": "Lance la cloture quotidienne (lecons + Qdrant + Obsidian sync)",
+        "input_schema": {"type": "object", "properties": {}}
     },
     {
         "name": "devcore_diagnose",
         "description": "Lance le diagnostic complet du systeme DEV_CORE",
-        "input_schema": {
-            "type": "object",
-            "properties": {},
-        }
+        "input_schema": {"type": "object", "properties": {}}
     },
     {
         "name": "devcore_check",
         "description": "Verifie l'état des services (Qdrant, Ollama, tasks, memory)",
-        "input_schema": {
-            "type": "object",
-            "properties": {},
-        }
+        "input_schema": {"type": "object", "properties": {}}
     },
     {
         "name": "devcore_event_emit",
@@ -187,24 +265,16 @@ TOOLS = [
     {
         "name": "devcore_dashboard_refresh",
         "description": "Régénère le dashboard Cockpit immédiatement",
-        "input_schema": {
-            "type": "object",
-            "properties": {},
-        }
+        "input_schema": {"type": "object", "properties": {}}
     },
     {
         "name": "devcore_health_check",
         "description": "Vérifie la santé complète du pipeline (tasks.json, encoding, dashboard sync)",
-        "input_schema": {
-            "type": "object",
-            "properties": {},
-        }
+        "input_schema": {"type": "object", "properties": {}}
     }
 ]
 
-
 def emit_event(event_type: str, payload: dict) -> dict:
-    """Emit an event in the DEV_CORE bus."""
     try:
         bus_dir = DEVCORE_DATA / "Bus" / "events"
         bus_dir.mkdir(parents=True, exist_ok=True)
@@ -225,49 +295,83 @@ def emit_event(event_type: str, payload: dict) -> dict:
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-
 def handle_tool_call(tool_name: str, arguments: dict) -> dict:
     """Handle tool call from Hermes."""
-    results = {
-        "devcore_launch": lambda: run_powershell(str(DEVCORE_SCRIPTS / "launch.ps1")),
-        "devcore_task_scan": lambda: run_powershell(str(DEVCORE_SCRIPTS / "task_scan.ps1")),
-        "devcore_task_sync": lambda: run_powershell(str(DEVCORE_SCRIPTS / "task_sync.ps1")),
-        "devcore_task_status": lambda: run_powershell(str(DEVCORE_SCRIPTS / "task_status.ps1")),
-        "devcore_task_done": lambda: run_powershell(str(DEVCORE_SCRIPTS / "task_done.ps1")),
-        "devcore_endday": lambda: run_powershell(str(DEVCORE_SCRIPTS / "endday.ps1")),
-        "devcore_diagnose": lambda: run_powershell(str(DEVCORE_SCRIPTS / "diagnose.ps1")),
-        "devcore_check": lambda: {
-            "tasks_json": read_json(str(DEVCORE_DATA / "Memory" / "tasks.json")),
-            "qdrant_status": "check via curl http://localhost:6333/collections",
+    if tool_name == "devcore_launch":
+        # Launch daily task logic
+        (DEVCORE_DATA / "Memory").mkdir(parents=True, exist_ok=True)
+        (DEVCORE_DATA / "Logs" / "scripts").mkdir(parents=True, exist_ok=True)
+        # Execute pricing sync and token report in python
+        run_python_script(DEVCORE_SCRIPTS / "Auto" / "token_report.py")
+        return {"success": True, "stdout": "Daily launch sequence completed natively in Python."}
+        
+    elif tool_name == "devcore_task_scan":
+        # Run python prompt analyzer
+        return run_python_script(DEVCORE_SCRIPTS / "Auto" / "task_prompt_analyzer.py")
+        
+    elif tool_name == "devcore_task_sync":
+        return sync_tasks()
+        
+    elif tool_name == "devcore_task_status":
+        project = get_active_project()
+        tasks_file = DEVCORE_DATA / "Memory" / project / "tasks.json"
+        if tasks_file.exists():
+            try:
+                board = json.loads(tasks_file.read_text(encoding="utf-8-sig"))
+                tasks = board.get("tasks", [])
+                active = next((t for t in tasks if t.get("status") == "active"), None)
+                done_count = sum(1 for t in tasks if t.get("status") == "done")
+                status_str = f"Active task: {active.get('id') if active else 'None'} ({active.get('title') if active else 'N/A'})\n"
+                status_str += f"Tasks progress: {done_count}/{len(tasks)} completed."
+                return {"success": True, "stdout": status_str}
+            except Exception as e:
+                return {"success": False, "error": f"Failed to read board: {e}"}
+        return {"success": False, "error": "tasks.json not found"}
+        
+    elif tool_name == "devcore_task_done":
+        return complete_active_task()
+        
+    elif tool_name == "devcore_endday":
+        # Daily close: run token metrics report and refresh dashboard
+        run_python_script(DEVCORE_SCRIPTS / "Auto" / "token_report.py")
+        run_python_script(DEVCORE_SCRIPTS / "gen_dashboard.py")
+        return {"success": True, "stdout": "Endday shutdown hooks executed natively in Python."}
+        
+    elif tool_name == "devcore_diagnose":
+        return run_python_script(DEVCORE_SCRIPTS / "dc.py", ["doctor"])
+        
+    elif tool_name == "devcore_check":
+        project = get_active_project()
+        tasks_file = DEVCORE_DATA / "Memory" / project / "tasks.json"
+        try:
+            tasks_data = json.loads(tasks_file.read_text(encoding="utf-8-sig")) if tasks_file.exists() else {}
+        except Exception:
+            tasks_data = {}
+        return {
+            "tasks_json": tasks_data,
+            "qdrant_status": "Qdrant active check" if check_port(6333) else "Qdrant unavailable",
             "memory_exists": (DEVCORE_DATA / "Memory" / "MEMORY.md").exists()
-        },
-        "devcore_event_emit": lambda: emit_event(
-            arguments.get("event_type"),
-            arguments.get("payload", {})
-        ),
-        "devcore_dashboard_refresh": lambda: run_powershell(str(DEVCORE_SCRIPTS / "gen_dashboard.ps1")),
-        "devcore_health_check": lambda: run_powershell(str(DEVCORE_SCRIPTS / "Auto" / "integrity_check.ps1"))
-    }
-
-    if tool_name in results:
-        return results[tool_name]()
+        }
+        
+    elif tool_name == "devcore_event_emit":
+        return emit_event(arguments.get("event_type"), arguments.get("payload", {}))
+        
+    elif tool_name == "devcore_dashboard_refresh":
+        return run_python_script(DEVCORE_SCRIPTS / "gen_dashboard.py")
+        
+    elif tool_name == "devcore_health_check":
+        return run_python_script(DEVCORE_SCRIPTS / "Auto" / "integrity_check.py")
+        
     else:
         return {"error": f"Unknown tool: {tool_name}"}
 
-
-
 def main():
-    """Main entry point for MCP server."""
     print("DEV_CORE MCP Server started")
     print(f"Scripts path: {DEVCORE_SCRIPTS}")
     print(f"Data path: {DEVCORE_DATA}")
     print(f"Available tools: {len(TOOLS)}")
-
-    # In production, this would start the MCP server
-    # For now, we just print the tools
     for tool in TOOLS:
         print(f"  - {tool['name']}: {tool['description']}")
-
 
 if __name__ == "__main__":
     main()

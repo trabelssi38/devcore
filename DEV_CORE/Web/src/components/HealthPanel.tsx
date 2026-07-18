@@ -1,21 +1,19 @@
-const checks = [
-  { name: "API Gateway", statusText: "ok" },
-  { name: "Workers", statusText: "ok" },
-  { name: "Database", statusText: "ready" },
-];
+type HealthPanelProps = {
+  services?: Record<string, boolean>;
+};
 
-export function HealthPanel() {
+export function HealthPanel({ services = {} }: HealthPanelProps) {
   return (
     <section className="card" aria-label="Santé plateforme">
-      <p className="eyebrow">Health</p>
+      <p className="eyebrow">Services</p>
       <h2>Santé système</h2>
-      <ul className="stack-list">
-        {checks.map((check) => (
-          <li key={check.name}>
-            <span>{check.name}</span>
-            <span className="badge">
+      <ul className="stack-list" style={{ listStyle: "none", padding: 0 }}>
+        {Object.entries(services).map(([name, alive]) => (
+          <li key={name} style={{ display: "flex", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+            <span style={{ color: "#f1f5f9" }}>{name.toUpperCase()}</span>
+            <span className={`badge ${alive ? "ok" : "error"}`} style={{ fontSize: "10px", padding: "2px 6px", borderRadius: "4px" }}>
               <span className="sr-only">Statut : </span>
-              {check.statusText}
+              {alive ? "ONLINE" : "OFFLINE"}
             </span>
           </li>
         ))}
