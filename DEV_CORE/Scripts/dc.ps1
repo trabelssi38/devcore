@@ -9,6 +9,20 @@ $PLATFORM = Get-DevCorePlatformInfo
 $PLATFORM_TITLE = $PLATFORM.title
 $cmd = ($Args -join " ").ToLower().Trim()
 
+$cmdFirst = if ($Args.Count -gt 0) { $Args[0].ToLower().Trim() } else { "" }
+$cmdSecond = if ($Args.Count -gt 1) { $Args[1].ToLower().Trim() } else { "" }
+$isMigrated = $false
+if ($cmdFirst -eq "nt" -or $cmdFirst -eq "doctor" -or $cmdFirst -eq "benchmark" -or $cmdFirst -eq "profile") {
+    $isMigrated = $true
+} elseif ($cmdFirst -eq "next" -and $cmdSecond -eq "task") {
+    $isMigrated = $true
+}
+if ($isMigrated) {
+    $pyScript = Join-Path $PSScriptRoot "dc.py"
+    python $pyScript $Args
+    exit $LASTEXITCODE
+}
+
 function Invoke-TaskEditSafe {
     param(
         [Parameter(Mandatory=$true)][string]$Id,

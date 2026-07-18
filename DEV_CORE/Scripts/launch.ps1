@@ -115,143 +115,69 @@ function Wait-QdrantReady {
     return $null
 }
 
-# 2.1 Qdrant / Docker
-if (-not (Check-Port 6333)) {
-    Log "  Qdrant (Port 6333) est hors-ligne. Tentative de demarrage..." "Yellow"
-    $dockerOk = Test-DockerReady
-    
-    if (-not $dockerOk) {
-        Log "  Docker Desktop ne semble pas etre demarre. Tentative de lancement..." "Yellow"
-        $dockerPath = Get-DockerDesktopPath
-        if ($dockerPath) {
-            Start-Process -FilePath $dockerPath -WindowStyle Hidden -ErrorAction SilentlyContinue
-            Log "  Docker Desktop lance. Attente du demarrage (max 60s)..." "Gray"
-            if (Wait-DockerReady -TimeoutSeconds 60) {
-                $dockerOk = $true
-                Log "  Docker Desktop demarre avec succes." "Green"
-            }
-        } else {
-            Log "  [WARN] Impossible de trouver l'executable Docker Desktop." "Yellow"
-        }
-    }
-    
-    if ($dockerOk) {
-        $qdrantContainers = docker ps -a --filter "ancestor=qdrant/qdrant" --format "{{.ID}} {{.Names}} {{.Status}}"
-        if ($qdrantContainers) {
-            $cId = ($qdrantContainers | Select-Object -First 1).Split(" ")[0]
-            $cName = ($qdrantContainers | Select-Object -First 1).Split(" ")[1]
-            Log "  Conteneur Qdrant existant trouve : $cName ($cId). Demarrage..." "Gray"
-            docker start $cId | Out-Null
-        } else {
-            Log "  Aucun conteneur Qdrant trouve. Lancement d'un nouveau conteneur..." "Gray"
-            docker run -d -p 6333:6333 -v C:/devcore/DEV_CORE_DATA/qdrant_storage:/qdrant/storage qdrant/qdrant | Out-Null
+# 2.1 Docker Compose up -d
+Log "  Demarrage de la pile Docker Compose..." "Yellow"
+$dockerOk = Test-DockerReady
+if (-not $dockerOk) {
+    Log "  Docker Desktop ne semble pas etre demarre. Tentative de lancement..." "Yellow"
+    $dockerPath = Get-DockerDesktopPath
+    if ($dockerPath) {
+        Start-Process -FilePath $dockerPath -WindowStyle Hidden -ErrorAction SilentlyContinue
+        Log "  Docker Desktop lance. Attente du demarrage (max 60s)..." "Gray"
+        if (Wait-DockerReady -TimeoutSeconds 60) {
+            $dockerOk = $true
+            Log "  Docker Desktop demarre avec succes." "Green"
         }
     } else {
-        Log "  [ERROR] Docker Desktop n'est pas actif. Impossible de demarrer Qdrant." "Red"
+        Log "  [WARN] Impossible de trouver l'executable Docker Desktop." "Yellow"
     }
 }
 
-$qdrantStatus = Wait-QdrantReady -TimeoutSeconds 60
-if ($qdrantStatus) {
-    Log "  Qdrant OK - $($qdrantStatus.result.collections.Count) collections" "Green"
+if ($dockerOk) {
+    Log "  Execution de docker compose up -d..." "Gray"
+    docker compose up -d
+    if ($LASTEXITCODE -ne 0) {
+        Log "  [WARN] docker compose up -d a retourne un code d'erreur." "Yellow"
+    }
 } else {
-    Log "  Qdrant non disponible" "Red"
+    Log "  [ERROR] Docker Desktop non actif. Impossible de lancer la pile Compose." "Red"
 }
 
-
-# 2.2.5 Gemini Router (Port 20130) - Primary
-if (-not (Check-Port 20130)) {
-    Log "  Gemini Router (Port 20130) est hors-ligne. Tentative de demarrage..." "Yellow"
-    if (Test-Path "$DEV_CORE\Scripts\gemini_router.py") {
-        $maxStartAttempts = 2
-        $routerOpen = $false
-        for ($attempt = 1; $attempt -le $maxStartAttempts; $attempt++) {
-            Log "  Demarrage de Gemini Router (tentative $attempt/$maxStartAttempts)..." "Gray"
-            $logOut = "$DEV_CORE_DATA\Logs\scripts\gemini_router.log"
-            $logErr = "$DEV_CORE_DATA\Logs\scripts\gemini_router_err.log"
-            
-            $proc = Start-Process -FilePath "python" -ArgumentList "$DEV_CORE\Scripts\gemini_router.py" -WorkingDirectory "C:\devcore" -WindowStyle Hidden -RedirectStandardOutput $logOut -RedirectStandardError $logErr -PassThru -ErrorAction SilentlyContinue
-            
-            # Attendre que le port s'ouvre (timeout 10s)
-            for ($i = 0; $i -lt 20; $i++) {
-                Start-Sleep -Milliseconds 500
-                if (Check-Port 20130) {
-                    $routerOpen = $true
-                    break
-                }
-            }
-            
-            if ($routerOpen) {
-                Log "  Gemini Router lance avec succes sur le port 20130" "Green"
-                break
-            } else {
-                Log "  [WARN] Gemini Router n'a pas repondu sur le port 20130 apres 10s. Fermeture du processus orphelin..." "Yellow"
-                try {
-                    if ($proc -and -not $proc.HasExited) {
-                        $proc.Kill()
-                        Start-Sleep -Seconds 1
-                    }
-                } catch {
-                    Log "  [WARN] Erreur lors de l'arret du processus orphelin: $_" "Yellow"
-                }
-            }
+# Wait for container services
+Log "  Verification de l'ouverture des ports de la pile Compose..." "Gray"
+$ports = @(
+    @{ name = "PostgreSQL"; port = 5432 }
+    @{ name = "Qdrant"; port = 6333 }
+    @{ name = "Gemini Router"; port = 20130 }
+    @{ name = "FastAPI API"; port = 20131 }
+)
+foreach ($p in $ports) {
+    $portOpen = $false
+    for ($i = 0; $i -lt 30; $i++) {
+        if (Check-Port $p.port) {
+            $portOpen = $true
+            break
         }
-        if (-not $routerOpen) {
-            Log "  [ERROR] Impossible de demarrer Gemini Router apres $maxStartAttempts tentatives." "Red"
-        }
+        Start-Sleep -Seconds 1
+    }
+    if ($portOpen) {
+        Log "  Service $($p.name) OK (Port $($p.port) actif)" "Green"
     } else {
-        Log "  [WARN] Script gemini_router.py introuvable." "Yellow"
+        Log "  [WARN] Le service $($p.name) n'a pas repondu sur le port $($p.port) apres 30s." "Yellow"
     }
-} else {
-    Log "  Gemini Router OK (Port 20130 actif)" "Green"
 }
 
-# 2.2.6 Dashboard API Server (Port 20129)
-if (-not (Check-Port 20129)) {
-    Log "  Dashboard API Server (Port 20129) est hors-ligne. Tentative de demarrage..." "Yellow"
-    if (Test-Path "$DEV_CORE\Scripts\dashboard_api.py") {
-        $maxStartAttempts = 2
-        $apiOpen = $false
-        for ($attempt = 1; $attempt -le $maxStartAttempts; $attempt++) {
-            Log "  Demarrage de Dashboard API Server (tentative $attempt/$maxStartAttempts)..." "Gray"
-            $logOut = "$DEV_CORE_DATA\Logs\scripts\dashboard_api.log"
-            $logErr = "$DEV_CORE_DATA\Logs\scripts\dashboard_api_err.log"
-            
-            $proc = Start-Process -FilePath "python" -ArgumentList "$DEV_CORE\Scripts\dashboard_api.py" -WorkingDirectory "C:\devcore" -WindowStyle Hidden -RedirectStandardOutput $logOut -RedirectStandardError $logErr -PassThru -ErrorAction SilentlyContinue
-            
-            # Attendre que le port s'ouvre (timeout 10s)
-            for ($i = 0; $i -lt 20; $i++) {
-                Start-Sleep -Milliseconds 500
-                if (Check-Port 20129) {
-                    $apiOpen = $true
-                    break
-                }
-            }
-            
-            if ($apiOpen) {
-                Log "  Dashboard API Server lance avec succes sur le port 20129" "Green"
-                break
-            } else {
-                Log "  [WARN] Dashboard API Server n'a pas repondu sur le port 20129 apres 10s. Fermeture du processus orphelin..." "Yellow"
-                try {
-                    if ($proc -and -not $proc.HasExited) {
-                        $proc.Kill()
-                        Start-Sleep -Seconds 1
-                    }
-                } catch {
-                    Log "  [WARN] Erreur lors de l'arret du processus orphelin: $_" "Yellow"
-                }
-            }
-        }
-        if (-not $apiOpen) {
-            Log "  [ERROR] Impossible de demarrer Dashboard API Server apres $maxStartAttempts tentatives." "Red"
-        }
+# Run DB Migrations
+if ($dockerOk) {
+    Log "  Execution des migrations de la base de donnees..." "Gray"
+    docker compose exec -w /app/DEV_CORE/Database api alembic upgrade head
+    if ($LASTEXITCODE -eq 0) {
+        Log "  Migrations Alembic completees avec succes" "Green"
     } else {
-        Log "  [WARN] Script dashboard_api.py introuvable." "Yellow"
+        Log "  [WARN] Erreur lors de l'execution des migrations Alembic dans le conteneur." "Yellow"
     }
-} else {
-    Log "  Dashboard API Server OK (Port 20129 actif)" "Green"
 }
+
 
 # 2.3 Headroom Proxy
 if (-not (Check-Port 8787)) {
