@@ -12,6 +12,7 @@ if str(tools_dir) not in sys.path:
 
 from devcore.state_engine import StateEngine, InvalidStateTransition
 from devcore.agent_runner import get_agent_runner
+from devcore.event_bus import EventBus
 
 logger = logging.getLogger("orchestrator")
 
@@ -68,16 +69,16 @@ class WorkflowChecker:
     def check_post_step(self, step_id: str) -> bool:
         """Run post-step validations. Returns True if successful, False otherwise."""
         logger.info(f"[WorkflowChecker] Running post-step checks for step: {step_id}")
-        # Default behavior: nominal pass
         return True
 
 
 class WorkflowExecutor:
-    """Executes step sequences and manages workflow completion transitions."""
+    """Executes step sequences, manages workflow completion, and publishes lifecycle events."""
 
-    def __init__(self, state: StateEngine, checker: Optional[WorkflowChecker] = None):
+    def __init__(self, state: StateEngine, checker: Optional[WorkflowChecker] = None, event_bus: Optional[EventBus] = None):
         self.state = state
         self.checker = checker or WorkflowChecker()
+        self.event_bus = event_bus or EventBus()
 
     def get_runnable_steps(self) -> List[str]:
         """Resolve all steps ready for execution (pending and deps completed)."""
@@ -106,8 +107,17 @@ class WorkflowExecutor:
     def run_step(self, step_id: str) -> bool:
         """Execute a single step by dispatching it to its matching execution adapter."""
         step_def = next((s for s in self.state.step_definitions if s["id"] == step_id), {})
+        
+        # Transition state and persist
         self.state.start_step(step_id)
         self.state.persist()
+
+        # Publish step started event
+        self.event_bus.publish("step_started", {
+            "workflow_run_id": self.state.run_id,
+            "step_id": step_id,
+            "title": step_def.get("title", "")
+        })
 
         success = True
         error_msg = ""
@@ -180,18 +190,54 @@ class WorkflowExecutor:
         # Finalize step state
         if success:
             self.state.complete_step(step_id, output_metadata)
+            self.event_bus.publish("step_succeeded", {
+                "workflow_run_id": self.state.run_id,
+                "step_id": step_id,
+                "output": output_metadata
+            })
         else:
             self.state.fail_step(step_id, error_msg)
+            self.event_bus.publish("step_failed", {
+                "workflow_run_id": self.state.run_id,
+                "step_id": step_id,
+                "error": error_msg
+            })
 
         self.state.persist()
         return success
 
     def execute_all(self) -> None:
-        """Run the workflow execution loop until completion or failure."""
+        """Run the workflow execution loop until completion or failure, recovering interrupted steps."""
+        # 1. Handle workflow start or resume transitions
         if self.state.status == "pending":
             self.state.start()
             self.state.persist()
+            self.event_bus.publish("workflow_started", {
+                "workflow_run_id": self.state.run_id,
+                "name": self.state.name
+            })
+        elif self.state.status == "paused":
+            self.state.resume()
+            self.state.persist()
+            self.event_bus.publish("workflow_resumed", {
+                "workflow_run_id": self.state.run_id,
+                "name": self.state.name
+            })
+        elif self.state.status == "running":
+            # Resuming an already active run context (recovery)
+            self.event_bus.publish("workflow_resumed", {
+                "workflow_run_id": self.state.run_id,
+                "name": self.state.name
+            })
 
+        # 2. Reset interrupted steps (status="running") back to "pending" to allow clean rerun
+        for step_id, step_state in self.state.steps.items():
+            if step_state["status"] == "running":
+                logger.warning(f"Resuming workflow run: step {step_id} was found in 'running' state. Resetting to 'pending'.")
+                step_state["status"] = "pending"
+                step_state["starts_at"] = None
+
+        # 3. Main execution loop
         while self.state.status == "running":
             runnable = self.get_runnable_steps()
             if not runnable:
@@ -199,9 +245,18 @@ class WorkflowExecutor:
                 incomplete = [sid for sid, s in self.state.steps.items() if s["status"] in ("pending", "running")]
                 if not incomplete:
                     self.state.complete()
+                    self.event_bus.publish("workflow_succeeded", {
+                        "workflow_run_id": self.state.run_id,
+                        "name": self.state.name
+                    })
                 else:
                     # Deadlock detection: steps remain incomplete but none are runnable (unsatisfiable dependencies)
                     self.state.fail()
+                    self.event_bus.publish("workflow_failed", {
+                        "workflow_run_id": self.state.run_id,
+                        "name": self.state.name,
+                        "error": "Deadlocked step dependencies detected"
+                    })
                     logger.error("Execution loop halted: deadlocked step dependencies detected.")
                 self.state.persist()
                 break
@@ -211,4 +266,9 @@ class WorkflowExecutor:
             step_success = self.run_step(step_to_run)
             if not step_success:
                 # Executor immediately stops execution if any step fails
+                self.event_bus.publish("workflow_failed", {
+                    "workflow_run_id": self.state.run_id,
+                    "name": self.state.name,
+                    "error": f"Step {step_to_run} failed."
+                })
                 break
