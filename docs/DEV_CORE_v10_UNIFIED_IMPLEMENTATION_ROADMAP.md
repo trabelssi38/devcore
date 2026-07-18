@@ -68,6 +68,8 @@ Construire DEV_CORE v10 comme runtime d'orchestration portable, testable, observ
 | WS-E | REST/API et dashboard | P1 | API versionnee stable, dashboard plus leger, diagnostics natifs |
 | WS-G | Skills/UI/Motion quality | P2 | Standards, audits, gates, plans auto-suffisants |
 | WS-H | Performance Rust/Go | P2 | Hotspots extraits seulement si mesures le justifient |
+| WS-I | Intelligence memoire (inspire marm-memory) | P1 | Recherche hybride RRF, compaction LLM, extension knowledge graph |
+| WS-J | Agent harness et outillage (inspire OI, code-review-graph) | P1 | Harness profiles declaratifs, hooks MCP, AST Tree-sitter via code-review-graph |
 
 Changement principal : Docker/Compose passe de P1 a P0. La conteneurisation n'est plus un sprint tardif de portabilite, mais une contrainte de fondation.
 
@@ -342,7 +344,8 @@ Critere d'acceptation :
 ### Sprint 06 -- Agent Runner abstraction et Hermes optionnel
 
 Priorite : P0
-Objectif : isoler Hermes derriere une interface interchangeable.
+Objectif : isoler Hermes derriere une interface interchangeable, avec support de harness profiles declaratifs.
+Source additionnelle : architecture Multi-Harness d'OpenInterpreter.
 
 Livrables :
 
@@ -352,10 +355,16 @@ Livrables :
 - Selection runner par config.
 - Healthcheck runner.
 - Documentation de rollback Hermes.
+- Schema de harness profiles declaratifs dans `Config/harness_profiles.json` (inspire OpenInterpreter) :
+  - Chaque harness definit : `model`, `system_prompt_template`, `context_budget`, `tool_format`, `temperature`, `pre_hooks`, `post_hooks`, `fallback_harness`.
+  - Etend les `routing_profiles.json` actuels (3 profils hardcodes : reasoning/coding/bulk) vers des profils configurables sans modifier le code.
+  - Le router (`Tools/devcore/router.py`) doit lire les harness profiles au lieu des poids de scoring fixes.
 
 Critere d'acceptation :
 
 - Hermes peut etre desactive sans casser scheduler, dashboard, diagnostics et jobs no-agent.
+- Au moins 5 harness profiles declaratifs sont configurables sans modifier le code Python.
+- Le router selectionne le harness en fonction du task_type et du profil, pas de poids hardcodes.
 
 ### Sprint 07a -- State engine et workflow schema
 
@@ -550,6 +559,294 @@ Critere d'acceptation :
 - Un `git push` declenche build + tests en CI.
 - La documentation DX couvre le setup initial, le workflow quotidien et le troubleshooting.
 
+### Sprint 16 -- Recherche hybride et reranking RRF (WS-I)
+
+Priorite : P1
+Objectif : remplacer le pipeline de recherche memoire sequentiel par une fusion parallele FTS5 + vecteur avec Reciprocal Rank Fusion.
+Source : analyse marm-memory `smart_recall` vs pipeline `memory_hierarchy.ps1` actuel.
+
+Contexte :
+
+L'audit a identifie 3 failles structurelles dans le pipeline de recherche actuel :
+
+1. Le FTS5 SQLite est un fallback exclusif (ne se lance que si Qdrant retourne zero resultat au-dessus de 0.75) -- les resultats lexicaux exacts (IDs de taches, noms de fichiers) sont perdus des que Qdrant retourne un match semantique tangentiel.
+2. Les scores calcules par `context_service.ps1` (relevance x 0.5 + freshness x 0.2 + authority x 0.3) sont completement ignores par `memory_hierarchy.ps1` -- ils sont informationnels mais jamais utilises pour filtrer ou trier.
+3. Mismatch d'embeddings : `embedding.json` declare `text-embedding-3-small` (OpenAI) pour le stockage et `gemini-embedding-001` (Google) pour les requetes -- les scores de similarite cosinus deviennent aberrants.
+
+Livrables :
+
+- Correction du mismatch d'embeddings dans `Config/embedding.json` : unifier sur un seul modele pour stockage et requetes. Regenration des embeddings Qdrant si necessaire.
+- Fiabilisation FTS5 dans `Scripts/init_conversations_db.py` : creation en mode erreur fatale (pas silent catch), ajout triggers UPDATE/DELETE pour sync FTS, verification au demarrage via `launch.py`.
+- Refactoring de `Scripts/memory_hierarchy.ps1` action `Query` :
+  - Lancement parallele de la recherche Qdrant (4 collections : ajouter `codebase`) et FTS5 SQLite.
+  - Fusion des resultats via algorithme RRF : `score_rrf = sum(1 / (k + rank_i))` avec `k = 60`.
+  - Application des scores Context Service comme multiplicateurs du score RRF final.
+  - Retourner les top-5 resultats fusionnes, tries par score RRF decroissant.
+- Ajout de filtres metadata sur les requetes Qdrant (date, projet, task_type) pour ameliorer la precision.
+- Tests unitaires : RRF fusion, FTS5 creation/sync, recherche parallele, fallback si un backend est indisponible.
+
+Fichiers concernes :
+
+| Fichier | Modification |
+|---|---|
+| `DEV_CORE/Config/embedding.json` | Unifier modele storage/query |
+| `DEV_CORE/Scripts/init_conversations_db.py` | FTS5 fiable + triggers UPDATE/DELETE |
+| `DEV_CORE/Scripts/memory_hierarchy.ps1` | Fusion parallele RRF, ajout collection `codebase`, filtres metadata |
+| `DEV_CORE/Scripts/context_service.ps1` | Exposer scores comme multiplicateurs RRF |
+| `DEV_CORE/Scripts/qdrant_sync.ps1` | Re-embed si modele change |
+
+Algorithme RRF de reference :
+
+```python
+def reciprocal_rank_fusion(result_lists, k=60):
+    scores = {}
+    for result_list in result_lists:
+        for rank, doc in enumerate(result_list, start=1):
+            doc_id = doc["id"]
+            scores[doc_id] = scores.get(doc_id, 0) + 1.0 / (k + rank)
+    return sorted(scores.items(), key=lambda x: x[1], reverse=True)
+```
+
+Metriques de succes :
+
+| Metrique | Baseline actuelle | Cible |
+|---|---|---|
+| Collections interrogees | 3/4 (codebase exclu) | 4/4 |
+| Temps de recherche memoire | ~3-5s (3 appels curl sequentiels) | < 1.5s (parallelisation) |
+| Recherche lexicale exacte (ex: "T-42") | Perdue si Qdrant retourne un match > 0.75 | Toujours disponible via FTS5 parallele |
+| Utilisation des scores Context Service | 0% (ignores) | 100% (multiplicateurs RRF) |
+| Mismatch embedding storage/query | Oui (2 modeles differents) | Non (modele unifie) |
+
+Critere d'acceptation :
+
+- Une requete avec un ID de tache exact ("T-42") retourne le bon resultat en position 1 via FTS5, meme si Qdrant retourne des matchs semantiques.
+- Les 4 collections Qdrant sont interrogees.
+- Le temps total de recherche memoire est < 2 secondes.
+- Les scores Context Service influencent le classement final mesurable (test A/B sur 10 requetes).
+
+### Sprint 17 -- Compaction memoire assistee par LLM (WS-I)
+
+Priorite : P1
+Objectif : introduire la compaction semantique de la memoire pour prevenir la croissance illimitee et ameliorer la qualite des rappels.
+Source : analyse marm-memory `compaction` vs pipeline `lesson_extractor.ps1` / `memory_rotate.ps1` actuel.
+
+Contexte :
+
+L'audit a identifie que :
+
+1. `LESSONS.md` est a 480 lignes / 33 KB et croit de ~7 entrees/jour sans aucune rotation (contrairement a `MEMORY.md` qui a une rotation a 300 lignes).
+2. Zero LLM n'est utilise pour la gestion memoire -- tous les processus sont mecaniques (regex, grep, troncature).
+3. L'agregation L1 vers L2 Scenarios est un simple grep par mot-cle de TaskType, qui rate les lecons pertinentes ne contenant pas le mot-cle exact.
+4. Les scores des entrees (`[score: 0.5-0.95]`) sont statiques -- assignes une fois, jamais decroissants ni reevalues.
+5. La politique de dedup Qdrant "SHA-256 obligatoire" documentee dans MEMORY.md n'est pas implementee dans le code.
+
+Livrables :
+
+- Creation de `Scripts/Auto/memory_compactor.py` (Python, utilise Gemini Router en mode bulk) :
+  - Lecture complete de `LESSONS.md`.
+  - Decoupage par sections thematiques (headers markdown existants).
+  - Pour chaque section > 10 entrees : appel LLM pour fusionner les doublons, consolider les lecons similaires, resumer en max 5 regles claires par section.
+  - Conservation des TAGs les plus recents et du score le plus eleve du groupe fusionne.
+  - Ecriture du fichier compacte avec backup pre-compaction.
+- Implementation du score decay dans `lesson_extractor.ps1` :
+  - Ajout d'un champ `created_at` ISO a chaque entree.
+  - Decay : entrees > 30j : `score x 0.9`, > 90j : `score x 0.7`, > 180j : `score x 0.5`.
+  - Suppression des entrees avec score < 0.3 apres decay.
+- Ajout d'une rotation pour `LESSONS.md` dans `memory_service.ps1` (seuil 300 lignes, comme `MEMORY.md`).
+- Remplacement du grep par classification semantique dans `memory_hierarchy.ps1 -Action Aggregate` : appel LLM pour router chaque lecon vers le(s) bon(s) Scenario(s) au lieu de match par mot-cle.
+- Implementation du hash SHA-256 effectif avant tout upsert Qdrant dans `qdrant_sync.ps1` (aligner le code sur la politique documentee).
+- Integration au pipeline `endday.ps1` : nouveau step entre 4 et 5 (step 4.5 compaction).
+- Tests : compaction idempotente (2 runs = meme resultat), score decay correct, rotation effective, hash dedup.
+
+Fichiers concernes :
+
+| Fichier | Action |
+|---|---|
+| `Scripts/Auto/memory_compactor.py` | **Creer** -- script de compaction LLM |
+| `Scripts/Auto/lesson_extractor.ps1` | Ajouter champ `created_at`, score decay |
+| `Scripts/memory_service.ps1` | Ajouter action `RotateLessons` (seuil 300 lignes) |
+| `Scripts/memory_hierarchy.ps1` | Remplacer grep par classification LLM dans `Aggregate` |
+| `Scripts/qdrant_sync.ps1` | Implementer hash SHA-256 avant upsert |
+| `Scripts/endday.ps1` | Ajouter step 4.5 compaction memoire |
+
+Metriques de succes :
+
+| Metrique | Baseline actuelle | Cible |
+|---|---|---|
+| Taille LESSONS.md | 480 lignes / 33 KB | < 150 lignes apres compaction initiale |
+| Doublons dans Qdrant | Non verifie (SHA-256 non implemente) | 0 (hash enforce) |
+| Entries sans `created_at` | 100% | 0% |
+| Lecons mal routees dans Scenarios | Non mesure (grep par mot-cle) | < 5% d'erreur de classification |
+| Croissance nette LESSONS.md | ~7 entrees/jour non bornees | Bornee par rotation + compaction |
+
+Critere d'acceptation :
+
+- `LESSONS.md` est compacte a < 200 lignes apres le premier run.
+- Les entrees de plus de 90 jours ont un score reduit.
+- Le pipeline `endday.ps1` execute la compaction sans erreur.
+- L'agregation vers les Scenarios utilise la classification LLM et route correctement une lecon "authentification JWT dans l'API" vers les Scenarios `auth` ET `api`.
+- Le hash SHA-256 empeche effectivement les doublons dans Qdrant.
+
+### Sprint 18 -- Extension knowledge graph via code-review-graph et indexation codebase granulaire (WS-I + WS-J)
+
+Priorite : P2
+Objectif : enrichir le knowledge graph existant avec un AST Tree-sitter complet et fragmenter l'indexation codebase pour une recherche precise.
+Sources : analyse marm-memory `graph_index` + analyse `tirth8205/code-review-graph` (Tree-sitter, graphe SQLite incremental, niveaux de confiance).
+
+Contexte :
+
+L'audit a revele que DEV_CORE possede deja :
+
+1. `knowledge_graph.ps1` (470 lignes) qui construit un graphe de 2.3 MB avec 8 types de noeuds et 7 types d'aretes, incluant une analyse d'impact par BFS a 3 niveaux.
+2. Le serveur MCP `repowise` configure dans `.mcp.json` pour "codebase intelligence -- docs, graph, git signals, dead code, decisions".
+3. Une collection Qdrant `codebase` qui existe mais indexe tout le code comme un seul blob vectoriel (pas de granularite par fichier ou fonction).
+4. **Zero parsing AST** dans tout le codebase (aucun `tree-sitter`, `ast.parse`, ou analyse structurelle).
+
+L'analyse du repo `code-review-graph` revele un outil MCP Tree-sitter qui :
+- Parse ~35 langages via Tree-sitter (dont Python et PowerShell).
+- Construit un graphe SQLite incremental (ne re-parse que les fichiers changes, < 2s).
+- Classe les aretes par confiance : `EXTRACTED` / `INFERRED` / `AMBIGUOUS`.
+- Reduit l'usage tokens de 6.8x sur les reviews.
+
+Decision : **integrer `code-review-graph` comme serveur MCP dedie** au lieu de coder un parsing regex basique. Connecter son graphe SQLite au `knowledge_graph.ps1` existant via un script bridge.
+
+Livrables :
+
+- Installation de `code-review-graph` comme serveur MCP dans `.mcp.json` :
+  - `pip install code-review-graph` dans l'image Python DEV_CORE.
+  - Configuration : repo racine = `c:\devcore`, langages = Python, PowerShell, JSON, YAML.
+- Creation de `Tools/devcore/crg_sync.py` (bridge script) :
+  - Lit le graphe SQLite de code-review-graph (`.code-review-graph/graph.db`).
+  - Injecte les noeuds `function`, `class`, `import` dans `graph.json` du knowledge graph.
+  - Injecte les aretes `file_function`, `function_calls`, `class_inherits`, `file_imports`.
+  - Ajoute le champ `confidence` (`EXTRACTED`/`INFERRED`/`AMBIGUOUS`) sur toutes les aretes.
+  - Execute en mode incremental (delta depuis le dernier sync).
+- Exposition du knowledge graph via MCP :
+  - Ajouter un outil `devcore_impact_analysis` dans `MCP/devcore-scripts/server.py` qui wrappe `knowledge_graph.ps1 -Action ImpactAnalysis -Target <target> -Json`.
+  - Ajouter un outil `devcore_knowledge_status` qui wrappe `knowledge_graph.ps1 -Action Status -Json`.
+- Fragmentation de l'indexation codebase dans `qdrant_sync.ps1` :
+  - Remplacer l'indexation "un blob pour tout le code" par des vecteurs individuels par fichier.
+  - Chaque point Qdrant = un fichier avec payload : `path`, `type` (script/module/skill), `description`, `functions_count`, `size`, `last_modified`.
+  - Pour les fichiers Python : vecteurs additionnels par fonction (extraits du graphe CRG).
+- Activation de la quantization Qdrant native pour la collection codebase (int8, always_ram) au lieu d'introduire Turbovec.
+  - Note : Turbovec (`RyanCodrai/turbovec`) a ete evalue comme acceleration locale mais reporte — la quantization native de Qdrant suffit a l'echelle actuelle (~200-500 vecteurs). Reevaluer si > 5000 points ou latence > 100ms.
+- Extension de `knowledge_graph.ps1` :
+  - Nouveaux types de noeuds : `function`, `class`, `import`.
+  - Nouvelles aretes : `file_function`, `function_calls`, `class_inherits`, `file_imports`.
+  - Champ `confidence` sur toutes les aretes.
+  - Lecture optionnelle du graphe CRG si disponible (graceful fallback si CRG non installe).
+- Tests : build graph avec CRG actif, recherche codebase par fichier et par fonction, impact analysis via MCP, indexation incrementale < 5s.
+
+Fichiers concernes :
+
+| Fichier | Action |
+|---|---|
+| `.mcp.json` | Ajouter serveur MCP `code-review-graph` |
+| `Tools/devcore/crg_sync.py` | **Creer** -- bridge SQLite CRG vers graph.json |
+| `MCP/devcore-scripts/server.py` | Ajouter outils `devcore_impact_analysis` et `devcore_knowledge_status` |
+| `Scripts/qdrant_sync.ps1` | Fragmenter indexation codebase en vecteurs par fichier/fonction |
+| `Scripts/knowledge_graph.ps1` | Ajouter types de noeuds, aretes, champ `confidence` |
+| `Config/embedding.json` | Documenter la strategie d'embedding par fichier vs par blob |
+| `docker-compose.yml` | Ajouter config quantization Qdrant (`int8`, `always_ram`) |
+
+Critere d'acceptation :
+
+- `code-review-graph` est installe et accessible comme serveur MCP.
+- La recherche Qdrant dans la collection `codebase` retourne le fichier exact pour une requete specifique (ex: "embedding contract" retourne `embedding_contract.ps1`).
+- Le knowledge graph contient des noeuds `function` et `class` pour les fichiers Python, avec aretes typees et niveaux de confiance.
+- L'impact analysis est accessible via MCP sans executer manuellement un script PowerShell.
+- L'indexation incrementale (fichiers changes uniquement) complete en < 5 secondes.
+- Le build du knowledge graph etendu reste < 60 secondes.
+
+### Sprint 19 -- Pre/Post Tool Hooks MCP (WS-J)
+
+Priorite : P1
+Objectif : ajouter un systeme d'intercepteurs avant/apres chaque appel d'outil MCP pour la telemetrie, les guardrails et l'audit.
+Source : architecture hooks d'OpenInterpreter (`PreToolUse` / `PostToolUse`).
+
+Contexte :
+
+Les 11 outils MCP de `devcore-scripts/server.py` sont des wrappers directs vers PowerShell sans aucune interception. Chaque appel est dispatche par un simple dict `handle_tool_call(tool_name, arguments)` sans authentication, validation, ou logging structure.
+
+Livrables :
+
+- Creation de `MCP/devcore-scripts/hooks.py` :
+  - Registre de hooks `PRE_HOOKS` et `POST_HOOKS` avec support wildcard (`*` = tous les outils).
+  - Hooks pre-integres :
+    - `audit_log_entry` : ecrit chaque appel dans l'event bus (`DEV_CORE_DATA/Bus/events/`).
+    - `token_budget_check` : verifie le budget token restant avant execution.
+    - `circuit_breaker` : bloque un outil apres N echecs consecutifs (configurable).
+    - `execution_timer` : mesure le temps d'execution de chaque outil.
+  - Hooks post-integres :
+    - `token_usage_log` : enregistre les tokens consommes dans `Logs/metrics/`.
+    - `rtk_compress` : compression de sortie (existant, deplace dans le systeme de hooks).
+    - `quality_score_update` : met a jour le scoring d'effectiveness du moteur (`Tools/devcore/scoring.py`).
+  - Interface pour ajouter des hooks custom via `Config/mcp_hooks.json`.
+- Refactoring de `MCP/devcore-scripts/server.py` :
+  - `handle_tool_call` appelle les hooks pre/post autour du dispatch.
+  - Gestion des erreurs : un hook qui echoue ne bloque pas l'execution (sauf `circuit_breaker`).
+  - Logging structure de chaque hook execute.
+- Tests : hooks pre/post executes dans l'ordre, circuit breaker apres N echecs, audit log ecrit, hook custom via config.
+
+Fichiers concernes :
+
+| Fichier | Action |
+|---|---|
+| `MCP/devcore-scripts/hooks.py` | **Creer** -- systeme de hooks Pre/Post |
+| `MCP/devcore-scripts/server.py` | Integrer les hooks dans `handle_tool_call` |
+| `Config/mcp_hooks.json` | **Creer** -- configuration des hooks custom |
+| `Tools/devcore/scoring.py` | Connecter au hook `quality_score_update` |
+
+Critere d'acceptation :
+
+- Chaque appel MCP genere une entree dans l'event bus (audit trail complet).
+- Le circuit breaker bloque un outil apres 3 echecs consecutifs.
+- Un hook custom peut etre ajoute via `Config/mcp_hooks.json` sans modifier le code Python.
+- Les hooks n'ajoutent pas plus de 50ms de latence par appel.
+
+### Sprint 20 -- Harness profiles declaratifs et router dynamique (WS-J)
+
+Priorite : P1
+Objectif : remplacer le router hardcode (3 moteurs avec scoring fixe) par un systeme de harness profiles declaratifs.
+Source : architecture Multi-Harness d'OpenInterpreter.
+Dependance : Sprint 06 (AgentRunner abstraction).
+
+Contexte :
+
+Le router actuel (`Tools/devcore/router.py`) a 3 moteurs codes en dur (claude/codex/gemini) avec des poids de scoring fixes (+3, +2, +1). Les `routing_profiles.json` definissent 3 profils (reasoning/coding/bulk) mais ne sont pas extensibles sans modifier le code. L'`ai_capability_registry.json` a 4 entrees dont 1 desactivee.
+
+Livrables :
+
+- Creation de `Config/harness_profiles.json` :
+  - Chaque harness = un profil complet : `model`, `system_prompt_template`, `context_budget`, `tool_format`, `temperature`, `stop_sequences`, `pre_hooks`, `post_hooks`, `fallback_harness`, `task_type_affinity` (liste de task types avec poids).
+  - Profils initiaux : `deep-analysis`, `fast-coding`, `bulk-processing`, `code-review`, `incident-response` (migres depuis les poids hardcodes actuels).
+- Refactoring de `Tools/devcore/router.py` :
+  - `recommend_engine()` lit les harness profiles au lieu des poids hardcodes.
+  - Scoring dynamique : chaque harness a un `task_type_affinity` qui remplace les `if/elif` actuels.
+  - Selection par meilleur score d'affinite, avec fallback configurable.
+  - Conservation du contrat existant (`router-decision.schema.json`) pour compatibilite.
+- Migration de `routing_profiles.json` et `ai_capability_registry.json` vers le schema unifie harness.
+- Ajout d'un outil MCP `devcore_router_recommend` pour permettre aux agents de demander une recommandation de harness.
+- Tests : tous les task types actuels routent correctement avec les harness profiles, ajout d'un nouveau profil sans modifier le code, fallback fonctionne.
+
+Fichiers concernes :
+
+| Fichier | Action |
+|---|---|
+| `Config/harness_profiles.json` | **Creer** -- profils de harness declaratifs |
+| `Tools/devcore/router.py` | Remplacer scoring hardcode par lecture harness profiles |
+| `Config/routing_profiles.json` | Migrer vers harness_profiles.json |
+| `Config/ai_capability_registry.json` | Fusionner dans harness_profiles.json |
+| `MCP/devcore-scripts/server.py` | Ajouter outil `devcore_router_recommend` |
+| `Schemas/router-decision.schema.json` | Etendre avec champ `harness_id` optionnel |
+
+Critere d'acceptation :
+
+- Au moins 5 harness profiles sont configurables via JSON sans modifier le code.
+- Le routage produit les memes resultats que l'ancien router pour les task types existants (backward compatible).
+- Un nouveau harness peut etre ajoute en editant `harness_profiles.json` uniquement.
+- L'outil MCP `devcore_router_recommend` retourne le harness optimal pour un task_type donne.
+
 ## 8. Ordre de dependances
 
 ```mermaid
@@ -559,12 +856,12 @@ flowchart TD
     C --> D["Sprint 03: scheduler model"]
     D --> E["Sprint 04: scheduler container"]
     E --> F["Sprint 05: jobs Hermes no-agent + migration donnees"]
-    F --> G["Sprint 06: AgentRunner / Hermes optionnel"]
+    F --> G["Sprint 06: AgentRunner + Harness profiles"]
     C --> H1["Sprint 07a: state engine + workflow YAML"]
     H1 --> H2["Sprint 07b: planner/executor/checker"]
     H2 --> H3["Sprint 07c: event bus + tests reprise"]
     H3 --> I["Sprint 08: API / dashboard payload"]
-    I --> J["Sprint 09: dashboard (migration 14.7MB) + MCP containers"]
+    I --> J["Sprint 09: dashboard + MCP containers"]
     J --> K["Sprint 10: UI standards"]
     K --> L["Sprint 11: UI gates"]
     A --> M["Sprint 12: perf profiling"]
@@ -574,15 +871,34 @@ flowchart TD
     L --> P
     N --> P
     O --> P
+    A --> Q["Sprint 16: recherche hybride RRF (WS-I)"]
+    Q --> R["Sprint 17: compaction LLM memoire (WS-I)"]
+    R --> S["Sprint 18: knowledge graph + code-review-graph (WS-I+J)"]
+    S --> P
+    J --> T["Sprint 19: Pre/Post Tool Hooks MCP (WS-J)"]
+    T --> P
+    G --> U["Sprint 20: Harness profiles declaratifs (WS-J)"]
+    U --> P
+    style Q fill:#6366f1,color:#fff
+    style R fill:#6366f1,color:#fff
+    style S fill:#6366f1,color:#fff
+    style T fill:#f59e0b,color:#000
+    style U fill:#f59e0b,color:#000
 ```
+
+Notes :
+- WS-I (Intelligence memoire, violet) : S00 → S16 → S17 → S18 → S15.
+- WS-J (Agent harness + outillage, orange) : S19 depend de S09 (MCP containers), S20 depend de S06 (AgentRunner).
+- Le Sprint 18 est enrichi par code-review-graph (Tree-sitter AST) et combine WS-I + WS-J.
+- Turbovec (`RyanCodrai/turbovec`) est evalue mais reporte — la quantization native Qdrant suffit a l'echelle actuelle.
 
 ## 9. Priorites pratiques
 
 | Priorite | Sprints | Pourquoi |
 |---|---|---|
-| P0 | 00-06, 15 | Container core, base Python testable, remplacement Hermes, release hardening, CI/CD |
-| P1 | 07a-07c, 08-09 | Runtime (decoupe en 3 sous-sprints), API, dashboard/MCP containers |
-| P2 | 10-13 | Qualite UI et performance ciblee |
+| P0 | 00-06, 15 | Container core, base Python testable, remplacement Hermes (+ harness profiles), release hardening, CI/CD |
+| P1 | 07a-07c, 08-09, 16-17, 19-20 | Runtime, API, MCP containers, intelligence memoire (RRF + compaction), hooks MCP, harness declaratifs |
+| P2 | 10-13, 18 | Qualite UI, performance ciblee, knowledge graph + code-review-graph (Tree-sitter AST) |
 | P3 | 14 | Go seulement si besoin service confirme |
 
 ## 10. Definition de Done globale
@@ -603,6 +919,14 @@ La roadmap est terminee quand :
 - Les performances critiques sont mesurees.
 - Les extractions Rust ont un benchmark avant/apres.
 - Go est soit explicitement rejete, soit limite a un daemon justifie.
+- La recherche memoire utilise la fusion RRF (FTS5 + Qdrant en parallele) avec les 4 collections.
+- `LESSONS.md` est compacte a < 200 lignes avec score decay actif.
+- Le mismatch d'embeddings storage/query est corrige (modele unique).
+- Le knowledge graph expose l'impact analysis via MCP.
+- La collection `codebase` Qdrant contient des vecteurs par fichier, pas un blob unique.
+- Le knowledge graph contient des noeuds `function` et `class` issus de Tree-sitter (code-review-graph).
+- Chaque appel MCP genere une entree d'audit dans l'event bus (hooks Pre/Post actifs).
+- Le router utilise des harness profiles declaratifs JSON, pas des poids hardcodes.
 - Les standards UI/motion produisent des findings actionnables et des gates utiles.
 
 ## 11. Risques et mitigations
@@ -626,6 +950,15 @@ La roadmap est terminee quand :
 | Absence CI/CD | Pas de garde-fou automatise, regressions silencieuses | Pipeline CI au Sprint 15, reutiliser scripts CI existants |
 | Perte historique Hermes | Donnees de runs perdues a la migration | Import ou bridge read-only au Sprint 05 |
 | Networking Docker Desktop Windows | DNS, WSL2/Hyper-V, ports en conflit | Tests smoke reseau au Sprint 01, doc troubleshooting |
+| Mismatch embedding storage/query | Scores de similarite aberrants, rappel memoire degrade | Unification modele dans `embedding.json`, re-embed au Sprint 16 |
+| LESSONS.md croissance illimitee | Memoire polluee, noise croissant, ralentissement recherche | Compaction LLM + score decay + rotation au Sprint 17 |
+| Compaction LLM destructive | Perte d'information irreversible lors de la fusion | Backup pre-compaction obligatoire, mode dry-run, tests idempotence |
+| FTS5 inexistant silencieusement | Fallback LIKE O(n) sans scoring, recherche lexicale degradee | Creation en mode erreur fatale au Sprint 16, verification au boot |
+| Surcout tokens compaction LLM | Cout Gemini Router pour chaque compaction quotidienne | Mode bulk, batching par section, budget token plafonne par run |
+| Dependance externe code-review-graph | Maintenance tierce, casse possible | Fallback graceful dans knowledge_graph.ps1 si CRG absent, pin version |
+| Hooks MCP ralentissent les outils | Latence ajoutee par les intercepteurs | Budget 50ms max par hook, mode bypass si latence depasse seuil |
+| Router hardcode casse a la migration | Backward compatibility des task types existants | Tests de regression sur tous les task types actuels avant migration |
+| Turbovec introduit trop tot | Complexite Rust pour gain marginal a petite echelle | Reporte -- quantization Qdrant native d'abord, reevaluer si > 5000 points |
 
 ## 12. Prochaine action recommandee
 
@@ -656,3 +989,17 @@ Ce document doit contenir :
 | 2026-07-17 | Audit codebase automatise | Sprint 15 : ajout CI/CD pipeline, mode `DEVCORE_MODE=local`, doc DX |
 | 2026-07-17 | Audit codebase automatise | §5.2 : ajout principe de consolidation services (cible 8-9 max) |
 | 2026-07-17 | Audit codebase automatise | §11 : 5 nouveaux risques (DX, monolithe, CI/CD, historique, networking) |
+| 2026-07-18 | Analyse marm-memory (4 agents) | Ajout WS-I (Intelligence memoire) au §4 |
+| 2026-07-18 | Analyse marm-memory (4 agents) | Ajout Sprints 16-18 : recherche hybride RRF, compaction LLM, extension knowledge graph |
+| 2026-07-18 | Analyse marm-memory (4 agents) | §8 : dependances WS-I ajoutees (S16→S17→S18→S15) |
+| 2026-07-18 | Analyse marm-memory (4 agents) | §9 : Sprints 16-17 en P1, Sprint 18 en P2 |
+| 2026-07-18 | Analyse marm-memory (4 agents) | §10 : 5 nouveaux criteres DoD memoire (RRF, compaction, embeddings, MCP graph, codebase granulaire) |
+| 2026-07-18 | Analyse marm-memory (4 agents) | §11 : 5 nouveaux risques memoire (mismatch, LESSONS, compaction destructive, FTS5, cout tokens) |
+| 2026-07-18 | Analyse OI + CRG + Turbovec | Ajout WS-J (Agent harness et outillage) au §4 |
+| 2026-07-18 | Analyse OI + CRG + Turbovec | Sprint 06 enrichi : harness profiles declaratifs (inspire OpenInterpreter) |
+| 2026-07-18 | Analyse OI + CRG + Turbovec | Sprint 18 enrichi : integration code-review-graph (Tree-sitter AST, graphe SQLite incremental) |
+| 2026-07-18 | Analyse OI + CRG + Turbovec | Ajout Sprints 19-20 : Pre/Post Tool Hooks MCP, Harness profiles declaratifs |
+| 2026-07-18 | Analyse OI + CRG + Turbovec | §8 : dependances WS-J ajoutees (S09→S19→S15, S06→S20→S15) |
+| 2026-07-18 | Analyse OI + CRG + Turbovec | §10 : 3 nouveaux criteres DoD (Tree-sitter graph, audit hooks, harness declaratifs) |
+| 2026-07-18 | Analyse OI + CRG + Turbovec | §11 : 4 nouveaux risques (CRG dependance, hooks latence, router migration, Turbovec premature) |
+| 2026-07-18 | Analyse OI + CRG + Turbovec | Turbovec reporte : quantization Qdrant native priorisee, reevaluer si > 5000 points |
