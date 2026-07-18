@@ -1,0 +1,103 @@
+{
+  "schema_version": "1.0",
+  "default_harness": "coding",
+  "harnesses": {
+    "reasoning": {
+      "model": "gemini-2.5-pro",
+      "engine": "gemini",
+      "system_prompt_template": "Reasoning profile: focus on analysis, planning, and TDD architecture.",
+      "context_budget": 32768,
+      "tool_format": "xml",
+      "temperature": 0.1,
+      "pre_hooks": [],
+      "post_hooks": [],
+      "fallback_harness": "coding"
+    },
+    "coding": {
+      "model": "gemini-2.5-pro",
+      "engine": "gemini",
+      "system_prompt_template": "Coding profile: focus on implementation, unit testing, and precise diff updates.",
+      "context_budget": 8192,
+      "tool_format": "xml",
+      "temperature": 0.2,
+      "pre_hooks": [],
+      "post_hooks": [],
+      "fallback_harness": "reasoning"
+    },
+    "bulk": {
+      "model": "gemini-2.5-flash",
+      "engine": "gemini",
+      "system_prompt_template": "Bulk profile: high throughput generation of templates, schemas, and mass updates.",
+      "context_budget": 16384,
+      "tool_format": "json",
+      "temperature": 0.5,
+      "pre_hooks": [],
+      "post_hooks": [],
+      "fallback_harness": "coding"
+    },
+    "claude_sonnet": {
+      "model": "claude-3-5-sonnet",
+      "engine": "claude",
+      "system_prompt_template": "Claude sonnet: high accuracy design reviews, code audits, and incident forensics.",
+      "context_budget": 65536,
+      "tool_format": "xml",
+      "temperature": 0.0,
+      "pre_hooks": [],
+      "post_hooks": [],
+      "fallback_harness": "reasoning"
+    },
+    "gemini_flash": {
+      "model": "gemini-2.5-flash",
+      "engine": "gemini",
+      "system_prompt_template": "Gemini flash: low latency agent operations and automation routines.",
+      "context_budget": 8192,
+      "tool_format": "json",
+      "temperature": 0.1,
+      "pre_hooks": [],
+      "post_hooks": [],
+      "fallback_harness": "bulk"
+    }
+  },
+  "routing_rules": [
+    {
+      "criteria": { "task_type": "architecture" },
+      "recommended_harness": "reasoning"
+    },
+    {
+      "criteria": { "task_type": "review" },
+      "recommended_harness": "claude_sonnet"
+    },
+    {
+      "criteria": { "task_type": "incident" },
+      "recommended_harness": "claude_sonnet"
+    },
+    {
+      "criteria": { "task_type": "bugfix" },
+      "recommended_harness": "coding"
+    },
+    {
+      "criteria": { "task_type": "refactor" },
+      "recommended_harness": "coding"
+    },
+    {
+      "criteria": { "task_type": "coding" },
+      "recommended_harness": "coding"
+    },
+    {
+      "criteria": { "task_type": "bulk" },
+      "recommended_harness": "bulk"
+    },
+    {
+      "criteria": { "task_type": "migration" },
+      "recommended_harness": "bulk"
+    },
+    {
+      "criteria": { "volume": "large" },
+      "recommended_harness": "gemini_flash"
+    },
+    {
+      "criteria": { "urgency": "urgent" },
+      "recommended_harness": "coding"
+    }
+  ]
+}
