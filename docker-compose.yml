@@ -1,0 +1,80 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: devcore-postgres
+    environment:
+      POSTGRES_USER: devcore
+      POSTGRES_PASSWORD: devcore_secure_pass
+      POSTGRES_DB: devcore
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U devcore -d devcore"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    mem_limit: 512mb
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: devcore-qdrant
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    mem_limit: 512mb
+
+  gemini-router:
+    build:
+      context: .
+      dockerfile: DEV_CORE/docker/Dockerfile.python
+    container_name: devcore-gemini-router
+    command: python DEV_CORE/Scripts/gemini_router.py
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - DEVCORE_GEMINI_ROUTER_BIND=0.0.0.0
+      - DEVCORE_ALLOW_PUBLIC_BIND=1
+    ports:
+      - "20130:20130"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:20130/v1/models"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    mem_limit: 256mb
+
+  api:
+    build:
+      context: .
+      dockerfile: DEV_CORE/docker/Dockerfile.python
+    container_name: devcore-api
+    command: uvicorn DEV_CORE.API.devcore_api.app:app --host 0.0.0.0 --port 20131
+    environment:
+      - DEVCORE_PLATFORM_ROOT=/app/DEV_CORE
+      - DEVCORE_DATA_ROOT=/data
+      - QDRANT_URL=http://qdrant:6333
+      - DEVCORE_DATABASE_URL=postgresql+psycopg://devcore:devcore_secure_pass@postgres:5432/devcore
+    volumes:
+      - .:/app
+      - ./DEV_CORE_DATA:/data
+    ports:
+      - "20131:20131"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:20131/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    mem_limit: 512mb
+
+volumes:
+  postgres_data:
+  qdrant_storage:

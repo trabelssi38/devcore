@@ -1,0 +1,31 @@
+FROM python:3.13-slim
+
+# Prevent Python stdout buffering and writing .pyc files
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    git \
+    procps \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy requirements file first to utilize Docker layer caching
+COPY DEV_CORE/requirements-ci.txt /tmp/requirements-ci.txt
+
+# Install python dependencies including psycopg-binary for PostgreSQL connectivity
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r /tmp/requirements-ci.txt && \
+    pip install --no-cache-dir psycopg[binary]
+
+# Copy app code
+COPY . /app
+
+# Command to be overridden by docker-compose
+CMD ["python"]
