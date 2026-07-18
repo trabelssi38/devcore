@@ -2,6 +2,7 @@ import sqlite3
 import os
 from pathlib import Path
 from typing import Optional, Tuple
+from datetime import datetime
 import sys
 
 # Add paths dynamically to resolve devcore.paths
@@ -109,4 +110,38 @@ def record_run(
     finally:
         conn.close()
 
+    return success
+
+
+def update_run(
+    job_id: str,
+    scheduled_at: str,
+    duration: float,
+    status: str,
+    error: Optional[str] = None,
+    db_path: Optional[Path] = None
+) -> bool:
+    """Update an existing job execution run record in the SQLite run history."""
+    if db_path is None:
+        db_path = get_db_path()
+
+    idempotency_key = f"{job_id}:{scheduled_at}"
+    conn = sqlite3.connect(str(db_path))
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            """
+            UPDATE run_history
+            SET duration = ?, status = ?, error = ?, run_at = ?
+            WHERE idempotency_key = ?
+            """,
+            (duration, status, error, datetime.now().isoformat(), idempotency_key)
+        )
+        conn.commit()
+        success = True
+    except Exception:
+        conn.rollback()
+        success = False
+    finally:
+        conn.close()
     return success

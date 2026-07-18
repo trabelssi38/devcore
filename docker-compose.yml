@@ -75,6 +75,27 @@ services:
       retries: 3
     mem_limit: 512mb
 
+  scheduler:
+    build:
+      context: .
+      dockerfile: DEV_CORE/docker/Dockerfile.python
+    container_name: devcore-scheduler
+    command: python DEV_CORE/Scheduler/scheduler_tick.py
+    environment:
+      - DEVCORE_PLATFORM_ROOT=/app/DEV_CORE
+      - DEVCORE_DATA_ROOT=/data
+      - DEVCORE_DATABASE_URL=postgresql+psycopg://devcore:devcore_secure_pass@postgres:5432/devcore
+      - QDRANT_URL=http://qdrant:6333
+    volumes:
+      - .:/app
+      - ./DEV_CORE_DATA:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    mem_limit: 256mb
+
 volumes:
   postgres_data:
   qdrant_storage:
