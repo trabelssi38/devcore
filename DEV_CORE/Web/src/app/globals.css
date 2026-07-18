@@ -25,6 +25,10 @@
 
   --radius-card: 12px;
   --radius-pill: 999px;
+
+  /* Motion Standards Design Tokens */
+  --duration-fast: 150ms;
+  --ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 * {
@@ -53,6 +57,7 @@ a {
 :focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 3px;
+  transition: outline-offset var(--duration-fast) var(--ease-out-strong), outline-color var(--duration-fast) var(--ease-out-strong);
 }
 
 .shell {
@@ -168,6 +173,7 @@ a {
   font: inherit;
   font-weight: 600;
   cursor: pointer;
+  transition: filter var(--duration-fast) var(--ease-out-strong);
 }
 
 .button:hover {
@@ -202,5 +208,16 @@ a {
 
   h2 {
     font-size: 1.2rem;
+  }
+}
+
+/* Accessibility: Global preferences reduced motion reset */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-delay: 0s !important;
+    animation-duration: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0s !important;
+    scroll-behavior: auto !important;
   }
 }
