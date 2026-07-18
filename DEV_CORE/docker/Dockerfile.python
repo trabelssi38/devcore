@@ -11,6 +11,13 @@ RUN apt-get update && \
     curl \
     git \
     procps \
+    wget \
+    tar \
+    && wget https://github.com/PowerShell/PowerShell/releases/download/v7.4.2/powershell-7.4.2-linux-x64.tar.gz \
+    && mkdir -p /opt/microsoft/powershell/7 \
+    && tar -zxf powershell-7.4.2-linux-x64.tar.gz -C /opt/microsoft/powershell/7 \
+    && ln -s /opt/microsoft/powershell/7/pwsh /usr/local/bin/pwsh \
+    && rm powershell-7.4.2-linux-x64.tar.gz \
     && rm -rf /var/lib/apt/lists/*
 
 # Set working directory

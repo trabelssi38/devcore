@@ -1,0 +1,177 @@
+[
+  {
+    "schema_version": 1,
+    "id": "daily_launch",
+    "name": "DEV_CORE Daily Launch",
+    "enabled": true,
+    "no_agent": true,
+    "schedule": {
+      "kind": "cron",
+      "expr": "0 10 * * *"
+    },
+    "command": {
+      "type": "powershell",
+      "path": "DEV_CORE/Scripts/launch.ps1",
+      "args": []
+    },
+    "state": {
+      "next_run_at": null,
+      "last_run_at": null,
+      "last_status": null,
+      "last_error": null,
+      "completed": 0
+    },
+    "policy": "catch_up",
+    "timezone": "Europe/Paris"
+  },
+  {
+    "schema_version": 1,
+    "id": "daily_endday",
+    "name": "DEV_CORE Daily Endday",
+    "enabled": true,
+    "no_agent": true,
+    "schedule": {
+      "kind": "cron",
+      "expr": "0 4 * * *"
+    },
+    "command": {
+      "type": "powershell",
+      "path": "DEV_CORE/Scripts/endday.ps1",
+      "args": []
+    },
+    "state": {
+      "next_run_at": null,
+      "last_run_at": null,
+      "last_status": null,
+      "last_error": null,
+      "completed": 0
+    },
+    "policy": "skip",
+    "timezone": "Europe/Paris"
+  },
+  {
+    "schema_version": 1,
+    "id": "weekly_maintenance",
+    "name": "DEV_CORE Weekly Maintenance",
+    "enabled": true,
+    "no_agent": true,
+    "schedule": {
+      "kind": "cron",
+      "expr": "0 5 * * 0"
+    },
+    "command": {
+      "type": "powershell",
+      "path": "DEV_CORE/Scripts/weekly_maintenance.ps1",
+      "args": []
+    },
+    "state": {
+      "next_run_at": null,
+      "last_run_at": null,
+      "last_status": null,
+      "last_error": null,
+      "completed": 0
+    },
+    "policy": "skip",
+    "timezone": "Europe/Paris"
+  },
+  {
+    "schema_version": 1,
+    "id": "periodic_task_scan",
+    "name": "DEV_CORE Periodic Task Scan",
+    "enabled": true,
+    "no_agent": true,
+    "schedule": {
+      "kind": "cron",
+      "expr": "*/10 * * * *"
+    },
+    "command": {
+      "type": "powershell",
+      "path": "DEV_CORE/Scripts/task_scan.ps1",
+      "args": []
+    },
+    "state": {
+      "next_run_at": null,
+      "last_run_at": null,
+      "last_status": null,
+      "last_error": null,
+      "completed": 0
+    },
+    "policy": "skip",
+    "timezone": "Europe/Paris"
+  },
+  {
+    "schema_version": 1,
+    "id": "periodic_task_sync_dashboard",
+    "name": "DEV_CORE Periodic Sync & Dashboard",
+    "enabled": true,
+    "no_agent": true,
+    "schedule": {
+      "kind": "cron",
+      "expr": "5,15,25,35,45,55 * * * *"
+    },
+    "command": {
+      "type": "powershell",
+      "path": "DEV_CORE/Scripts/task_sync.ps1",
+      "args": []
+    },
+    "state": {
+      "next_run_at": null,
+      "last_run_at": null,
+      "last_status": null,
+      "last_error": null,
+      "completed": 0
+    },
+    "policy": "skip",
+    "timezone": "Europe/Paris"
+  },
+  {
+    "schema_version": 1,
+    "id": "event_watcher",
+    "name": "DEV_CORE Event Watcher",
+    "enabled": true,
+    "no_agent": true,
+    "schedule": {
+      "kind": "cron",
+      "expr": "*/2 * * * *"
+    },
+    "command": {
+      "type": "powershell",
+      "path": "DEV_CORE/Scripts/Auto/event_watcher.ps1",
+      "args": []
+    },
+    "state": {
+      "next_run_at": null,
+      "last_run_at": null,
+      "last_status": null,
+      "last_error": null,
+      "completed": 0
+    },
+    "policy": "skip",
+    "timezone": "Europe/Paris"
+  },
+  {
+    "schema_version": 1,
+    "id": "active_agent_task_runner",
+    "name": "DEV_CORE Active Agent Task Runner",
+    "enabled": false,
+    "no_agent": false,
+    "schedule": {
+      "kind": "cron",
+      "expr": "*/5 * * * *"
+    },
+    "command": {
+      "type": "python",
+      "path": "DEV_CORE/Scripts/Auto/check_active_task.py",
+      "args": []
+    },
+    "state": {
+      "next_run_at": null,
+      "last_run_at": null,
+      "last_status": null,
+      "last_error": null,
+      "completed": 0
+    },
+    "policy": "skip",
+    "timezone": "Europe/Paris"
+  }
+]

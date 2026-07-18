@@ -86,6 +86,7 @@ services:
       - DEVCORE_DATA_ROOT=/data
       - DEVCORE_DATABASE_URL=postgresql+psycopg://devcore:devcore_secure_pass@postgres:5432/devcore
       - QDRANT_URL=http://qdrant:6333
+      - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
     volumes:
       - .:/app
       - ./DEV_CORE_DATA:/data

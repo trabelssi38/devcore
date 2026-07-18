@@ -129,22 +129,9 @@ def save_jobs(jobs: List[SchedulerJob], jobs_json_path: Path) -> None:
 
 
 def execute_job_command(command: SchedulerJobCommand, timeout: int = 300) -> Tuple[int, str, str]:
-    """Execute the job command and return (returncode, stdout, stderr)."""
-    # Verify file path is within devcore or system executable
-    if command.type == "python":
-        cmd_args = [sys.executable, command.path] + command.args
-    elif command.type == "powershell":
-        if os.name == "nt":
-            cmd_args = ["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", command.path] + command.args
-        else:
-            # Check if pwsh is available on Linux container
-            try:
-                subprocess.run(["pwsh", "--version"], capture_output=True, check=True)
-                cmd_args = ["pwsh", "-File", command.path] + command.args
-            except Exception:
-                return (127, "", f"PowerShell (pwsh) is not installed on this Linux system. Cannot run script {command.path}")
-    else:
-        cmd_args = [command.path] + command.args
+    """Execute the job command via run_job.py to ensure cross-platform compatibility."""
+    run_job_script = scheduler_dir / "run_job.py"
+    cmd_args = [sys.executable, str(run_job_script), command.type, command.path] + command.args
 
     try:
         proc = subprocess.run(
@@ -294,9 +281,15 @@ if __name__ == "__main__":
     # Init logging
     scheduler_logs.setup_scheduler_logging(log_dir)
 
-    # Initial Bootstrap
-    yaml_path = platform_root / "Scripts" / "hermes_cron.yaml"
-    bootstrap_jobs(yaml_path, jobs_json_path)
+    # Initial Sync/Bootstrap from jobs.devcore.json
+    try:
+        import scheduler_sync
+        scheduler_sync.sync_registry(platform_root, paths.data_root)
+    except Exception as e:
+        logger.error(f"Failed to synchronize jobs registry on startup: {e}")
+        # Fallback to bootstrap if sync_registry fails
+        yaml_path = platform_root / "Scripts" / "hermes_cron.yaml"
+        bootstrap_jobs(yaml_path, jobs_json_path)
 
     # Start loop
     main_loop(db_path, jobs_json_path, lock_path)

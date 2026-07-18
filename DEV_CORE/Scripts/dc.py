@@ -580,6 +580,63 @@ def cmd_profile(args):
     print_color(f"  Resolution des chemins      : {t_paths * 1000:.2f} ms", "green")
     print("")
 
+def cmd_scheduler_status(args):
+    data_root = get_data_root()
+    jobs_file = data_root / "Scheduler" / "jobs.json"
+    
+    print("")
+    print_color("  DEV_CORE Scheduler Status", "cyan")
+    print_color("  =======================================", "darkgray")
+    print("")
+    
+    if not jobs_file.exists():
+        print_color("  jobs.json non trouve -- Le scheduler n'a pas encore demarre.", "yellow")
+        print("")
+        sys.exit(0)
+        
+    try:
+        jobs = json.loads(jobs_file.read_text(encoding="utf-8-sig"))
+    except Exception as e:
+        print_color(f"  Erreur lors de la lecture de jobs.json: {e}", "red")
+        sys.exit(1)
+        
+    header = f"  {'Job ID'.ljust(30)} {'Enabled'.ljust(10)} {'Kind'.ljust(10)} {'Schedule'.ljust(15)} {'Next Run'.ljust(26)} {'Status'.ljust(10)} {'Completed'}"
+    print_color(header, "white")
+    print_color("  " + "-" * len(header.strip()), "darkgray")
+    
+    for job in jobs:
+        jid = job.get("id", "?")
+        enabled = "Yes" if job.get("enabled", True) else "No"
+        sch = job.get("schedule", {})
+        kind = sch.get("kind", "?")
+        expr = sch.get("expr", "?")
+        
+        state = job.get("state", {})
+        next_run = state.get("next_run_at") or "None"
+        if next_run != "None":
+            try:
+                dt = datetime.fromisoformat(next_run)
+                next_run = dt.strftime("%Y-%m-%d %H:%M:%S%z")
+            except Exception:
+                pass
+                
+        status = state.get("last_status") or "None"
+        completed = str(state.get("completed", 0))
+        
+        status_color = "gray"
+        if status == "ok":
+            status_color = "green"
+        elif status == "error":
+            status_color = "red"
+        elif status == "running":
+            status_color = "yellow"
+            
+        line = f"  {jid.ljust(30)} {enabled.ljust(10)} {kind.ljust(10)} {expr.ljust(15)} {next_run.ljust(26)} "
+        sys.stdout.write(line)
+        print_color(status.ljust(10), status_color)
+        sys.stdout.write(f" {completed.rjust(9)}\n")
+    print("")
+
 def main():
     parser = argparse.ArgumentParser(description="DEV_CORE CLI")
     subparsers = parser.add_subparsers(dest="command")
@@ -596,12 +653,18 @@ def main():
     # subcommand profile
     parser_prof = subparsers.add_parser("profile")
 
+    # subcommand scheduler
+    parser_sched = subparsers.add_parser("scheduler")
+    parser_sched.add_argument("action", choices=["status"], nargs="?", default="status")
+
     # Custom parsing for multi-word subcommands (e.g., 'next task')
     sys_args = sys.argv[1:]
     if len(sys_args) >= 2 and sys_args[0] == "next" and sys_args[1] == "task":
         sys_args = ["next task"] + sys_args[2:]
     elif len(sys_args) >= 1 and sys_args[0] == "nt":
         sys_args = ["next task"] + sys_args[1:]
+    elif len(sys_args) >= 2 and sys_args[0] == "scheduler" and sys_args[1] == "status":
+        sys_args = ["scheduler", "status"] + sys_args[2:]
 
     args = parser.parse_args(sys_args)
 
@@ -613,6 +676,9 @@ def main():
         cmd_benchmark(args)
     elif args.command == "profile":
         cmd_profile(args)
+    elif args.command == "scheduler":
+        if args.action == "status":
+            cmd_scheduler_status(args)
     else:
         parser.print_help()
 
