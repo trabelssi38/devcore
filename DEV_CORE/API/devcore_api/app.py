@@ -1,4 +1,5 @@
 from uuid import uuid4
+import json
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
@@ -12,8 +13,14 @@ from .github_webhooks import (
     get_github_webhook_secret,
     verify_github_signature,
 )
-from .ports import FileTaskRepository, TaskBoardNotFound, TaskRepository
-from .schemas import ErrorBody, ErrorResponse, HealthResponse
+from .ports import FileTaskRepository, TaskBoardNotFound, TaskRepository, default_data_root
+from .schemas import (
+    ErrorBody,
+    ErrorResponse,
+    HealthResponse,
+    WorkflowListResponse,
+    WorkflowRunDetail,
+)
 
 
 API_VERSION = "v1"
@@ -102,6 +109,46 @@ def create_app(task_repository: TaskRepository | None = None) -> FastAPI:
             delivery_id=request.headers.get("x-github-delivery"),
         )
 
+    @app.get(f"{API_PREFIX}/workflows", response_model=WorkflowListResponse, tags=["workflows"])
+    async def list_workflows() -> WorkflowListResponse:
+        data_root = default_data_root()
+        workflows_dir = data_root / "Workflows"
+        workflows = []
+        if workflows_dir.exists():
+            for state_file in workflows_dir.glob("*.state.json"):
+                try:
+                    payload = json.loads(state_file.read_text(encoding="utf-8"))
+                    workflows.append(WorkflowRunDetail(**payload))
+                except Exception:
+                    pass
+        return WorkflowListResponse(workflows=workflows)
+
+    @app.get(f"{API_PREFIX}/workflows/{{run_id}}", response_model=WorkflowRunDetail, tags=["workflows"])
+    async def get_workflow(run_id: str, request: Request) -> WorkflowRunDetail:
+        data_root = default_data_root()
+        state_file = data_root / "Workflows" / f"{run_id}.state.json"
+        if not state_file.exists():
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "code": "workflow_not_found",
+                    "message": f"Workflow run {run_id} not found",
+                    "details": {"run_id": run_id},
+                },
+            )
+        try:
+            payload = json.loads(state_file.read_text(encoding="utf-8"))
+            return WorkflowRunDetail(**payload)
+        except Exception as exc:
+            raise HTTPException(
+                status_code=500,
+                detail={
+                    "code": "corrupted_workflow_state",
+                    "message": f"Workflow state file is corrupted: {exc}",
+                    "details": {"run_id": run_id},
+                },
+            )
+
     @app.exception_handler(StarletteHTTPException)
     @app.exception_handler(HTTPException)
     async def http_exception_handler(request: Request, exc: HTTPException | StarletteHTTPException) -> JSONResponse:
@@ -129,6 +176,10 @@ def create_app(task_repository: TaskRepository | None = None) -> FastAPI:
             message="Request validation failed",
             details={"errors": exc.errors()},
         )
+
+    # Configure default metrics
+    from .metrics import configure_metrics
+    app = configure_metrics(app)
 
     return app
 

@@ -579,6 +579,163 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "WorkflowListResponse": {
+        "properties": {
+          "workflows": {
+            "items": {
+              "$ref": "#/components/schemas/WorkflowRunDetail"
+            },
+            "title": "Workflows",
+            "type": "array"
+          }
+        },
+        "required": [
+          "workflows"
+        ],
+        "title": "WorkflowListResponse",
+        "type": "object"
+      },
+      "WorkflowRunDetail": {
+        "properties": {
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "step_definitions": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "title": "Step Definitions",
+            "type": "array"
+          },
+          "steps": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/WorkflowStepState"
+            },
+            "title": "Steps",
+            "type": "object"
+          }
+        },
+        "required": [
+          "run_id",
+          "name",
+          "status",
+          "created_at",
+          "step_definitions",
+          "steps"
+        ],
+        "title": "WorkflowRunDetail",
+        "type": "object"
+      },
+      "WorkflowStepState": {
+        "properties": {
+          "completed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "output": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output"
+          },
+          "starts_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Starts At"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ],
+        "title": "WorkflowStepState",
+        "type": "object"
+      },
       "WorkspaceContract": {
         "properties": {
           "id": {
@@ -813,6 +970,69 @@
         "summary": "List Tasks",
         "tags": [
           "tasks"
+        ]
+      }
+    },
+    "/api/v1/workflows": {
+      "get": {
+        "operationId": "list_workflows_api_v1_workflows_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Workflows",
+        "tags": [
+          "workflows"
+        ]
+      }
+    },
+    "/api/v1/workflows/{run_id}": {
+      "get": {
+        "operationId": "get_workflow_api_v1_workflows__run_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "title": "Run Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkflowRunDetail"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Workflow",
+        "tags": [
+          "workflows"
         ]
       }
     }

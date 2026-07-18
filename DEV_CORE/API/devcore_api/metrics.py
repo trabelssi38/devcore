@@ -11,6 +11,7 @@ class InMemoryMetricsRegistry:
     def __init__(self) -> None:
         self.http_requests: Counter[tuple[str, str, int]] = Counter()
         self.worker_runs: Counter[str] = Counter()
+        self.workflows: Counter[tuple[str, str]] = Counter()
 
     def record_http_request(self, *, method: str, path: str, status_code: int) -> None:
         self.http_requests[(method, path, status_code)] += 1
@@ -18,7 +19,29 @@ class InMemoryMetricsRegistry:
     def record_worker_run(self, *, result: str) -> None:
         self.worker_runs[result] += 1
 
+    def record_workflow_run(self, *, name: str, status: str) -> None:
+        self.workflows[(name, status)] += 1
+
     def render_prometheus(self) -> str:
+        # Dynamically load and count workflows from storage before rendering
+        try:
+            import json
+            from devcore.paths import get_paths
+            paths = get_paths()
+            workflows_dir = paths.data_root / "Workflows"
+            if workflows_dir.exists():
+                self.workflows.clear()
+                for state_file in workflows_dir.glob("*.state.json"):
+                    try:
+                        data = json.loads(state_file.read_text(encoding="utf-8"))
+                        name = data.get("name", "unknown")
+                        status = data.get("status", "unknown")
+                        self.record_workflow_run(name=name, status=status)
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
         lines = [
             "# HELP devcore_http_requests_total Total HTTP requests.",
             "# TYPE devcore_http_requests_total counter",
@@ -35,10 +58,25 @@ class InMemoryMetricsRegistry:
         )
         for result, value in sorted(self.worker_runs.items()):
             lines.append(f'devcore_worker_runs_total{{result="{result}"}} {value}')
+
+        lines.extend(
+            [
+                "# HELP devcore_workflows_total Total workflows executed.",
+                "# TYPE devcore_workflows_total counter",
+            ]
+        )
+        for (name, status), value in sorted(self.workflows.items()):
+            lines.append(f'devcore_workflows_total{{name="{name}",status="{status}"}} {value}')
+
         return "\n".join(lines) + "\n"
 
 
 def configure_metrics(app: FastAPI, *, registry: InMemoryMetricsRegistry | None = None) -> FastAPI:
+    if hasattr(app.state, "metrics_registry"):
+        if registry is not None:
+            app.state.metrics_registry = registry
+        return app
+
     registry = registry or InMemoryMetricsRegistry()
 
     @app.middleware("http")
