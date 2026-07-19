@@ -21,7 +21,7 @@
     "devcore-reasoning": {
       "type": "model",
       "provider": "google",
-      "backend_model": "gemini-2.5-pro",
+      "backend_model": "gemini-2.5-flash",
       "enabled": true,
       "workflow_modes": ["reasoning", "plan"],
       "languages": ["python", "powershell", "typescript", "javascript", "kotlin", "sql"],
@@ -35,7 +35,7 @@
     "devcore-coding": {
       "type": "model",
       "provider": "google",
-      "backend_model": "gemini-2.5-pro",
+      "backend_model": "gemini-2.5-flash",
       "enabled": true,
       "workflow_modes": ["coding"],
       "languages": ["python", "powershell", "typescript", "javascript", "kotlin", "sql"],

@@ -820,7 +820,7 @@ function refreshDashboard() {
       }
 
       const oldTasks = document.getElementById('tasks-pipeline');
-      if (oldTasks && oldTasks.innerHTML !== payload.sections.tasks_pipeline) {
+      if (oldTasks) {
         const openSummaries = new Set();
         document.querySelectorAll('#tasks-pipeline details').forEach(d => {
           const summary = d.querySelector('summary');
@@ -845,27 +845,27 @@ function refreshDashboard() {
       }
 
       const oldTokenReport = document.getElementById('token-activity-report');
-      if (oldTokenReport && oldTokenReport.innerHTML !== payload.sections.token_activity_report) {
+      if (oldTokenReport) {
         oldTokenReport.innerHTML = payload.sections.token_activity_report || '';
       }
 
       const oldInfra = document.getElementById('services-monitoring');
-      if (oldInfra && oldInfra.innerHTML !== payload.sections.services_monitoring) {
+      if (oldInfra) {
         oldInfra.innerHTML = payload.sections.services_monitoring || '';
       }
 
       const oldHooks = document.getElementById('automation-hooks');
-      if (oldHooks && oldHooks.innerHTML !== payload.sections.automation_hooks) {
+      if (oldHooks) {
         oldHooks.innerHTML = payload.sections.automation_hooks || '';
       }
 
       const oldContext = document.getElementById('context-composition');
-      if (oldContext && oldContext.innerHTML !== payload.sections.context_composition) {
+      if (oldContext) {
         oldContext.innerHTML = payload.sections.context_composition || '';
       }
 
       const oldMetricsService = document.getElementById('metrics-service-summary');
-      if (oldMetricsService && oldMetricsService.innerHTML !== payload.sections.metrics_service_summary) {
+      if (oldMetricsService) {
         oldMetricsService.innerHTML = payload.sections.metrics_service_summary || '';
       }
 
@@ -875,12 +875,12 @@ function refreshDashboard() {
       }
 
       const oldKnowledgeGraph = document.getElementById('knowledge-graph-summary');
-      if (oldKnowledgeGraph && oldKnowledgeGraph.innerHTML !== payload.sections.knowledge_graph_summary) {
+      if (oldKnowledgeGraph) {
         oldKnowledgeGraph.innerHTML = payload.sections.knowledge_graph_summary || '';
       }
 
       const oldPluginStatus = document.getElementById('plugin-status');
-      if (oldPluginStatus && oldPluginStatus.innerHTML !== payload.sections.plugin_status) {
+      if (oldPluginStatus) {
         oldPluginStatus.innerHTML = payload.sections.plugin_status || '';
       }
 

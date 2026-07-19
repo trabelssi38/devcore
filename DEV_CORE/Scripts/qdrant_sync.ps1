@@ -101,7 +101,7 @@ function Add-ToQdrant {
     # Escape payload values
     $payloadParts = @()
     foreach ($key in $payload.Keys) {
-        $val = $payload[$key].ToString() -replace '\\', '\\\\' -replace '"', '\"'
+        $val = $payload[$key].ToString() -replace '\\', '\\\\' -replace '"', '\"' -replace "`r", '\r' -replace "`n", '\n' -replace "`t", '\t'
         $payloadParts += "        `"$key`": `"$val`""
     }
     $payloadJson = $payloadParts -join ",`n"
@@ -231,38 +231,43 @@ Sync-MarkdownToCollection `
 # ===========================
 # 4. CODEBASE
 # ===========================
-# Generer un index codebase a partir des scripts et modules Python
-Write-Log "Syncing codebase..." "Cyan"
+Write-Log "Syncing codebase (fragmented)..." "Cyan"
 
+# 1. Collect files
+$scripts = @(Get-ChildItem "$DEV_CORE\Scripts\*.ps1" -File -ErrorAction SilentlyContinue)
+$autoScripts = @(Get-ChildItem "$DEV_CORE\Scripts\Auto\*.ps1" -File -ErrorAction SilentlyContinue)
+$autoPy = @(Get-ChildItem "$DEV_CORE\Scripts\Auto\*.py" -File -ErrorAction SilentlyContinue)
+$toolsPy = @(Get-ChildItem "$DEV_CORE\Tools\devcore\*.py" -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -ne "__init__.py" -and $_.Name -notmatch "^test_" })
+$mcpPy = @(Get-ChildItem "$DEV_CORE\MCP\devcore-scripts\*.py" -File -ErrorAction SilentlyContinue)
+
+# Also build CODEBASE_INDEX.md for backward compat
 $codebaseIndex = "# DEV_CORE Codebase Index`n`n"
-
-# Scripts principaux
 $codebaseIndex += "## Scripts`n"
-$scripts = Get-ChildItem "$DEV_CORE\Scripts\*.ps1" -File
 foreach ($s in $scripts) {
     $firstLine = (Get-Content $s.FullName -TotalCount 1) -replace "^#\s*", ""
     $codebaseIndex += "- $($s.Name) : $firstLine`n"
 }
-
-# Auto layer
 $codebaseIndex += "`n## Auto Layer`n"
-$autoScripts = Get-ChildItem "$DEV_CORE\Scripts\Auto\*.ps1" -File
 foreach ($s in $autoScripts) {
     $firstLine = (Get-Content $s.FullName -TotalCount 1) -replace "^#\s*", ""
     $codebaseIndex += "- $($s.Name) : $firstLine`n"
 }
-
-# Python modules
+foreach ($s in $autoPy) {
+    $firstLine = (Get-Content $s.FullName -TotalCount 1) -replace "^#\s*", ""
+    $codebaseIndex += "- $($s.Name) : $firstLine`n"
+}
 $codebaseIndex += "`n## Python Tools`n"
-$pyModules = Get-ChildItem "$DEV_CORE\Tools\devcore\*.py" -File | Where-Object { $_.Name -ne "__init__.py" }
-foreach ($m in $pyModules) {
+foreach ($m in $toolsPy) {
     $firstLine = (Get-Content $m.FullName -TotalCount 1) -replace "^#\s*", ""
     $codebaseIndex += "- $($m.Name) : $firstLine`n"
 }
-
-# Skills
+$codebaseIndex += "`n## MCP Scripts`n"
+foreach ($m in $mcpPy) {
+    $firstLine = (Get-Content $m.FullName -TotalCount 1) -replace "^#\s*", ""
+    $codebaseIndex += "- $($m.Name) : $firstLine`n"
+}
 $codebaseIndex += "`n## Skills`n"
-$skillDirs = Get-ChildItem "$DEV_CORE\Skills" -Directory
+$skillDirs = Get-ChildItem "$DEV_CORE\Skills" -Directory -ErrorAction SilentlyContinue
 foreach ($d in $skillDirs) {
     $skillMd = "$($d.FullName)\SKILL.md"
     if (Test-Path $skillMd) {
@@ -270,30 +275,90 @@ foreach ($d in $skillDirs) {
         $codebaseIndex += "- $($d.Name) : $desc`n"
     }
 }
-
-# Sauvegarder l'index
 $indexPath = "$DEV_CORE_DATA\Memory\CODEBASE_INDEX.md"
 $codebaseIndex | Set-Content $indexPath -Encoding UTF8
 
-$embedding = Get-GeminiEmbedding $codebaseIndex
-if (-not $embedding) {
-    Write-Log "CRITICAL ERROR: Failed to get embedding for codebase index from Gemini Router. Terminating script." "Red"
-    exit 1
+$allFiles = @()
+$allFiles += $scripts
+$allFiles += $autoScripts
+$allFiles += $autoPy
+$allFiles += $toolsPy
+$allFiles += $mcpPy
+
+# Limit to max 50 files
+$allFiles = $allFiles | Select-Object -First 50
+
+# 2. Process summaries
+$processedFiles = @()
+foreach ($file in $allFiles) {
+    $lines = Get-Content $file.FullName
+    if (-not $lines) { continue }
+    # Ensure $lines is an array even for 1-line files
+    if ($lines -is [string]) { $lines = @($lines) }
+    if ($lines.Count -eq 0) { continue }
+    
+    $firstLine = $lines[0] -replace "^#\s*", "" -replace '"', "'"
+    $size = $file.Length
+    $ext = $file.Extension
+    
+    $funcCount = 0
+    $classCount = 0
+    if ($ext -eq ".py") {
+        $funcCount = @($lines -match "^def ").Count
+        $classCount = @($lines -match "^class ").Count
+    } elseif ($ext -eq ".ps1") {
+        $funcCount = @($lines -match "^function ").Count
+    }
+    
+    $type = "script"
+    if ($file.FullName -match "\\MCP\\devcore-scripts\\") { $type = "mcp" }
+    elseif ($file.FullName -match "\\Tools\\devcore\\") { $type = "module" }
+    
+    $relPath = $file.FullName.Substring($DEV_CORE.Length + 1)
+    $summary = "File: $relPath`nType: $type`nDescription: $firstLine`nSize: $size bytes`nFunctions: $funcCount"
+    if ($ext -eq ".py") {
+        $summary += "`nClasses: $classCount"
+    }
+    
+    $processedFiles += @{
+        File = $file
+        Summary = $summary
+        FirstLine = $firstLine
+        FuncCount = $funcCount
+        Type = $type
+        RelPath = $relPath
+    }
 }
 
-$preview = ($codebaseIndex -replace "`n", " " -replace "\s+", " ").Substring(0, [Math]::Min(200, $codebaseIndex.Length))
-$payload = @{
-    source = "CODEBASE_INDEX.md"
-    date = $TODAY
-    type = "codebase"
-    preview = $preview
-    title = "CODEBASE_INDEX.md"
-    scripts_count = $scripts.Count.ToString()
-    modules_count = $pyModules.Count.ToString()
-    skills_count = $skillDirs.Count.ToString()
-}
-if (Add-ToQdrant "codebase" "codebase_$TODAY" $embedding $payload) {
-    Write-Log "Codebase index upserted to Qdrant" "Green"
+# 3. Batch and upsert
+$batchSize = 10
+for ($i = 0; $i -lt $processedFiles.Count; $i += $batchSize) {
+    $batch = $processedFiles | Select-Object -Skip $i -First $batchSize
+    $batchText = ($batch.Summary -join "`n`n")
+    Write-Log "Processing codebase batch $([math]::Floor($i/$batchSize) + 1) ($($batch.Count) files)..." "Cyan"
+    
+    $embedding = Get-GeminiEmbedding $batchText
+    if (-not $embedding) {
+        Write-Log "Failed to get embedding for batch, skipping." "Yellow"
+        continue
+    }
+    
+    foreach ($item in $batch) {
+        $payload = @{
+            path = $item.RelPath
+            type = $item.Type
+            description = $item.FirstLine
+            functions_count = $item.FuncCount.ToString()
+            size = $item.File.Length.ToString()
+            last_modified = $item.File.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss")
+            source = $item.File.Name
+            preview = $item.Summary
+        }
+        $id = "codebase_$($item.RelPath -replace '[^a-zA-Z0-9]','_')"
+        if (Add-ToQdrant "codebase" $id $embedding $payload) {
+            Write-Log "Upserted $($item.File.Name) to Qdrant" "Green"
+        }
+    }
 }
 
 # ===========================

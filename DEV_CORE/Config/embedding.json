@@ -1,9 +1,12 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "provider": "gemini-router",
   "endpoint": "http://127.0.0.1:20130/v1/embeddings",
   "model": "gemini-embedding-001",
   "query_model": "gemini-embedding-001",
   "dimensions": 768,
-  "qdrant_collections": ["decisions", "lessons", "patterns", "codebase"]
+  "qdrant_collections": ["decisions", "lessons", "patterns", "codebase"],
+  "codebase_strategy": "per_file",
+  "codebase_max_files_per_run": 50,
+  "codebase_batch_size": 10
 }

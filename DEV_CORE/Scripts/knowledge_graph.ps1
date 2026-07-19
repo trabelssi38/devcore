@@ -55,7 +55,7 @@ function Add-GraphEdge {
         [string]$From,
         [string]$To,
         [string]$Type,
-        [hashtable]$Properties = @{}
+        [hashtable]$Properties = @{} # Accepts 'confidence' and arbitrary fields
     )
 
     if ([string]::IsNullOrWhiteSpace($From) -or [string]::IsNullOrWhiteSpace($To)) { return }
@@ -91,7 +91,7 @@ function Get-ServiceNameForPath {
 function Read-JsonLines {
     param([string]$Directory, [string]$Pattern)
 
-    $items = @()
+    $items = New-Object System.Collections.Generic.List[object]
     $errors = 0
     if (-not (Test-Path -LiteralPath $Directory)) {
         return [pscustomobject]@{ items = @(); errors = 0 }
@@ -102,14 +102,18 @@ function Read-JsonLines {
             if ([string]::IsNullOrWhiteSpace($line)) { continue }
             try {
                 $obj = $line | ConvertFrom-Json
-                $obj | Add-Member -NotePropertyName "_source_file" -NotePropertyValue $file.FullName -Force
-                $items += $obj
+                if ($obj -is [System.Management.Automation.PSCustomObject]) {
+                    $obj._source_file = $file.FullName
+                } else {
+                    $obj | Add-Member -NotePropertyName "_source_file" -NotePropertyValue $file.FullName -Force
+                }
+                $null = $items.Add($obj)
             } catch {
                 $errors++
             }
         }
     }
-    return [pscustomobject]@{ items = $items; errors = $errors }
+    return [pscustomobject]@{ items = $items.ToArray(); errors = $errors }
 }
 
 function Get-RelativePathCompat {
@@ -218,6 +222,17 @@ function Add-CommitsToGraph {
 function Add-EventsToGraph {
     param([hashtable]$Nodes, [hashtable]$Edges)
 
+    $taskLookup = @{}
+    foreach ($node in $Nodes.Values) {
+        if ($node.type -eq "task" -and $node.properties.task_id) {
+            $tid = [string]$node.properties.task_id
+            if (-not $taskLookup.ContainsKey($tid)) {
+                $taskLookup[$tid] = @()
+            }
+            $taskLookup[$tid] += $node.id
+        }
+    }
+
     $read = Read-JsonLines -Directory (Join-Path $DEV_CORE_DATA "Bus\events") -Pattern "events-*.jsonl"
     foreach ($event in @($read.items)) {
         if (-not $event.id) { continue }
@@ -229,10 +244,10 @@ function Add-EventsToGraph {
             task_id = [string]$event.task_id
             timestamp = [string]$event.timestamp
         }
-        if ($event.task_id) {
-            $taskMatches = @($Nodes.Values | Where-Object { $_.type -eq "task" -and $_.properties.task_id -eq [string]$event.task_id })
-            foreach ($taskNode in $taskMatches) {
-                Add-GraphEdge -Edges $Edges -From $eventId -To $taskNode.id -Type "event_task"
+        $tid = [string]$event.task_id
+        if ($tid -and $taskLookup.ContainsKey($tid)) {
+            foreach ($targetNodeId in $taskLookup[$tid]) {
+                Add-GraphEdge -Edges $Edges -From $eventId -To $targetNodeId -Type "event_task"
             }
         }
     }
@@ -241,6 +256,17 @@ function Add-EventsToGraph {
 
 function Add-MetricsToGraph {
     param([hashtable]$Nodes, [hashtable]$Edges)
+
+    $taskLookup = @{}
+    foreach ($node in $Nodes.Values) {
+        if ($node.type -eq "task" -and $node.properties.task_id) {
+            $tid = [string]$node.properties.task_id
+            if (-not $taskLookup.ContainsKey($tid)) {
+                $taskLookup[$tid] = @()
+            }
+            $taskLookup[$tid] += $node.id
+        }
+    }
 
     $read = Read-JsonLines -Directory (Join-Path $DEV_CORE_DATA "Logs\metrics") -Pattern "metrics-*.jsonl"
     foreach ($metric in @($read.items)) {
@@ -254,10 +280,10 @@ function Add-MetricsToGraph {
             task_id = [string]$metric.task_id
             timestamp = [string]$metric.timestamp
         }
-        if ($metric.task_id) {
-            $taskMatches = @($Nodes.Values | Where-Object { $_.type -eq "task" -and $_.properties.task_id -eq [string]$metric.task_id })
-            foreach ($taskNode in $taskMatches) {
-                Add-GraphEdge -Edges $Edges -From $metricId -To $taskNode.id -Type "metric_task"
+        $tid = [string]$metric.task_id
+        if ($tid -and $taskLookup.ContainsKey($tid)) {
+            foreach ($targetNodeId in $taskLookup[$tid]) {
+                Add-GraphEdge -Edges $Edges -From $metricId -To $targetNodeId -Type "metric_task"
             }
         }
     }
@@ -290,6 +316,52 @@ function Add-DecisionsToGraph {
     }
 }
 
+function Add-CRGToGraph {
+    param([hashtable]$Nodes, [hashtable]$Edges)
+
+    $crgScript = Join-Path $DEV_CORE "Tools\devcore\crg_sync.py"
+    $crgJson = Join-Path $KNOWLEDGE_DIR "crg_graph.json"
+
+            Write-Host "Running CRG sync script..."
+            & python $crgScript
+            Write-Host "CRG sync script finished with exit code: $LASTEXITCODE"
+
+    if (-not (Test-Path -LiteralPath $crgJson)) {
+        Write-Warning "CRG graph file not found at $crgJson. Skipping CRG integration."
+        return
+    }
+
+    try {
+        $crgData = Get-Content -LiteralPath $crgJson -Raw -Encoding UTF8 | ConvertFrom-Json
+        
+        if ($crgData.nodes) {
+            foreach ($n in $crgData.nodes) {
+                $props = @{}
+                if ($n.properties) {
+                    foreach ($p in $n.properties.psobject.properties) {
+                        $props[$p.Name] = $p.Value
+                    }
+                }
+                Add-GraphNode -Nodes $Nodes -Type $n.type -Id $n.id -Label $n.label -Properties $props
+            }
+        }
+        
+        if ($crgData.edges) {
+            foreach ($e in $crgData.edges) {
+                $props = @{}
+                if ($e.properties) {
+                    foreach ($p in $e.properties.psobject.properties) {
+                        $props[$p.Name] = $p.Value
+                    }
+                }
+                Add-GraphEdge -Edges $Edges -From $e.from -To $e.to -Type $e.type -Properties $props
+            }
+        }
+    } catch {
+        Write-Warning "Failed to parse CRG graph JSON: $_"
+    }
+}
+
 function New-KnowledgeGraph {
     Ensure-KnowledgeDir
     $nodes = @{}
@@ -299,6 +371,7 @@ function New-KnowledgeGraph {
     $eventErrors = Add-EventsToGraph -Nodes $nodes -Edges $edges
     $metricErrors = Add-MetricsToGraph -Nodes $nodes -Edges $edges
     Add-DecisionsToGraph -Nodes $nodes -Edges $edges
+    Add-CRGToGraph -Nodes $nodes -Edges $edges
 
     $nodeList = @($nodes.Values | Sort-Object type,label)
     $edgeList = @($edges.Values | Sort-Object type,from,to)

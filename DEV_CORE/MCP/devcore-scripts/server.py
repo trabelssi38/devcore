@@ -95,6 +95,42 @@ def run_python_script(script_path: Path, args: list = None) -> dict:
             "error": str(e)
         }
 
+def run_powershell_script(script_path: Path, args: list = None) -> dict:
+    """Execute a PowerShell script."""
+    cmd = ["powershell", "-ExecutionPolicy", "Bypass", "-File", str(script_path)]
+    if args:
+        cmd.extend(args)
+
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=60,
+            cwd=str(DEVCORE_ROOT.parent)
+        )
+        try:
+            parsed = json.loads(result.stdout)
+            return {"success": result.returncode == 0, "result": parsed}
+        except Exception:
+            stdout = apply_rtk(result.stdout)
+            return {
+                "success": result.returncode == 0,
+                "stdout": stdout,
+                "stderr": result.stderr,
+                "returncode": result.returncode
+            }
+    except subprocess.TimeoutExpired:
+        return {
+            "success": False,
+            "error": "Script timeout (> 1 min)"
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
 def get_active_project() -> str:
     return os.environ.get("DEVCORE_ACTIVE_PROJECT_NAME", "devcore")
 
@@ -271,6 +307,22 @@ TOOLS = [
         "name": "devcore_health_check",
         "description": "Vérifie la santé complète du pipeline (tasks.json, encoding, dashboard sync)",
         "input_schema": {"type": "object", "properties": {}}
+    },
+    {
+        "name": "devcore_impact_analysis",
+        "description": "Analyse d'impact via le knowledge graph: identifie les fichiers, services, tâches et commits liés à une cible",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "target": {"type": "string", "description": "Fichier, service ou noeud cible (ex: DEV_CORE/Scripts/qdrant_sync.ps1)"}
+            },
+            "required": ["target"]
+        }
+    },
+    {
+        "name": "devcore_knowledge_status",
+        "description": "Retourne le statut du knowledge graph (nombre de noeuds, arêtes, date de génération)",
+        "input_schema": {"type": "object", "properties": {}}
     }
 ]
 
@@ -361,6 +413,13 @@ def handle_tool_call(tool_name: str, arguments: dict) -> dict:
         
     elif tool_name == "devcore_health_check":
         return run_python_script(DEVCORE_SCRIPTS / "Auto" / "integrity_check.py")
+        
+    elif tool_name == "devcore_impact_analysis":
+        target = arguments.get("target", "")
+        return run_powershell_script(DEVCORE_SCRIPTS / "knowledge_graph.ps1", ["-Action", "ImpactAnalysis", "-Target", target, "-Json"])
+        
+    elif tool_name == "devcore_knowledge_status":
+        return run_powershell_script(DEVCORE_SCRIPTS / "knowledge_graph.ps1", ["-Action", "Status", "-Json"])
         
     else:
         return {"error": f"Unknown tool: {tool_name}"}
