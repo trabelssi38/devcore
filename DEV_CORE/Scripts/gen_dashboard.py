@@ -103,10 +103,10 @@ def main():
                     done = sum(1 for t in tasks if t.get("status") == "done")
                     pct = int((done / total) * 100) if total > 0 else 0
                     
-                    active_task = next((t for t in tasks if t.get("id") == board.get("current_task")), None)
+                    active_task = next((t for t in tasks if t.get("id") == board.get("current_task") and t.get("status") in ["todo", "active", "paused"]), None)
                     if not active_task and tasks:
-                        # Fallback to the first task (most recent)
-                        active_task = tasks[0]
+                        # Fallback to the last task (most recent)
+                        active_task = tasks[-1]
 
                     active_id = active_task.get("id") if active_task else "Aucune"
                     active_mode = active_task.get("mode") if active_task else "N/A"
