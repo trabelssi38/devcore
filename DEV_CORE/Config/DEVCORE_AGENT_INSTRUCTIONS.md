@@ -3,6 +3,17 @@
 This is the unified source of truth for all AI agents working in this workspace.
 Follow these rules strictly.
 
+## 0. AUTO-BOOTSTRAP PROTOCOL ENFORCEMENT (Automatique)
+
+Le Gemini Router (Port 20130) supervise la conformité du protocole :
+- Si aucune tâche formelle n'est déclarée active dans `tasks.json`, une session éphémère (ex: `EPH-1721352000`) est automatiquement attribuée.
+- Un message de rappel de protocole est réinjecté dans les réponses système toutes les 5 requêtes LLM tant qu'aucune tâche formelle n'est activée.
+- Pour stopper les rappels et enregistrer formellement votre travail :
+  ```powershell
+  python C:\devcore\DEV_CORE\Scripts\task_service.ps1 -Action Next
+  # ou via la CLI Python si disponible
+  ```
+
 ---
 
 ## 1. FIRST ACTION — Session Setup

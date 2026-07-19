@@ -146,6 +146,93 @@ def has_budget_alert(task_id: str) -> bool:
         pass
     return False
 
+from dataclasses import dataclass
+
+@dataclass
+class ProtocolStatus:
+    compliant: bool
+    task_id: str
+    mode: str
+    ephemeral: bool
+    violation_count: int
+
+def check_protocol_compliance() -> ProtocolStatus:
+    current_task, mode = get_active_task_and_mode()
+    if current_task and current_task != "Aucune":
+        return ProtocolStatus(
+            compliant=True,
+            task_id=current_task,
+            mode=mode,
+            ephemeral=False,
+            violation_count=0
+        )
+    
+    eph_path = os.path.join(DEV_CORE_DATA, "Runtime", "ephemeral_session.json")
+    os.makedirs(os.path.dirname(eph_path), exist_ok=True)
+    
+    session_data = {}
+    if os.path.exists(eph_path):
+        try:
+            with open(eph_path, "r", encoding="utf-8") as f:
+                session_data = json.load(f)
+        except Exception:
+            session_data = {}
+            
+    if not session_data:
+        session_id = f"EPH-{int(time.time())}"
+        session_data = {
+            "session_id": session_id,
+            "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            "violation_count": 1,
+            "mode": mode
+        }
+    else:
+        session_data["violation_count"] = session_data.get("violation_count", 0) + 1
+        
+    try:
+        with open(eph_path, "w", encoding="utf-8") as f:
+            json.dump(session_data, f, indent=2)
+    except Exception as e:
+        print(f"[GeminiRouter] Failed to write ephemeral session: {e}")
+        
+    return ProtocolStatus(
+        compliant=False,
+        task_id=session_data.get("session_id", "EPH-000"),
+        mode=mode,
+        ephemeral=True,
+        violation_count=session_data.get("violation_count", 1)
+    )
+
+def inject_protocol_reminder(body: dict, status: ProtocolStatus) -> dict:
+    if status.compliant:
+        return body
+        
+    if status.violation_count % 5 == 1:
+        reminder_text = (
+            f"[DEV_CORE PROTOCOLE] Aucune tâche formelle n'est active.\n"
+            f"Votre travail est actuellement suivi sous la session éphémère {status.task_id}.\n"
+            f"Pour activer le tracking complet et respecter le protocole DEV_CORE, exécutez :\n"
+            f"  python DEV_CORE/Scripts/tasks.py start \"<description de la tâche>\""
+        )
+        body_copy = body.copy()
+        messages = list(body_copy.get("messages", []))
+        messages.insert(0, {"role": "system", "content": reminder_text})
+        body_copy["messages"] = messages
+        return body_copy
+    return body
+
+def log_protocol_violation(status: ProtocolStatus):
+    log_dir = os.path.join(DEV_CORE_DATA, "Logs", "scripts")
+    os.makedirs(log_dir, exist_ok=True)
+    log_path = os.path.join(log_dir, "protocol_violations.log")
+    ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    msg = f"[{ts}] VIOLATION task_id={status.task_id} count={status.violation_count} ephemeral={status.ephemeral}\n"
+    try:
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write(msg)
+    except Exception as e:
+        print(f"[GeminiRouter] Failed to log protocol violation: {e}")
+
 
 def read_network_config() -> dict:
     config_path = Path(DEV_CORE) / "Config" / "network.json"
@@ -324,6 +411,14 @@ async def call_with_fallback(path: str, body: dict, headers: dict, is_chat: bool
 @app.post("/v1/chat/completions")
 async def chat_completions(request: Request):
     body = await request.json()
+    
+    # === MIDDLEWARE AUTO-BOOTSTRAP ===
+    status = check_protocol_compliance()
+    if not status.compliant:
+        body = inject_protocol_reminder(body, status)
+        log_protocol_violation(status)
+    # === FIN MIDDLEWARE ===
+    
     headers = dict(request.headers)
     is_stream = body.get("stream", False)
     
@@ -441,6 +536,9 @@ async def chat_completions(request: Request):
 @app.post("/v1/embeddings")
 async def embeddings(request: Request):
     body = await request.json()
+    status = check_protocol_compliance()
+    if not status.compliant:
+        log_protocol_violation(status)
     headers = dict(request.headers)
     return await call_with_fallback("embeddings", body, headers, is_chat=False)
 

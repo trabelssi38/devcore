@@ -318,6 +318,47 @@ def main():
     else:
         alerts_html += "<div style='color:#64748b; font-size:11px;'>Aucune alerte de budget déclenchée. Tous les agents respectent les quotas.</div>"
 
+    # Protocol Compliance section
+    protocol_html = "<h2>Conformité Protocole Agent</h2>"
+    ephemeral_path = DATA_ROOT / "Runtime" / "ephemeral_session.json"
+    violations_path = DATA_ROOT / "Logs" / "scripts" / "protocol_violations.log"
+    
+    status_color = "#22c55e"
+    status_label = "🟢 CONFORME"
+    ephemeral_text = "Aucune session éphémère active."
+    
+    if ephemeral_path.exists():
+        try:
+            eph_data = json.loads(ephemeral_path.read_text(encoding="utf-8"))
+            sid = eph_data.get("session_id", "EPH-?")
+            vcount = eph_data.get("violation_count", 0)
+            status_color = "#eab308"
+            status_label = "🟡 SESSION ÉPHÉMÈRE ACTIVE"
+            ephemeral_text = f"Session {sid} en cours — {vcount} requêtes sans tâche active."
+        except Exception:
+            pass
+            
+    v_count_24h = 0
+    if violations_path.exists():
+        try:
+            v_lines = violations_path.read_text(encoding="utf-8").strip().splitlines()
+            v_count_24h = len(v_lines)
+            if v_count_24h > 10 and not ephemeral_path.exists():
+                status_color = "#ef4444"
+                status_label = "🔴 VIOLATIONS RÉPÉTÉES"
+        except Exception:
+            pass
+            
+    protocol_html += f"""
+    <div style="padding:8px; background:#1a1d27; border:1px solid #2d3148; border-radius:6px; font-size:11px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <span style="font-weight:600; color:{status_color};">{status_label}</span>
+        <span style="font-size:10px; color:#94a3b8;">Violations totales: {v_count_24h}</span>
+      </div>
+      <div style="color:#cbd5e1; font-size:10.5px;">{ephemeral_text}</div>
+    </div>
+    """
+
     # Consolidate payload
     payload = {
         "schema_version": 1,
@@ -330,7 +371,7 @@ def main():
             "token_activity_report": token_activity_html,
             "context_composition": context_composition_html,
             "metrics_service_summary": f"<div>Events count: {len(events)}</div>",
-            "event_bus_recent": alerts_html,
+            "event_bus_recent": alerts_html + "<div style='margin-top:12px;'></div>" + protocol_html,
             "knowledge_graph_summary": f"<div>Nodes: {kg_summary['nodes_count']}</div>",
             "plugin_status": f"<div>Active plugins check</div>"
         },

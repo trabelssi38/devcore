@@ -115,6 +115,8 @@ function Wait-QdrantReady {
     return $null
 }
 
+$REPO_ROOT     = Split-Path -Parent $DEV_CORE
+
 # 2.1 Docker Compose up -d
 Log "  Demarrage de la pile Docker Compose..." "Yellow"
 $dockerOk = Test-DockerReady
@@ -123,8 +125,8 @@ if (-not $dockerOk) {
     $dockerPath = Get-DockerDesktopPath
     if ($dockerPath) {
         Start-Process -FilePath $dockerPath -WindowStyle Hidden -ErrorAction SilentlyContinue
-        Log "  Docker Desktop lance. Attente du demarrage (max 60s)..." "Gray"
-        if (Wait-DockerReady -TimeoutSeconds 60) {
+        Log "  Docker Desktop lance. Attente du demarrage (max 120s)..." "Gray"
+        if (Wait-DockerReady -TimeoutSeconds 120) {
             $dockerOk = $true
             Log "  Docker Desktop demarre avec succes." "Green"
         }
@@ -133,9 +135,15 @@ if (-not $dockerOk) {
     }
 }
 
+$composeFile = "$REPO_ROOT\docker-compose.yml"
+
 if ($dockerOk) {
     Log "  Execution de docker compose up -d..." "Gray"
-    docker compose up -d
+    if (Test-Path $composeFile) {
+        docker compose -f $composeFile up -d
+    } else {
+        docker compose up -d
+    }
     if ($LASTEXITCODE -ne 0) {
         Log "  [WARN] docker compose up -d a retourne un code d'erreur." "Yellow"
     }
@@ -170,7 +178,11 @@ foreach ($p in $ports) {
 # Run DB Migrations
 if ($dockerOk) {
     Log "  Execution des migrations de la base de donnees..." "Gray"
-    docker compose exec -w /app/DEV_CORE/Database api alembic upgrade head
+    if (Test-Path $composeFile) {
+        docker compose -f $composeFile exec -w /app/DEV_CORE/Database api alembic upgrade head
+    } else {
+        docker compose exec -w /app/DEV_CORE/Database api alembic upgrade head
+    }
     if ($LASTEXITCODE -eq 0) {
         Log "  Migrations Alembic completees avec succes" "Green"
     } else {

@@ -8,10 +8,12 @@ Veuillez vous référer et suivre STRICTEMENT les instructions du fichier de con
 [DEVCORE_AGENT_INSTRUCTIONS.md](file:///C:/devcore/DEV_CORE/Config/DEVCORE_AGENT_INSTRUCTIONS.md)
 
 ### Résumé des commandes obligatoires :
-- Début de session :
+- Début de session (Vérification tâche & Lancement platform) :
   ```powershell
   powershell -ExecutionPolicy Bypass -NonInteractive -File "C:\devcore\DEV_CORE\Scripts\launch.ps1"
   ```
+- Activation / Déclaration d'une tâche (Auto-bootstrap protocole) :
+  Si aucune tâche n'est active, les requêtes LLM seront rattachées à une session éphémère EPH-XXX et comporteront un rappel.
 - Lecture contexte :
   ```powershell
   Get-Content "C:\devcore\DEV_CORE_DATA\Logs\scripts\session_context.txt" -ErrorAction SilentlyContinue

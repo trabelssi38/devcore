@@ -156,6 +156,11 @@ function Get-NextTask {
         $board.current_task = $current.id
         Write-TaskBoard -Board $board
         Publish-TaskEvent -EventType "TaskStarted" -Task $current -Payload @{ started_at = $current.started_at }
+
+        $ephPath = Join-Path $DEV_CORE_DATA "Runtime\ephemeral_session.json"
+        if (Test-Path -LiteralPath $ephPath) {
+            Remove-Item -LiteralPath $ephPath -Force -ErrorAction SilentlyContinue
+        }
     }
 
     return $current
