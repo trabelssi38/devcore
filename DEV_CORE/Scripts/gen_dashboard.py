@@ -87,6 +87,10 @@ def main():
                     pct = int((done / total) * 100) if total > 0 else 0
                     
                     active_task = next((t for t in tasks if t.get("id") == board.get("current_task")), None)
+                    if not active_task and tasks:
+                        # Fallback to the last task (most recent)
+                        active_task = tasks[-1]
+
                     active_id = active_task.get("id") if active_task else "Aucune"
                     active_mode = active_task.get("mode") if active_task else "N/A"
                     active_steps = f"{active_task.get('steps_done', 0)}/{active_task.get('steps_total', 1)}" if active_task else ""
@@ -138,10 +142,25 @@ def main():
         except Exception:
             pass
 
-    # Gather recent events
+    # Gather recent events from Event Bus JSON files OR events.jsonl
     events = []
     events_dir = DATA_ROOT / "Bus" / "events"
-    if events_dir.exists():
+    events_jsonl = DATA_ROOT / "Bus" / "events.jsonl"
+
+    if events_jsonl.exists():
+        try:
+            with open(events_jsonl, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+                for line in reversed(lines[-20:]):
+                    if line.strip():
+                        try:
+                            events.append(json.loads(line.strip()))
+                        except Exception:
+                            pass
+        except Exception:
+            pass
+
+    if not events and events_dir.exists():
         try:
             files = sorted(events_dir.glob("*.json"), key=lambda f: f.name, reverse=True)[:8]
             for f in files:
@@ -345,9 +364,26 @@ def main():
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     cache_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
 
-    token_activity_html = ""
-    context_composition_html = get_context_composition_html(projects)
-    alerts_html = ""
+    # Build Event Bus HTML
+    event_bus_html = "<h2>Activité Event Bus (Derniers évènements)</h2>"
+    if events:
+        event_bus_html += "<div style='display:flex; flex-direction:column; gap:4px; margin-top:8px;'>"
+        for ev in events[:6]:
+            ev_type = ev.get("event_type", ev.get("type", "EVENT"))
+            ev_src = ev.get("source", "system")
+            ev_ts = ev.get("timestamp", "")[:19].replace("T", " ")
+            event_bus_html += f"""
+            <div style="padding:6px 8px; background:#1e293b; border-left:3px solid #3b82f6; border-radius:4px; font-size:10px;">
+              <div style="display:flex; justify-content:space-between; color:#94a3b8; font-family:monospace;">
+                <span>[{ev_type}]</span>
+                <span>{ev_ts}</span>
+              </div>
+              <div style="color:#e2e8f0; margin-top:2px; font-size:10.5px;">Source: {ev_src}</div>
+            </div>
+            """
+        event_bus_html += "</div>"
+    else:
+        event_bus_html += "<div style='color:#64748b; font-size:11px;'>Aucun événement récent.</div>"
 
     # Render template.html -> index.html
     template_file = PLATFORM_ROOT / "Dashboard" / "template.html"
@@ -362,7 +398,7 @@ def main():
             template = template.replace('{{TOKEN_ACTIVITY_REPORT}}', token_activity_html)
             template = template.replace('{{CONTEXT_COMPOSITION}}', context_composition_html)
             template = template.replace('{{METRICS_SERVICE_SUMMARY}}', f"<div>Events: {len(events)}</div>")
-            template = template.replace('{{EVENT_BUS_RECENT}}', alerts_html)
+            template = template.replace('{{EVENT_BUS_RECENT}}', event_bus_html + "<div style='margin-top:12px;'></div>" + alerts_html)
             template = template.replace('{{KNOWLEDGE_GRAPH_SUMMARY}}', f"<div>Nodes: {kg_summary['nodes_count']}</div>")
             template = template.replace('{{PLUGIN_STATUS}}', "<div>Plugins active</div>")
             template = template.replace('{{TASK_DETAILS_MAP}}', json.dumps(task_details))
