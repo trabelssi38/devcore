@@ -815,7 +815,7 @@ function refreshDashboard() {
       }
 
       const oldProjects = document.getElementById('project-cards');
-      if (oldProjects && oldProjects.innerHTML !== payload.sections.project_cards) {
+      if (oldProjects) {
         oldProjects.innerHTML = payload.sections.project_cards || '';
       }
 
@@ -870,7 +870,7 @@ function refreshDashboard() {
       }
 
       const oldEventBus = document.getElementById('event-bus-recent');
-      if (oldEventBus && oldEventBus.innerHTML !== payload.sections.event_bus_recent) {
+      if (oldEventBus) {
         oldEventBus.innerHTML = payload.sections.event_bus_recent || '';
       }
 

@@ -636,9 +636,26 @@ def build_dashboard_resource(resource_name, page=1, page_size=DEFAULT_DASHBOARD_
 
 
 def build_dashboard_payload():
-    cached = read_cached_dashboard_payload()
-    if cached:
-        return cached
+    cache_path = get_cached_dashboard_payload_path()
+    # If cache exists and is fresh (< 5 seconds), use cached payload, otherwise regenerate on the fly
+    if cache_path.exists():
+        age = datetime.now().timestamp() - cache_path.stat().st_mtime
+        if age < 5:
+            cached = read_cached_dashboard_payload()
+            if cached:
+                return cached
+    
+    try:
+        refresh_dashboard_payload_cache()
+        cached = read_cached_dashboard_payload()
+        if cached:
+            return cached
+    except Exception as e:
+        print(f"[DashboardAPI] On-the-fly dashboard refresh failed, using cached payload: {e}")
+        cached = read_cached_dashboard_payload()
+        if cached:
+            return cached
+            
     return build_fallback_dashboard_payload()
 
 
