@@ -451,12 +451,14 @@ Critere d'acceptation :
 ### Sprint 08a -- Quick wins cockpit et data hygiene (WS-K)
 
 Priorite : P0
-Objectif : reduire immediatement l'empreinte donnees sans changement architectural.
+Objectif : reduire immediatement l'empreinte donnees et memoire sans changement architectural.
 Dependance : aucune (peut demarrer en parallele de n'importe quel sprint).
 
 Contexte :
 
-Ces corrections sont independantes et peuvent etre appliquees en 1-2 jours. Elles reduisent le payload dashboard de 18.8 MB a ~200 KB et eliminent les fichiers accumules sans valeur.
+Ces corrections sont independantes et peuvent etre appliquees en 1-2 jours. Elles reduisent le payload dashboard de 18.8 MB a ~200 KB, eliminent les fichiers accumules sans valeur, et liberent ~4 GB de RAM monopolises par Repowise.
+
+Audit RAM du 19 juillet 2026 : DEV_CORE consomme 5.45 GB de RAM au total via 24 processus. Repowise seul monopolise 4.35 GB (80%) via un processus `repowise serve` compound (FastAPI + Next.js UI + LanceDB + indexer) et 5 watchers paralleles avec `watchdog` (threads permanents par sous-repertoire). Aucun `.repowiseignore` n'existe, ce qui fait que les watchers surveillent `node_modules/`, `.git/objects/`, les 638 fichiers de logs, etc.
 
 Livrables :
 
@@ -479,6 +481,22 @@ Livrables :
 - Nettoyage des backups automatiques dans `Backups/auto/` :
   - Garder les 5 derniers backups par type (actuellement 20 `tasks_*.json` + 34 `.md`).
   - Supprimer les plus anciens a chaque `endday.ps1`.
+- Migration Repowise vers polling (Strategie B -- gain ~4 GB RAM) :
+  - Creation de `.repowiseignore` dans chaque projet surveille :
+    - Exclure `node_modules/`, `.git/objects/`, `DEV_CORE_DATA/Logs/`, `DEV_CORE_DATA/Backups/`, `DEV_CORE_DATA/qdrant_storage/`, `DEV_CORE_DATA/Dashboard/`, `__pycache__/`, `*.log`, `*.pyc`, `hermes/.venv/`.
+  - Arret de `repowise serve` (PID compound 4.35 GB, FastAPI + Next.js UI port 3101 + LanceDB + indexer) :
+    - Le serveur MCP (`repowise mcp`, ~45 MB) reste actif -- toute la fonctionnalite agent est preservee.
+    - L'UI web Repowise (port 3101) devient une commande optionnelle lancee manuellement.
+  - Remplacement des 5 watchers permanents par un polling post-commit :
+    - Supprimer le lancement de `ensure_repowise_watch.ps1` dans `launch.ps1`.
+    - Supprimer le lancement de `repowise serve` dans `launch.ps1` (lignes 232-266).
+    - Ajouter dans le hook post-commit existant : `repowise update --index-only --mode fast --no-docs --no-workspace` sur le projet actif.
+    - Ajouter un job cron DEV_CORE (5 min) : `repowise update --index-only` sur le projet actif uniquement.
+    - Conserver `repowise serve` comme commande manuelle (`devcore repowise-ui`) pour les sessions de review.
+  - Consolidation des processus Repowise au demarrage :
+    - `launch.ps1` ne lance plus que : `repowise mcp` (MCP server, stdio, ~45 MB).
+    - Les 5 watchers PowerShell (5x ~62 MB) et le serve compound (4.35 GB) sont supprimes du demarrage.
+    - Le proxy IPv6 (`repowise_ipv6_proxy.py`, 10 MB) n'est plus necessaire si `serve` n'est plus lance.
 
 Fichiers concernes :
 
@@ -488,6 +506,11 @@ Fichiers concernes :
 | `Scripts/dashboard_api.py` | Delta SSE avec hash, parametre `?limit=N` |
 | `Scripts/endday.ps1` (ou futur `endday.py`) | Rotation logs, bornage token metrics, nettoyage backups |
 | `Dashboard/template.html` | Adapter le frontend au payload pagine |
+| `.repowiseignore` | **Creer** dans chaque projet surveille |
+| `Scripts/launch.ps1` | Supprimer lancement `repowise serve` et `ensure_repowise_watch.ps1` |
+| `Scripts/ensure_repowise_watch.ps1` | Deprecier -- remplace par polling post-commit |
+| `Scripts/repowise_watch_worker.ps1` | Deprecier -- les 5 watchers permanents sont supprimes |
+| `.githooks/post-commit` ou hook git existant | Ajouter `repowise update --index-only --mode fast` |
 
 Metriques de succes :
 
@@ -498,6 +521,11 @@ Metriques de succes :
 | Nombre fichiers logs/scripts | 638 | < 50 |
 | Nombre backups accumules | 54 | < 15 |
 | Transfert SSE par refresh | 18.8 MB (complet) | 0 KB (si inchange) ou < 200 KB (si change) |
+| RAM Repowise totale | 4,810 MB (serve + 5 watchers + proxy) | ~45 MB (MCP seul) |
+| Processus Repowise | 8 (serve + 5 watch + proxy + MCP) | 1 (MCP) |
+| Threads Repowise | 476+ | < 10 |
+| Latence indexation | ~0s (temps reel) | ~15s max (post-commit ou poll 5 min) |
+| RAM totale DEV_CORE | 5,453 MB | ~700 MB (estimation) |
 
 Critere d'acceptation :
 
@@ -505,6 +533,11 @@ Critere d'acceptation :
 - Le SSE ne re-envoie pas le payload si rien n'a change (delta hash).
 - Les logs > 30 jours sont automatiquement supprimes.
 - `token_metrics_summary.json` ne contient que les 7 derniers jours.
+- Repowise ne consomme pas plus de 100 MB de RAM au repos (MCP seul).
+- `repowise serve` n'est plus lance au demarrage de `launch.ps1`.
+- Les 5 watchers permanents sont supprimes, remplaces par un polling post-commit.
+- `.repowiseignore` existe dans chaque projet avec les exclusions documentees.
+- L'index Repowise est mis a jour apres chaque commit (hook post-commit).
 
 ### Sprint 08b -- Migration etat JSON vers SQLite (WS-K)
 
@@ -1119,6 +1152,9 @@ La roadmap est terminee quand :
 - Les logs > 30 jours dans `Logs/scripts/` sont automatiquement supprimes.
 - Le payload `/api/dashboard` fait moins de 100 KB.
 - Le SSE utilise un mecanisme de delta hash (ne re-envoie que si le contenu a change).
+- Repowise fonctionne en mode polling (post-commit + cron 5 min), pas en mode watch permanent.
+- `repowise serve` n'est plus lance au demarrage -- l'UI web est optionnelle.
+- La RAM totale DEV_CORE au repos est < 1 GB (contre 5.45 GB avant Sprint 08a).
 
 ## 11. Risques et mitigations
 
@@ -1155,6 +1191,9 @@ La roadmap est terminee quand :
 | Token metrics 17.2 MB sans bornage | Croissance illimitee, ralentissement de gen_dashboard.py | Sprint 08a : bornage 7 jours + archivage |
 | 638 fichiers logs accumules sans rotation | Fragmentation disque, bruit, ralentissement scan | Sprint 08a : rotation 30 jours dans endday |
 | Migration SQLite destructive | Perte de donnees si migration echoue | Mode --dry-run, backup pre-migration, fichiers .json.migrated preserves 30 jours |
+| Repowise serve monopolise 4.35 GB RAM | 80% de la RAM DEV_CORE consommee par un seul processus compound (FastAPI + Next.js + LanceDB), 476 threads | Sprint 08a : stopper serve, passer en polling post-commit, ne garder que MCP (45 MB) |
+| 5 watchers Repowise permanents sans .repowiseignore | Threads watchdog sur node_modules, .git/objects, logs, 310 MB RAM pour des fichiers non pertinents | Sprint 08a : creer .repowiseignore, supprimer watchers, polling cron 5 min |
+| Latence indexation post polling | Jusqu'a 5 min de retard entre modification et index Repowise | Acceptable pour usage CI/agent, hook post-commit pour le flow commit immediat |
 
 ## 12. Prochaine action recommandee
 
@@ -1213,3 +1252,9 @@ Ce document doit contenir :
 | 2026-07-19 | Audit architectural cockpit + ressources | §10 : 7 nouveaux criteres DoD (SQLite source de verite, suppression payload 18.8 MB, bornage metrics, rotation logs, pagination, delta SSE) |
 | 2026-07-19 | Audit architectural cockpit + ressources | §11 : 5 nouveaux risques (file-based, payload 18.8 MB, token metrics 17.2 MB, logs 638, migration SQLite) |
 | 2026-07-19 | Audit architectural cockpit + ressources | Donnees factuelles integrees : 117 scripts PS1, 13 Python, 104 JSON, 638 logs, payload 18.8 MB, token metrics 17.2 MB |
+| 2026-07-19 | Audit RAM Repowise (4.35 GB, 476 threads) | Sprint 08a enrichi : Strategie B Repowise -- migration watch permanent vers polling post-commit + cron 5 min |
+| 2026-07-19 | Audit RAM Repowise (4.35 GB, 476 threads) | Sprint 08a : arret `repowise serve` au demarrage (4.35 GB liberes), conservation MCP seul (45 MB) |
+| 2026-07-19 | Audit RAM Repowise (4.35 GB, 476 threads) | Sprint 08a : suppression 5 watchers permanents (310 MB liberes), ajout `.repowiseignore` |
+| 2026-07-19 | Audit RAM Repowise (4.35 GB, 476 threads) | Sprint 08a : cible RAM totale DEV_CORE < 1 GB au repos (contre 5.45 GB avant) |
+| 2026-07-19 | Audit RAM Repowise (4.35 GB, 476 threads) | §10 : 3 nouveaux criteres DoD (Repowise polling, serve optionnel, RAM < 1 GB) |
+| 2026-07-19 | Audit RAM Repowise (4.35 GB, 476 threads) | §11 : 3 nouveaux risques (serve 4.35 GB, watchers sans ignore, latence polling) |
