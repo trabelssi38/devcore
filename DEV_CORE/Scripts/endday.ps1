@@ -116,6 +116,8 @@ if (-not (Acquire-EnddayLock)) {
 
 try {
     Log "1/8 Extraction lecons"   ; Run "lesson_extractor.ps1"  "lesson_extractor"
+    Log "1.5/8 Compaction memoire assistee par LLM"
+    Invoke-EnddayStep -Label "memory_compactor" -ScriptBlock { param($ScriptPath) python $ScriptPath } -ArgumentList @("$DEV_CORE\Scripts\Auto\memory_compactor.py") | Out-Null
     if ($AgentMode) {
         Log "AgentMode Qdrant SKIP" "Gray"
         Log "AgentMode Obsidian SKIP" "Gray"
@@ -125,7 +127,9 @@ try {
     } else {
         if (-not $SkipQdrant) { Log "2/8 Sync Qdrant"; Run "qdrant_sync.ps1" "qdrant_sync" } else { Log "2/8 Qdrant SKIP" "Gray" }
         Log "3/8 Sync Obsidian"       ; Run "obsidian_sync.ps1"     "obsidian_sync"
-        Log "4/8 Rotation memoire"    ; Run "memory_rotate.ps1"     "memory_rotate"
+        Log "4/8 Rotation memoire MEMORY.md & LESSONS.md"
+        Run "memory_rotate.ps1" "memory_rotate"
+        Invoke-EnddayStep -Label "rotate_lessons" -ScriptBlock { param($ScriptPath) & $ScriptPath -Action RotateLessons -MaxLines 300 -KeepLines 200 } -ArgumentList @("$DEV_CORE\Scripts\memory_service.ps1") | Out-Null
         Log "4.5/8 Consolidation memoire hierarchique L1 -> L2/L3"
         Invoke-EnddayStep -Label "memory_hierarchy" -ScriptBlock { param($ScriptPath) & $ScriptPath -Action Aggregate } -ArgumentList @("$DEV_CORE\Scripts\memory_hierarchy.ps1") | Out-Null
 

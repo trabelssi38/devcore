@@ -84,7 +84,16 @@ function Add-ToQdrant {
         [hashtable]$payload
     )
     Assert-DevCoreEmbeddingVector -Vector $vector -Context "Qdrant upsert $collection"
-    $uuid = [guid]::NewGuid().ToString()
+    # Déduplication déterministe via hash SHA-256
+    $contentForHash = if ($payload.preview) { $payload.preview } else { $id }
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($contentForHash)
+    $hashBytes = $sha256.ComputeHash($bytes)
+    $hashHex = ($hashBytes | ForEach-Object { "{0:x2}" -f $_ }) -join ""
+    # Formater les 32 caractères hexadécimaux en format GUID standard
+    $uuid = "$($hashHex.Substring(0,8))-$($hashHex.Substring(8,4))-$($hashHex.Substring(12,4))-$($hashHex.Substring(16,4))-$($hashHex.Substring(20,12))"
+    $payload["sha256"] = $hashHex
+
     # Round to 6 decimal places
     $roundedVector = $vector | ForEach-Object { "{0:F6}" -f [double]$_ }
     $vectorStr = $roundedVector -join ','

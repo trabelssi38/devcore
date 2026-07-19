@@ -1,7 +1,7 @@
 # memory_service.ps1 -- DEV_CORE v10 -- Memory Service adapter
 param(
     [Parameter(Mandatory=$true)]
-    [ValidateSet("Path", "ReadText", "WriteText", "AppendText", "EnsureMemory", "RotateMemory")]
+    [ValidateSet("Path", "ReadText", "WriteText", "AppendText", "EnsureMemory", "RotateMemory", "RotateLessons")]
     [string]$Action,
     [ValidateSet("MEMORY", "DECISIONS", "LESSONS", "PATTERNS", "PERSONA", "SCENARIO")]
     [string]$Name = "MEMORY",
@@ -148,6 +148,39 @@ switch ($Action) {
                 Write-Host "    MEMORY.md tronque a $($result.lines) lignes" -ForegroundColor Cyan
             } else {
                 Write-Host "    MEMORY.md -- $($result.lines) lignes" -ForegroundColor Green
+            }
+        }
+        exit 0
+    }
+    "RotateLessons" {
+        $path = Get-MemoryPath -MemoryName "LESSONS"
+        $lines = @()
+        if (Test-Path -LiteralPath $path) {
+            $lines = @(Get-Content -LiteralPath $path -Encoding UTF8)
+        }
+        $result = [ordered]@{
+            path = $path
+            lines = $lines.Count
+            rotated = $false
+            archive_path = $null
+        }
+        if ($lines.Count -gt $MaxLines) {
+            $archiveRoot = Join-Path (Get-MemoryRoot) "archive"
+            New-Item -ItemType Directory -Path $archiveRoot -Force | Out-Null
+            $archivePath = Join-Path $archiveRoot "LESSONS_$TODAY.md"
+            Copy-Item -LiteralPath $path -Destination $archivePath -Force
+            $lines | Select-Object -First $KeepLines | Set-Content -LiteralPath $path -Encoding UTF8
+            $result.lines = [Math]::Min($KeepLines, $lines.Count)
+            $result.rotated = $true
+            $result.archive_path = $archivePath
+        }
+        if ($Json) {
+            [pscustomobject]$result | ConvertTo-Json -Depth 4
+        } else {
+            if ($result.rotated) {
+                Write-Host "    LESSONS.md tronque a $($result.lines) lignes" -ForegroundColor Cyan
+            } else {
+                Write-Host "    LESSONS.md -- $($result.lines) lignes" -ForegroundColor Green
             }
         }
         exit 0

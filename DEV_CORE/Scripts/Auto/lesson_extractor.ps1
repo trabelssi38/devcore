@@ -45,7 +45,7 @@ if (Test-Path $tFile) {
                 ($t.steps | ForEach-Object { $_.title }) -join " â†’ "
             } else { "$($t.steps_total) steps" }
             
-            $lesson = "- [score: 0.7] [$tag] $($t.title) ($($t.mode)) : $stepsInfo"
+            $lesson = "- [score: 0.7] [created: $TODAY] [$tag] $($t.title) ($($t.mode)) : $stepsInfo"
             $content += "`n$lesson"
             Log "Lecon ajoutee depuis $($t.id)" "Green"
         }
@@ -63,7 +63,7 @@ try {
         
         $tag = "lesson:git-stats-$TODAY"
         if ($content -notmatch [regex]::Escape($tag)) {
-            $lesson = "- [score: 0.6] [$tag] Semaine : $totalCommits commits ($featCount feat, $fixCount fix)"
+            $lesson = "- [score: 0.6] [created: $TODAY] [$tag] Semaine : $totalCommits commits ($featCount feat, $fixCount fix)"
             $content += "`n$lesson"
             Log "Stats git ajoutees" "Green"
         }
@@ -72,6 +72,45 @@ try {
 } catch {
     Log "Git log extraction echouee: $_" "Yellow"
 }
+
+# 3.5 Apply Score Decay
+Log "Application du Score Decay sur LESSONS.md..." "Cyan"
+$lines = $content -split "\r?\n"
+$updatedLines = @()
+$now = Get-Date
+
+foreach ($line in $lines) {
+    if ($line -match '^\-\s*\[score:\s*([\d\.]+)\](.*)') {
+        $score = [double]$Matches[1]
+        $rest = $Matches[2]
+        
+        # Extrait la date d'origine si présente
+        $entryDate = $now
+        if ($rest -match '\[created:\s*(\d{4}\-\d{2}\-\d{2})\]') {
+            try { $entryDate = [datetime]::Parse($Matches[1]) } catch {}
+        } else {
+            # Injecte la date créée du jour si manquante
+            $rest = " [created: $TODAY]" + $rest
+        }
+
+        $ageDays = ($now - $entryDate).TotalDays
+        $multiplier = 1.0
+        if ($ageDays -gt 180) { $multiplier = 0.5 }
+        elseif ($ageDays -gt 90) { $multiplier = 0.7 }
+        elseif ($ageDays -gt 30) { $multiplier = 0.9 }
+
+        $newScore = [math]::Round($score * $multiplier, 2)
+
+        if ($newScore -ge 0.3) {
+            $updatedLines += "- [score: $newScore]$rest"
+        } else {
+            Log "  [Decay] Entree supprimee (score $newScore < 0.3, age: $([int]$ageDays)j)" "Yellow"
+        }
+    } else {
+        $updatedLines += $line
+    }
+}
+$content = $updatedLines -join "`n"
 
 # 4. Sauvegarder
 $content = $content -replace "Derniere maj : \d{4}-\d{2}-\d{2}", "Derniere maj : $TODAY"

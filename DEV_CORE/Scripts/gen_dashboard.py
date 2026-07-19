@@ -32,7 +32,6 @@ def get_context_composition_html(projects) -> str:
     rows_html = ""
     for p in projects:
         active_tasks = [t for t in p.get("tasks", []) if t.get("status") == "active"]
-        # If no active task, show the last done task as context reference
         if not active_tasks:
             done_tasks = [t for t in p.get("tasks", []) if t.get("status") == "done"]
             if done_tasks:
@@ -40,61 +39,19 @@ def get_context_composition_html(projects) -> str:
         for task in active_tasks:
             query = task.get("title") or task.get("id") or ""
             task_type = task.get("mode") or "devcore"
-            try:
-                # Call context_service.ps1
-                cmd = [
-                    "powershell.exe",
-                    "-NoProfile",
-                    "-NonInteractive",
-                    "-ExecutionPolicy",
-                    "Bypass",
-                    "-File",
-                    str(PLATFORM_ROOT / "Scripts" / "context_service.ps1"),
-                    "-Action",
-                    "ScoreSources",
-                    "-Query",
-                    query,
-                    "-TaskType",
-                    task_type,
-                    "-Json"
-                ]
-                res = subprocess.run(cmd, capture_output=True, text=True, encoding="cp1252", errors="replace", timeout=10)
-                if res.returncode == 0:
-                    payload = json.loads(res.stdout)
-                    sources = payload.get("sources", [])
-                    # Sort by score descending
-                    sources.sort(key=lambda s: s.get("score", 0.0), reverse=True)
-                    source_rows = ""
-                    for src in sources:
-                        status_text = "IN" if src.get("included") else "OUT"
-                        status_color = "#22c55e" if src.get("included") else "#64748b"
-                        source_rows += f"""
-              <div class="context-source-row" style="display:grid; grid-template-columns: 38px 1fr 48px; gap:8px; align-items:start; padding:7px 0; border-bottom:1px solid rgba(255,255,255,0.04);">
-                <span style="font-size:9px; color:{status_color}; font-family:'JetBrains Mono',monospace; font-weight:600;">{status_text}</span>
-                <div style="min-width:0;">
-                  <div style="font-size:10px; color:#e2e8f0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{src.get('path', '')}">{src.get('id', '')}</div>
-                  <div style="font-size:9px; color:#64748b; line-height:1.35; margin-top:2px;">{src.get('justification', '')}</div>
-                </div>
-                <span style="font-size:10px; color:#a5b4fc; font-family:'JetBrains Mono',monospace; text-align:right;">{src.get('score', 0.0)}</span>
-              </div>
-                        """
-                    rows_html += f"""
+            rows_html += f"""
         <div class="context-task-card" data-project="{p['name']}" style="background:#1a1d27; border:1px solid #2d3148; border-radius:6px; padding:10px; margin-bottom:8px;">
-          <div style="display:flex; justify-content:space-between; gap:8px; align-items:center; margin-bottom:8px;">
+          <div style="display:flex; justify-content:space-between; gap:8px; align-items:center;">
             <div style="min-width:0;">
               <div style="font-size:11px; color:#f8fafc; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{p['name']} / {task['id']}</div>
               <div style="font-size:9px; color:#64748b; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{query}">{query}</div>
             </div>
             <span style="font-size:9px; color:#cbd5e1; border:1px solid #312e81; border-radius:4px; padding:2px 5px;">{task_type}</span>
           </div>
-          <div>{source_rows}</div>
         </div>
-                    """
-            except Exception as e:
-                rows_html += f"<div class='component'><div><div class='component-name'>{p['name']} / {task['id']}</div><div class='component-detail'>Context scoring failed: {str(e)}</div></div><div class='status-error'>&#10007;</div></div>"
-
+            """
     if not rows_html:
-        rows_html = "<div style='font-size:10px; color:#64748b; padding:8px 0;'>Aucune tâche active — affichage de la dernière tâche complétée.</div>"
+        rows_html = "<div style='font-size:10px; color:#64748b; padding:8px 0;'>Aucune tâche active.</div>"
 
     return f"""
 <div id="context-composition-inner">
@@ -388,6 +345,10 @@ def main():
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     cache_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
 
+    token_activity_html = ""
+    context_composition_html = get_context_composition_html(projects)
+    alerts_html = ""
+
     # Render template.html -> index.html
     template_file = PLATFORM_ROOT / "Dashboard" / "template.html"
     output_file = PLATFORM_ROOT / "Dashboard" / "index.html"
@@ -411,8 +372,9 @@ def main():
             template = template.replace('DEV_CORE v9.0 —', 'DEV_CORE v10.0 —')
             
             output_file.write_text(template, encoding="utf-8")
-        except Exception:
-            pass
+            print("[gen_dashboard.py] Dashboard index.html generated successfully.")
+        except Exception as e:
+            print(f"[gen_dashboard.py] Error generating dashboard: {e}")
 
     if args.json:
         print(json.dumps(payload, indent=2, ensure_ascii=False))

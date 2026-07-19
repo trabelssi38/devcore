@@ -133,7 +133,7 @@ else
     Write-Host \"  [DEV_CORE] Tache autonome \$nextId creee avec succes : \$cleanMsg\"
     
     # Régénérer le dashboard
-    & '$SCRIPTS/gen_dashboard.ps1' | Out-Null
+    python.exe '$SCRIPTS/gen_dashboard.py' | Out-Null
     "
 fi
 
