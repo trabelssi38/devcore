@@ -70,8 +70,11 @@ Construire DEV_CORE v10 comme runtime d'orchestration portable, testable, observ
 | WS-H | Performance Rust/Go | P2 | Hotspots extraits seulement si mesures le justifient |
 | WS-I | Intelligence memoire (inspire marm-memory) | P1 | Recherche hybride RRF, compaction LLM, extension knowledge graph |
 | WS-J | Agent harness et outillage (inspire OI, code-review-graph) | P1 | Harness profiles declaratifs, hooks MCP, AST Tree-sitter via code-review-graph |
+| WS-K | Data architecture et migration SQLite | P0 | Elimination de l'architecture file-based (JSON 19 MB), migration etat vers SQLite, payload dashboard pagine, rotation logs |
 
 Changement principal : Docker/Compose passe de P1 a P0. La conteneurisation n'est plus un sprint tardif de portabilite, mais une contrainte de fondation.
+
+Changement 2026-07-19 : ajout WS-K (Data Architecture). L'audit du 19 juillet 2026 a revele que l'architecture file-based (104 fichiers JSON, payload dashboard 18.8 MB, token metrics 17.2 MB, 638 fichiers de logs accumules) est le bottleneck principal de DEV_CORE -- pas le langage. La migration vers SQLite et la pagination des payloads sont elevees en P0.
 
 ## 5. Audit de conteneurisation integre
 
@@ -419,6 +422,19 @@ Critere d'acceptation :
 Priorite : P1
 Objectif : stabiliser la facade REST et reduire le cout dashboard.
 
+Contexte (audit 2026-07-19) :
+
+L'audit des ressources a revele l'ampleur du probleme :
+
+| Ressource | Taille actuelle | Cible |
+|---|---|---|
+| `dashboard_payload.json` | 18.8 MB | < 100 KB (pagine) |
+| `token_metrics_summary.json` | 17.2 MB | < 500 KB (borne 7 jours) |
+| `index.html` genere | 14.7 MB | < 200 KB (composants) |
+| Fichiers de logs accumules | 638 fichiers | Rotation 30 jours |
+| Fichiers JSON etat (workflows, events, backups) | 104 fichiers | Migration SQLite |
+| Scripts PowerShell | 117 fichiers vs 13 Python | Ratio a inverser |
+
 Livrables :
 
 - OpenAPI versionnee pour runtime, scheduler, tasks, health, metrics.
@@ -432,17 +448,178 @@ Critere d'acceptation :
 
 - Le dashboard ne depend plus d'un payload monolithique non borne.
 
+### Sprint 08a -- Quick wins cockpit et data hygiene (WS-K)
+
+Priorite : P0
+Objectif : reduire immediatement l'empreinte donnees sans changement architectural.
+Dependance : aucune (peut demarrer en parallele de n'importe quel sprint).
+
+Contexte :
+
+Ces corrections sont independantes et peuvent etre appliquees en 1-2 jours. Elles reduisent le payload dashboard de 18.8 MB a ~200 KB et eliminent les fichiers accumules sans valeur.
+
+Livrables :
+
+- Pagination du payload dashboard dans `gen_dashboard.py` :
+  - Limiter les taches aux 20 dernieres par projet (au lieu de toutes les 245+).
+  - Limiter les token calls aux 50 derniers (au lieu des 1770+).
+  - Limiter les events aux 10 derniers.
+  - Ajouter un parametre `?limit=N` sur `/api/dashboard` pour le frontend.
+- Bornage de `token_metrics_summary.json` :
+  - Garder uniquement les 7 derniers jours.
+  - Archiver les donnees plus anciennes dans `Logs/token_reports/archive/`.
+  - Script de rotation quotidien integre a `endday.ps1`.
+- Rotation des logs dans `Logs/scripts/` :
+  - Supprimer les fichiers > 30 jours (638 fichiers actuellement, la plupart obsoletes).
+  - Ajouter une politique de retention dans `launch.py` ou `endday.ps1`.
+- Implementation du delta SSE dans `dashboard_api.py` :
+  - Calculer un hash SHA-256 du payload genere.
+  - Ne streamer le payload au frontend que si le hash a change depuis le dernier envoi.
+  - Ajouter un header `X-Payload-Hash` pour le cache client.
+- Nettoyage des backups automatiques dans `Backups/auto/` :
+  - Garder les 5 derniers backups par type (actuellement 20 `tasks_*.json` + 34 `.md`).
+  - Supprimer les plus anciens a chaque `endday.ps1`.
+
+Fichiers concernes :
+
+| Fichier | Action |
+|---|---|
+| `Scripts/gen_dashboard.py` | Pagination des taches, events et token calls |
+| `Scripts/dashboard_api.py` | Delta SSE avec hash, parametre `?limit=N` |
+| `Scripts/endday.ps1` (ou futur `endday.py`) | Rotation logs, bornage token metrics, nettoyage backups |
+| `Dashboard/template.html` | Adapter le frontend au payload pagine |
+
+Metriques de succes :
+
+| Metrique | Avant | Apres |
+|---|---|---|
+| Taille payload dashboard | 18.8 MB | < 200 KB |
+| Taille token metrics | 17.2 MB | < 500 KB |
+| Nombre fichiers logs/scripts | 638 | < 50 |
+| Nombre backups accumules | 54 | < 15 |
+| Transfert SSE par refresh | 18.8 MB (complet) | 0 KB (si inchange) ou < 200 KB (si change) |
+
+Critere d'acceptation :
+
+- Le payload `/api/dashboard` fait moins de 500 KB.
+- Le SSE ne re-envoie pas le payload si rien n'a change (delta hash).
+- Les logs > 30 jours sont automatiquement supprimes.
+- `token_metrics_summary.json` ne contient que les 7 derniers jours.
+
+### Sprint 08b -- Migration etat JSON vers SQLite (WS-K)
+
+Priorite : P0
+Objectif : remplacer l'architecture file-based par une base de donnees SQLite unique.
+Dependance : Sprint 02 (CLI Python foundation), Sprint 08a (quick wins).
+
+Contexte :
+
+DEV_CORE utilise actuellement 104 fichiers JSON comme "base de donnees" repartis dans `DEV_CORE_DATA/`. Cela empeche toute requete, pagination, ou transaction ACID. SQLite est deja utilise pour `conversations.db` (41 KB) et `scheduler.db` (100 KB), prouvant sa compatibilite avec l'ecosysteme.
+
+L'objectif n'est PAS de migrer vers Postgres (overkill pour un usage mono-utilisateur local). SQLite en mode WAL offre :
+- Zero serveur a maintenir.
+- Transactions ACID.
+- FTS5 pour la recherche full-text.
+- WAL mode pour la concurrence lecture/ecriture.
+- Fichier unique par base, facile a backuper.
+
+Livrables :
+
+- Creation de `devcore.db` (SQLite WAL) avec les tables suivantes :
+
+| Table | Source actuelle | Schema |
+|---|---|---|
+| `tasks` | `Memory/*/tasks.json` (1 par projet) | `id TEXT PK, project TEXT, title TEXT, status TEXT, mode TEXT, steps_total INT, steps_done INT, source TEXT, details TEXT, started_at TEXT, completed_at TEXT` |
+| `events` | `Bus/events/*.json` | `id INTEGER PK, event_type TEXT, timestamp TEXT, source TEXT, tool_name TEXT, duration REAL, success BOOL, payload TEXT` |
+| `token_calls` | `Logs/token_reports/token_metrics_summary.json` (17.2 MB) | `id INTEGER PK, timestamp TEXT, model TEXT, tokens INT, cache_hits INT, output_tokens INT, cost_usd REAL, task_id TEXT` + index sur `timestamp` |
+| `workflows` | `Workflows/wf-*.state.json` (54 fichiers) | `id TEXT PK, name TEXT, status TEXT, state TEXT, created_at TEXT, updated_at TEXT` |
+| `service_status` | Calcule en live par `check_port()` | `name TEXT PK, host TEXT, port INT, is_up BOOL, last_check TEXT` |
+| `dashboard_cache` | `Dashboard/dashboard_payload.json` (18.8 MB) -- **A SUPPRIMER** | Remplace par des requetes directes sur les tables ci-dessus |
+
+- Creation de `Scripts/migrate_json_to_sqlite.py` :
+  - Lit tous les fichiers JSON sources.
+  - Insert les donnees dans `devcore.db`.
+  - Verifie l'integrite post-migration (count, checksums).
+  - Renomme les fichiers JSON sources en `.json.migrated` (pas de suppression immediate).
+  - Mode `--dry-run` pour previsualiser.
+  - Mode `--verify` pour comparer JSON vs SQLite.
+
+- Refactoring de `gen_dashboard.py` :
+  - Remplacer la lecture de `tasks.json`, `events/*.json`, `token_metrics_summary.json` par des requetes SQLite.
+  - Requetes paginee avec `LIMIT` et `OFFSET`.
+  - Suppression de la generation du fichier `dashboard_payload.json` (18.8 MB).
+  - Le payload est construit a la volee par requete, plus petit que 100 KB.
+
+- Refactoring de `dashboard_api.py` :
+  - Remplacer `build_dashboard_payload()` (qui lit le JSON cache) par des requetes SQLite directes.
+  - Ajouter des endpoints RESTful pagines :
+    - `GET /api/dashboard/tasks?project=devcore&limit=20&offset=0`
+    - `GET /api/dashboard/events?limit=10`
+    - `GET /api/dashboard/tokens?days=7&limit=50`
+    - `GET /api/dashboard/services`
+  - Le endpoint principal `GET /api/dashboard` retourne un payload leger (< 100 KB) avec les totaux et les N derniers elements.
+
+- Refactoring de `task_service.ps1` (ou futur `task_service.py`) :
+  - Ecrire les mutations de taches dans SQLite au lieu de `tasks.json`.
+  - Garder une ecriture JSON en parallele pendant la periode de transition.
+
+- Refactoring de `event_bus.ps1` (ou futur `event_bus.py`) :
+  - Ecrire les evenements dans SQLite au lieu de fichiers `Bus/events/*.json`.
+  - TTL automatique : supprimer les evenements > 30 jours.
+
+Fichiers concernes :
+
+| Fichier | Action |
+|---|---|
+| `Scripts/migrate_json_to_sqlite.py` | **Creer** -- script de migration one-shot |
+| `Scripts/gen_dashboard.py` | Refactorer pour requetes SQLite |
+| `Scripts/dashboard_api.py` | Ajouter endpoints pagines, requetes SQLite |
+| `Scripts/task_service.ps1` | Double-ecriture JSON + SQLite pendant transition |
+| `Scripts/event_bus.ps1` | Ecriture SQLite + TTL automatique |
+| `DEV_CORE_DATA/devcore.db` | **Creer** -- base SQLite WAL unique |
+
+Metriques de succes :
+
+| Metrique | Avant | Apres |
+|---|---|---|
+| Fichiers JSON d'etat | 104 | < 10 (configs seulement) |
+| Taille dashboard payload | 18.8 MB (fichier) | 0 (supprime, requetes directes) |
+| Taille token metrics | 17.2 MB (JSON) | ~2 MB (SQLite indexe, 30 jours) |
+| Taille workflows state | 54 fichiers | 1 table SQLite |
+| Temps de requete dashboard | ~3s (parse 19 MB JSON) | < 100ms (requete indexee) |
+| Requetes possibles | Aucune (lecture complete) | SELECT, WHERE, ORDER BY, LIMIT, JOIN |
+
+Critere d'acceptation :
+
+- `devcore.db` contient toutes les donnees precedemment dans les fichiers JSON.
+- `dashboard_payload.json` (18.8 MB) est supprime.
+- Le dashboard se charge en < 1 seconde (requetes SQLite paginee).
+- Les fichiers JSON originaux sont preserves en `.json.migrated` pendant 30 jours.
+- Le script de migration est idempotent (2 runs = meme resultat).
+
 ### Sprint 09 -- Dashboard, MCP et services containers
 
 Priorite : P1
 Objectif : completer la surface container apres la tranche core.
+Dependance : Sprint 08b (SQLite migration) pour l'elimination du payload monolithique.
 
 Note : le dashboard actuel (`Dashboard/index.html`) est un monolithe HTML de 14.7 MB genere par `gen_dashboard.ps1`. La migration vers Next.js implique un travail de decomposition non trivial. Prevoir un sous-livrable de decoupe (composants, pages, API calls) avant la conteneurisation.
 
+Architecture cible du dashboard (post Sprint 08a/08b) :
+
+```
+SQLite devcore.db  -->  FastAPI Read Model  -->  SSE Delta Stream  -->  Frontend composants reactifs
+     (source)        (requetes paginees)     (hash-based, <5 KB)     (Vite ou Next.js, <200 KB)
+```
+
+Le frontend ne recevra plus jamais un payload de 19 MB. Chaque section du cockpit (taches, services, events, tokens) aura son propre endpoint pagine et son canal SSE independant.
+
 Livrables :
 
-- Service `dashboard-api` sans mutation PowerShell.
+- Service `dashboard-api` sans mutation PowerShell, avec requetes SQLite directes (pas de `dashboard_payload.json`).
 - Service `dashboard-web` Next/Nginx (migration du monolithe 14.7 MB vers le projet Next.js existant dans `DEV_CORE/Web/`).
+  - Alternative evaluee : Vite + Vanilla JS (plus leger, pas de SSR necessaire pour un dashboard local). Decision a prendre au Sprint 08b.
+- SSE granulaire : un canal par section du cockpit (tasks, services, events, tokens), avec delta hash.
 - Service `mcp-qdrant` avec `QDRANT_URL`.
 - Service `mcp-devcore` via CLI Python, sans `powershell.exe` (remplacer les 11 tools PowerShell du MCP actuel).
 - Volumes `devcore_data`, `qdrant_storage`, `postgres_data`.
@@ -451,7 +628,9 @@ Livrables :
 Critere d'acceptation :
 
 - Dashboard, API, MCP Qdrant et runtime fonctionnent via Compose avec noms de services internes.
-- Le dashboard web charge en < 3 secondes (vs monolithe 14.7 MB actuel).
+- Le dashboard web charge en < 1 seconde (vs monolithe 14.7 MB actuel, ameliore depuis la cible initiale de 3s grace a SQLite).
+- Le payload initial du dashboard fait < 100 KB.
+- Les mises a jour SSE font < 5 KB par delta.
 
 ### Sprint 10 -- Skills/UI/Motion standards
 
@@ -861,7 +1040,10 @@ flowchart TD
     H1 --> H2["Sprint 07b: planner/executor/checker"]
     H2 --> H3["Sprint 07c: event bus + tests reprise"]
     H3 --> I["Sprint 08: API / dashboard payload"]
-    I --> J["Sprint 09: dashboard + MCP containers"]
+    A --> QW["Sprint 08a: Quick wins cockpit (WS-K)"]
+    QW --> DB["Sprint 08b: Migration SQLite (WS-K)"]
+    DB --> J["Sprint 09: dashboard + MCP containers"]
+    I --> J
     J --> K["Sprint 10: UI standards"]
     K --> L["Sprint 11: UI gates"]
     A --> M["Sprint 12: perf profiling"]
@@ -879,6 +1061,8 @@ flowchart TD
     T --> P
     G --> U["Sprint 20: Harness profiles declaratifs (WS-J)"]
     U --> P
+    style QW fill:#ef4444,color:#fff
+    style DB fill:#ef4444,color:#fff
     style Q fill:#6366f1,color:#fff
     style R fill:#6366f1,color:#fff
     style S fill:#6366f1,color:#fff
@@ -889,6 +1073,7 @@ flowchart TD
 Notes :
 - WS-I (Intelligence memoire, violet) : S00 → S16 → S17 → S18 → S15.
 - WS-J (Agent harness + outillage, orange) : S19 depend de S09 (MCP containers), S20 depend de S06 (AgentRunner).
+- WS-K (Data architecture, rouge) : S08a independant (demarrable immediatement), S08b depend de S02, S08b → S09.
 - Le Sprint 18 est enrichi par code-review-graph (Tree-sitter AST) et combine WS-I + WS-J.
 - Turbovec (`RyanCodrai/turbovec`) est evalue mais reporte — la quantization native Qdrant suffit a l'echelle actuelle.
 
@@ -896,7 +1081,7 @@ Notes :
 
 | Priorite | Sprints | Pourquoi |
 |---|---|---|
-| P0 | 00-06, 15 | Container core, base Python testable, remplacement Hermes (+ harness profiles), release hardening, CI/CD |
+| P0 | 00-06, 08a, 08b, 15 | Container core, base Python testable, remplacement Hermes (+ harness profiles), quick wins cockpit, migration SQLite, release hardening, CI/CD |
 | P1 | 07a-07c, 08-09, 16-17, 19-20 | Runtime, API, MCP containers, intelligence memoire (RRF + compaction), hooks MCP, harness declaratifs |
 | P2 | 10-13, 18 | Qualite UI, performance ciblee, knowledge graph + code-review-graph (Tree-sitter AST) |
 | P3 | 14 | Go seulement si besoin service confirme |
@@ -928,6 +1113,12 @@ La roadmap est terminee quand :
 - Chaque appel MCP genere une entree d'audit dans l'event bus (hooks Pre/Post actifs).
 - Le router utilise des harness profiles declaratifs JSON, pas des poids hardcodes.
 - Les standards UI/motion produisent des findings actionnables et des gates utiles.
+- `devcore.db` (SQLite WAL) est la source de verite pour tasks, events, token metrics et workflows.
+- `dashboard_payload.json` (18.8 MB) est supprime et remplace par des requetes SQLite paginee.
+- `token_metrics_summary.json` est borne a 7 jours maximum.
+- Les logs > 30 jours dans `Logs/scripts/` sont automatiquement supprimes.
+- Le payload `/api/dashboard` fait moins de 100 KB.
+- Le SSE utilise un mecanisme de delta hash (ne re-envoie que si le contenu a change).
 
 ## 11. Risques et mitigations
 
@@ -959,6 +1150,11 @@ La roadmap est terminee quand :
 | Hooks MCP ralentissent les outils | Latence ajoutee par les intercepteurs | Budget 50ms max par hook, mode bypass si latence depasse seuil |
 | Router hardcode casse a la migration | Backward compatibility des task types existants | Tests de regression sur tous les task types actuels avant migration |
 | Turbovec introduit trop tot | Complexite Rust pour gain marginal a petite echelle | Reporte -- quantization Qdrant native d'abord, reevaluer si > 5000 points |
+| Architecture file-based non scalable | 104 fichiers JSON comme DB, pas de requetes, pas de pagination | Migration SQLite WS-K, Sprint 08a/08b P0 |
+| Payload dashboard 18.8 MB a chaque refresh | CPU, RAM, bande passante gaspilles | Sprint 08a : pagination + delta SSE |
+| Token metrics 17.2 MB sans bornage | Croissance illimitee, ralentissement de gen_dashboard.py | Sprint 08a : bornage 7 jours + archivage |
+| 638 fichiers logs accumules sans rotation | Fragmentation disque, bruit, ralentissement scan | Sprint 08a : rotation 30 jours dans endday |
+| Migration SQLite destructive | Perte de donnees si migration echoue | Mode --dry-run, backup pre-migration, fichiers .json.migrated preserves 30 jours |
 
 ## 12. Prochaine action recommandee
 
@@ -1008,3 +1204,12 @@ Ce document doit contenir :
 | 2026-07-19 | Sprint 12 implementation | DEVCORE_AGENT_INSTRUCTIONS.md cree : instructions unifiees cycle de vie agents (Antigravity, Codex, OpenCode, Claude) |
 | 2026-07-19 | Sprint 12 implementation | benchmark_perf.py cree : mesure 6 composants critiques (file scan, dashboard, Qdrant, logs, tasks, Headroom) |
 | 2026-07-19 | Sprint 12 implementation | docs/DEV_CORE_SPRINT12_PERF_REPORT.md cree : rapport decision matrix Python vs Rust avec metriques baseline |
+| 2026-07-19 | Audit architectural cockpit + ressources | Ajout WS-K (Data Architecture et migration SQLite) au §4 |
+| 2026-07-19 | Audit architectural cockpit + ressources | Ajout Sprint 08a (Quick wins cockpit : pagination payload, delta SSE, rotation logs, bornage token metrics) |
+| 2026-07-19 | Audit architectural cockpit + ressources | Ajout Sprint 08b (Migration etat JSON vers SQLite WAL : tables tasks, events, token_calls, workflows, service_status) |
+| 2026-07-19 | Audit architectural cockpit + ressources | Sprint 09 enrichi : architecture cible SQLite→FastAPI→SSE Delta→Frontend, cible < 1s (amelioree depuis 3s) |
+| 2026-07-19 | Audit architectural cockpit + ressources | §8 : dependances WS-K ajoutees (S08a independant, S08b→S09), style rouge |
+| 2026-07-19 | Audit architectural cockpit + ressources | §9 : Sprints 08a et 08b eleves en P0 |
+| 2026-07-19 | Audit architectural cockpit + ressources | §10 : 7 nouveaux criteres DoD (SQLite source de verite, suppression payload 18.8 MB, bornage metrics, rotation logs, pagination, delta SSE) |
+| 2026-07-19 | Audit architectural cockpit + ressources | §11 : 5 nouveaux risques (file-based, payload 18.8 MB, token metrics 17.2 MB, logs 638, migration SQLite) |
+| 2026-07-19 | Audit architectural cockpit + ressources | Donnees factuelles integrees : 117 scripts PS1, 13 Python, 104 JSON, 638 logs, payload 18.8 MB, token metrics 17.2 MB |
