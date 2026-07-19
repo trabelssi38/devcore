@@ -105,8 +105,8 @@ def main():
                     
                     active_task = next((t for t in tasks if t.get("id") == board.get("current_task")), None)
                     if not active_task and tasks:
-                        # Fallback to the last task (most recent)
-                        active_task = tasks[-1]
+                        # Fallback to the first task (most recent)
+                        active_task = tasks[0]
 
                     active_id = active_task.get("id") if active_task else "Aucune"
                     active_mode = active_task.get("mode") if active_task else "N/A"
@@ -352,35 +352,6 @@ def main():
     </div>
     """
 
-    # Consolidate payload
-    payload = {
-        "schema_version": 1,
-        "generated_at": generated_at,
-        "sections": {
-            "project_cards": cards_html,
-            "tasks_pipeline": tasks_html,
-            "services_monitoring": services_html,
-            "automation_hooks": "",
-            "token_activity_report": token_activity_html,
-            "context_composition": context_composition_html,
-            "metrics_service_summary": f"<div>Events count: {len(events)}</div>",
-            "event_bus_recent": alerts_html + "<div style='margin-top:12px;'></div>" + protocol_html,
-            "knowledge_graph_summary": f"<div>Nodes: {kg_summary['nodes_count']}</div>",
-            "plugin_status": f"<div>Active plugins check</div>"
-        },
-        "task_details": task_details,
-        "token_metrics": token_metrics,
-        "projects_raw": projects,  # Added structured data for Next.js frontend!
-        "services_raw": services,
-        "events_raw": events,
-        "plugins_raw": plugins_registry
-    }
-
-    # Save JSON payload cache
-    cache_path = DATA_ROOT / "Dashboard" / "dashboard_payload.json"
-    cache_path.parent.mkdir(parents=True, exist_ok=True)
-    cache_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
-
     # Build Event Bus HTML
     event_bus_html = "<h2>Activité Event Bus (Derniers évènements)</h2>"
     if events:
@@ -401,6 +372,35 @@ def main():
         event_bus_html += "</div>"
     else:
         event_bus_html += "<div style='color:#64748b; font-size:11px;'>Aucun événement récent.</div>"
+
+    # Consolidate payload
+    payload = {
+        "schema_version": 1,
+        "generated_at": generated_at,
+        "sections": {
+            "project_cards": cards_html,
+            "tasks_pipeline": tasks_html,
+            "services_monitoring": services_html,
+            "automation_hooks": "",
+            "token_activity_report": token_activity_html,
+            "context_composition": context_composition_html,
+            "metrics_service_summary": f"<div>Events count: {len(events)}</div>",
+            "event_bus_recent": event_bus_html + "<div style='margin-top:12px;'></div>" + alerts_html + "<div style='margin-top:12px;'></div>" + protocol_html,
+            "knowledge_graph_summary": f"<div>Nodes: {kg_summary['nodes_count']}</div>",
+            "plugin_status": f"<div>Active plugins check</div>"
+        },
+        "task_details": task_details,
+        "token_metrics": token_metrics,
+        "projects_raw": projects,  # Added structured data for Next.js frontend!
+        "services_raw": services,
+        "events_raw": events,
+        "plugins_raw": plugins_registry
+    }
+
+    # Save JSON payload cache
+    cache_path = DATA_ROOT / "Dashboard" / "dashboard_payload.json"
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    cache_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
 
     # Render template.html -> index.html
     template_file = PLATFORM_ROOT / "Dashboard" / "template.html"
@@ -430,7 +430,7 @@ def main():
             print(f"[gen_dashboard.py] Error generating dashboard: {e}")
 
     if args.json:
-        print(json.dumps(payload, indent=2, ensure_ascii=False))
+        print(json.dumps(payload, indent=2, ensure_ascii=True))
 
 if __name__ == "__main__":
     main()
