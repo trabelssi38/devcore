@@ -1,0 +1,18 @@
+{
+  "circuit_breaker": {
+    "max_consecutive_failures": 3,
+    "reset_timeout_seconds": 60
+  },
+  "enabled_pre_hooks": [
+    "execution_timer",
+    "circuit_breaker",
+    "token_budget_check",
+    "audit_log_entry"
+  ],
+  "enabled_post_hooks": [
+    "rtk_compress",
+    "token_usage_log",
+    "quality_score_update",
+    "audit_log_exit"
+  ]
+}

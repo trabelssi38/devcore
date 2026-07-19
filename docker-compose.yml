@@ -113,6 +113,13 @@ services:
     environment:
       - DEVCORE_PLATFORM_ROOT=/app/DEV_CORE
       - DEVCORE_DATA_ROOT=/data
+      - DEVCORE_DASHBOARD_BIND=0.0.0.0
+      - DEVCORE_ALLOW_PUBLIC_BIND=1
+      - DEVCORE_CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+      - QDRANT_HOST=qdrant
+      - GEMINI_ROUTER_HOST=gemini-router
+      - DASHBOARD_API_HOST=dashboard-api
+      - API_HOST=api
     volumes:
       - .:/app
       - devcore_data:/data
@@ -130,8 +137,9 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - NEXT_PUBLIC_DEVCORE_API_URL=http://localhost:20131
-      - NEXT_PUBLIC_DASHBOARD_API_URL=http://localhost:20129
+      # Server-side proxy destinations (used by Next.js rewrites, not exposed to browser)
+      - DEVCORE_API_URL=http://api:20131
+      - DEVCORE_DASHBOARD_URL=http://dashboard-api:20129
     depends_on:
       - api
       - dashboard-api

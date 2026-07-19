@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type ResourceState<T> =
   | { status: "loading"; data: null; error: null }
@@ -12,13 +12,16 @@ export function useApiResource<T>(load: (signal: AbortSignal) => Promise<T | nul
   const [attempt, setAttempt] = useState(0);
   const [state, setState] = useState<ResourceState<T>>({ status: "loading", data: null, error: null });
 
+  const loadRef = useRef(load);
+  loadRef.current = load;
+
   const retry = useCallback(() => setAttempt((value) => value + 1), []);
 
   useEffect(() => {
     const controller = new AbortController();
     setState({ status: "loading", data: null, error: null });
 
-    load(controller.signal)
+    loadRef.current(controller.signal)
       .then((data) => {
         if (controller.signal.aborted) return;
         setState(data ? { status: "ready", data, error: null } : { status: "empty", data: null, error: null });
@@ -34,7 +37,7 @@ export function useApiResource<T>(load: (signal: AbortSignal) => Promise<T | nul
       });
 
     return () => controller.abort();
-  }, [attempt, load]);
+  }, [attempt]);
 
   useEffect(() => {
     const retryWhenOnline = () => retry();

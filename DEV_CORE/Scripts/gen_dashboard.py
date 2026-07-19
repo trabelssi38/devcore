@@ -12,10 +12,27 @@ from pathlib import Path
 PLATFORM_ROOT = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", r"C:\devcore\DEV_CORE"))
 DATA_ROOT = Path(os.environ.get("DEVCORE_DATA_ROOT", r"C:\devcore\DEV_CORE_DATA"))
 
-def check_port(port: int) -> bool:
-    """Check if local TCP port is open."""
+SERVICE_HOSTS = {
+    "qdrant": os.environ.get("QDRANT_HOST", "127.0.0.1"),
+    "gemini_router": os.environ.get("GEMINI_ROUTER_HOST", "127.0.0.1"),
+    "dashboard_api": os.environ.get("DASHBOARD_API_HOST", "127.0.0.1"),
+    "headroom": os.environ.get("HEADROOM_HOST", "127.0.0.1"),
+    "api": os.environ.get("API_HOST", "127.0.0.1"),
+    "repowise": os.environ.get("REPOWISE_HOST", "127.0.0.1"),
+}
+
+def check_port(service_name_or_port, port: int = None) -> bool:
+    """Check if TCP port is open for given service or host."""
+    if isinstance(service_name_or_port, str):
+        service_name = service_name_or_port
+        target_port = port
+    else:
+        service_name = "default"
+        target_port = service_name_or_port
+
+    host = SERVICE_HOSTS.get(service_name, "127.0.0.1")
     try:
-        with socket.create_connection(("127.0.0.1", port), timeout=0.5):
+        with socket.create_connection((host, target_port), timeout=0.5):
             return True
     except Exception:
         return False
@@ -116,12 +133,12 @@ def main():
 
     # Service statuses
     services = {
-        "qdrant": check_port(6333),
-        "gemini_router": check_port(20130),
-        "dashboard_api": check_port(20129),
-        "headroom": check_port(8787),
-        "api": check_port(20131),
-        "repowise": check_port(7337)
+        "qdrant": check_port("qdrant", 6333),
+        "gemini_router": check_port("gemini_router", 20130),
+        "dashboard_api": check_port("dashboard_api", 20129),
+        "headroom": check_port("headroom", 8787),
+        "api": check_port("api", 20131),
+        "repowise": check_port("repowise", 7337)
     }
 
     # Load token metrics

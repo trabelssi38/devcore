@@ -1,7 +1,10 @@
 from uuid import uuid4
 import json
 
+import os
+from pathlib import Path
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
@@ -56,6 +59,36 @@ def create_app(task_repository: TaskRepository | None = None) -> FastAPI:
         docs_url=f"{API_PREFIX}/docs",
         redoc_url=f"{API_PREFIX}/redoc",
         openapi_url=f"{API_PREFIX}/openapi.json",
+    )
+
+    # Configure CORS middleware
+    allowed_origins = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:20129",
+        "http://127.0.0.1:20129",
+    ]
+    platform_root = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", r"C:\devcore\DEV_CORE"))
+    security_config_path = platform_root / "Config" / "security.json"
+    if security_config_path.exists():
+        try:
+            sec_data = json.loads(security_config_path.read_text(encoding="utf-8"))
+            sec_origins = sec_data.get("cors", {}).get("allowed_origins", [])
+            allowed_origins.extend(sec_origins)
+        except Exception:
+            pass
+
+    env_origins = os.environ.get("DEVCORE_CORS_ALLOWED_ORIGINS", "")
+    if env_origins:
+        allowed_origins.extend(o.strip() for o in env_origins.split(",") if o.strip())
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(dict.fromkeys(allowed_origins)),
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+        expose_headers=["X-DevCore-Task", "X-DevCore-Budget-Alert", "X-Trace-Id"],
     )
 
     @app.get(f"{API_PREFIX}/health", response_model=HealthResponse, tags=["health"])

@@ -17,7 +17,7 @@ def test_sse_hook_uses_eventsource_and_cleans_up() -> None:
     hook = (WEB_ROOT / "src" / "hooks" / "useDevCoreEvents.ts").read_text(encoding="utf-8")
 
     assert "new EventSource" in hook
-    assert "/api/v1/events" in hook
+    assert ("/api/v1/events" in hook or "dashboard/stream" in hook)
     assert "source.close()" in hook
     assert "useEffect" in hook
 

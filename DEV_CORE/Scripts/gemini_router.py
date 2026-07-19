@@ -32,8 +32,68 @@ def load_api_key() -> str:
             return f.read().strip()
     return ""
 
+def load_cerebras_key() -> str:
+    key = os.environ.get("CEREBRAS_API_KEY")
+    if key:
+        return key.strip()
+    path = os.path.join(DEV_CORE, "Config", "cerebras_api_key.txt")
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    return ""
+
+def load_nvidia_key() -> str:
+    key = os.environ.get("NVIDIA_API_KEY") or os.environ.get("NVAPI_KEY")
+    if key:
+        return key.strip()
+    path = os.path.join(DEV_CORE, "Config", "nvidia_api_key.txt")
+    if os.path.exists(path):
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    return ""
+
 API_KEY = load_api_key()
+CEREBRAS_API_KEY = load_cerebras_key()
+NVIDIA_API_KEY = load_nvidia_key()
+
 PUBLIC_BIND_HOSTS = {"0.0.0.0", "::", ""}
+
+class SlidingWindowRateLimiter:
+    """Proactive RPM and TPM rate limiter using sliding window."""
+    def __init__(self, max_rpm: int = 8, max_tpm: int = 200_000):
+        self.max_rpm = max_rpm
+        self.max_tpm = max_tpm
+        self._timestamps: list[float] = []
+        self._tokens: list[tuple[float, int]] = []
+        self._lock = asyncio.Lock()
+
+    async def wait_if_needed(self, estimated_tokens: int = 500):
+        async with self._lock:
+            now = time.time()
+            cutoff = now - 60.0
+            self._timestamps = [t for t in self._timestamps if t > cutoff]
+            self._tokens = [(t, n) for t, n in self._tokens if t > cutoff]
+
+            if len(self._timestamps) >= self.max_rpm:
+                wait_time = self._timestamps[0] - cutoff
+                if wait_time > 0:
+                    print(f"[RateLimiter] Max RPM ({self.max_rpm}) reached. Waiting {wait_time:.1f}s...")
+                    await asyncio.sleep(wait_time + 0.1)
+
+            current_tpm = sum(n for _, n in self._tokens)
+            if current_tpm + estimated_tokens > self.max_tpm:
+                wait_time = self._tokens[0][0] - cutoff if self._tokens else 5.0
+                if wait_time > 0:
+                    print(f"[RateLimiter] Max TPM ({self.max_tpm}) reached. Waiting {wait_time:.1f}s...")
+                    await asyncio.sleep(wait_time + 0.1)
+
+            self._timestamps.append(time.time())
+
+    async def record_tokens(self, token_count: int):
+        async with self._lock:
+            self._tokens.append((time.time(), token_count))
+
+rate_limiter = SlidingWindowRateLimiter()
 
 def get_active_task_and_mode() -> tuple:
     active_project_path = "C:/devcore/DEV_CORE_DATA/Runtime/active_project.txt"
@@ -267,20 +327,20 @@ GEMINI_BASE_URL = os.environ.get(
     "https://generativelanguage.googleapis.com/v1beta/openai/v1",
 )
 
-# Client HTTP asynchrone
-client = httpx.AsyncClient(timeout=60.0)
+# Client HTTP asynchrone avec timeouts adaptes aux contextes longs
+client = httpx.AsyncClient(timeout=httpx.Timeout(connect=10.0, read=120.0, write=30.0, pool=10.0))
 
-# Mappage des modèles pour combler les exigences de DevCore
+# Mappage des modeles pour combler les exigences de DevCore
 MODEL_MAP = {
-    "claude-3-5-sonnet": "gemini-2.5-pro",
-    "claude-3-5-sonnet-20241022": "gemini-2.5-pro",
-    "claude-3-opus": "gemini-2.5-pro",
+    "claude-3-5-sonnet": "gemini-2.5-flash",
+    "claude-3-5-sonnet-20241022": "gemini-2.5-flash",
+    "claude-3-opus": "gemini-2.5-flash",
     "claude-3-haiku": "gemini-2.5-flash",
-    "gpt-4o": "gemini-2.5-pro",
+    "gpt-4o": "gemini-2.5-flash",
     "gpt-4o-mini": "gemini-2.5-flash",
-    "devcore-always-on": "gemini-2.5-pro",
-    "devcore-reasoning": "gemini-2.5-pro",
-    "devcore-coding": "gemini-2.5-pro",
+    "devcore-always-on": "gemini-2.5-flash",
+    "devcore-reasoning": "gemini-2.5-flash",
+    "devcore-coding": "gemini-2.5-flash",
     "devcore-bulk": "gemini-2.5-flash",
 }
 
@@ -302,7 +362,6 @@ def map_for_gemini(body: dict, is_chat: bool) -> dict:
         backend_model, selected = select_backend_model(selection_body, load_capability_registry())
         mapped["model"] = backend_model or MODEL_MAP.get(original_model, "gemini-2.5-flash")
         mapped.pop("mode", None)
-        # Supprimer max_tokens si trop petit pour éviter les erreurs Gemini
         if "max_tokens" in mapped and mapped["max_tokens"] < 50:
             del mapped["max_tokens"]
         for internal_key in (
@@ -320,12 +379,38 @@ def map_for_gemini(body: dict, is_chat: bool) -> dict:
         mapped["model"] = "gemini-embedding-001"
     return mapped
 
+async def _try_provider_request(url: str, body: dict, api_key: str, provider_name: str) -> Response | None:
+    """Execute request to an OpenAI-compatible provider with standard response building."""
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    r = await client.post(url, json=body, headers=headers)
+    if r.status_code == 200:
+        task_id, mode = get_active_task_and_mode()
+        try:
+            resp_json = r.json()
+            usage = resp_json.get("usage", {})
+            p_tok = usage.get("prompt_tokens", 0)
+            c_tok = usage.get("completion_tokens", 0)
+            if p_tok > 0 or c_tok > 0:
+                record_tokens(task_id, mode, p_tok, c_tok)
+        except Exception:
+            pass
+        out_headers = {"Content-Type": "application/json", "X-DevCore-Task": task_id, "X-DevCore-Provider": provider_name}
+        if has_budget_alert(task_id):
+            out_headers["X-DevCore-Budget-Alert"] = "True"
+        return Response(content=r.content, status_code=200, headers=out_headers)
+    else:
+        print(f"[GeminiRouter] Provider {provider_name} returned status {r.status_code}: {r.text[:200]}")
+        return None
+
 async def call_with_fallback(path: str, body: dict, headers: dict, is_chat: bool) -> Response:
-    if not API_KEY:
+    if not API_KEY and not CEREBRAS_API_KEY and not NVIDIA_API_KEY:
         return Response(
             content=json.dumps({
                 "error": {
-                    "message": "GEMINI_API_KEY or GEMINI_API_KEY_FILE is required",
+                    "message": "No API keys configured (GEMINI_API_KEY, CEREBRAS_API_KEY, or NVIDIA_API_KEY)",
                     "type": "configuration_error"
                 }
             }),
@@ -333,77 +418,113 @@ async def call_with_fallback(path: str, body: dict, headers: dict, is_chat: bool
             media_type="application/json"
         )
 
-    retries = 3
-    delay = 1.0
-    
-    # Tenter l'appel direct vers Google Gemini avec Rate-Limiting retries
-    last_error = None
-    for attempt in range(retries):
-        try:
-            gemini_body = map_for_gemini(body, is_chat)
-            gemini_headers = {
-                "Authorization": f"Bearer {API_KEY}",
-                "Content-Type": "application/json"
-            }
-            url = f"{GEMINI_BASE_URL}/{path}"
-            r = await client.post(url, json=gemini_body, headers=gemini_headers)
-            
-            if r.status_code == 429:
-                print(f"[GeminiRouter] Rate limit (429) sur essai {attempt+1}/{retries}. Attente {delay}s...")
-                await asyncio.sleep(delay)
-                delay *= 2
-                continue
-            elif r.status_code >= 500:
-                print(f"[GeminiRouter] Erreur serveur ({r.status_code}) sur essai {attempt+1}/{retries}. Attente {delay}s...")
-                await asyncio.sleep(delay)
-                delay *= 2
-                continue
-                
-            r.raise_for_status()
-            resp_content = r.content
-            
-            # Extract and record tokens
-            task_id, mode = get_active_task_and_mode()
+    # Estimate tokens for rate limiter
+    messages = body.get("messages", [])
+    est_tokens = max(100, len(json.dumps(messages)) // 4) if is_chat else 50
+
+    # ==========================================
+    # 1. PRIMARY PROVIDER: Google Gemini
+    # ==========================================
+    if API_KEY:
+        retries = 3
+        delay = 1.0
+        for attempt in range(retries):
             try:
-                resp_json = json.loads(resp_content.decode("utf-8"))
-                usage = resp_json.get("usage", {})
-                prompt_tokens = usage.get("prompt_tokens", 0)
-                completion_tokens = usage.get("completion_tokens", 0)
-                
-                if prompt_tokens == 0 and is_chat:
-                    prompt_text = json.dumps(gemini_body.get("messages", []))
-                    prompt_tokens = max(1, len(prompt_text) // 4)
-                if completion_tokens == 0 and is_chat:
-                    choices = resp_json.get("choices", [])
-                    if choices:
-                        content_text = choices[0].get("message", {}).get("content", "")
-                        completion_tokens = max(1, len(content_text) // 4)
-                
-                if prompt_tokens > 0 or completion_tokens > 0:
-                    record_tokens(task_id, mode, prompt_tokens, completion_tokens)
+                await rate_limiter.wait_if_needed(est_tokens)
+                gemini_body = map_for_gemini(body, is_chat)
+                gemini_headers = {
+                    "Authorization": f"Bearer {API_KEY}",
+                    "Content-Type": "application/json"
+                }
+                url = f"{GEMINI_BASE_URL}/{path}"
+                r = await client.post(url, json=gemini_body, headers=gemini_headers)
+
+                if r.status_code == 429:
+                    retry_after = r.headers.get("Retry-After")
+                    wait_time = float(retry_after) if retry_after and retry_after.isdigit() else delay
+                    print(f"[GeminiRouter] Gemini 429 Rate limit (essai {attempt+1}/{retries}). Attente {wait_time}s...")
+                    await asyncio.sleep(wait_time)
+                    delay *= 2
+                    continue
+                elif r.status_code >= 500:
+                    print(f"[GeminiRouter] Gemini Erreur serveur ({r.status_code}) (essai {attempt+1}/{retries}). Attente {delay}s...")
+                    await asyncio.sleep(delay)
+                    delay *= 2
+                    continue
+
+                r.raise_for_status()
+                resp_content = r.content
+                task_id, mode = get_active_task_and_mode()
+                try:
+                    resp_json = json.loads(resp_content.decode("utf-8"))
+                    usage = resp_json.get("usage", {})
+                    p_tokens = usage.get("prompt_tokens", 0)
+                    c_tokens = usage.get("completion_tokens", 0)
+                    if p_tokens == 0 and is_chat:
+                        p_tokens = est_tokens
+                    if c_tokens == 0 and is_chat:
+                        choices = resp_json.get("choices", [])
+                        if choices:
+                            c_tokens = max(1, len(choices[0].get("message", {}).get("content", "")) // 4)
+                    tot_tokens = p_tokens + c_tokens
+                    if tot_tokens > 0:
+                        record_tokens(task_id, mode, p_tokens, c_tokens)
+                        await rate_limiter.record_tokens(tot_tokens)
+                except Exception as e:
+                    print(f"[GeminiRouter] Error recording tokens: {e}")
+
+                headers_out = {
+                    "Content-Type": "application/json",
+                    "X-DevCore-Task": task_id,
+                    "X-DevCore-Provider": "google-gemini"
+                }
+                if has_budget_alert(task_id):
+                    headers_out["X-DevCore-Budget-Alert"] = "True"
+
+                return Response(content=resp_content, status_code=r.status_code, headers=headers_out)
             except Exception as e:
-                print(f"[GeminiRouter] Error recording tokens: {e}")
-                
-            headers_out = {
-                "Content-Type": "application/json",
-                "X-DevCore-Task": task_id
-            }
-            if has_budget_alert(task_id):
-                headers_out["X-DevCore-Budget-Alert"] = "True"
-                
-            return Response(content=resp_content, status_code=r.status_code, headers=headers_out)
+                print(f"[GeminiRouter] Gemini call attempt {attempt+1}/{retries} failed: {e}")
+                if attempt < retries - 1:
+                    await asyncio.sleep(delay)
+                    delay *= 2
+
+    # ==========================================
+    # 2. FALLBACK PROVIDER 1: Cerebras
+    # ==========================================
+    if CEREBRAS_API_KEY and is_chat:
+        print("[GeminiRouter] Bascule automatique vers le provider de secours #1 : Cerebras (llama-3.3-70b)...")
+        try:
+            cerebras_body = body.copy()
+            cerebras_body["model"] = "llama-3.3-70b"
+            for k in ("mode", "workflow_step", "capability_requirements", "requirements"):
+                cerebras_body.pop(k, None)
+            res = await _try_provider_request("https://api.cerebras.ai/v1/chat/completions", cerebras_body, CEREBRAS_API_KEY, "cerebras")
+            if res:
+                return res
         except Exception as e:
-            last_error = e
-            print(f"[GeminiRouter] Echec appel direct Gemini (essai {attempt+1}/{retries}) : {e}")
-            if attempt < retries - 1:
-                await asyncio.sleep(delay)
-                delay *= 2
-            
-    # Echec critique sans fallback
-    print(f"[GeminiRouter] Tous les essais directs Gemini ont echoue.")
-    error_msg = f"Gemini API call failed after {retries} retries. Error: {last_error}"
+            print(f"[GeminiRouter] Cerebras fallback failed: {e}")
+
+    # ==========================================
+    # 3. FALLBACK PROVIDER 2: NVIDIA NIM
+    # ==========================================
+    if NVIDIA_API_KEY and is_chat:
+        print("[GeminiRouter] Bascule automatique vers le provider de secours #2 : NVIDIA NIM (meta/llama-3.3-70b-instruct)...")
+        try:
+            nvidia_body = body.copy()
+            nvidia_body["model"] = "meta/llama-3.3-70b-instruct"
+            for k in ("mode", "workflow_step", "capability_requirements", "requirements"):
+                nvidia_body.pop(k, None)
+            res = await _try_provider_request("https://integrate.api.nvidia.com/v1/chat/completions", nvidia_body, NVIDIA_API_KEY, "nvidia-nim")
+            if res:
+                return res
+        except Exception as e:
+            print(f"[GeminiRouter] NVIDIA NIM fallback failed: {e}")
+
+    # Critical failure across all providers
+    error_msg = "All completion providers (Gemini, Cerebras, NVIDIA NIM) failed or returned errors."
+    print(f"[GeminiRouter] {error_msg}")
     return Response(
-        content=json.dumps({"error": {"message": error_msg, "type": "gemini_error"}}),
+        content=json.dumps({"error": {"message": error_msg, "type": "multi_provider_error"}}),
         status_code=502,
         media_type="application/json"
     )

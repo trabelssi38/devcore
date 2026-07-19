@@ -12,7 +12,7 @@ $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else 
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
 $HomeDir = [Environment]::GetFolderPath("UserProfile")
 $MemoryDir = Join-Path $DEV_CORE_DATA "Memory"
-$LogDir = Join-Path $DEV_CORE_DATA "Logs\scripts\repowise_watch"
+$LogDir = Join-Path $env:LOCALAPPDATA "devcore\Logs\repowise_watch"
 $StatePath = Join-Path $DEV_CORE_DATA "Logs\scripts\repowise_watch_state.json"
 $WorkerPath = Join-Path $DEV_CORE "Scripts\repowise_watch_worker.ps1"
 $WebLanguagesPatchPath = Join-Path $DEV_CORE "Scripts\ensure_repowise_web_languages.ps1"
@@ -206,6 +206,7 @@ foreach ($name in (Get-DeclaredProjectNames)) {
     }
 
     $argList = @(
+        "-NoProfile",
         "-ExecutionPolicy", "Bypass",
         "-NonInteractive",
         "-File", $WorkerPath,
@@ -215,7 +216,10 @@ foreach ($name in (Get-DeclaredProjectNames)) {
         "-LogDir", $LogDir
     )
 
-    $started = Start-Process -FilePath "powershell" -ArgumentList $argList -WindowStyle Hidden -PassThru -ErrorAction SilentlyContinue
+    $safeName = $name -replace '[\\/:*?"<>| ]', '_'
+    $stdOut = Join-Path $LogDir "$safeName.stdout.log"
+    $stdErr = Join-Path $LogDir "$safeName.stderr.log"
+    $started = Start-Process -FilePath "powershell" -ArgumentList $argList -WindowStyle Hidden -PassThru -RedirectStandardOutput $stdOut -RedirectStandardError $stdErr -ErrorAction SilentlyContinue
     if ($started) {
         $projectStates += [pscustomObject]@{ project = $name; path = $path; status = "started"; pid = $started.Id }
         Write-Host "[DEV_CORE] Repowise watch START -- $name pid=$($started.Id)"

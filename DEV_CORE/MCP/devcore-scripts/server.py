@@ -22,6 +22,16 @@ DEVCORE_ROOT = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", "C:/devcore/DEV_CORE
 DEVCORE_DATA = Path(os.environ.get("DEVCORE_DATA_ROOT", "C:/devcore/DEV_CORE_DATA"))
 DEVCORE_SCRIPTS = DEVCORE_ROOT / "Scripts"
 
+# Import MCP Hooks manager
+try:
+    sys.path.insert(0, str(Path(__file__).parent))
+    from hooks import HookManager, CircuitBreakerOpenError
+    hook_manager = HookManager()
+except Exception:
+    hook_manager = None
+    class CircuitBreakerOpenError(Exception): pass
+
+
 def apply_rtk(text: str) -> str:
     """Apply RTK compression to tool outputs."""
     if not text:
@@ -347,8 +357,8 @@ def emit_event(event_type: str, payload: dict) -> dict:
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-def handle_tool_call(tool_name: str, arguments: dict) -> dict:
-    """Handle tool call from Hermes."""
+def _dispatch_tool_call(tool_name: str, arguments: dict) -> dict:
+    """Internal tool call dispatcher."""
     if tool_name == "devcore_launch":
         # Launch daily task logic
         (DEVCORE_DATA / "Memory").mkdir(parents=True, exist_ok=True)
@@ -423,6 +433,30 @@ def handle_tool_call(tool_name: str, arguments: dict) -> dict:
         
     else:
         return {"error": f"Unknown tool: {tool_name}"}
+
+def handle_tool_call(tool_name: str, arguments: dict) -> dict:
+    """Handle tool call wrapped with Pre/Post hooks."""
+    arguments = arguments or {}
+    context = {}
+    
+    if hook_manager:
+        try:
+            context = hook_manager.run_pre_hooks(tool_name, arguments)
+        except CircuitBreakerOpenError as e:
+            return {"success": False, "error": str(e), "circuit_breaker_open": True}
+        except Exception as e:
+            context["pre_hook_error"] = str(e)
+            
+    res = _dispatch_tool_call(tool_name, arguments)
+    
+    if hook_manager:
+        try:
+            res = hook_manager.run_post_hooks(tool_name, arguments, res, context)
+        except Exception as e:
+            res["post_hook_error"] = str(e)
+            
+    return res
+
 
 def main():
     print("DEV_CORE MCP Server started")

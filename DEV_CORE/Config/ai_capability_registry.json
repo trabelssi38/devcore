@@ -21,7 +21,7 @@
     "devcore-reasoning": {
       "type": "model",
       "provider": "google",
-      "backend_model": "gemini-2.5-flash",
+      "backend_model": "gemini-2.5-pro",
       "enabled": true,
       "workflow_modes": ["reasoning", "plan"],
       "languages": ["python", "powershell", "typescript", "javascript", "kotlin", "sql"],
@@ -35,7 +35,7 @@
     "devcore-coding": {
       "type": "model",
       "provider": "google",
-      "backend_model": "gemini-2.5-flash",
+      "backend_model": "gemini-2.5-pro",
       "enabled": true,
       "workflow_modes": ["coding"],
       "languages": ["python", "powershell", "typescript", "javascript", "kotlin", "sql"],
@@ -73,6 +73,34 @@
       "speed_tier": 3,
       "quality_tier": 4,
       "notes": "Observed model identifier. Disabled for Gemini Router until a direct backend adapter exists."
+    },
+    "cerebras-fallback": {
+      "type": "model",
+      "provider": "cerebras",
+      "backend_model": "llama-3.3-70b",
+      "enabled": true,
+      "workflow_modes": ["reasoning", "coding", "bulk"],
+      "languages": ["python", "powershell", "typescript", "javascript", "sql"],
+      "specialties": ["fast-fallback", "implementation", "reasoning"],
+      "context_tokens": 128000,
+      "cost_tier": 1,
+      "speed_tier": 5,
+      "quality_tier": 4,
+      "notes": "Cerebras ultra-fast fallback provider (llama-3.3-70b)."
+    },
+    "nvidia-fallback": {
+      "type": "model",
+      "provider": "nvidia",
+      "backend_model": "meta/llama-3.3-70b-instruct",
+      "enabled": true,
+      "workflow_modes": ["reasoning", "coding", "bulk"],
+      "languages": ["python", "powershell", "typescript", "javascript", "sql"],
+      "specialties": ["high-availability", "implementation", "reasoning"],
+      "context_tokens": 128000,
+      "cost_tier": 2,
+      "speed_tier": 4,
+      "quality_tier": 4,
+      "notes": "NVIDIA NIM secondary fallback provider."
     }
   }
 }
