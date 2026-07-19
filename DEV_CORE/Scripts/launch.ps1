@@ -33,9 +33,9 @@ Log "1/8 Adaptation client ($Client)" "Cyan"
 & "$DEV_CORE\Scripts\adapt_client.ps1" -Client $Client
 & "$DEV_CORE\Scripts\ensure_repowise_mcp.ps1" -RepoRoot "C:\devcore"
 & "$DEV_CORE\Scripts\ensure_repowise_web_languages.ps1"
-& "$DEV_CORE\Scripts\ensure_repowise_web_proxy.ps1"
-& "$DEV_CORE\Scripts\ensure_repowise_ipv6_proxy.ps1"
-& "$DEV_CORE\Scripts\ensure_repowise_watch.ps1" -RepoRoot "C:\devcore"
+# & "$DEV_CORE\Scripts\ensure_repowise_web_proxy.ps1"
+# & "$DEV_CORE\Scripts\ensure_repowise_ipv6_proxy.ps1"
+# & "$DEV_CORE\Scripts\ensure_repowise_watch.ps1" -RepoRoot "C:\devcore"
 
 # 2. Services check & launch (Qdrant, Gemini Router)
 Log "2/8 Verification des services (Qdrant, Gemini Router)" "Cyan"
@@ -228,42 +228,8 @@ if (-not (Check-Port 8788)) {
     Log "  Anthropic Adapter OK (Port 8788 actif)" "Green"
 }
 
-# 2.4 Repowise Server (Port 7337)
-if (-not (Check-Port 7337)) {
-    Log "  Repowise Server (Port 7337) est hors-ligne. Tentative de demarrage..." "Yellow"
-    $repowisePath = "C:\Users\trb_m\AppData\Roaming\Python\Python313\Scripts\repowise.exe"
-    if (-not (Test-Path $repowisePath)) { $repowisePath = "repowise" }
-    
-    $logOut = "$DEV_CORE_DATA\Logs\scripts\repowise.log"
-    $logErr = "$DEV_CORE_DATA\Logs\scripts\repowise_err.log"
-    
-    # Set mock embedder env var to bypass prompting on serve
-    $env:REPOWISE_EMBEDDER = "mock"
-    & "$DEV_CORE\Scripts\ensure_repowise_web_proxy.ps1"
-    
-    $proc = Start-Process -FilePath $repowisePath -ArgumentList "serve --host 127.0.0.1 --port 7337 --ui-port 3101" -WorkingDirectory "C:\devcore" -WindowStyle Hidden -RedirectStandardOutput $logOut -RedirectStandardError $logErr -PassThru -ErrorAction SilentlyContinue
-    
-    # Attendre que le port s'ouvre (timeout 15s)
-    $repowiseOpen = $false
-    for ($i = 0; $i -lt 30; $i++) {
-        Start-Sleep -Milliseconds 500
-        if (Check-Port 7337) {
-            $repowiseOpen = $true
-            break
-        }
-    }
-    
-    if ($repowiseOpen) {
-        & "$DEV_CORE\Scripts\ensure_repowise_web_proxy.ps1"
-        & "$DEV_CORE\Scripts\ensure_repowise_ipv6_proxy.ps1"
-        Log "  Repowise Server lance avec succes (API: 7337, UI: 3101)" "Green"
-    } else {
-        Log "  [WARN] Repowise Server n'a pas repondu sur le port 7337 apres 15s." "Yellow"
-    }
-} else {
-    & "$DEV_CORE\Scripts\ensure_repowise_ipv6_proxy.ps1"
-    Log "  Repowise Server OK (Port 7337 actif)" "Green"
-}
+# 2.4 Repowise Server (Port 7337) - Skipped (using lightweight MCP mode)
+Log "  Repowise Server: Skipped serve daemon startup (using lightweight stdio MCP mode)" "Green"
 
 # 2.5 Agent environment variables configuration
 Log "  Configuration des variables d'environnement des agents (Scope User)..." "Gray"

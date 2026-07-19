@@ -153,7 +153,37 @@ try {
         } catch { Log "  Qdrant snapshot skip" "Yellow" }
         $memMd = "$DEV_CORE_DATA\Memory\MEMORY.md"
         if (Test-Path $memMd) { Copy-Item $memMd "$bdir\MEMORY_$TODAY.md" -Force }
+        
+        # Backup rotation: keep only the 5 most recent backups per type
+        if (Test-Path $bdir) {
+            $memBackups = Get-ChildItem -Path $bdir -Filter "MEMORY_*.md" | Sort-Object LastWriteTime -Descending
+            if ($memBackups.Count -gt 5) {
+                $memBackups | Select-Object -Skip 5 | Remove-Item -Force -ErrorAction SilentlyContinue
+            }
+            $taskBackups = Get-ChildItem -Path $bdir -Filter "tasks_*.json" | Sort-Object LastWriteTime -Descending
+            if ($taskBackups.Count -gt 5) {
+                $taskBackups | Select-Object -Skip 5 | Remove-Item -Force -ErrorAction SilentlyContinue
+            }
+        }
         Log "  Backup OK" "Green"
+    }
+
+    Log "6.1/8 Rotation des logs"
+    $logDirs = @(
+        "$DEV_CORE_DATA\Logs\scripts",
+        "$DEV_CORE_DATA\Logs\hermes"
+    )
+    foreach ($dir in $logDirs) {
+        if (Test-Path $dir) {
+            $deletedCount = 0
+            Get-ChildItem -Path $dir -File | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-30) } | ForEach-Object {
+                Remove-Item $_.FullName -Force -ErrorAction SilentlyContinue
+                $deletedCount++
+            }
+            if ($deletedCount -gt 0) {
+                Log "  Log Rotation: supprime $deletedCount fichier(s) dans $dir" "Yellow"
+            }
+        }
     }
 
     Log "6.5/8 Sync tarifs modeles"

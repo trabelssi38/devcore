@@ -751,7 +751,10 @@ def aggregate_sessions(sessions):
             add_usage(tasks_data[task_key], usage)
             merge_model_usage(tasks_data[task_key]["model_usage"], usage.get("model_usage", {}))
 
-        public_session = {k: v for k, v in session.items() if not k.startswith("_")}
+        public_session = {
+            k: v for k, v in session.items()
+            if not k.startswith("_") and k != "model_turns"
+        }
         public_sessions.append(public_session)
 
     totals["duration_minutes"] = int(totals.pop("duration_seconds", 0) // 60)
@@ -867,6 +870,22 @@ def main():
             sessions.append(session)
 
     result_summary = aggregate_sessions(sessions)
+    # Keep only the 50 most recent sessions in the summary JSON to avoid bloat
+    if "sessions" in result_summary:
+        result_summary["sessions"] = result_summary["sessions"][:50]
+
+    # Keep only tasks referenced by the 50 most recent sessions to avoid bloat
+    if "tasks" in result_summary:
+        recent_task_keys = set()
+        for session in result_summary.get("sessions", []):
+            for t in session.get("tasks", []):
+                # Structure of task keys in result_summary['tasks']: f"{project}_{task_id}"
+                recent_task_keys.add(f"{session.get('project')}_{t}".lower())
+        result_summary["tasks"] = {
+            k: v for k, v in result_summary["tasks"].items()
+            if k.lower() in recent_task_keys
+        }
+
     summary_path = reports_dir / "token_metrics_summary.json"
     summary_path.write_text(json.dumps(result_summary, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"[SUCCESS] Resume consolide ecrit dans {summary_path}")

@@ -1,0 +1,10 @@
+node_modules/
+.git/objects/
+DEV_CORE_DATA/Logs/
+DEV_CORE_DATA/Backups/
+DEV_CORE_DATA/qdrant_storage/
+DEV_CORE_DATA/Dashboard/
+__pycache__/
+*.log
+*.pyc
+hermes/.venv/

@@ -170,10 +170,11 @@ Set-Content \"\$evtDir/\$(Get-Date -Format 'yyyyMMdd_HHmmss')_commit.json\" \$ev
 $MSG
 EOF
 
-# 3. Lancer le Scan + Sync + Dashboard en arrière-plan (non-bloquant, asynchrone et robuste)
-echo "  [DEV_CORE] Scan et synchronisation en fond..."
+# 3. Lancer le Scan + Sync + Dashboard et Repowise Update en arrière-plan (non-bloquant, asynchrone et robuste)
+echo "  [DEV_CORE] Scan, synchronisation et Repowise Update en fond..."
 powershell.exe -NoProfile -ExecutionPolicy Bypass -NonInteractive -Command "
 Start-Process -FilePath 'powershell.exe' -ArgumentList '-NoProfile -ExecutionPolicy Bypass -NonInteractive -Command & \"$SCRIPTS/task_scan.ps1\"; & \"$SCRIPTS/task_sync.ps1\"' -WorkingDirectory 'C:/devcore' -WindowStyle Hidden
+Start-Process -FilePath 'python.exe' -ArgumentList '\"$SCRIPTS/repowise_update.py\"' -WorkingDirectory 'C:/devcore' -WindowStyle Hidden
 "
 
 exit 0

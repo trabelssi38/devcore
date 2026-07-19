@@ -112,8 +112,15 @@ def main():
                     active_mode = active_task.get("mode") if active_task else "N/A"
                     active_steps = f"{active_task.get('steps_done', 0)}/{active_task.get('steps_total', 1)}" if active_task else ""
                     
-                    # Store task details
-                    for t in tasks:
+                    # Keep active/todo tasks, plus the last 20 completed ones
+                    active_tasks = [t for t in tasks if t.get("status") in ["todo", "active", "paused"] or t.get("id") == board.get("current_task")]
+                    completed_tasks = [t for t in tasks if t.get("status") == "done" and t.get("id") != board.get("current_task")]
+                    limited_tasks = completed_tasks[-20:] + active_tasks
+                    # Sort to preserve original order
+                    limited_tasks.sort(key=lambda t: tasks.index(t))
+                    
+                    # Store task details only for the limited tasks
+                    for t in limited_tasks:
                         if t.get("details"):
                             task_details[f"{folder.name}_{t.get('id')}"] = t.get("details")
                     
@@ -123,7 +130,7 @@ def main():
                         "mode": active_mode,
                         "progress": pct,
                         "steps": active_steps,
-                        "tasks": tasks
+                        "tasks": limited_tasks
                     })
                 except Exception:
                     pass
@@ -258,6 +265,10 @@ def main():
             stats_data = json.loads(stats_json_path.read_text(encoding="utf-8"))
             tasks_stats = stats_data.get("tasks", {})
             if tasks_stats:
+                # Limit to the last 15 tasks to keep table clean
+                recent_task_ids = list(tasks_stats.keys())[-15:]
+                tasks_stats = {k: tasks_stats[k] for k in recent_task_ids}
+                
                 token_activity_html += '<table style="width:100%; border-collapse:collapse; font-size:11px; margin-top:8px;">'
                 token_activity_html += '<tr style="border-bottom:1px solid #334155; color:#94a3b8; text-align:left;"><th style="padding:4px;">Tâche</th><th style="padding:4px;">Mode</th><th style="padding:4px;">In</th><th style="padding:4px;">Out</th><th style="padding:4px;">Total</th><th style="padding:4px;">Statut</th></tr>'
                 
@@ -400,7 +411,17 @@ def main():
     # Save JSON payload cache
     cache_path = DATA_ROOT / "Dashboard" / "dashboard_payload.json"
     cache_path.parent.mkdir(parents=True, exist_ok=True)
-    cache_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    payload_str = json.dumps(payload, indent=2, ensure_ascii=False)
+    cache_path.write_text(payload_str, encoding="utf-8")
+
+    # Save payload hash
+    import hashlib
+    hash_path = DATA_ROOT / "Dashboard" / "payload_hash.txt"
+    payload_hash = hashlib.sha256(payload_str.encode("utf-8")).hexdigest()
+    try:
+        hash_path.write_text(payload_hash, encoding="utf-8")
+    except Exception:
+        pass
 
     # Render template.html -> index.html
     template_file = PLATFORM_ROOT / "Dashboard" / "template.html"
@@ -430,7 +451,7 @@ def main():
             print(f"[gen_dashboard.py] Error generating dashboard: {e}")
 
     if args.json:
-        print(json.dumps(payload, indent=2, ensure_ascii=True))
+        print(payload_str)
 
 if __name__ == "__main__":
     main()

@@ -111,6 +111,18 @@ cron_tasks:
          - This command will automatically run memory extraction, Qdrant sync, Obsidian sync, and refresh the dashboard.
       6. **No Placeholders**: Never write placeholder code or comments. Implement fully working code.
 
+  # Mise à jour périodique Repowise — toutes les 5 minutes
+  - id: "periodic_repowise_update"
+    name: "DEV_CORE Periodic Repowise Update"
+    description: "Met à jour l'index Repowise en mode fast et index-only"
+    schedule: "*/5 * * * *"
+    timezone: "Europe/Paris"
+    enabled: true
+    catchup: false
+    script: "repowise_update_wrapper.py"
+    no_agent: true
+    workdir: "C:/devcore"
+
 # Notification settings
 notifications:
   on_success: false
