@@ -13,7 +13,7 @@ h1{font-size:16px;color:#6366f1;margin:0}
 h2{font-size:11px;color:#94a3b8;margin:0 0 12px;text-transform:uppercase;letter-spacing:.05em}
 
 .main-layout{display:grid;grid-template-columns:300px 1fr 400px;flex:1;overflow:hidden}
-.column{display:flex;flex-direction:column;border-right:1px solid #2d3148;padding:16px;overflow:hidden}
+.column{display:flex;flex-direction:column;border-right:1px solid #2d3148;padding:16px;overflow:hidden;min-height:0}
 .column:last-child{border-right:none}
 .scroll-area{flex:1;overflow-y:auto;padding-right:8px}
 
@@ -476,7 +476,7 @@ details{margin-bottom: 8px}
     </div>
     
     <!-- Tab: Tasks Content -->
-    <div id="tab-tasks-content" style="display: flex; flex-direction: column; flex: 1; overflow: hidden;">
+    <div id="tab-tasks-content" style="display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden;">
       <div class="scroll-area" id="tasks-pipeline">
         {{TASKS_PIPELINE}}
       </div>
@@ -484,7 +484,7 @@ details{margin-bottom: 8px}
     </div>
 
     <!-- Tab: Settings Content -->
-    <div id="tab-settings-content" style="display: none; flex-direction: column; flex: 1; overflow-y: auto; padding-right: 8px;">
+    <div id="tab-settings-content" style="display: none; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; padding-right: 8px;">
       <form id="settings-form" onsubmit="event.preventDefault(); saveSettings();" class="card" style="padding: 16px; background:#1a1d27; border: 1px solid #2d3148; border-radius:8px;">
         <div style="margin-bottom: 16px;">
           <label style="display:block; font-size:10px; color:#64748b; text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; font-weight:600;">Client Actif</label>

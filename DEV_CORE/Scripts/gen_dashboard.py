@@ -37,6 +37,37 @@ def check_port(service_name_or_port, port: int = None) -> bool:
     except Exception:
         return False
 
+def get_task_datetime(t) -> datetime:
+    for prop in ["committed_at", "completed_at", "started_at", "updated_at", "created_at"]:
+        val = t.get(prop)
+        if val:
+            try:
+                dt_part = val.strip()
+                for sign in [" +", " -"]:
+                    if sign in val:
+                        dt_part = val.split(sign)[0]
+                        break
+                for fmt in ["%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M"]:
+                    try:
+                        return datetime.strptime(dt_part.strip(), fmt)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+    return datetime.min
+
+def get_task_id_number(t) -> int:
+    tid = t.get("id", "")
+    if tid:
+        import re
+        nums = re.findall(r"\d+", tid)
+        if nums:
+            try:
+                return int("".join(nums))
+            except Exception:
+                pass
+    return 0
+
 def get_active_project() -> str:
     # Use cached env var if present
     cached = os.environ.get("DEVCORE_ACTIVE_PROJECT_NAME")
@@ -227,17 +258,130 @@ def main():
 
     tasks_html = ""
     for p in projects:
-        tasks_html += f"<details open class='project-tasks-group' data-project='{p['name']}'><summary><h2>Projet : {p['name']}</h2></summary><div style='padding: 10px 0;'>"
+        # Group tasks by worktree
+        from collections import defaultdict
+        worktree_groups = defaultdict(list)
         for t in p["tasks"]:
-            badge = "done" if t.get("status") == "done" else ("active" if t.get("status") == "active" else "todo")
-            tasks_html += f"""
-            <div class="mission {badge}">
-              <div class="mission-header">
-                <span class="badge {badge}">{t.get('status', '').upper()}</span>
-                <span>{t.get('id')}: {t.get('title')}</span>
+            wt = t.get("worktree") or "main"
+            worktree_groups[wt].append(t)
+            
+        # Sort each group's tasks by date and id in descending order
+        for wt in worktree_groups:
+            worktree_groups[wt].sort(key=lambda t: (get_task_datetime(t), get_task_id_number(t)), reverse=True)
+            
+        # Get sorted worktree names based on the maximum task in each group
+        sorted_worktrees = sorted(
+            worktree_groups.keys(),
+            key=lambda wt: max((get_task_datetime(t), get_task_id_number(t)) for t in worktree_groups[wt]),
+            reverse=True
+        )
+
+        tasks_html += f"<details open class='project-tasks-group' data-project='{p['name']}'><summary><h2 style='color:#6366f1; cursor:pointer; padding:5px; background:#1a1d27; border-radius:4px;'>Projet : {p['name']}</h2></summary><div style='padding: 10px 0;'>\n"
+        
+        for wt in sorted_worktrees:
+            tasks_html += f"<details open style='margin-left: 15px; margin-bottom: 10px; border-left: 2px solid #2d3148; padding-left: 12px;'><summary><h3 style='font-size:11px; color:#94a3b8; margin-bottom:8px;'>Worktree: {wt}</h3></summary>\n"
+            for t in worktree_groups[wt]:
+                p_name = p["name"]
+                t_id = t.get("id", "")
+                t_status = t.get("status", "")
+                
+                badge_class = "done" if t_status == "done" else ("active" if t_status == "active" else "todo")
+                badge_text = t_status.upper()
+                active_class = "active-task" if t_status == "active" else ""
+                steps_str = f"{t.get('steps_done', 0)}/{t.get('steps_total', 1)} steps" if t.get("steps_total", 0) > 1 else ""
+                
+                # Badges de tokens et coûts pour la tâche
+                task_tokens_str = ""
+                task_cost_str = ""
+                task_key = f"{p_name}_{t_id}"
+                task_stats = None
+                if token_metrics and "tasks" in token_metrics:
+                    tasks_stats_dict = token_metrics["tasks"]
+                    if task_key in tasks_stats_dict:
+                        task_stats = tasks_stats_dict[task_key]
+                    elif t_id in tasks_stats_dict:
+                        task_stats = tasks_stats_dict[t_id]
+                
+                if task_stats:
+                    try:
+                        t_tokens = float(task_stats.get("tokens", 0))
+                        if t_tokens > 1000000:
+                            t_tokens_str = f"{round(t_tokens/1000000, 2)}M"
+                        else:
+                            t_tokens_str = f"{round(t_tokens/1000, 1)}K"
+                        t_cost = float(task_stats.get("cost_usd", 0))
+                        t_cost_formatted = f"{t_cost:.2f}"
+                        task_tokens_str = f"<span class='badge' style='background:rgba(99, 102, 241, 0.12); border:1px solid rgba(99, 102, 241, 0.25); color:#cbd5e1; margin-left:6px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Tokens consommés par l\\'agent'>{t_tokens_str}</span>"
+                        task_cost_str = f"<span class='badge' style='background:rgba(251, 191, 36, 0.12); border:1px solid rgba(251, 191, 36, 0.25); color:#fde68a; margin-left:4px; font-family:monospace; font-size:9px; font-weight:400; padding:1px 4px;' title='Coût estimé (USD)'>${t_cost_formatted}</span>"
+                    except Exception:
+                        pass
+
+                # Gestion du bouton Détails
+                details_button = ""
+                if t.get("details"):
+                    details_button = f"<button class='btn-action btn-details' onclick='showDetails(\"{p_name}\", \"{t_id}\", \"{t_status}\", this, event)' title='Voir les détails'>Détails</button>"
+
+                # Gestion des étapes détaillées
+                steps_detail_html = ""
+                if t.get("steps"):
+                    steps_detail_html = "<div class='steps-container'>"
+                    for s in t.get("steps", []):
+                        if isinstance(s, dict):
+                            is_done = s.get("done", False)
+                            s_title = s.get("title", "")
+                        else:
+                            is_done = False
+                            s_title = str(s)
+                        icon = "<b style='color:#22c55e'>[v]</b>" if is_done else "<span style='color:#475569'>[ ]</span>"
+                        step_class = "step-done" if is_done else ""
+                        steps_detail_html += f"<div class='step-item {step_class}'>{icon} {s_title}</div>"
+                    steps_detail_html += "</div>"
+
+                # Date de la tâche pour filtrage JS
+                task_date_val = get_task_datetime(t)
+                if task_date_val != datetime.min:
+                    task_date = task_date_val.strftime("%Y-%m-%dT%H:%M:%S")
+                else:
+                    task_date = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+
+                # Formatage des dates pour l'affichage
+                dates_html = ""
+                date_items = []
+                if t.get("committed_at"):
+                    date_items.append(f"Commit: {t['committed_at']}")
+                if t.get("started_at"):
+                    date_items.append(f"Debut: {t['started_at']}")
+                if t.get("completed_at"):
+                    date_items.append(f"Fin: {t['completed_at']}")
+                if date_items:
+                    dates_html = f"<div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>{' | '.join(date_items)}</div>"
+
+                # Boutons Clôturer / Supprimer
+                done_button = ""
+                if t_status != "done":
+                    done_button = f"<button class='btn-action btn-done' title='Clôturer' onclick='completeTask(\"{p_name}\", \"{t_id}\")'>&#10004;</button>"
+                delete_button = f"<button class='btn-action btn-delete' title='Supprimer' onclick='deleteTask(\"{p_name}\", \"{t_id}\")'>&#128465;</button>"#128465;</button>"
+
+                tasks_html += f"""
+            <div class="mission {active_class} {badge_class}" data-date="{task_date}">
+              <div class="mission-header" style="display:flex; gap:10px; align-items:center; width:100%">
+                <span class="badge {badge_class}">{badge_text}</span>
+                <div style="flex:1; min-width: 0;">
+                  <div class="mission-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+                    <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="{t.get('id')}: {t.get('title')}">{t.get('id')}: {t.get('title')}</span>
+                    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0;">
+                      <div style="display:flex; align-items:center; gap:2px;">{task_tokens_str}{task_cost_str}{details_button}</div>
+                      <div style="display:flex; align-items:center; gap:2px;">{done_button}{delete_button}</div>
+                    </div>
+                  </div>
+                  <div style="font-size:10px;color:#64748b;margin-top:2px">Mode: {t.get('mode', 'N/A')} - {steps_str}</div>
+                  {dates_html}
+                </div>
               </div>
+              {steps_detail_html}
             </div>
             """
+            tasks_html += "</details>\n"
         tasks_html += "</div></details>"
 
     services_html = "<h2>Services & Infrastructure</h2>"
