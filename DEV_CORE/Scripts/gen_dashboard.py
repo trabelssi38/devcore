@@ -4,6 +4,7 @@ import sys
 import json
 import socket
 import argparse
+import subprocess
 from datetime import datetime
 from pathlib import Path
 
@@ -26,6 +27,82 @@ def get_active_project() -> str:
         return cached
     # Fallback to directory name
     return Path(os.getcwd()).name
+
+def get_context_composition_html(projects) -> str:
+    rows_html = ""
+    for p in projects:
+        active_tasks = [t for t in p.get("tasks", []) if t.get("status") == "active"]
+        # If no active task, show the last done task as context reference
+        if not active_tasks:
+            done_tasks = [t for t in p.get("tasks", []) if t.get("status") == "done"]
+            if done_tasks:
+                active_tasks = [done_tasks[-1]]
+        for task in active_tasks:
+            query = task.get("title") or task.get("id") or ""
+            task_type = task.get("mode") or "devcore"
+            try:
+                # Call context_service.ps1
+                cmd = [
+                    "powershell.exe",
+                    "-NoProfile",
+                    "-NonInteractive",
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-File",
+                    str(PLATFORM_ROOT / "Scripts" / "context_service.ps1"),
+                    "-Action",
+                    "ScoreSources",
+                    "-Query",
+                    query,
+                    "-TaskType",
+                    task_type,
+                    "-Json"
+                ]
+                res = subprocess.run(cmd, capture_output=True, text=True, encoding="cp1252", errors="replace", timeout=10)
+                if res.returncode == 0:
+                    payload = json.loads(res.stdout)
+                    sources = payload.get("sources", [])
+                    # Sort by score descending
+                    sources.sort(key=lambda s: s.get("score", 0.0), reverse=True)
+                    source_rows = ""
+                    for src in sources:
+                        status_text = "IN" if src.get("included") else "OUT"
+                        status_color = "#22c55e" if src.get("included") else "#64748b"
+                        source_rows += f"""
+              <div class="context-source-row" style="display:grid; grid-template-columns: 38px 1fr 48px; gap:8px; align-items:start; padding:7px 0; border-bottom:1px solid rgba(255,255,255,0.04);">
+                <span style="font-size:9px; color:{status_color}; font-family:'JetBrains Mono',monospace; font-weight:600;">{status_text}</span>
+                <div style="min-width:0;">
+                  <div style="font-size:10px; color:#e2e8f0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{src.get('path', '')}">{src.get('id', '')}</div>
+                  <div style="font-size:9px; color:#64748b; line-height:1.35; margin-top:2px;">{src.get('justification', '')}</div>
+                </div>
+                <span style="font-size:10px; color:#a5b4fc; font-family:'JetBrains Mono',monospace; text-align:right;">{src.get('score', 0.0)}</span>
+              </div>
+                        """
+                    rows_html += f"""
+        <div class="context-task-card" data-project="{p['name']}" style="background:#1a1d27; border:1px solid #2d3148; border-radius:6px; padding:10px; margin-bottom:8px;">
+          <div style="display:flex; justify-content:space-between; gap:8px; align-items:center; margin-bottom:8px;">
+            <div style="min-width:0;">
+              <div style="font-size:11px; color:#f8fafc; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{p['name']} / {task['id']}</div>
+              <div style="font-size:9px; color:#64748b; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="{query}">{query}</div>
+            </div>
+            <span style="font-size:9px; color:#cbd5e1; border:1px solid #312e81; border-radius:4px; padding:2px 5px;">{task_type}</span>
+          </div>
+          <div>{source_rows}</div>
+        </div>
+                    """
+            except Exception as e:
+                rows_html += f"<div class='component'><div><div class='component-name'>{p['name']} / {task['id']}</div><div class='component-detail'>Context scoring failed: {str(e)}</div></div><div class='status-error'>&#10007;</div></div>"
+
+    if not rows_html:
+        rows_html = "<div style='font-size:10px; color:#64748b; padding:8px 0;'>Aucune tâche active — affichage de la dernière tâche complétée.</div>"
+
+    return f"""
+<div id="context-composition-inner">
+  <h2>Composition du Contexte</h2>
+  <div style="margin-bottom:6px; font-size:9px; color:#64748b; line-height:1.35;">Sources incluses/exclues pour la tâche active.</div>
+  {rows_html}
+</div>
+"""
 
 def main():
     parser = argparse.ArgumentParser()
@@ -73,8 +150,8 @@ def main():
                 except Exception:
                     pass
 
-    # Sort projects
-    projects.sort(key=lambda p: p["name"])
+    # Sort projects — 'devcore' always first, then alphabetical
+    projects.sort(key=lambda p: (0 if p["name"] == "devcore" else 1, p["name"]))
 
     # Service statuses
     services = {
@@ -177,6 +254,70 @@ def main():
         </div>
         """
 
+    # Compute context composition html
+    context_composition_html = get_context_composition_html(projects)
+
+    # Load token metrics from headroom_stats.json
+    token_activity_html = "<h2>Supervision des Jets de Jetons (Headroom)</h2>"
+    stats_json_path = DATA_ROOT / "Metrics" / "headroom_stats.json"
+    if stats_json_path.exists():
+        try:
+            stats_data = json.loads(stats_json_path.read_text(encoding="utf-8"))
+            tasks_stats = stats_data.get("tasks", {})
+            if tasks_stats:
+                token_activity_html += '<table style="width:100%; border-collapse:collapse; font-size:11px; margin-top:8px;">'
+                token_activity_html += '<tr style="border-bottom:1px solid #334155; color:#94a3b8; text-align:left;"><th style="padding:4px;">Tâche</th><th style="padding:4px;">Mode</th><th style="padding:4px;">In</th><th style="padding:4px;">Out</th><th style="padding:4px;">Total</th><th style="padding:4px;">Statut</th></tr>'
+                
+                thresholds = {
+                    "coding": 500000,
+                    "reasoning": 2000000,
+                    "bulk": 1000000
+                }
+                
+                for tid, tinfo in tasks_stats.items():
+                    mode = tinfo.get("mode", "coding")
+                    t_in = tinfo.get("tokens_in", 0)
+                    t_out = tinfo.get("tokens_out", 0)
+                    t_total = tinfo.get("total_tokens", 0)
+                    limit = thresholds.get(mode, 1000000)
+                    
+                    status_badge = '<span style="color:#10b981; font-weight:bold;">OK</span>'
+                    if t_total > limit:
+                        status_badge = '<span style="color:#ef4444; font-weight:bold;">ALERTE</span>'
+                        
+                    token_activity_html += f'<tr style="border-bottom:1px solid #1e293b; color:#cbd5e1;"><td style="padding:4px; font-weight:bold;">{tid}</td><td style="padding:4px;">{mode}</td><td style="padding:4px;">{t_in:,}</td><td style="padding:4px;">{t_out:,}</td><td style="padding:4px; font-weight:bold;">{t_total:,}</td><td style="padding:4px;">{status_badge}</td></tr>'
+                token_activity_html += "</table>"
+            else:
+                token_activity_html += "<div>Aucune donnée de supervision enregistrée.</div>"
+        except Exception as e:
+            token_activity_html += f"<div>Erreur de lecture de la supervision: {e}</div>"
+    else:
+        token_activity_html += "<div>Aucune donnée de supervision (Headroom inactif ou pas encore d'appels).</div>"
+
+    # Load recent alerts from alerts.log
+    alerts_html = "<h2>Alerte de Consommation & Événements</h2>"
+    alerts_path = DATA_ROOT / "Logs" / "scripts" / "alerts.log"
+    alerts_list = []
+    if alerts_path.exists():
+        try:
+            with open(alerts_path, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+                # Get last 5 alerts, reversed to show most recent first
+                alerts_list = [l.strip() for l in lines if l.strip()][-5:]
+                alerts_list.reverse()
+        except Exception:
+            pass
+            
+    if alerts_list:
+        for alert in alerts_list:
+            alerts_html += f"""
+            <div style="padding:6px; margin-bottom:4px; background-color:rgba(239,68,68,0.1); border-left:3px solid #ef4444; border-radius:3px; font-size:10.5px; color:#fca5a5;">
+              {alert}
+            </div>
+            """
+    else:
+        alerts_html += "<div style='color:#64748b; font-size:11px;'>Aucune alerte de budget déclenchée. Tous les agents respectent les quotas.</div>"
+
     # Consolidate payload
     payload = {
         "schema_version": 1,
@@ -186,10 +327,10 @@ def main():
             "tasks_pipeline": tasks_html,
             "services_monitoring": services_html,
             "automation_hooks": "",
-            "token_activity_report": "",
-            "context_composition": "",
+            "token_activity_report": token_activity_html,
+            "context_composition": context_composition_html,
             "metrics_service_summary": f"<div>Events count: {len(events)}</div>",
-            "event_bus_recent": "<div>Recent bus activity</div>",
+            "event_bus_recent": alerts_html,
             "knowledge_graph_summary": f"<div>Nodes: {kg_summary['nodes_count']}</div>",
             "plugin_status": f"<div>Active plugins check</div>"
         },
@@ -212,18 +353,21 @@ def main():
     if template_file.exists():
         try:
             template = template_file.read_text(encoding="utf-8")
-            template = template.Replace('{{PROJECT_CARDS}}', cards_html) if hasattr(template, 'Replace') else template.replace('{{PROJECT_CARDS}}', cards_html)
+            template = template.replace('{{PROJECT_CARDS}}', cards_html)
             template = template.replace('{{TASKS_PIPELINE}}', tasks_html)
             template = template.replace('{{SERVICES_MONITORING}}', services_html)
             template = template.replace('{{AUTOMATION_HOOKS}}', "")
-            template = template.replace('{{TOKEN_ACTIVITY_REPORT}}', "")
-            template = template.replace('{{CONTEXT_COMPOSITION}}', "")
+            template = template.replace('{{TOKEN_ACTIVITY_REPORT}}', token_activity_html)
+            template = template.replace('{{CONTEXT_COMPOSITION}}', context_composition_html)
             template = template.replace('{{METRICS_SERVICE_SUMMARY}}', f"<div>Events: {len(events)}</div>")
-            template = template.replace('{{EVENT_BUS_RECENT}}', "<div>Recent bus events</div>")
+            template = template.replace('{{EVENT_BUS_RECENT}}', alerts_html)
             template = template.replace('{{KNOWLEDGE_GRAPH_SUMMARY}}', f"<div>Nodes: {kg_summary['nodes_count']}</div>")
             template = template.replace('{{PLUGIN_STATUS}}', "<div>Plugins active</div>")
             template = template.replace('{{TASK_DETAILS_MAP}}', json.dumps(task_details))
             template = template.replace('{{TOKEN_METRICS_JSON}}', json.dumps(token_metrics))
+            # Ensure version string is up-to-date in generated output
+            template = template.replace('DEV_CORE v9.0 Cockpit', 'DEV_CORE v10.0 — Cockpit')
+            template = template.replace('DEV_CORE v9.0 —', 'DEV_CORE v10.0 —')
             
             output_file.write_text(template, encoding="utf-8")
         except Exception:

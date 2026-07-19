@@ -38,6 +38,11 @@ services:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - DEVCORE_GEMINI_ROUTER_BIND=0.0.0.0
       - DEVCORE_ALLOW_PUBLIC_BIND=1
+      - DEVCORE_PLATFORM_ROOT=/app/DEV_CORE
+      - DEVCORE_DATA_ROOT=/data
+    volumes:
+      - .:/app
+      - devcore_data:/data
     ports:
       - "20130:20130"
     healthcheck:

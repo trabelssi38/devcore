@@ -9,6 +9,8 @@ import httpx
 import os
 import json
 import asyncio
+import time
+import datetime
 from pathlib import Path
 from ai_capability_registry import load_capability_registry, select_backend_model
 
@@ -32,6 +34,117 @@ def load_api_key() -> str:
 
 API_KEY = load_api_key()
 PUBLIC_BIND_HOSTS = {"0.0.0.0", "::", ""}
+
+def get_active_task_and_mode() -> tuple:
+    active_project_path = "C:/devcore/DEV_CORE_DATA/Runtime/active_project.txt"
+    project_name = "devcore"
+    if os.path.exists(active_project_path):
+        try:
+            with open(active_project_path, "r", encoding="utf-8") as f:
+                project_name = f.read().strip() or "devcore"
+        except Exception:
+            pass
+            
+    tasks_path = f"C:/devcore/DEV_CORE_DATA/Memory/{project_name}/tasks.json"
+    if os.path.exists(tasks_path):
+        try:
+            with open(tasks_path, "r", encoding="utf-8-sig") as f:
+                data = json.load(f)
+                current_task_id = data.get("current_task")
+                if current_task_id:
+                    for t in data.get("tasks", []):
+                        if t.get("id") == current_task_id:
+                            return current_task_id, t.get("mode", "coding")
+                return current_task_id or "Aucune", "coding"
+        except Exception:
+            pass
+            
+    return "Aucune", "coding"
+
+def check_and_trigger_alerts(task_id: str, mode: str, total_tokens: int):
+    thresholds = {
+        "coding": 500000,
+        "reasoning": 2000000,
+        "bulk": 1000000
+    }
+    threshold = thresholds.get(mode, 1000000)
+    if total_tokens > threshold:
+        alert_msg = f"[DEV_CORE BUDGET ALERT] Task {task_id} ({mode} mode) has consumed {total_tokens} tokens, exceeding budget of {threshold}."
+        print(alert_msg)
+        
+        alerts_dir = "C:/devcore/DEV_CORE_DATA/Logs/scripts"
+        os.makedirs(alerts_dir, exist_ok=True)
+        alerts_log = os.path.join(alerts_dir, "alerts.log")
+        try:
+            with open(alerts_log, "a", encoding="utf-8") as f:
+                ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                f.write(f"[{ts}] {alert_msg}\n")
+        except Exception as e:
+            print(f"[GeminiRouter] Failed to write alert log: {e}")
+
+def record_tokens(task_id: str, mode: str, prompt_tokens: int, completion_tokens: int):
+    stats_path = "C:/devcore/DEV_CORE_DATA/Metrics/headroom_stats.json"
+    os.makedirs(os.path.dirname(stats_path), exist_ok=True)
+    
+    for _ in range(5):
+        try:
+            stats = {"tasks": {}, "total_tokens": 0}
+            if os.path.exists(stats_path):
+                with open(stats_path, "r", encoding="utf-8-sig") as f:
+                    content = f.read().strip()
+                    if content:
+                        stats = json.loads(content)
+            
+            if "tasks" not in stats:
+                stats["tasks"] = {}
+                
+            if task_id not in stats["tasks"]:
+                stats["tasks"][task_id] = {
+                    "tokens_in": 0,
+                    "tokens_out": 0,
+                    "total_tokens": 0,
+                    "calls": 0,
+                    "mode": mode
+                }
+                
+            task_stats = stats["tasks"][task_id]
+            task_stats["tokens_in"] += prompt_tokens
+            task_stats["tokens_out"] += completion_tokens
+            task_stats["total_tokens"] += (prompt_tokens + completion_tokens)
+            task_stats["calls"] += 1
+            task_stats["mode"] = mode
+            
+            stats["total_tokens"] = sum(t["total_tokens"] for t in stats["tasks"].values())
+            
+            with open(stats_path, "w", encoding="utf-8") as f:
+                json.dump(stats, f, indent=2, ensure_ascii=False)
+                
+            check_and_trigger_alerts(task_id, mode, task_stats["total_tokens"])
+            break
+        except Exception as e:
+            time.sleep(0.1)
+
+def has_budget_alert(task_id: str) -> bool:
+    stats_path = "C:/devcore/DEV_CORE_DATA/Metrics/headroom_stats.json"
+    if not os.path.exists(stats_path):
+        return False
+    try:
+        with open(stats_path, "r", encoding="utf-8-sig") as f:
+            stats = json.load(f)
+            task_stats = stats.get("tasks", {}).get(task_id)
+            if task_stats:
+                mode = task_stats.get("mode", "coding")
+                total = task_stats.get("total_tokens", 0)
+                thresholds = {
+                    "coding": 500000,
+                    "reasoning": 2000000,
+                    "bulk": 1000000
+                }
+                threshold = thresholds.get(mode, 1000000)
+                return total > threshold
+    except Exception:
+        pass
+    return False
 
 
 def read_network_config() -> dict:
@@ -160,7 +273,38 @@ async def call_with_fallback(path: str, body: dict, headers: dict, is_chat: bool
                 continue
                 
             r.raise_for_status()
-            return Response(content=r.content, status_code=r.status_code, media_type="application/json")
+            resp_content = r.content
+            
+            # Extract and record tokens
+            task_id, mode = get_active_task_and_mode()
+            try:
+                resp_json = json.loads(resp_content.decode("utf-8"))
+                usage = resp_json.get("usage", {})
+                prompt_tokens = usage.get("prompt_tokens", 0)
+                completion_tokens = usage.get("completion_tokens", 0)
+                
+                if prompt_tokens == 0 and is_chat:
+                    prompt_text = json.dumps(gemini_body.get("messages", []))
+                    prompt_tokens = max(1, len(prompt_text) // 4)
+                if completion_tokens == 0 and is_chat:
+                    choices = resp_json.get("choices", [])
+                    if choices:
+                        content_text = choices[0].get("message", {}).get("content", "")
+                        completion_tokens = max(1, len(content_text) // 4)
+                
+                if prompt_tokens > 0 or completion_tokens > 0:
+                    record_tokens(task_id, mode, prompt_tokens, completion_tokens)
+            except Exception as e:
+                print(f"[GeminiRouter] Error recording tokens: {e}")
+                
+            headers_out = {
+                "Content-Type": "application/json",
+                "X-DevCore-Task": task_id
+            }
+            if has_budget_alert(task_id):
+                headers_out["X-DevCore-Budget-Alert"] = "True"
+                
+            return Response(content=resp_content, status_code=r.status_code, headers=headers_out)
         except Exception as e:
             last_error = e
             print(f"[GeminiRouter] Echec appel direct Gemini (essai {attempt+1}/{retries}) : {e}")
@@ -214,6 +358,13 @@ async def chat_completions(request: Request):
         delay = 1.0
         last_error = None
         
+        prompt_tokens = 0
+        try:
+            prompt_text = json.dumps(gemini_body.get("messages", []))
+            prompt_tokens = max(1, len(prompt_text) // 4)
+        except Exception:
+            pass
+            
         for attempt in range(retries):
             try:
                 async with client.stream(
@@ -235,8 +386,43 @@ async def chat_completions(request: Request):
                         
                     r.raise_for_status()
                     success = True
+                    
+                    accumulated_text = ""
+                    usage = None
+                    
                     async for chunk in r.aiter_bytes():
                         yield chunk
+                        try:
+                            lines = chunk.decode("utf-8", errors="ignore").split("\n")
+                            for line in lines:
+                                if line.startswith("data:"):
+                                    data_str = line[5:].strip()
+                                    if data_str == "[DONE]":
+                                        continue
+                                    data_json = json.loads(data_str)
+                                    if "usage" in data_json and data_json["usage"]:
+                                        usage = data_json["usage"]
+                                    choices = data_json.get("choices", [])
+                                    if choices:
+                                        delta = choices[0].get("delta", {})
+                                        if "content" in delta:
+                                            accumulated_text += delta["content"]
+                        except Exception:
+                            pass
+                            
+                    try:
+                        completion_tokens = 0
+                        if usage:
+                            prompt_tokens = usage.get("prompt_tokens", prompt_tokens)
+                            completion_tokens = usage.get("completion_tokens", 0)
+                        else:
+                            completion_tokens = max(1, len(accumulated_text) // 4)
+                        
+                        task_id, mode = get_active_task_and_mode()
+                        record_tokens(task_id, mode, prompt_tokens, completion_tokens)
+                    except Exception as e:
+                        print(f"[GeminiRouter] Error logging streaming tokens: {e}")
+                        
                     break
             except Exception as e:
                 last_error = e

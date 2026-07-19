@@ -643,18 +643,14 @@ def build_dashboard_payload():
 
 
 def refresh_dashboard_payload_cache():
-    dashboard_script = get_platform_path("Scripts", "gen_dashboard.ps1")
+    dashboard_script = get_platform_path("Scripts", "gen_dashboard.py")
     cmd = [
-        "powershell.exe",
-        "-NoProfile",
-        "-ExecutionPolicy",
-        "Bypass",
-        "-File",
+        sys.executable,
         str(dashboard_script),
         "-Json",
         "-SkipTokenRefresh",
     ]
-    print(f"[DashboardAPI] Running gen_dashboard.ps1 -Json (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
+    print(f"[DashboardAPI] Running gen_dashboard.py -Json (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
     result = subprocess.run(cmd, capture_output=True, text=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC)
     if result.returncode != 0:
         raise RuntimeError((result.stderr or result.stdout or "Dashboard generator failed").strip())
@@ -1085,10 +1081,9 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
                 return True, f"Active task {task_id} completed successfully via task_done.ps1"
             else:
                 # Regenerate the dashboard
-                dashboard_script = get_platform_path("Scripts", "gen_dashboard.ps1")
-                cmd = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", 
-                       str(dashboard_script)]
-                print(f"[DashboardAPI] Running gen_dashboard.ps1 for dashboard refresh (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
+                dashboard_script = get_platform_path("Scripts", "gen_dashboard.py")
+                cmd = [sys.executable, str(dashboard_script)]
+                print(f"[DashboardAPI] Running gen_dashboard.py for dashboard refresh (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
                 subprocess.run(cmd, capture_output=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC)
                 return True, f"Task {task_id} completed successfully"
 
@@ -1121,10 +1116,9 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
             print(f"[DashboardAPI] Successfully saved deleted task in tasks.json.")
 
             # Regenerate the dashboard
-            dashboard_script = get_platform_path("Scripts", "gen_dashboard.ps1")
-            cmd = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", 
-                   str(dashboard_script)]
-            print(f"[DashboardAPI] Running gen_dashboard.ps1 for dashboard refresh (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
+            dashboard_script = get_platform_path("Scripts", "gen_dashboard.py")
+            cmd = [sys.executable, str(dashboard_script)]
+            print(f"[DashboardAPI] Running gen_dashboard.py for dashboard refresh (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
             subprocess.run(cmd, capture_output=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC)
             return True, f"Task {task_id} deleted successfully"
 

@@ -1,158 +1,36 @@
-# AGENTS.md -- DEV_CORE v10.0
+# AGENTS.md -- DEV_CORE v10.0 -- Universal Agent Mode
 # Emplacement : C:\devcore\DEV_CORE\Config\AGENTS.md
-# Auto-injecte dans ~/.codex/AGENTS.md par adapt_client.ps1
-# Compatible : Codex Desktop · Codex CLI
+# --> Injecté dans ~/.codex/AGENTS.md par adapt_client.ps1
 
-## Hermes Agent Integration (v10.0)
+## RÈGLES D'EXÉCUTION DU ROUTAGE UNIVERSEL
 
-Hermes Agent (Nous Research) fonctionne en daemon avec MCP :
-- MCP server `devcore-scripts` : launch, endday, task_*, diagnose
-- MCP server `qdrant-storage` : collections, search, upsert, delete
-- MCP server `obsidian-vault` : daily_note, search, create_note
+Veuillez vous référer et suivre STRICTEMENT les instructions du fichier de configuration global :
+[DEVCORE_AGENT_INSTRUCTIONS.md](file:///C:/devcore/DEV_CORE/Config/DEVCORE_AGENT_INSTRUCTIONS.md)
 
-Hermes orchestre via scheduled tasks Windows :
-- `DEV_CORE_Daily_Launch` (10:00)
-- `DEV_CORE_Daily_Endday` (04:00)
-- `DEV_CORE_Weekly_Maintenance` (Sunday 05:00)
-
----
-
-## FIRST ACTION -- run at the very start of every session
-
-Before responding to anything, run in order:
-
-### 1 -- Check if project is initialized
-shell: powershell -ExecutionPolicy Bypass -NonInteractive -Command "Test-Path '.devcore\project.json'"
-
-If False -> initialize automatically:
-shell: powershell -ExecutionPolicy Bypass -NonInteractive -File "C:\devcore\DEV_CORE\Scripts\new_project.ps1" -Name (Split-Path (Get-Location) -Leaf) -Stack auto
-
-### 2 -- Launch DEV_CORE
-shell: powershell -ExecutionPolicy Bypass -NonInteractive -File "C:\devcore\DEV_CORE\Scripts\launch.ps1"
-
-### 3 -- Load active task
-shell: powershell -ExecutionPolicy Bypass -NonInteractive -File "C:\devcore\DEV_CORE\Scripts\dc.ps1" "next task"
-
-### 4 -- Read session context
-shell: powershell -NonInteractive -Command "Get-Content 'C:\devcore\DEV_CORE_DATA\Logs\scripts\session_context.txt' -ErrorAction SilentlyContinue"
-
-After these 4 steps: start task work immediately. No confirmation needed.
+### Résumé des commandes obligatoires :
+- Début de session :
+  ```powershell
+  powershell -ExecutionPolicy Bypass -NonInteractive -File "C:\devcore\DEV_CORE\Scripts\launch.ps1"
+  ```
+- Lecture contexte :
+  ```powershell
+  Get-Content "C:\devcore\DEV_CORE_DATA\Logs\scripts\session_context.txt" -ErrorAction SilentlyContinue
+  ```
+- Commits :
+  ```bash
+  git add -A
+  git commit -m "feat: description [T-XX]"
+  ```
+- Fin de session :
+  ```powershell
+  powershell -ExecutionPolicy Bypass -NonInteractive -File "C:\devcore\DEV_CORE\Scripts\endday.ps1" -SkipBackup
+  ```
 
 ---
 
-## RESPONSE MODE
+## Response Guidelines
 
 - Concise. Code first. No preamble.
 - Lists > prose for structured content.
 - 1 question max if clarification needed.
 - TDD: write test first, make it pass, then commit.
-
----
-
-## MEMORY (absolute priority - L0-L3 hierarchy)
-
-- Check L3 `C:\devcore\DEV_CORE_DATA\Memory\persona.md` (always loaded, always relevant).
-- Check L2 `C:\devcore\DEV_CORE_DATA\Memory\Scenarios\{task_type}.md` based on active task type.
-- Query L1 Qdrant if L2 is insufficient.
-- Query L0 SQLite (FTS5 search fallback via `memory_hierarchy.ps1 -Action Query`) if Qdrant yields no hits.
-- Score > 0.75: use result without regenerating.
-- Load only skills relevant to the current task.
-
----
-
-## SKILLS (mandatory)
-
-- Load devcore-automation first.
-- Check skills_registry.json before any non-trivial task.
-- If skill available: load it and follow exactly.
-- Auto-create skill threshold: 3 similar occurrences.
-
----
-
-## TOKENS & CONTEXT OFFLOADING (TencentDB Canvas)
-
-- **CRITICAL**: If a tool output, log file, build result, or file contents is very large (>500 lines or >10k characters), **DO NOT show it raw** in your dialogue or context.
-- Instead, offload it using the script:
-  `powershell -File "C:\devcore\DEV_CORE\Scripts\canvas_manager.ps1" -Action Offload -Content "OUTPUT_CONTENT" -TaskId "T-XX" -Type "log|code"`
-- Use the returned node ID (e.g., `T02_log_e4c3`) in your response and Mermaid canvas.
-- Write structured summaries and code first. No long prose.
-
----
-
-## TASKS (v9.0)
-
-- Single Client Mode : pas de handoffs multi-agents
-- Modes : reasoning (32k), coding (8k), bulk (16k)
-- Headroom Proxy (Port 8787) handles automatic transparent token compression.
-- Tags git : [T-XX]
-- Auto-detection via task_scan (git+spec+prompts)
-
----
-
-## ROUTING
-
-- Follow ROUTER.md for engine choice and token budget.
-- All requests are routed through Headroom Proxy (Port 8787) which forwards to 9Router.
-- mode=reasoning -> 9Router routes to Tier 1 automatically.
-- mode=coding    -> 9Router routes to Tier 2 automatically.
-- mode=bulk      -> 9Router routes to Tier 3 automatically.
-- No handoffs. Single client. 9Router handles model selection.
-
----
-
-## RULES DURING WORK
-
-### After each validated step (tests passing)
-Read task ID:
-shell: powershell -NonInteractive -Command "$p=& 'C:\devcore\DEV_CORE\Scripts\Get-ActiveProject.ps1'; (Get-Content \"C:\devcore\DEV_CORE_DATA\Memory\$p\tasks.json\" -Raw | ConvertFrom-Json).current_task"
-
-Commit with tag:
-shell: git add -A
-shell: git commit -m "feat: [step description] [T-XX]"
-
-### Check if task is complete (after every commit)
-shell: powershell -NonInteractive -Command "$p=& 'C:\devcore\DEV_CORE\Scripts\Get-ActiveProject.ps1'; $b=Get-Content \"C:\devcore\DEV_CORE_DATA\Memory\$p\tasks.json\" -Raw|ConvertFrom-Json;$t=$b.tasks|Where-Object{$_.status -eq 'active'}|Select-Object -First 1;if($t -and $t.steps_done -ge $t.steps_total){Write-Host 'TASK_COMPLETE'}"
-
-If TASK_COMPLETE -> run automatically:
-shell: powershell -NonInteractive -File "C:\devcore\DEV_CORE\Scripts\task_done.ps1" -Force
-shell: powershell -NonInteractive -File "C:\devcore\DEV_CORE\Scripts\dc.ps1" "next task"
-
----
-
-## TASKS (v10.0)
-
-- Single Client Mode : pas de handoffs multi-agents
-- Modes : reasoning (32k), coding (8k), bulk (16k)
-- Detection auto via 9Router
-- Tags git : [T-XX]
-- Auto-detection via task_scan (git+spec+prompts)
-- Task board par projet : `C:\devcore\DEV_CORE_DATA\Memory\<project>\tasks.json`
-
----
-
-## ROUTING
-
-- Follow ROUTER.md for engine choice and token budget.
-- mode=reasoning -> 9Router routes to Tier 1 automatically.
-- mode=coding    -> 9Router routes to Tier 2 automatically.
-- mode=bulk      -> 9Router routes to Tier 3 automatically.
-- No handoffs. Single client. 9Router handles model selection.
-
----
-
-## LAST ACTION -- before closing session
-
-Always run before ending:
-shell: powershell -NonInteractive -File "C:\devcore\DEV_CORE\Scripts\endday.ps1" -SkipBackup
-
----
-
-## DEV_CORE LOG FORMAT
-
-After each script, one line only:
-[DEV_CORE] launch.ps1 OK -- Task T-02 active
-[DEV_CORE] commit [T-02] -- step 2/5
-[DEV_CORE] task_done.ps1 -- T-02 done -- Next: T-03
-[DEV_CORE] endday.ps1 -- sync OK
-
-No explanation block. One line, then continue working.

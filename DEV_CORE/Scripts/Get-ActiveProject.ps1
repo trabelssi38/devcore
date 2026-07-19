@@ -52,6 +52,14 @@ try {
     $env:DEVCORE_ACTIVE_PROJECT_NAME = $projectName
     $env:DEVCORE_ACTIVE_WORKTREE_NAME = $worktreeName
 
+    # Enregistrer dans un fichier persistant pour les daemons Python
+    $devCoreData = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
+    $runtimeDir = "$devCoreData\Runtime"
+    if (-not (Test-Path $runtimeDir)) {
+        New-Item -ItemType Directory -Path $runtimeDir -Force | Out-Null
+    }
+    Set-Content -Path "$runtimeDir\active_project.txt" -Value $projectName -Encoding UTF8 -ErrorAction SilentlyContinue
+
     # Retourner uniquement le nom canonique
     Write-Output $projectName
 } catch {

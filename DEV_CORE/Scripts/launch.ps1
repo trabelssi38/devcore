@@ -192,6 +192,30 @@ if (-not (Check-Port 8787)) {
     Log "  Headroom Proxy OK (Port 8787 actif)" "Green"
 }
 
+# 2.3.5 Anthropic Adapter (Port 8788)
+if (-not (Check-Port 8788)) {
+    Log "  Anthropic Adapter (Port 8788) est hors-ligne. Tentative de demarrage..." "Yellow"
+    $adapterLog = "$DEV_CORE_DATA\Logs\scripts\anthropic_adapter.log"
+    $adapterErr = "$DEV_CORE_DATA\Logs\scripts\anthropic_adapter_err.log"
+    $proc = Start-Process -FilePath "python.exe" -ArgumentList "$DEV_CORE\Scripts\anthropic_adapter.py" -WorkingDirectory "C:\devcore" -WindowStyle Hidden -RedirectStandardOutput $adapterLog -RedirectStandardError $adapterErr -PassThru -ErrorAction SilentlyContinue
+    
+    $adapterOpen = $false
+    for ($i = 0; $i -lt 30; $i++) {
+        Start-Sleep -Milliseconds 500
+        if (Check-Port 8788) {
+            $adapterOpen = $true
+            break
+        }
+    }
+    if ($adapterOpen) {
+        Log "  Anthropic Adapter lance avec succes sur port 8788" "Green"
+    } else {
+        Log "  [WARN] Anthropic Adapter n'a pas repondu sur le port 8788 apres 15s." "Yellow"
+    }
+} else {
+    Log "  Anthropic Adapter OK (Port 8788 actif)" "Green"
+}
+
 # 2.4 Repowise Server (Port 7337)
 if (-not (Check-Port 7337)) {
     Log "  Repowise Server (Port 7337) est hors-ligne. Tentative de demarrage..." "Yellow"
@@ -228,6 +252,10 @@ if (-not (Check-Port 7337)) {
     & "$DEV_CORE\Scripts\ensure_repowise_ipv6_proxy.ps1"
     Log "  Repowise Server OK (Port 7337 actif)" "Green"
 }
+
+# 2.5 Agent environment variables configuration
+Log "  Configuration des variables d'environnement des agents (Scope User)..." "Gray"
+& "$DEV_CORE\Scripts\init_agent_env.ps1" -Scope User
 
 
 # 3. Memory
