@@ -1003,3 +1003,8 @@ Ce document doit contenir :
 | 2026-07-18 | Analyse OI + CRG + Turbovec | §10 : 3 nouveaux criteres DoD (Tree-sitter graph, audit hooks, harness declaratifs) |
 | 2026-07-18 | Analyse OI + CRG + Turbovec | §11 : 4 nouveaux risques (CRG dependance, hooks latence, router migration, Turbovec premature) |
 | 2026-07-18 | Analyse OI + CRG + Turbovec | Turbovec reporte : quantization Qdrant native priorisee, reevaluer si > 5000 points |
+| 2026-07-19 | Sprint 12 implementation | Pipeline routage universel agents : anthropic_adapter (port 8788), init_agent_env.ps1, test_agent_conformity.ps1 |
+| 2026-07-19 | Sprint 12 implementation | gemini_router.py : tracking tokens par tache, headroom_stats.json, alertes budget X-DevCore-Budget-Alert |
+| 2026-07-19 | Sprint 12 implementation | DEVCORE_AGENT_INSTRUCTIONS.md cree : instructions unifiees cycle de vie agents (Antigravity, Codex, OpenCode, Claude) |
+| 2026-07-19 | Sprint 12 implementation | benchmark_perf.py cree : mesure 6 composants critiques (file scan, dashboard, Qdrant, logs, tasks, Headroom) |
+| 2026-07-19 | Sprint 12 implementation | docs/DEV_CORE_SPRINT12_PERF_REPORT.md cree : rapport decision matrix Python vs Rust avec metriques baseline |
