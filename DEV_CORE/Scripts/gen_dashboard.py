@@ -211,7 +211,7 @@ def main():
     for p in projects:
         status_cls = "status-ok" if p["progress"] == 100 else ("status-warn" if p["progress"] > 0 else "status-todo")
         cards_html += f"""
-        <div class="project-row" data-project="{p['name']}">
+        <div class="project-row" data-project="{p['name']}" onclick="toggleProjectFilter(this, '{p['name']}')">
           <div style="display:flex; flex-direction:column; gap:4px; flex:1;">
             <div style="display:flex; align-items:center; gap:8px;">
               <span class="project-dot {status_cls}"></span>
@@ -227,7 +227,7 @@ def main():
 
     tasks_html = ""
     for p in projects:
-        tasks_html += f"<details open class='project-tasks-group'><summary><h2>Projet : {p['name']}</h2></summary><div style='padding: 10px 0;'>"
+        tasks_html += f"<details open class='project-tasks-group' data-project='{p['name']}'><summary><h2>Projet : {p['name']}</h2></summary><div style='padding: 10px 0;'>"
         for t in p["tasks"]:
             badge = "done" if t.get("status") == "done" else ("active" if t.get("status") == "active" else "todo")
             tasks_html += f"""
