@@ -725,17 +725,26 @@ function refreshDashboardLegacy() {
       }
 
       // 3. Mettre à jour le Rapport d'Activité / Tokens
-      const oldTokenReport = document.querySelector('.main-layout .column:nth-child(2) > details');
-      const newTokenReport = newDoc.querySelector('.main-layout .column:nth-child(2) > details');
+      const oldTokenReport = document.getElementById('token-activity-report');
+      const newTokenReport = newDoc.getElementById('token-activity-report');
       if (oldTokenReport && newTokenReport) {
-        const wasOpen = oldTokenReport.open;
-        if (oldTokenReport.innerHTML !== newTokenReport.innerHTML) {
-          oldTokenReport.innerHTML = newTokenReport.innerHTML;
-          if (wasOpen) {
-            oldTokenReport.open = true;
-          } else {
-            oldTokenReport.removeAttribute('open');
+        const oldDetails = oldTokenReport.querySelector('details');
+        const newDetails = newTokenReport.querySelector('details');
+        if (oldDetails && newDetails) {
+          const wasOpen = oldDetails.open;
+          if (oldTokenReport.innerHTML !== newTokenReport.innerHTML) {
+            oldTokenReport.innerHTML = newTokenReport.innerHTML;
+            const updatedDetails = oldTokenReport.querySelector('details');
+            if (updatedDetails) {
+              if (wasOpen) {
+                updatedDetails.open = true;
+              } else {
+                updatedDetails.removeAttribute('open');
+              }
+            }
           }
+        } else if (oldTokenReport.innerHTML !== newTokenReport.innerHTML) {
+          oldTokenReport.innerHTML = newTokenReport.innerHTML;
         }
       }
 
