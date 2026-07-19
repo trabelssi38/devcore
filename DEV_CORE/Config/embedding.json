@@ -2,7 +2,7 @@
   "schema_version": 1,
   "provider": "gemini-router",
   "endpoint": "http://127.0.0.1:20130/v1/embeddings",
-  "model": "text-embedding-3-small",
+  "model": "gemini-embedding-001",
   "query_model": "gemini-embedding-001",
   "dimensions": 768,
   "qdrant_collections": ["decisions", "lessons", "patterns", "codebase"]

@@ -13,7 +13,7 @@ function Assert-True {
 
 $contract = Get-DevCoreEmbeddingContract
 Assert-True ($contract.dimensions -eq 768) "embedding dimensions should be 768"
-Assert-True ($contract.model -eq "text-embedding-3-small") "sync embedding model should be text-embedding-3-small"
+Assert-True ($contract.model -eq "gemini-embedding-001") "sync embedding model should be gemini-embedding-001"
 Assert-True ($contract.query_model -eq "gemini-embedding-001") "query embedding model should be gemini-embedding-001"
 Assert-True ($contract.qdrant_collections -contains "decisions") "contract should include decisions collection"
 

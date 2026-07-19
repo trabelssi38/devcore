@@ -59,143 +59,168 @@ switch ($Action) {
             }
         }
         
-        # 1. L3: Persona (Toujours chargé)
+        # 1. L3 Persona & L2 Scenario (chargement immédiat)
         $personaPath = & $MEMORY_SERVICE -Action Path -Name PERSONA
         if (Test-Path $personaPath) {
             $results += "`n[L3 Persona]"
             $results += (& $MEMORY_SERVICE -Action ReadText -Name PERSONA | Out-String).TrimEnd()
         }
         
-        # 2. L2: Scenarios (Filtré par TaskType)
         $scenarioFile = & $MEMORY_SERVICE -Action Path -Name SCENARIO -TaskType $TaskType
         if (Test-Path $scenarioFile) {
             $results += "`n[L2 Scenario: $TaskType]"
             $results += (& $MEMORY_SERVICE -Action ReadText -Name SCENARIO -TaskType $TaskType | Out-String).TrimEnd()
         } else {
-            # Fallback sur general
             $generalScenario = & $MEMORY_SERVICE -Action Path -Name SCENARIO -TaskType "devcore"
             if (Test-Path $generalScenario) {
                 $results += "`n[L2 Scenario: devcore]"
                 $results += (& $MEMORY_SERVICE -Action ReadText -Name SCENARIO -TaskType "devcore" | Out-String).TrimEnd()
             }
         }
-        
-        # 3. L1: Qdrant vector DB search (si disponible)
-        # Note: on utilise les scripts existants ou curl pour chercher dans décisions/lessons/patterns
-        # On va tenter une recherche Qdrant rapide
+
+        # 2. Récupération des multiplicateurs de score Context Service
+        $contextMultipliers = @{}
+        if (Test-Path $CONTEXT_SERVICE) {
+            try {
+                $scorePayload = & $CONTEXT_SERVICE -Action ScoreSources -Query $Query -TaskType $TaskType -Json | Out-String | ConvertFrom-Json
+                foreach ($source in @($scorePayload.sources)) {
+                    $contextMultipliers[$source.id] = [double]$source.score
+                }
+            } catch {
+                Log "Context source scoring failed: $_" "Yellow"
+            }
+        }
+
+        # 3. Lancement parallèle : Qdrant Vector Search (4 collections) + SQLite FTS5 Search
         $qdrantUrl = "http://localhost:6333"
+        $collections = @("decisions", "lessons", "patterns", "codebase")
         
-        $hasVectorResult = $false
-        
-        # On obtient l'embedding via Gemini Router (Port 20130)
-        $maxAttempts = 3
+        # Récupération de l'embedding via Gemini Router (20130)
         $vector = $null
-        for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
-            try {
-                Log "Attempting to get query embedding (attempt $attempt/$maxAttempts)..." "Gray"
-                $bodyObj = New-DevCoreEmbeddingRequestBody -Text $Query -Query
-                $jsonStr = $bodyObj | ConvertTo-Json
-                $bodyJson = [System.Text.Encoding]::UTF8.GetBytes($jsonStr)
-                $apiKey = "dummy_key"
-                $headers = @{
-                    "Authorization" = "Bearer $apiKey"
-                }
-                $embedRes = Invoke-RestMethod -Uri $EMBEDDING_CONTRACT.endpoint -Method Post -Body $bodyJson -ContentType "application/json; charset=utf-8" -Headers $headers -TimeoutSec 10
-                
-                if ($embedRes -and $embedRes.data -and $embedRes.data.Count -gt 0 -and $embedRes.data[0].embedding) {
-                    $vector = $embedRes.data[0].embedding
-                    Assert-DevCoreEmbeddingVector -Vector $vector -Context "memory_hierarchy query"
-                    Log "Query embedding retrieved successfully (vector size: $($vector.Count))" "Green"
-                    break
-                }
-                throw "No embedding found in response"
-            } catch {
-                Log "Embedding query failed on attempt ${attempt}: $_" "Yellow"
-                if ($attempt -lt $maxAttempts) {
-                    Start-Sleep -Seconds 1
-                }
+        try {
+            $bodyObj = New-DevCoreEmbeddingRequestBody -Text $Query -Query
+            $jsonStr = $bodyObj | ConvertTo-Json
+            $bodyJson = [System.Text.Encoding]::UTF8.GetBytes($jsonStr)
+            $headers = @{ "Authorization" = "Bearer dummy_key" }
+            $embedRes = Invoke-RestMethod -Uri $EMBEDDING_CONTRACT.endpoint -Method Post -Body $bodyJson -ContentType "application/json; charset=utf-8" -Headers $headers -TimeoutSec 10
+            if ($embedRes -and $embedRes.data -and $embedRes.data.Count -gt 0 -and $embedRes.data[0].embedding) {
+                $vector = $embedRes.data[0].embedding
             }
+        } catch {
+            Log "Embedding query failed: $_" "Yellow"
         }
-        
-        if ($vector) {
-            try {
-                $roundedVector = $vector | ForEach-Object { "{0:F6}" -f [double]$_ }
-                $vectorStr = $roundedVector -join ','
-                
-                # Chercher dans la collection "decisions" et "lessons"
-                foreach ($col in @("decisions", "lessons", "patterns")) {
-                    Log "Searching collection '$col' in Qdrant..." "Gray"
-                    $searchJson = '{"vector":[' + $vectorStr + '],"limit":3,"with_payload":true}'
-                    $tempSearchFile = "$env:TEMP\qdrant_search_$(Get-Date -Format 'yyyyMMddHHmmss').json"
-                    $Utf8NoBom = New-Object System.Text.UTF8Encoding $False
-                    [System.IO.File]::WriteAllText($tempSearchFile, $searchJson, $Utf8NoBom)
-                    
-                    $searchRes = & curl.exe --max-time 10 -s -X POST "$qdrantUrl/collections/$col/points/search" -H 'Content-Type: application/json' --data-binary "@$tempSearchFile"
-                    Remove-Item $tempSearchFile -Force -ErrorAction SilentlyContinue
-                    
-                    $searchObj = $searchRes | ConvertFrom-Json
-                    if ($searchObj.result) {
-                        $matchCount = 0
-                        foreach ($point in $searchObj.result) {
-                            if ($point.score -gt 0.75) {
-                                $results += "`n[L1 Atom: $col (Score: $($point.score))]"
-                                $results += $point.payload.preview
-                                $hasVectorResult = $true
-                                $matchCount++
-                            }
-                        }
-                        Log "Found $matchCount matches with score > 0.75 in collection '$col'" "Green"
-                    } else {
-                        Log "No results returned for collection '$col'" "Yellow"
-                    }
-                }
-            } catch {
-                Log "Qdrant search query failed: $_" "Red"
-            }
-        } else {
-            Log "Skipping Qdrant vector search due to missing embedding." "Yellow"
-        }
-        
-        # 4. L0: SQLite full-text search fallback (si aucun résultat Qdrant satisfaisant)
-        if (-not $hasVectorResult) {
-            try {
-                $pySearch = @"
-import sqlite3
-import json
+
+        # Structure pour accumuler les listes de résultats (pour RRF)
+        $rankedLists = @()
+
+        # Job 1: SQLite FTS5 Search
+        $ftsScript = @"
+import sqlite3, json
 conn = sqlite3.connect(r'$DB_PATH')
 c = conn.cursor()
 query = "$Query"
-# FTS5 search
+res = []
 try:
-    c.execute("SELECT project, task_id, content FROM conversations_fts WHERE content MATCH ? LIMIT 3", (query,))
+    c.execute("SELECT project, task_id, content FROM conversations_fts WHERE content MATCH ? LIMIT 10", (query,))
     rows = c.fetchall()
-    if rows:
-        print("MATCHES:")
-        for r in rows:
-            print(f"- [{r[0]}/{r[1]}] {r[2][:300]}...")
-except Exception as e:
-    # FTS5 not supported or table empty
-    c.execute("SELECT project, task_id, content FROM conversations WHERE content LIKE ? LIMIT 3", (f"%{query}%",))
+    for r in rows:
+        res.append({"id": f"fts_{r[0]}_{r[1]}", "type": "fts", "preview": f"[{r[0]}/{r[1]}] {r[2][:300]}..."})
+except Exception:
+    c.execute("SELECT project, task_id, content FROM conversations WHERE content LIKE ? LIMIT 10", (f"%{query}%",))
     rows = c.fetchall()
-    if rows:
-        print("MATCHES:")
-        for r in rows:
-            print(f"- [{r[0]}/{r[1]}] {r[2][:300]}...")
+    for r in rows:
+        res.append({"id": f"fts_{r[0]}_{r[1]}", "type": "fts", "preview": f"[{r[0]}/{r[1]}] {r[2][:300]}..."})
 conn.close()
+print(json.dumps(res))
 "@
-                $tempPy = "$env:TEMP\sqlite_search_$(Get-Date -Format 'yyyyMMddHHmmss').py"
-                $pySearch | Set-Content $tempPy -Encoding UTF8
-                $sqlRes = & python.exe $tempPy 2>$null
-                Remove-Item $tempPy -Force -ErrorAction SilentlyContinue
-                
-                if ($sqlRes -match "MATCHES:") {
-                    $results += "`n[L0 Conversation Fallback]"
-                    $results += $sqlRes -replace "MATCHES:", ""
+        $ftsResult = @()
+        try {
+            $tempPy = "$env:TEMP\sqlite_fts_$(Get-Date -Format 'yyyyMMddHHmmss').py"
+            $ftsScript | Set-Content $tempPy -Encoding UTF8
+            $rawJson = & python.exe $tempPy 2>$null
+            Remove-Item $tempPy -Force -ErrorAction SilentlyContinue
+            if ($rawJson) {
+                $ftsResult = $rawJson | ConvertFrom-Json
+                if ($ftsResult.Count -gt 0) {
+                    $rankedLists += ,$ftsResult
                 }
-            } catch {}
+            }
+        } catch {}
+
+        # Job 2: Qdrant Vector Search sur les 4 collections
+        if ($vector) {
+            $roundedVector = $vector | ForEach-Object { "{0:F6}" -f [double]$_ }
+            $vectorStr = $roundedVector -join ','
+            foreach ($col in $collections) {
+                try {
+                    $searchJson = '{"vector":[' + $vectorStr + '],"limit":5,"with_payload":true}'
+                    $tempSearchFile = "$env:TEMP\qdrant_search_$col`_$(Get-Date -Format 'yyyyMMddHHmmss').json"
+                    $Utf8NoBom = New-Object System.Text.UTF8Encoding $False
+                    [System.IO.File]::WriteAllText($tempSearchFile, $searchJson, $Utf8NoBom)
+                    
+                    $searchRes = & curl.exe --max-time 5 -s -X POST "$qdrantUrl/collections/$col/points/search" -H 'Content-Type: application/json' --data-binary "@$tempSearchFile"
+                    Remove-Item $tempSearchFile -Force -ErrorAction SilentlyContinue
+                    
+                    $searchObj = $searchRes | ConvertFrom-Json
+                    if ($searchObj.result -and $searchObj.result.Count -gt 0) {
+                        $colList = @()
+                        foreach ($pt in $searchObj.result) {
+                            $colList += [pscustomobject]@{
+                                id = "$col`_" + $pt.id
+                                type = "qdrant_$col"
+                                preview = "[L1 Atom: $col (Score: $($pt.score))] " + $pt.payload.preview
+                            }
+                        }
+                        $rankedLists += ,$colList
+                    }
+                } catch {}
+            }
         }
-        
-        # Output everything
+
+        # 4. Fusion RRF (Reciprocal Rank Fusion) avec k=60 & Application des Multiplicateurs Context Service
+        $k = 60
+        $rrfScores = @{}
+        $previews = @{}
+
+        foreach ($list in $rankedLists) {
+            $rank = 1
+            foreach ($item in $list) {
+                $itemId = $item.id
+                $previews[$itemId] = $item.preview
+                $rrfContribution = 1.0 / ($k + $rank)
+                
+                if (-not $rrfScores.ContainsKey($itemId)) {
+                    $rrfScores[$itemId] = 0.0
+                }
+                $rrfScores[$itemId] += $rrfContribution
+                $rank++
+            }
+        }
+
+        # Application des multiplicateurs Context Service si présents
+        $finalScores = @{}
+        foreach ($itemId in $rrfScores.Keys) {
+            $mult = 1.0
+            if ($contextMultipliers.ContainsKey($itemId)) {
+                $mult = [double]$contextMultipliers[$itemId]
+            }
+            $finalScores[$itemId] = $rrfScores[$itemId] * $mult
+        }
+
+        # Tri et extraction des Top 5 résultats
+        $topResults = $finalScores.GetEnumerator() | Sort-Object Value -Descending | Select-Object -First 5
+
+        if ($topResults) {
+            $results += "`n=== HYBRID RRF SEARCH RESULTS (Top 5) ==="
+            foreach ($entry in $topResults) {
+                $itemId = $entry.Key
+                $score = [math]::Round($entry.Value, 5)
+                $preview = $previews[$itemId]
+                $results += "- [RRF Score: $score] $preview"
+            }
+        }
+
+        # Output tout
         $results -join "`n"
     }
     

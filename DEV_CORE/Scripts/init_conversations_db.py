@@ -38,15 +38,26 @@ try:
     # Créer la table virtuelle FTS5 pour recherche textuelle rapide si supportée
     try:
         cursor.execute("CREATE VIRTUAL TABLE IF NOT EXISTS conversations_fts USING fts5(content, project, task_id);")
-        # Trigger de sync FTS5
+        # Triggers de sync FTS5
         cursor.execute("""
         CREATE TRIGGER IF NOT EXISTS after_conversations_insert AFTER INSERT ON conversations BEGIN
-            INSERT INTO conversations_fts(content, project, task_id) VALUES (new.content, new.project, new.task_id);
+            INSERT INTO conversations_fts(rowid, content, project, task_id) VALUES (new.id, new.content, new.project, new.task_id);
         END;
         """)
-        print("Table FTS5 de recherche plein texte configurée.")
+        cursor.execute("""
+        CREATE TRIGGER IF NOT EXISTS after_conversations_update AFTER UPDATE ON conversations BEGIN
+            UPDATE conversations_fts SET content = new.content, project = new.project, task_id = new.task_id WHERE rowid = new.id;
+        END;
+        """)
+        cursor.execute("""
+        CREATE TRIGGER IF NOT EXISTS after_conversations_delete AFTER DELETE ON conversations BEGIN
+            DELETE FROM conversations_fts WHERE rowid = old.id;
+        END;
+        """)
+        print("Table FTS5 et triggers de synchronisation configurés avec succès.")
     except sqlite3.OperationalError as e:
-        print(f"FTS5 non supporté par cette version de SQLite ({e}), fallback sans FTS.")
+        print(f"Erreur de configuration FTS5 SQLite : {e}")
+        sys.exit(1)
         
     conn.commit()
     conn.close()
