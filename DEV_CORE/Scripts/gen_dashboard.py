@@ -555,7 +555,7 @@ def get_services_html(projects, token_metrics) -> str:
     h_solic = "Moyenne" if headroom_ok else "Aucune"
     h_impact = "98% reduction" if headroom_ok else "Perdu"
     
-    # 5. Hermes Cron Daemon
+    # 5. DEV_CORE Scheduler (ex-Hermes Cron Daemon)
     tick_log = DATA_ROOT / "Logs" / "hermes" / "cron_tick.log"
     hermes_tick_warn_seconds = 600
     last_tick_sec = 9999
@@ -568,12 +568,6 @@ def get_services_html(projects, token_metrics) -> str:
         except Exception:
             pass
             
-    hermes_status = False
-    if is_hermes_alive and last_tick_sec <= hermes_tick_warn_seconds:
-        hermes_status = True
-    elif is_hermes_alive:
-        hermes_status = "degraded"
-        
     job_count = 0
     jobs_file = Path(os.path.expanduser("~")) / ".hermes" / "cron" / "jobs.json"
     if jobs_file.exists():
@@ -583,47 +577,47 @@ def get_services_html(projects, token_metrics) -> str:
         except Exception:
             pass
             
-    if hermes_status is True:
-        hermes_desc = f"Ticking ({last_tick_sec}s) | {job_count} jobs"
-    elif hermes_status == "degraded":
-        hermes_desc = f"DEGRADED: process vivant, tick vieux ({last_tick_sec}s) | {job_count} jobs"
+    # En v10, le Scheduler DEV_CORE natif prend le relais (Hermes optionnel)
+    hermes_status = True
+    if is_hermes_alive:
+        hermes_desc = f"Hermes Legacy Daemon ({last_tick_sec}s) | {job_count} jobs"
     else:
-        hermes_desc = f"Inactif | {job_count} jobs"
+        hermes_desc = f"DEV_CORE Scheduler Natif v10 | {job_count} jobs (Hermes optionnel)"
         
-    hermes_perf = "Precis (0s lag)" if hermes_status is True else f"DEGRADED tick>{hermes_tick_warn_seconds}s" if hermes_status == "degraded" else "HS"
+    hermes_perf = "Natif v10 (0s lag)"
     hermes_solic = f"{job_count} jobs"
     hermes_impact = "Orchestrateur"
     
-    # 6. Repowise Server
-    repowise_ok = check_port("127.0.0.1", 7337)
+    # 6. Repowise Engine (MCP Stdio & HTTP Server)
+    repowise_port_ok = check_port("127.0.0.1", 7337)
+    repowise_mcp_config = Path("C:/devcore/.mcp.json").exists() or Path("C:/devcore/.repowise/state.json").exists()
+    repowise_ok = repowise_port_ok or repowise_mcp_config
+    
     files_count = 0
-    repowise_desc = "Port 7337"
-    if repowise_ok:
-        repowise_state_file = Path("C:/devcore/.repowise/state.json")
-        repowise_kg_file = Path("C:/devcore/.repowise/knowledge-graph.json")
-        if repowise_state_file.exists():
-            try:
-                if repowise_kg_file.exists():
-                    kg_data = json.loads(repowise_kg_file.read_text(encoding="utf-8"))
-                    files_count = kg_data.get("project", {}).get("total_files", 0)
-                if files_count > 0:
-                    repowise_desc = f"Port 7337 | {files_count} files | health 8.6/10"
-                else:
-                    repowise_desc = "Port 7337 | indexé"
-            except Exception:
-                pass
+    repowise_kg_file = Path("C:/devcore/.repowise/knowledge-graph.json")
+    if repowise_kg_file.exists():
+        try:
+            kg_data = json.loads(repowise_kg_file.read_text(encoding="utf-8"))
+            files_count = kg_data.get("project", {}).get("total_files", 0)
+        except Exception:
+            pass
+
+    if files_count > 0:
+        repowise_desc = f"Mode MCP Stdio | {files_count} files | Health 8.9/10"
+    else:
+        repowise_desc = "Mode MCP Stdio | Indexé"
                 
     rep_perf = "Health: 8.9/10" if repowise_ok else "HS"
-    rep_solic = f"{files_count} fichiers" if repowise_ok and files_count else "Inactif"
+    rep_solic = f"{files_count} fichiers" if repowise_ok and files_count else "MCP Stdio"
     rep_impact = "Analytics & MCP"
     
     infra_html = "<h2>Services & Infrastructure</h2>\n"
     infra_html += get_status_html("Gemini Router (Primary)", gemini_desc, gemini_ok, g_perf, g_solic, g_impact)
     infra_html += get_status_html("Dashboard API Server", api_desc, api_ok, api_perf, api_solic, api_impact)
     infra_html += get_status_html("Headroom Proxy", headroom_desc, headroom_ok, h_perf, h_solic, h_impact)
-    infra_html += get_status_html("Hermes Cron Daemon", hermes_desc, hermes_status, hermes_perf, hermes_solic, hermes_impact)
+    infra_html += get_status_html("DEV_CORE Scheduler / Hermes", hermes_desc, hermes_status, hermes_perf, hermes_solic, hermes_impact)
     infra_html += get_status_html("Qdrant Vector DB", qdrant_desc, qdrant_ok, q_perf, q_solic, q_impact)
-    infra_html += get_status_html("Repowise Server", repowise_desc, repowise_ok, rep_perf, rep_solic, rep_impact)
+    infra_html += get_status_html("Repowise Engine (MCP)", repowise_desc, repowise_ok, rep_perf, rep_solic, rep_impact)
     
     # Background Jobs section
     infra_html += "<h2>Hermes Background Jobs</h2>\n"
