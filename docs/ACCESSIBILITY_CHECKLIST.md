@@ -1,45 +1,34 @@
-# DEV_CORE — Accessibility & A11y Standards
+# DEV_CORE v10 -- Checklist d'Accessibilité Web (A11y Standards)
 
-Ce document contient la checklist minimale d'accessibilité que chaque composant et page de l'interface DEV_CORE doit valider avant mise en production.
-
----
-
-## 1. Landmarks HTML5 (Structure Sémantique)
-
-Toutes les pages doivent utiliser une structure sémantique claire pour aider les lecteurs d'écran à naviguer dans le document :
-- Une page doit contenir **un et un seul** élément `<main>` décrivant le contenu principal de l'application.
-- Les zones de navigation doivent être délimitées par `<nav>`.
-- Les blocs d'information autonomes doivent utiliser `<section>` dotés d'un `aria-label` descriptif (ex. `aria-label="Santé plateforme"`).
+Checklist minimale d'accessibilité à appliquer sur l'ensemble des interfaces HTML, composants React/Next.js et Cockpits de la plateforme DEV_CORE v10.
 
 ---
 
-## 2. Contraste Visuel (WCAG AA)
+## 1. Contraste de Couleurs & Lisibilité
 
-- Le texte normal (en dessous de 18pt) doit avoir un contraste minimal de **4.5:1** par rapport à son arrière-plan.
-- Le grand texte (18pt et plus) doit avoir un contraste minimal de **3.0:1**.
-- Les éléments graphiques fonctionnels (icones d'état, boutons) doivent avoir un contraste minimal de **3.0:1**.
-
----
-
-## 3. Clavier & Focus Visuel
-
-- Tout élément interactif (liens, boutons, triggers) doit être accessible via la touche `Tab`.
-- Le style de focus par défaut du navigateur ne doit pas être supprimé (`outline: none`) sans être remplacé par un indicateur de focus personnalisé et hautement visible (ex. une bordure colorée ou un anneau d'accentuation).
-- Aucun mouvement automatique ou popup inattendu ne doit interrompre le focus de l'utilisateur.
+- [ ] **Contraste de Texte Principal** : Ratio de contraste d'au moins **4.5:1** pour le texte normal (14px et plus) par rapport au fond.
+- [ ] **Contraste de Grand Texte / Titres** : Ratio d'au moins **3:1** pour les grands titres (18px+ ou gras 14px+).
+- [ ] **Éléments d'État UI** : Badges, boutons et icônes d'état disposent d'un contraste suffisant et ne reposent pas uniquement sur la couleur (ajouter texte ou icône distincte).
 
 ---
 
-## 4. Statuts Multi-Sensoriels (Non-Dépendance de la Couleur)
+## 2. Navigation au Clavier & Indicateurs de Focus
 
-La couleur seule ne doit jamais être le seul canal d'information pour transmettre un statut, une erreur ou une progression :
-- Un badge de succès vert doit être accompagné d'un texte explicite (ex. "ONLINE" ou "OK") ou d'une icone spécifique (`✓`).
-- Un badge d'erreur rouge doit être accompagné d'un texte explicite (ex. "OFFLINE" ou "FAIL") ou d'une icone spécifique (`✗`).
-- Utilisez les éléments masqués de classe `.sr-only` pour donner du contexte additionnel aux lecteurs d'écran (ex. `<span className="sr-only">Statut : </span>`).
+- [ ] **Contrôle Clavier** : Tous les éléments interactifs (`<button>`, `<a>`, `<input>`, `<details>`) sont manipulables au clavier (Tab, Space, Enter).
+- [ ] **Focus Visuel** : Aucun contour de focus supprimé sans alternative (`outline: none` interdit sans `:focus-visible`).
+- [ ] **Ordre des Onglets Logical Tab Index** : Respect de la hiérarchie DOM naturelle. `tabindex` supérieur à 0 est interdit.
 
 ---
 
-## 5. Cibles de Clic (Touch Targets)
+## 3. Sémantique HTML & Attributs ARIA
 
-Pour garantir la facilité d'utilisation sur tablette, écran tactile ou pour les utilisateurs souffrant de troubles moteurs :
-- La zone cliquable de chaque bouton, lien ou élément interactif autonome doit mesurer au moins **44px × 44px**.
-- Si l'élément lui-même est plus petit visuellement (ex. une petite icone), utilisez un padding CSS transparent pour étendre sa zone de détection de clic.
+- [ ] **Structure Sémantique** : Utilisation d'éléments HTML5 sémantiques (`<header>`, `<main>`, `<nav>`, `<section>`, `<article>`, `<aside>`).
+- [ ] **Labels d'Éléments** : Tous les boutons interactifs et icônes cliquables possèdent un attribut `aria-label` ou un texte d'accompagnement explicite.
+- [ ] **Conteneurs Dynamiques** : Zones de notifications ou résultats de recherche dynamiques disposent de `aria-live="polite"`.
+
+---
+
+## 4. Préférences Utilisateur & Reduced Motion
+
+- [ ] **Reduced Motion** : Respect des préférences système de réduction de mouvement via `@media (prefers-reduced-motion: reduce)`.
+- [ ] **Zoom Navigateur** : Interface parfaitement lisible et utilisable lors d'un zoom textuel à 200%.

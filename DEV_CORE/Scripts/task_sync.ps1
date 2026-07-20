@@ -118,6 +118,10 @@ Write-Host "  $($result.added) taches ajoutees a tasks.json" -ForegroundColor Gr
 Write-Host ""
 
 
+try {
+    python "$DEV_CORE\Scripts\migrate_json_to_sqlite.py" 2>&1 | Out-Null
+} catch {}
+
 if ($env:DEVCORE_SKIP_DASHBOARD -ne "1") {
     & "$PSScriptRoot\gen_dashboard.ps1"
 }

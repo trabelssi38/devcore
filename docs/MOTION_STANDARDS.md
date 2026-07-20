@@ -1,80 +1,55 @@
-# DEV_CORE — Motion & Animation Standards
+# DEV_CORE v10 -- Standards de Mouvement & Animations (Motion Standards)
 
-Ce document définit les standards techniques et esthétiques d'animation pour le Cockpit DEV_CORE. Ces règles doivent être respectées par tout développement d'interface.
-
----
-
-## 1. Durées Cibles (Durations)
-
-Les animations de l'interface utilisateur doivent être rapides pour maintenir une sensation de réactivité élevée.
-
-| Type d'Élément | Durée Recommandée | Règle Métier |
-| :--- | :--- | :--- |
-| **Bouton / Interaction rapide** | `100ms` à `160ms` | Effet de clic ou retour tactile immédiat |
-| **Survol (Hover) subtil** | `120ms` à `180ms` | Transition d'opacité ou de couleur de bordure |
-| **Tooltip / Popover** | `150ms` à `220ms` | Apparition rapide lors du focus/survol |
-| **Toast / Notification** | `180ms` à `260ms` | Glissement fluide sur l'axe horizontal ou vertical |
-| **Modale / Drawer** | `200ms` à `300ms` | Ouverture/fermeture majeure de l'écran |
-
-> [!IMPORTANT]
-> Aucune animation standard d'interface utilisateur ne doit dépasser **300ms** sans justification fonctionnelle explicite (ex. onboarding progressif).
+Ce document régit les règles de conception et d'implémentation des animations et transitions CSS/JS pour tous les composants Web et Cockpits de la plateforme DEV_CORE v10.
 
 ---
 
-## 2. Courbes de Bézier (Easings)
+## 1. Principes Fondamentaux de Performance
 
-Les fonctions de transition linéaire (`linear`) doivent être limitées aux indicateurs de chargement ou de progression. Les animations interactives doivent utiliser des courbes d'atténuation physiques :
+1. **Composite-Only Properties** :
+   - Seules les propriétés animables par le compositeur GPU sans provoquer de Reflow ou Repaint layout sont autorisées : `transform` et `opacity`.
+   - **Interdit** : Animer `width`, `height`, `top`, `left`, `right`, `bottom`, `margin`, `padding`, `flex`, `grid`.
 
-```css
-/* Entrée rapide et amortie (Recommandé pour les éléments entrants) */
---ease-out-strong: cubic-bezier(0.23, 1, 0.32, 1);
+2. **Interdiction Stricte de `transition: all`** :
+   - Ne **JAMAIS** utiliser `transition: all`.
+   - Toujours spécifier explicitement les propriétés ciblées, par exemple :
+     ```css
+     /* CORRECT */
+     transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.2s ease-out;
 
-/* Atténuation douce bidirectionnelle (Mouvements spatiaux) */
---ease-in-out-strong: cubic-bezier(0.77, 0, 0.175, 1);
+     /* INTERDIT */
+     transition: all 0.3s ease;
+     ```
 
-/* Transition pour les Drawer/Modales */
---ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
-```
-
-### Règles de Courbe
-- **Enter UI** : Utilisez un `ease-out` prononcé pour que l'élément semble réactif au clic.
-- **Exit/Dismiss UI** : Utilisez un `ease-in` ou un `ease-in-out` rapide.
-- Evitez `ease-in` sur une interaction interactive directe (le délai initial donne une impression de lenteur).
-
----
-
-## 3. Propriétés Animables & Optimisation GPU
-
-Pour éviter les calculs de layout coûteux (reflow/repaint) qui dégradent le taux de rafraîchissement, limitez strictement les propriétés animées :
-
-### ✅ Propriétés Recommandées (Accélérées GPU)
-- `transform` (ex. `scale()`, `translateY()`, `translateX()`, `rotate()`)
-- `opacity`
-- `filter` (avec parcimonie)
-
-### ❌ Propriétés Interdites (Modifications de Layout)
-- `width` / `height`
-- `top` / `left` / `bottom` / `right`
-- `margin` / `padding`
-- `font-size` / `line-height`
-
-> [!WARNING]
-> L'utilisation de `transition: all` est **strictement interdite** car elle force le navigateur à surveiller et animer des propriétés non GPU, entraînant de la gigue (jank) visuelle.
+3. **Plafond de Durée & Courbes d'Accélération** :
+   - Durée maximale des transitions UI : **300 ms** (recommandé : 150ms à 250ms).
+   - Utiliser des fonctions de Bézier modernes au lieu de `linear` ou `ease` par défaut :
+     - Entrée / Apparition : `cubic-bezier(0.16, 1, 0.3, 1)` (out-back ou smooth-out)
+     - Sortie / Disparition : `cubic-bezier(0.7, 0, 0.84, 0)`
 
 ---
 
-## 4. Accessibilité (Reduced Motion)
+## 2. Accessibilité & Reduced Motion
 
-L'accessibilité visuelle est une obligation de conception. Toute animation impliquant des mouvements importants doit respecter la préférence de l'utilisateur :
+Toute stylesheet ou composant animé doit obligatoirement inclure un bloc de repli pour l'accessibilité :
 
 ```css
 @media (prefers-reduced-motion: reduce) {
-  * {
-    animation-delay: 0s !important;
-    animation-duration: 0s !important;
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0s !important;
+    transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
 }
 ```
+
+---
+
+## 3. Checklist d'Audit Motion
+
+- [ ] Aucune occurrence de `transition: all` dans le code CSS / HTML.
+- [ ] Aucune transition sur les propriétés de layout (`width`, `height`, `margin`, `padding`, `top`, `left`).
+- [ ] Toutes les transitions ont une durée <= 300 ms.
+- [ ] Le bloc `@media (prefers-reduced-motion: reduce)` est présent.
+- [ ] Les propriétés `will-change` sont utilisées avec parcimonie sur les éléments fréquemment animés.

@@ -298,7 +298,7 @@ TOOLS = [
     },
     {
         "name": "devcore_event_emit",
-        "description": "Émet un événement dans le bus DEV_CORE",
+        "description": "Emet un evenement dans le bus DEV_CORE",
         "input_schema": {
             "type": "object",
             "properties": {

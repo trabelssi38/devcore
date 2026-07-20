@@ -183,9 +183,18 @@ try {
     $q = Invoke-RestMethod "http://localhost:6333/collections" -TimeoutSec 3
     Check "Qdrant OK ($($q.result.collections.Count) collections)" "OK"
 } catch {
-    Check "Qdrant non disponible" "WARN" "docker start qdrant"
+    Check "Qdrant non disponible" "WARN" "dc launch qdrant"
     AutoFix "Demarrer Qdrant" {
-        Start-Process "docker" -ArgumentList "start qdrant" -WindowStyle Hidden -ErrorAction SilentlyContinue
+        if (Test-Path "$DEV_CORE\Scripts\qdrant_server.py") {
+            $logOut = "$DEV_CORE_DATA\Logs\scripts\qdrant_server.log"
+            $logErr = "$DEV_CORE_DATA\Logs\scripts\qdrant_server_err.log"
+            Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{
+                CommandLine = "cmd.exe /c C:\PROGRA~1\Python313\python.exe -u $DEV_CORE\Scripts\qdrant_server.py > $logOut 2>&1"
+                CurrentDirectory = "C:\devcore"
+            } | Out-Null
+        } else {
+            Start-Process "docker" -ArgumentList "start qdrant" -WindowStyle Hidden -ErrorAction SilentlyContinue
+        }
         Start-Sleep 3
     }
 }
@@ -303,9 +312,8 @@ try {
         if (-not (Test-Path $repowisePath)) { $repowisePath = "repowise" }
         $logOut = "$DEV_CORE_DATA\Logs\scripts\repowise.log"
         $logErr = "$DEV_CORE_DATA\Logs\scripts\repowise_err.log"
-        $env:REPOWISE_EMBEDDER = "mock"
-        & "$DEV_CORE\Scripts\ensure_repowise_web_proxy.ps1"
-        Start-Process -FilePath $repowisePath -ArgumentList "serve --host 127.0.0.1 --port 7337 --ui-port 3101" -WorkingDirectory "C:\devcore" -WindowStyle Hidden -RedirectStandardOutput $logOut -RedirectStandardError $logErr -ErrorAction SilentlyContinue
+        $env:REPOWISE_EMBEDDER = "none"
+        Start-Process -FilePath $repowisePath -ArgumentList "serve --host 127.0.0.1 --port 7337 --no-ui" -WorkingDirectory "C:\devcore" -WindowStyle Hidden -RedirectStandardOutput $logOut -RedirectStandardError $logErr -ErrorAction SilentlyContinue
         
         # Attendre que le port s'ouvre (timeout 10s)
         for ($i = 0; $i -lt 20; $i++) {

@@ -684,4 +684,4 @@ async def routing_profiles():
 if __name__ == "__main__":
     bind_host = get_bind_host()
     print(f"Demarrage du Gemini Router sur {bind_host}:20130...")
-    uvicorn.run(app, host=get_bind_host(), port=20130)
+    uvicorn.run(app, host=bind_host, port=20130)

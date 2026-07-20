@@ -168,23 +168,8 @@ try {
         Log "  Backup OK" "Green"
     }
 
-    Log "6.1/8 Rotation des logs"
-    $logDirs = @(
-        "$DEV_CORE_DATA\Logs\scripts",
-        "$DEV_CORE_DATA\Logs\hermes"
-    )
-    foreach ($dir in $logDirs) {
-        if (Test-Path $dir) {
-            $deletedCount = 0
-            Get-ChildItem -Path $dir -File | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-30) } | ForEach-Object {
-                Remove-Item $_.FullName -Force -ErrorAction SilentlyContinue
-                $deletedCount++
-            }
-            if ($deletedCount -gt 0) {
-                Log "  Log Rotation: supprime $deletedCount fichier(s) dans $dir" "Yellow"
-            }
-        }
-    }
+    Log "6.1/8 Rotation des logs, backups et metriques"
+    Invoke-EnddayStep -Label "rotate_logs_and_backups" -TimeoutSeconds 30 -ScriptBlock { param($ScriptPath) python $ScriptPath } -ArgumentList @("$DEV_CORE\Scripts\rotate_logs_and_backups.py") | Out-Null
 
     Log "6.5/8 Sync tarifs modeles"
     if ($AgentMode) {

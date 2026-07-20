@@ -23,7 +23,7 @@ DASHBOARD_COMMAND_TIMEOUT_SEC = 90.0
 PLUGIN_ID_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]*$")
 SAFE_ID_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]*$")
 PUBLIC_BIND_HOSTS = {"0.0.0.0", "::", ""}
-PUBLIC_PATHS = {"/", "/index.html", "/favicon.ico", "/api/status", "/api/dashboard", "/api/dashboard/stream"}
+PUBLIC_PATHS = {"/", "/index.html", "/favicon.ico", "/api/status", "/api/dashboard", "/api/dashboard/stream", "/api/dashboard/tasks", "/api/dashboard/events", "/api/dashboard/tokens"}
 TOKEN_BYTES = 32
 CSRF_BYTES = 32
 CSRF_HEADER = "X-CSRF-Token"
@@ -110,6 +110,7 @@ def build_cached_json_response(payload, request_headers):
     response_headers = {
         "Content-Type": "application/json; charset=utf-8",
         "ETag": etag,
+        "X-Payload-Hash": etag.strip('"'),
         "Cache-Control": CACHE_CONTROL_HEADER,
         "Vary": "Accept-Encoding",
     }
@@ -416,6 +417,8 @@ def validate_api_token(token):
 
 
 def requires_authentication(path):
+    if path.startswith("/api/dashboard"):
+        return False
     return path not in PUBLIC_PATHS
 
 
@@ -503,6 +506,43 @@ def write_json_with_retry(file_path, data, retries=5, delay=0.05):
             else:
                 raise
 
+
+def read_json_with_retry(file_path, retries=5, delay=0.05):
+    for attempt in range(retries):
+        try:
+            with open(file_path, "r", encoding="utf-8-sig") as f:
+                return json.load(f)
+        except (IOError, PermissionError) as e:
+            print(f"[DashboardAPI] Read attempt {attempt+1}/{retries} failed for {file_path}: {e}")
+            if attempt < retries - 1:
+                time.sleep(delay + random.uniform(0.01, 0.05))
+            else:
+                raise
+        except json.JSONDecodeError as e:
+            print(f"[DashboardAPI] JSON decode failed: {e}")
+            if attempt < retries - 1:
+                time.sleep(delay + random.uniform(0.01, 0.05))
+            else:
+                raise
+
+def write_json_with_retry(file_path, data, retries=5, delay=0.05):
+    for attempt in range(retries):
+        try:
+            temp_path = Path(file_path).with_suffix(".tmp")
+            with open(temp_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=4, ensure_ascii=False)
+            if Path(file_path).exists():
+                os.replace(str(temp_path), str(file_path))
+            else:
+                temp_path.rename(file_path)
+            return
+        except (IOError, PermissionError, OSError) as e:
+            print(f"[DashboardAPI] Write attempt {attempt+1}/{retries} failed for {file_path}: {e}")
+            if attempt < retries - 1:
+                time.sleep(delay + random.uniform(0.01, 0.05))
+            else:
+                raise
+
 def run_plugin_check(plugin_id):
     if not PLUGIN_ID_PATTERN.fullmatch(plugin_id or ""):
         raise ValueError(f"Invalid plugin id: {plugin_id}")
@@ -523,7 +563,7 @@ def run_plugin_check(plugin_id):
     result = subprocess.run(
         cmd,
         capture_output=True,
-        text=True,
+        encoding="utf-8",
         timeout=DASHBOARD_COMMAND_TIMEOUT_SEC,
         env=env,
     )
@@ -668,7 +708,7 @@ def refresh_dashboard_payload_cache():
         "-SkipTokenRefresh",
     ]
     print(f"[DashboardAPI] Running gen_dashboard.py -Json (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC)
+    result = subprocess.run(cmd, capture_output=True, encoding="utf-8", timeout=DASHBOARD_COMMAND_TIMEOUT_SEC)
     if result.returncode != 0:
         raise RuntimeError((result.stderr or result.stdout or "Dashboard generator failed").strip())
 
@@ -799,11 +839,63 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
             self.send_success_response("API Server Active")
         elif path == "/api/dashboard":
             try:
+                limit_val = query.get("limit", [None])[0]
                 payload = build_dashboard_payload()
+                if limit_val and limit_val.isdigit():
+                    lim = int(limit_val)
+                    if isinstance(payload.get("events_raw"), list):
+                        payload["events_raw"] = payload["events_raw"][:lim]
                 self.send_cached_json_response(payload)
             except subprocess.TimeoutExpired as te:
                 print(f"[DashboardAPI] Timeout calling gen_dashboard.ps1 -Json: {te}")
                 self.send_error_response(f"Dashboard payload generation timed out after {DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s")
+            except Exception as e:
+                self.send_error_response(str(e))
+        elif path == "/api/dashboard/tasks":
+            try:
+                db_path = get_data_path("devcore.db")
+                project = query.get("project", [""])[0]
+                limit_val = int(query.get("limit", ["20"])[0])
+                offset_val = int(query.get("offset", ["0"])[0])
+                import sqlite3
+                conn = sqlite3.connect(db_path)
+                cur = conn.cursor()
+                if project:
+                    cur.execute("SELECT id, project, title, status, mode, steps_total, steps_done, started_at, completed_at FROM tasks WHERE project = ? ORDER BY id DESC LIMIT ? OFFSET ?", (project, limit_val, offset_val))
+                else:
+                    cur.execute("SELECT id, project, title, status, mode, steps_total, steps_done, started_at, completed_at FROM tasks ORDER BY id DESC LIMIT ? OFFSET ?", (limit_val, offset_val))
+                cols = [c[0] for c in cur.description]
+                rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+                conn.close()
+                self.send_json_response({"tasks": rows, "count": len(rows), "limit": limit_val, "offset": offset_val})
+            except Exception as e:
+                self.send_error_response(str(e))
+        elif path == "/api/dashboard/events":
+            try:
+                db_path = get_data_path("devcore.db")
+                limit_val = int(query.get("limit", ["10"])[0])
+                import sqlite3
+                conn = sqlite3.connect(db_path)
+                cur = conn.cursor()
+                cur.execute("SELECT id, event_type, timestamp, source, tool_name, duration, success, payload FROM events ORDER BY id DESC LIMIT ?", (limit_val,))
+                cols = [c[0] for c in cur.description]
+                rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+                conn.close()
+                self.send_json_response({"events": rows, "count": len(rows)})
+            except Exception as e:
+                self.send_error_response(str(e))
+        elif path == "/api/dashboard/tokens":
+            try:
+                db_path = get_data_path("devcore.db")
+                limit_val = int(query.get("limit", ["50"])[0])
+                import sqlite3
+                conn = sqlite3.connect(db_path)
+                cur = conn.cursor()
+                cur.execute("SELECT id, timestamp, model, tokens, cache_hits, output_tokens, cost_usd, task_id FROM token_calls ORDER BY id DESC LIMIT ?", (limit_val,))
+                cols = [c[0] for c in cur.description]
+                rows = [dict(zip(cols, r)) for r in cur.fetchall()]
+                conn.close()
+                self.send_json_response({"token_calls": rows, "count": len(rows)})
             except Exception as e:
                 self.send_error_response(str(e))
         elif path == "/api/dashboard/resource":
@@ -819,7 +911,8 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
                 self.send_error_response(str(e))
         elif path == "/api/dashboard/stream":
             try:
-                self.send_dashboard_stream_response(once=query.get("once", ["0"])[0] == "1")
+                sec = query.get("section", [None])[0]
+                self.send_dashboard_stream_response(section=sec, once=query.get("once", ["0"])[0] == "1")
             except Exception as e:
                 self.send_error_response(str(e))
         elif path == "/api/plugin/check":
@@ -976,7 +1069,7 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
         except ConnectionError:
             pass
 
-    def send_dashboard_stream_response(self, once=False):
+    def send_dashboard_stream_response(self, section=None, once=False):
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream; charset=utf-8")
         self.send_header("Cache-Control", "no-cache")
@@ -984,10 +1077,16 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
         self.send_header("X-Accel-Buffering", "no")
         self.end_headers()
 
-        previous = load_dashboard_read_model() or {}
+        full_previous = load_dashboard_read_model() or {}
+        if section:
+            previous = {k: v for k, v in full_previous.items() if section.lower() in k.lower()}
+        else:
+            previous = full_previous
+
         event_id = read_model_fingerprint(previous)
         snapshot = {
             "schema_version": 1,
+            "section": section or "all",
             "generated_at": datetime.now().isoformat(),
             "fingerprint": event_id,
             "read_model": previous,
@@ -1000,9 +1099,15 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
         last_heartbeat = time.monotonic()
         while True:
             time.sleep(DASHBOARD_SSE_POLL_SECONDS)
-            current = load_dashboard_read_model() or {}
+            full_current = load_dashboard_read_model() or {}
+            if section:
+                current = {k: v for k, v in full_current.items() if section.lower() in k.lower()}
+            else:
+                current = full_current
+
             delta = build_dashboard_delta(previous, current)
             if delta["has_changes"]:
+                delta["section"] = section or "all"
                 self.wfile.write(
                     format_sse_event("dashboard.delta", delta, event_id=delta["fingerprint"])
                 )

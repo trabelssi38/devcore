@@ -855,7 +855,25 @@ function refreshDashboard() {
 
       const oldTokenReport = document.getElementById('token-activity-report');
       if (oldTokenReport) {
+        const existingDetails = oldTokenReport.querySelector('details');
+        let wasOpen = true;
+        if (existingDetails) {
+          wasOpen = existingDetails.hasAttribute('open');
+        } else if (localStorage.getItem('devcore_token_report_open') !== null) {
+          wasOpen = localStorage.getItem('devcore_token_report_open') === 'true';
+        }
         oldTokenReport.innerHTML = payload.sections.token_activity_report || '';
+        const newDetails = oldTokenReport.querySelector('details');
+        if (newDetails) {
+          if (wasOpen) {
+            newDetails.setAttribute('open', '');
+          } else {
+            newDetails.removeAttribute('open');
+          }
+          newDetails.addEventListener('toggle', () => {
+            localStorage.setItem('devcore_token_report_open', newDetails.open ? 'true' : 'false');
+          });
+        }
       }
 
       const oldInfra = document.getElementById('services-monitoring');

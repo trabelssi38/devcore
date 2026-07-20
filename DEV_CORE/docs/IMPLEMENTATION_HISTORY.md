@@ -131,10 +131,19 @@ Chronologie consolidee des implementations et plans. Source principale : histori
 | T-221 | Sync worktree | Consolidation artefacts |
 | T-222 | AI Capability Registry | Abstraction model/agent declarative |
 
+## T-252 a T-255 - Sprints 18, 08a, 08b, 09 & 10 (Roadmap unifiee DEV_CORE v10)
+
+| Task | Implementation | Impact |
+|---|---|---|
+| T-252 (Sprint 18) | Continuous Integration & Autonomy Validation (WS-G) | Verification automatique CI, gates d'autonomie et hooks de securite |
+| T-249 (Sprint 08a) | Quick wins cockpit & Data hygiene (WS-K) | Reduction du payload dashboard de 18.8 MB a ~0.9 MB (-95%), delta hash SHA-256 SSE, rotation logs > 30j et .repowiseignore |
+| T-253 (Sprint 08b) | Migration etat JSON vers SQLite WAL (WS-K) | Base SQLite `devcore.db` centralisee, requetes SQL en 1.99 ms, endpoints REST pagines |
+| T-254 (Sprint 09) | Dashboard, MCP & Services Containers (WS-L) | Stream SSE granulaire par section (`?section=tasks|events|tokens`), tools MCP `mcp-devcore` (13 tools) et `mcp-qdrant` (6 tools) 100% Python-natifs |
+| T-255 (Sprint 10) | Skills/UI/Motion standards (WS-M) | Publications `MOTION_STANDARDS.md` & `ACCESSIBILITY_CHECKLIST.md`, skills `dashboard-ui-craft` & `motion-review`, audit statique `audit_ui_motion.py` (95 findings priorises) |
+
 ## Plans actifs et suite logique
 
-1. Faire du AI Capability Registry la source de verite unique du routage runtime.
-2. Ajouter des adapters directs pour providers non Gemini avant d'activer leurs candidats.
+1. Traiter les 95 findings de l'audit UI/Motion dans le Sprint 11 (UI Gates & Priority Fixes).
+2. Faire du AI Capability Registry la source de verite unique du routage runtime.
 3. Reduire la dette cockpit HTML genere en poursuivant la migration React/Next.
 4. Maintenir ces docs comme index court, et garder `PLATFORM_DOCUMENTATION.md` comme reference longue.
-5. Ajouter une generation automatique partielle de `IMPLEMENTATION_HISTORY.md` depuis `git log` et `tasks.json`.

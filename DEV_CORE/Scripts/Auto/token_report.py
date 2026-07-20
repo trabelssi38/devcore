@@ -874,13 +874,16 @@ def main():
     if "sessions" in result_summary:
         result_summary["sessions"] = result_summary["sessions"][:50]
 
-    # Keep only tasks referenced by the 50 most recent sessions to avoid bloat
+    # Keep only tasks referenced by the 50 most recent sessions, plus all current workspace tasks to avoid bloat
     if "tasks" in result_summary:
         recent_task_keys = set()
         for session in result_summary.get("sessions", []):
             for t in session.get("tasks", []):
-                # Structure of task keys in result_summary['tasks']: f"{project}_{task_id}"
+                # Structure of task keys in result_summary['tasks']: f"{session.get('project')}_{t}"
                 recent_task_keys.add(f"{session.get('project')}_{t}".lower())
+        for tid, proj in task_to_project.items():
+            recent_task_keys.add(f"{proj}_{tid}".lower())
+            
         result_summary["tasks"] = {
             k: v for k, v in result_summary["tasks"].items()
             if k.lower() in recent_task_keys
