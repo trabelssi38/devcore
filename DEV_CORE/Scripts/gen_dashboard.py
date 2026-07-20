@@ -1228,7 +1228,7 @@ def main():
                     tasks_joined = ", ".join(s.get("tasks", []))
                     
                     sessions_html += f"""
-      <div class="session-row" data-project="{s.get('project')}" style="background: rgba(30, 41, 59, 0.2); border: 1px solid rgba(255,255,255,0.03); border-radius: 6px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s; font-size: 11px; margin-bottom: 6px;">
+      <div class="session-row" data-project="{s.get('project')}" style="background: rgba(30, 41, 59, 0.2); border: 1px solid rgba(255,255,255,0.03); border-radius: 6px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; transition: transform 0.15s ease, opacity 0.15s ease, border-color 0.15s ease; font-size: 11px; margin-bottom: 6px;">
         <div style="flex: 1; min-width: 0; padding-right: 8px;">
           <div style="display: flex; align-items: center; gap: 8px;">
             <span style="width: 6px; height: 6px; border-radius: 50%; background: #6366f1; box-shadow: 0 0 6px #6366f1;"></span>
