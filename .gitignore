@@ -17,6 +17,7 @@ __pycache__/
 DEV_CORE/Dashboard/index.html
 
 # Logs
+*.log
 DEV_CORE_DATA/Logs/**/*.log
 DEV_CORE_DATA/Logs/**/launch_*.log
 DEV_CORE_DATA/Logs/**/endday_*.log
