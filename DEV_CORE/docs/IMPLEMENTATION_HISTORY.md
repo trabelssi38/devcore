@@ -140,10 +140,12 @@ Chronologie consolidee des implementations et plans. Source principale : histori
 | T-253 (Sprint 08b) | Migration etat JSON vers SQLite WAL (WS-K) | Base SQLite `devcore.db` centralisee, requetes SQL en 1.99 ms, endpoints REST pagines |
 | T-254 (Sprint 09) | Dashboard, MCP & Services Containers (WS-L) | Stream SSE granulaire par section (`?section=tasks|events|tokens`), tools MCP `mcp-devcore` (13 tools) et `mcp-qdrant` (6 tools) 100% Python-natifs |
 | T-255 (Sprint 10) | Skills/UI/Motion standards (WS-M) | Publications `MOTION_STANDARDS.md` & `ACCESSIBILITY_CHECKLIST.md`, skills `dashboard-ui-craft` & `motion-review`, audit statique `audit_ui_motion.py` (95 findings priorises) |
+| T-257 (Sprint 11) | UI gates et corrections prioritaires (WS-M) | Script CI gate bloquant `check_ui_gates.py`, correction des P0 `transition: all`, reduced-motion (P0 = 0) |
+| T-260 (Sprint 12) | Performance profiling et candidats Rust (WS-N) | Profiling empirique (`profile_performance.py`), budgets SLA/SLO (`PERFORMANCE_BUDGETS.md`), matrice de decision (statu quo Python confirme) |
+| T-262 (Sprint 14 & 15) | Go daemon ADR & Hardening v10 Container-First (WS-O) | Décision ADR Go Daemon (`ADR_GO_DAEMON_EVALUATION.md`), guides `MIGRATION_V9_V10.md` & `CONTAINER_OPERATOR_GUIDE.md`, suite E2E `test_container_e2e.py` (5/5 PASS 100% HEALTHY) |
 
-## Plans actifs et suite logique
+## Plateforme Unifiee DEV_CORE v10 -- Release Stable
 
-1. Traiter les 95 findings de l'audit UI/Motion dans le Sprint 11 (UI Gates & Priority Fixes).
-2. Faire du AI Capability Registry la source de verite unique du routage runtime.
-3. Reduire la dette cockpit HTML genere en poursuivant la migration React/Next.
-4. Maintenir ces docs comme index court, et garder `PLATFORM_DOCUMENTATION.md` comme reference longue.
+1. Tous les Sprints de la feuille de route DEV_CORE v10 (18, 08a, 08b, 09, 10, 11, 12, 14 et 15) sont acheves et deployes.
+2. Conteneurisation Docker Compose complete avec bascule SQLite WAL et APIs REST < 2ms.
+3. Suite de tests E2E et diagnostics d'autonomie validés.

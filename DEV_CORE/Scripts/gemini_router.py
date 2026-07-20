@@ -16,6 +16,11 @@ from ai_capability_registry import load_capability_registry, select_backend_mode
 
 app = FastAPI(title="Gemini Router with Fallback")
 
+@app.get("/health")
+@app.get("/healthz")
+def health_check():
+    return {"status": "healthy", "service": "gemini-router", "port": 20130}
+
 DEV_CORE = os.environ.get("DEVCORE_PLATFORM_ROOT", "C:\\devcore\\DEV_CORE")
 DEV_CORE_DATA = os.environ.get("DEVCORE_DATA_ROOT", "C:\\devcore\\DEV_CORE_DATA")
 KEY_PATH = os.environ.get(
