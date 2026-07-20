@@ -753,7 +753,7 @@ def aggregate_sessions(sessions):
 
         public_session = {
             k: v for k, v in session.items()
-            if not k.startswith("_") and k != "model_turns"
+            if not k.startswith("_")
         }
         public_sessions.append(public_session)
 
