@@ -861,9 +861,9 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
                 conn = sqlite3.connect(db_path)
                 cur = conn.cursor()
                 if project:
-                    cur.execute("SELECT id, project, title, status, mode, steps_total, steps_done, started_at, completed_at FROM tasks WHERE project = ? ORDER BY id DESC LIMIT ? OFFSET ?", (project, limit_val, offset_val))
+                    cur.execute("SELECT id, project, title, status, mode, steps_total, steps_done, started_at, completed_at FROM tasks WHERE project = ? ORDER BY CAST(SUBSTR(id, 3) AS INTEGER) DESC LIMIT ? OFFSET ?", (project, limit_val, offset_val))
                 else:
-                    cur.execute("SELECT id, project, title, status, mode, steps_total, steps_done, started_at, completed_at FROM tasks ORDER BY id DESC LIMIT ? OFFSET ?", (limit_val, offset_val))
+                    cur.execute("SELECT id, project, title, status, mode, steps_total, steps_done, started_at, completed_at FROM tasks ORDER BY CAST(SUBSTR(id, 3) AS INTEGER) DESC LIMIT ? OFFSET ?", (limit_val, offset_val))
                 cols = [c[0] for c in cur.description]
                 rows = [dict(zip(cols, r)) for r in cur.fetchall()]
                 conn.close()

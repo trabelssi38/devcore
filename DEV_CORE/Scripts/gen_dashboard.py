@@ -754,7 +754,7 @@ def main():
             proj_names = [row[0] for row in cur.fetchall()]
             
             for name in proj_names:
-                cur.execute("SELECT id, title, status, mode, steps_total, steps_done, source, details, started_at, completed_at FROM tasks WHERE project = ? ORDER BY id ASC", (name,))
+                cur.execute("SELECT id, title, status, mode, steps_total, steps_done, source, details, started_at, completed_at FROM tasks WHERE project = ? ORDER BY CAST(SUBSTR(id, 3) AS INTEGER) ASC", (name,))
                 rows = cur.fetchall()
                 tasks = []
                 for r in rows:
