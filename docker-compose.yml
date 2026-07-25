@@ -137,7 +137,7 @@ services:
       dockerfile: DEV_CORE/Web/Dockerfile
     container_name: devcore-web
     ports:
-      - "3000:3000"
+      - "127.0.0.1:30000:3000"
     environment:
       # Server-side proxy destinations (used by Next.js rewrites, not exposed to browser)
       - DEVCORE_API_URL=http://api:20131
