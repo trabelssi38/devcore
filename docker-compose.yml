@@ -44,7 +44,7 @@ services:
       - DEVCORE_DATA_ROOT=/data
     volumes:
       - .:/app
-      - devcore_data:/data
+      - ./DEV_CORE_DATA:/data
     ports:
       - "20130:20130"
     healthcheck:
@@ -67,7 +67,7 @@ services:
       - DEVCORE_DATABASE_URL=postgresql+psycopg://devcore:devcore_secure_pass@postgres:5432/devcore
     volumes:
       - .:/app
-      - devcore_data:/data
+      - ./DEV_CORE_DATA:/data
     ports:
       - "20131:20131"
     depends_on:
@@ -96,7 +96,7 @@ services:
       - DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1
     volumes:
       - .:/app
-      - devcore_data:/data
+      - ./DEV_CORE_DATA:/data
     depends_on:
       postgres:
         condition: service_healthy
@@ -119,10 +119,12 @@ services:
       - QDRANT_HOST=qdrant
       - GEMINI_ROUTER_HOST=gemini-router
       - DASHBOARD_API_HOST=dashboard-api
-      - API_HOST=api
+      - HEADROOM_HOST=host.docker.internal
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - .:/app
-      - devcore_data:/data
+      - ./DEV_CORE_DATA:/data
     ports:
       - "20129:20129"
     depends_on:
@@ -168,7 +170,7 @@ services:
       - DEVCORE_DATA_ROOT=/data
     volumes:
       - .:/app
-      - devcore_data:/data
+      - ./DEV_CORE_DATA:/data
     depends_on:
       - api
     mem_limit: 128mb

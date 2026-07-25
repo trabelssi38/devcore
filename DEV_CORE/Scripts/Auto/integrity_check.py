@@ -58,7 +58,7 @@ def main():
     # Compare with git log
     try:
         # Run git log relative to repo root
-        git_dir = Path("C:/devcore")
+        git_dir = DEV_CORE.parent if DEV_CORE.exists() else Path(os.environ.get("DEVCORE_REPO_ROOT", "."))
         res = subprocess.run(
             ["git", "log", "--since=30 days ago", "--format=%H|%s|%ai"],
             cwd=str(git_dir),

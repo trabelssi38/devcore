@@ -119,19 +119,25 @@ $REPO_ROOT     = Split-Path -Parent $DEV_CORE
 
 # 2.1 Docker Compose up -d
 Log "  Demarrage de la pile Docker Compose..." "Yellow"
-$dockerOk = Test-DockerReady
-if (-not $dockerOk) {
-    Log "  Docker Desktop ne semble pas etre demarre. Tentative de lancement..." "Yellow"
-    $dockerPath = Get-DockerDesktopPath
-    if ($dockerPath) {
-        Start-Process -FilePath $dockerPath -WindowStyle Hidden -ErrorAction SilentlyContinue
-        Log "  Docker Desktop lance. Attente du demarrage (max 120s)..." "Gray"
-        if (Wait-DockerReady -TimeoutSeconds 120) {
-            $dockerOk = $true
-            Log "  Docker Desktop demarre avec succes." "Green"
+$isContainer = (Test-Path "/.dockerenv") -or ($env:DEVCORE_PLATFORM_ROOT -eq "/app/DEV_CORE")
+if ($isContainer) {
+    Log "  Environnement conteneurise detecte -- pile Compose geree par l'hote." "Green"
+    $dockerOk = $false
+} else {
+    $dockerOk = Test-DockerReady
+    if (-not $dockerOk) {
+        Log "  Docker Desktop ne semble pas etre demarre. Tentative de lancement..." "Yellow"
+        $dockerPath = Get-DockerDesktopPath
+        if ($dockerPath) {
+            Start-Process -FilePath $dockerPath -WindowStyle Hidden -ErrorAction SilentlyContinue
+            Log "  Docker Desktop lance. Attente du demarrage (max 120s)..." "Gray"
+            if (Wait-DockerReady -TimeoutSeconds 120) {
+                $dockerOk = $true
+                Log "  Docker Desktop demarre avec succes." "Green"
+            }
+        } else {
+            Log "  [WARN] Impossible de trouver l'executable Docker Desktop." "Yellow"
         }
-    } else {
-        Log "  [WARN] Impossible de trouver l'executable Docker Desktop." "Yellow"
     }
 }
 
@@ -151,18 +157,42 @@ if ($dockerOk) {
     Log "  [ERROR] Docker Desktop non actif. Impossible de lancer la pile Compose." "Red"
 }
 
+function Check-Port {
+    param([int]$Port, [string]$TargetHost = "127.0.0.1")
+    try {
+        $tcp = New-Object System.Net.Sockets.TcpClient
+        $result = $tcp.BeginConnect($TargetHost, $Port, $null, $null)
+        $success = $result.AsyncWaitHandle.WaitOne(200, $true)
+        if ($success) { $tcp.EndConnect($result) }
+        $tcp.Close()
+        return $success
+    } catch {
+        return $false
+    }
+}
+
 # Wait for container services
 Log "  Verification de l'ouverture des ports de la pile Compose..." "Gray"
-$ports = @(
-    @{ name = "PostgreSQL"; port = 5432 }
-    @{ name = "Qdrant"; port = 6333 }
-    @{ name = "Gemini Router"; port = 20130 }
-    @{ name = "FastAPI API"; port = 20131 }
-)
+$ports = if ($isContainer) {
+    @(
+        @{ name = "PostgreSQL"; port = 5432; host = "postgres" }
+        @{ name = "Qdrant"; port = 6333; host = "qdrant" }
+        @{ name = "Gemini Router"; port = 20130; host = "gemini-router" }
+        @{ name = "FastAPI API"; port = 20131; host = "api" }
+    )
+} else {
+    @(
+        @{ name = "PostgreSQL"; port = 5432; host = "127.0.0.1" }
+        @{ name = "Qdrant"; port = 6333; host = "127.0.0.1" }
+        @{ name = "Gemini Router"; port = 20130; host = "127.0.0.1" }
+        @{ name = "FastAPI API"; port = 20131; host = "127.0.0.1" }
+    )
+}
+
 foreach ($p in $ports) {
     $portOpen = $false
-    for ($i = 0; $i -lt 30; $i++) {
-        if (Check-Port $p.port) {
+    for ($i = 0; $i -lt 10; $i++) {
+        if (Check-Port -Port $p.port -TargetHost $p.host) {
             $portOpen = $true
             break
         }
@@ -171,7 +201,7 @@ foreach ($p in $ports) {
     if ($portOpen) {
         Log "  Service $($p.name) OK (Port $($p.port) actif)" "Green"
     } else {
-        Log "  [WARN] Le service $($p.name) n'a pas repondu sur le port $($p.port) apres 30s." "Yellow"
+        Log "  [WARN] Le service $($p.name) n'a pas repondu sur le port $($p.port) apres 10s." "Yellow"
     }
 }
 
@@ -192,13 +222,16 @@ if ($dockerOk) {
 
 
 # 2.3 Headroom Proxy
-if (-not (Check-Port 8787)) {
-    Log "  Headroom Proxy (Port 8787) est hors-ligne. Tentative de demarrage..." "Yellow"
-    & "$DEV_CORE\Scripts\headroom_start.ps1"
-    if (Check-Port 8787) {
+$headroomHost = if ($isContainer) { "host.docker.internal" } else { "127.0.0.1" }
+if (-not (Check-Port -Port 8787 -TargetHost $headroomHost)) {
+    if (-not $isContainer) {
+        Log "  Headroom Proxy (Port 8787) est hors-ligne. Tentative de demarrage..." "Yellow"
+        & "$DEV_CORE\Scripts\headroom_start.ps1"
+    }
+    if (Check-Port -Port 8787 -TargetHost $headroomHost) {
         Log "  Headroom Proxy lance avec succes" "Green"
     } else {
-        Log "  [WARN] Impossible de lancer Headroom Proxy. Fallback direct sur Gemini Router." "Yellow"
+        Log "  [WARN] Headroom Proxy hors-ligne sur $headroomHost. Fallback direct sur Gemini Router." "Yellow"
     }
 } else {
     Log "  Headroom Proxy OK (Port 8787 actif)" "Green"
@@ -209,7 +242,17 @@ if (-not (Check-Port 8788)) {
     Log "  Anthropic Adapter (Port 8788) est hors-ligne. Tentative de demarrage..." "Yellow"
     $adapterLog = "$DEV_CORE_DATA\Logs\scripts\anthropic_adapter.log"
     $adapterErr = "$DEV_CORE_DATA\Logs\scripts\anthropic_adapter_err.log"
-    $proc = Start-Process -FilePath "python.exe" -ArgumentList "$DEV_CORE\Scripts\anthropic_adapter.py" -WorkingDirectory "C:\devcore" -WindowStyle Hidden -RedirectStandardOutput $adapterLog -RedirectStandardError $adapterErr -PassThru -ErrorAction SilentlyContinue
+    $spParams = @{
+        FilePath = "python"
+        ArgumentList = "$DEV_CORE/Scripts/anthropic_adapter.py"
+        WorkingDirectory = $REPO_ROOT
+        RedirectStandardOutput = $adapterLog
+        RedirectStandardError = $adapterErr
+        PassThru = $true
+        ErrorAction = "SilentlyContinue"
+    }
+    if ($IsWindows) { $spParams["WindowStyle"] = "Hidden" }
+    $proc = Start-Process @spParams
     
     $adapterOpen = $false
     for ($i = 0; $i -lt 30; $i++) {

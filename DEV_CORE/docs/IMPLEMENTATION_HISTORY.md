@@ -149,3 +149,13 @@ Chronologie consolidee des implementations et plans. Source principale : histori
 1. Tous les Sprints de la feuille de route DEV_CORE v10 (18, 08a, 08b, 09, 10, 11, 12, 14 et 15) sont acheves et deployes.
 2. Conteneurisation Docker Compose complete avec bascule SQLite WAL et APIs REST < 2ms.
 3. Suite de tests E2E et diagnostics d'autonomie validés.
+
+## Maintenance & Correctifs Cockpit & Event Bus (Juillet 2026)
+
+| Domaine | Correctif | Impact |
+|---|---|---|
+| Synchronisation Tâches Cockpit | Auto-sync `sync_tasks_from_memory(conn)` dans `gen_dashboard.py` | Résolution du bug où les nouvelles tâches (`T-103` à `T-106`) n'étaient pas affichées en raison du décalage entre `tasks.json` et SQLite `devcore.db` |
+| Filtrage des états tâches | Inclusion des statuts `done`, `skipped` et `failed` dans la vue accomplie | Les tâches ignorées ou échouées s'affichent désormais de manière exhaustive |
+| Catégorisation Event Bus | Badges de périmètre : `task_id` (cyan), `project` (violet) et `system` (gris neutre) | Suppression des étiquettes `devcore` trompeuses sur les métriques d'infrastructure |
+| Daemon Hermes & Cron | Verrouillage `fcntl` (Linux) / `msvcrt` (Windows) & résolution dynamique `DEVCORE_PLATFORM_ROOT` | Compatibilité conteneur-first et environnement Linux / Windows native |
+

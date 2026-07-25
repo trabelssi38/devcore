@@ -61,7 +61,7 @@
     },
     "command": {
       "type": "powershell",
-      "path": "DEV_CORE/Scripts/weekly_maintenance.ps1",
+      "path": "DEV_CORE/Scripts/Auto/weekly_maintenance.ps1",
       "args": []
     },
     "state": {
@@ -161,7 +161,7 @@
     },
     "command": {
       "type": "python",
-      "path": "DEV_CORE/Scripts/Auto/check_active_task.py",
+      "path": "DEV_CORE/Tools/devcore/agent_runner.py",
       "args": []
     },
     "state": {

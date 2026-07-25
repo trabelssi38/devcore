@@ -166,6 +166,9 @@ startup_timeout_sec = 120
     Write-Host "[DEV_CORE] Repowise MCP Codex OK -- $Path"
 }
 
+if (-not (Test-Path $RepoRoot)) {
+    $RepoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+}
 $resolvedRepo = (Resolve-Path $RepoRoot).Path
 $resolvedRepowise = Resolve-Repowise -RequestedPath $RepowisePath
 $serverConfig = New-RepowiseMcpServer -CommandPath $resolvedRepowise -Root $resolvedRepo

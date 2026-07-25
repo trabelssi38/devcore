@@ -10,9 +10,13 @@ from pathlib import Path
 from datetime import datetime
 from croniter import croniter
 
+PLATFORM_ROOT = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", Path(__file__).resolve().parents[1]))
+REPO_ROOT = Path(os.environ.get("DEVCORE_REPO_ROOT", PLATFORM_ROOT.parent))
+
 # Append Hermes checkout to path to import native cron database APIs
-HERMES_HOME = Path("C:/devcore/hermes")
-sys.path.append(str(HERMES_HOME))
+HERMES_HOME = Path(os.environ.get("HERMES_REPO_HOME", REPO_ROOT / "hermes"))
+if HERMES_HOME.exists():
+    sys.path.append(str(HERMES_HOME))
 
 try:
     from cron.jobs import load_jobs, save_jobs, create_job, remove_job
@@ -21,7 +25,7 @@ except ImportError as e:
     print(f"Error importing Hermes cron module from {HERMES_HOME}: {e}")
     sys.exit(1)
 
-YAML_PATH = Path("C:/devcore/DEV_CORE/Scripts/hermes_cron.yaml")
+YAML_PATH = PLATFORM_ROOT / "Scripts" / "hermes_cron.yaml"
 HERMES_RUNTIME_HOME = Path(os.environ.get("HERMES_HOME") or os.path.join(os.environ.get("LOCALAPPDATA", os.path.expanduser("~")), "hermes"))
 LEGACY_HERMES_RUNTIME_HOME = Path(os.path.expanduser("~/.hermes"))
 SCRIPTS_DIR = HERMES_RUNTIME_HOME / "scripts"
@@ -97,8 +101,8 @@ def main():
         # If the script file exists in DevCore Scripts, copy it to Hermes scripts.
         if script:
             source_candidates = [
-                Path(f"C:/devcore/DEV_CORE/Scripts/{script}"),
-                Path(f"C:/devcore/DEV_CORE/Scripts/Auto/{script}"),
+                PLATFORM_ROOT / "Scripts" / script,
+                PLATFORM_ROOT / "Scripts" / "Auto" / script,
                 Path(os.path.expanduser(f"~/.hermes/scripts/{script}"))
             ]
             copied = False

@@ -90,21 +90,35 @@ def get_last_log_time(prefix: str) -> datetime:
 
 def is_process_running(script_name: str) -> bool:
     try:
-        # Run wmic to get python processes command lines
-        cmd = ["wmic", "process", "where", "name='python.exe' or name='pythonw.exe'", "get", "commandline"]
-        res = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
-        if res.returncode == 0:
-            for line in res.stdout.splitlines():
-                if script_name in line:
-                    return True
+        if sys.platform == "win32":
+            cmd = ["wmic", "process", "where", "name='python.exe' or name='pythonw.exe'", "get", "commandline"]
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+            if res.returncode == 0:
+                for line in res.stdout.splitlines():
+                    if script_name in line:
+                        return True
+        else:
+            # Linux / Docker container check
+            proc_dir = Path("/proc")
+            if proc_dir.exists():
+                for pid_dir in proc_dir.glob("[0-9]*"):
+                    try:
+                        cmdline_file = pid_dir / "cmdline"
+                        if cmdline_file.exists():
+                            cmdline = cmdline_file.read_text(encoding="utf-8", errors="ignore").replace("\x00", " ")
+                            if script_name in cmdline:
+                                return True
+                    except Exception:
+                        pass
     except Exception as e:
         print(f"[Dashboard] Error checking process {script_name}: {e}")
     return False
 
 def get_qdrant_points_count() -> int:
     import urllib.request
+    host = SERVICE_HOSTS.get("qdrant", "127.0.0.1")
     try:
-        req = urllib.request.Request("http://localhost:6333/collections", method="GET")
+        req = urllib.request.Request(f"http://{host}:6333/collections", method="GET")
         with urllib.request.urlopen(req, timeout=2) as response:
             data = json.loads(response.read().decode("utf-8"))
             collections = data.get("result", {}).get("collections", [])
@@ -114,7 +128,7 @@ def get_qdrant_points_count() -> int:
             c_name = c.get("name")
             if c_name:
                 try:
-                    req_c = urllib.request.Request(f"http://localhost:6333/collections/{c_name}", method="GET")
+                    req_c = urllib.request.Request(f"http://{host}:6333/collections/{c_name}", method="GET")
                     with urllib.request.urlopen(req_c, timeout=2) as resp_c:
                         data_c = json.loads(resp_c.read().decode("utf-8"))
                         points_count += data_c.get("result", {}).get("points_count", 0)
@@ -129,11 +143,13 @@ def get_qdrant_points_count() -> int:
 PLATFORM_ROOT = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", r"C:\devcore\DEV_CORE"))
 DATA_ROOT = Path(os.environ.get("DEVCORE_DATA_ROOT", r"C:\devcore\DEV_CORE_DATA"))
 
+IS_IN_DOCKER = Path("/.dockerenv").exists() or os.getenv("DEVCORE_PLATFORM_ROOT") == "/app/DEV_CORE"
+
 SERVICE_HOSTS = {
     "qdrant": os.environ.get("QDRANT_HOST", "127.0.0.1"),
     "gemini_router": os.environ.get("GEMINI_ROUTER_HOST", "127.0.0.1"),
     "dashboard_api": os.environ.get("DASHBOARD_API_HOST", "127.0.0.1"),
-    "headroom": os.environ.get("HEADROOM_HOST", "127.0.0.1"),
+    "headroom": os.environ.get("HEADROOM_HOST", "host.docker.internal" if IS_IN_DOCKER else "127.0.0.1"),
     "api": os.environ.get("API_HOST", "127.0.0.1"),
     "repowise": os.environ.get("REPOWISE_HOST", "127.0.0.1"),
 }
@@ -197,6 +213,46 @@ def get_active_project() -> str:
         return cached
     # Fallback to directory name
     return Path(os.getcwd()).name
+
+def sync_tasks_from_memory(conn):
+    memory_dir = DATA_ROOT / "Memory"
+    if not memory_dir.exists():
+        return
+    for proj_dir in memory_dir.iterdir():
+        if not proj_dir.is_dir() or proj_dir.name in ("scripts", "Archive", "_archive"):
+            continue
+        tasks_file = proj_dir / "tasks.json"
+        if not tasks_file.exists():
+            continue
+        project_name = proj_dir.name
+        try:
+            raw = tasks_file.read_text(encoding="utf-8-sig")
+            if not raw.strip():
+                continue
+            data = json.loads(raw)
+            task_list = data.get("tasks", []) if isinstance(data, dict) else (data if isinstance(data, list) else [])
+            for t in task_list:
+                if not isinstance(t, dict) or "id" not in t:
+                    continue
+                task_id = str(t["id"])
+                title = str(t.get("title", t.get("name", "Untitled")))
+                status = str(t.get("status", "pending"))
+                mode = str(t.get("mode", "coding"))
+                steps_list = t.get("steps") if isinstance(t.get("steps"), list) else []
+                steps_total = int(t.get("steps_total", len(steps_list)))
+                steps_done = int(t.get("steps_done", 0))
+                source = str(t.get("source", "user"))
+                details = json.dumps(steps_list, ensure_ascii=False) if steps_list else str(t.get("details", ""))
+                started_at = str(t.get("started_at", t.get("created_at", "")))
+                completed_at = str(t.get("completed_at", ""))
+                conn.execute("""
+                    INSERT OR REPLACE INTO tasks 
+                    (id, project, title, status, mode, steps_total, steps_done, source, details, started_at, completed_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (task_id, project_name, title, status, mode, steps_total, steps_done, source, details, started_at, completed_at))
+            conn.commit()
+        except Exception:
+            pass
 
 def get_context_composition_html(projects) -> str:
     rows_html = ""
@@ -515,7 +571,7 @@ def get_plugin_status_html() -> str:
 
 def get_services_html(projects, token_metrics) -> str:
     # 1. Qdrant
-    qdrant_ok = check_port("127.0.0.1", 6333)
+    qdrant_ok = check_port("qdrant", 6333)
     qdrant_points = get_qdrant_points_count() if qdrant_ok else 0
     qdrant_desc = f"Port 6333 | {qdrant_points} vectors" if qdrant_ok else "Port 6333"
     q_perf = "Rapide (1ms)" if qdrant_ok else "HS"
@@ -523,7 +579,7 @@ def get_services_html(projects, token_metrics) -> str:
     q_impact = "Optimise (4 colls)" if qdrant_ok else "Perdu"
     
     # 2. Gemini Router
-    gemini_ok = check_port("127.0.0.1", 20130)
+    gemini_ok = check_port("gemini_router", 20130)
     cache_hit = 0
     token_str = "Faible"
     if gemini_ok and token_metrics:
@@ -542,24 +598,30 @@ def get_services_html(projects, token_metrics) -> str:
     g_impact = f"Cache: {cache_hit}%" if gemini_ok else "Null"
     
     # 3. Dashboard API Server
-    api_ok = check_port("127.0.0.1", 20129)
+    api_ok = check_port("dashboard_api", 20129)
     api_desc = f"Port 20129 | {len(projects)} projets" if api_ok else "Port 20129"
     api_perf = "Rapide (4ms)" if api_ok else "HS"
     api_solic = f"{len(projects)} projets" if api_ok else "Aucune"
     api_impact = "Administration"
     
     # 4. Headroom Proxy
-    headroom_ok = check_port("127.0.0.1", 8787)
-    headroom_desc = "Port 8787 | ~98% reduction" if headroom_ok else "Port 8787"
-    h_perf = "< 2ms overhead" if headroom_ok else "HS"
-    h_solic = "Moyenne" if headroom_ok else "Aucune"
-    h_impact = "98% reduction" if headroom_ok else "Perdu"
+    headroom_ok = check_port("headroom", 8787) or check_port("127.0.0.1", 8787)
+    if headroom_ok:
+        headroom_desc = "Port 8787 | ~98% reduction"
+        h_perf = "< 2ms overhead"
+        h_solic = "Moyenne"
+        h_impact = "98% reduction"
+    else:
+        headroom_desc = "Port 8787 | Mode Optionnel / Inactif"
+        h_perf = "Optionnel"
+        h_solic = "Aucune"
+        h_impact = "Off"
     
     # 5. DEV_CORE Scheduler (ex-Hermes Cron Daemon)
     tick_log = DATA_ROOT / "Logs" / "hermes" / "cron_tick.log"
     hermes_tick_warn_seconds = 600
     last_tick_sec = 9999
-    is_hermes_alive = is_process_running("hermes_cron_tick.py")
+    is_hermes_alive = is_process_running("hermes_cron_tick.py") or check_port("scheduler", 20131)
     
     if tick_log.exists():
         try:
@@ -570,10 +632,18 @@ def get_services_html(projects, token_metrics) -> str:
             
     job_count = 0
     jobs_file = Path(os.path.expanduser("~")) / ".hermes" / "cron" / "jobs.json"
+    if not jobs_file.exists():
+        jobs_file = DATA_ROOT / "Scheduler" / "jobs.json"
     if jobs_file.exists():
         try:
             jobs_data = json.loads(jobs_file.read_text(encoding="utf-8"))
-            job_count = len(jobs_data.get("jobs", []))
+            if isinstance(jobs_data, list):
+                jobs_list = jobs_data
+            elif isinstance(jobs_data, dict):
+                jobs_list = jobs_data.get("jobs", [])
+            else:
+                jobs_list = []
+            job_count = len(jobs_list)
         except Exception:
             pass
             
@@ -589,12 +659,20 @@ def get_services_html(projects, token_metrics) -> str:
     hermes_impact = "Orchestrateur"
     
     # 6. Repowise Engine (MCP Stdio & HTTP Server)
-    repowise_port_ok = check_port("127.0.0.1", 7337)
-    repowise_mcp_config = Path("C:/devcore/.mcp.json").exists() or Path("C:/devcore/.repowise/state.json").exists()
+    repowise_port_ok = check_port("repowise", 7337) or check_port("127.0.0.1", 7337)
+    repowise_mcp_config = (
+        (DATA_ROOT / ".repowise" / "state.json").exists()
+        or (PLATFORM_ROOT.parent / ".mcp.json").exists()
+        or (PLATFORM_ROOT.parent / ".repowise" / "state.json").exists()
+        or Path("C:/devcore/.mcp.json").exists()
+        or Path("C:/devcore/.repowise/state.json").exists()
+    )
     repowise_ok = repowise_port_ok or repowise_mcp_config
     
     files_count = 0
-    repowise_kg_file = Path("C:/devcore/.repowise/knowledge-graph.json")
+    repowise_kg_file = PLATFORM_ROOT.parent / ".repowise" / "knowledge-graph.json"
+    if not repowise_kg_file.exists():
+        repowise_kg_file = Path("C:/devcore/.repowise/knowledge-graph.json")
     if repowise_kg_file.exists():
         try:
             kg_data = json.loads(repowise_kg_file.read_text(encoding="utf-8"))
@@ -624,14 +702,24 @@ def get_services_html(projects, token_metrics) -> str:
     if jobs_file.exists():
         try:
             jobs_data = json.loads(jobs_file.read_text(encoding="utf-8"))
-            for j in jobs_data.get("jobs", []):
+            if isinstance(jobs_data, list):
+                jobs_list = jobs_data
+            elif isinstance(jobs_data, dict):
+                jobs_list = jobs_data.get("jobs", [])
+            else:
+                jobs_list = []
+
+            for j in jobs_list:
+                if not isinstance(j, dict):
+                    continue
                 enabled = j.get("enabled", False)
                 status_class = "status-ok" if enabled else "status-warn"
                 
-                last_run_at = j.get("last_run_at")
+                state = j.get("state", {}) if isinstance(j.get("state"), dict) else {}
+                last_run_at = j.get("last_run_at") or state.get("last_run_at")
                 if last_run_at:
                     try:
-                        dt_str = last_run_at.strip()
+                        dt_str = str(last_run_at).strip()
                         for sign in ["+", "-"]:
                             if sign in dt_str[10:]:
                                 idx = 10 + dt_str[10:].index(sign)
@@ -649,29 +737,31 @@ def get_services_html(projects, token_metrics) -> str:
                             except Exception:
                                 pass
                         else:
-                            last_run = last_run_at
+                            last_run = str(last_run_at)
                     except Exception:
-                        last_run = last_run_at
+                        last_run = str(last_run_at)
                 else:
                     last_run = "Jamais"
                     
-                last_status = j.get("last_status")
-                last_status_display = last_status.upper() if last_status else "N/A"
-                if last_status == "success":
+                last_status = j.get("last_status") or state.get("last_status")
+                last_status_display = str(last_status).upper() if last_status else "N/A"
+                if last_status in ("success", "ok"):
                     last_status_class = "color:#22c55e"
-                elif last_status == "error":
+                elif last_status in ("error", "failed"):
                     last_status_class = "color:#ef4444"
                 else:
                     last_status_class = "color:#94a3b8"
                     
                 enabled_text = "ON" if enabled else "OFF"
+                schedule_disp = j.get("schedule_display") or (j.get("schedule", {}).get("expr") if isinstance(j.get("schedule"), dict) else "cron")
+                job_name = j.get("name") or j.get("id") or "Job"
                 
                 infra_html += f"""
 <div class="component" style="padding: 8px 10px; margin-bottom: 6px; background: rgba(30, 41, 59, 0.2); border: 1px solid rgba(255,255,255,0.02); border-radius: 6px; display:flex; justify-content:space-between; align-items:center;">
   <div style="flex: 1; min-width: 0; padding-right:8px;">
-    <div class="component-name" style="font-size: 11px; font-weight: 600; color: #f8fafc; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="{esc_attr(j.get('name'))}">{esc_html(j.get('name'))}</div>
+    <div class="component-name" style="font-size: 11px; font-weight: 600; color: #f8fafc; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="{esc_attr(job_name)}">{esc_html(job_name)}</div>
     <div style="font-size: 9px; color: #64748b; margin-top: 2px;">
-      Freq: {esc_html(j.get('schedule_display'))} | Last: {esc_html(last_run)} | <span style="{last_status_class}; font-weight:bold;">{esc_html(last_status_display)}</span>
+      Freq: {esc_html(schedule_disp)} | Last: {esc_html(last_run)} | <span style="{last_status_class}; font-weight:bold;">{esc_html(last_status_display)}</span>
     </div>
   </div>
   <div class="{status_class}" style="font-size: 10px; font-weight: bold; flex-shrink:0;">{enabled_text}</div>
@@ -743,6 +833,7 @@ def main():
         try:
             import sqlite3
             conn = sqlite3.connect(db_path)
+            sync_tasks_from_memory(conn)
             cur = conn.cursor()
             cur.execute("SELECT DISTINCT project FROM tasks WHERE project != 'scripts'")
             proj_names = [row[0] for row in cur.fetchall()]
@@ -777,7 +868,7 @@ def main():
                 active_steps = f"{active_task['steps_done']}/{active_task['steps_total']}" if active_task else ""
                 
                 active_tasks = [t for t in tasks if t["status"] in ["todo", "active", "paused"]]
-                completed_tasks = [t for t in tasks if t["status"] == "done"]
+                completed_tasks = [t for t in tasks if t["status"] in ["done", "skipped", "failed"]]
                 limited_tasks = completed_tasks[-20:] + active_tasks
                 
                 for t in limited_tasks:
@@ -833,9 +924,9 @@ def main():
                     active_mode = active_task.get("mode") if active_task else "N/A"
                     active_steps = f"{active_task.get('steps_done', 0)}/{active_task.get('steps_total', 1)}" if active_task else ""
                     
-                    # Keep active/todo tasks, plus the last 20 completed ones (sorted chronologically before slicing)
+                    # Keep active/todo tasks, plus the last 20 completed/finished ones (sorted chronologically before slicing)
                     active_tasks = [t for t in tasks if t.get("status") in ["todo", "active", "paused"] or t.get("id") == board.get("current_task")]
-                    completed_tasks = [t for t in tasks if t.get("status") == "done" and t.get("id") != board.get("current_task")]
+                    completed_tasks = [t for t in tasks if t.get("status") in ["done", "skipped", "failed"] and t.get("id") != board.get("current_task")]
                     completed_tasks.sort(key=lambda t: (get_task_datetime(t), get_task_id_number(t)))
                     limited_tasks = completed_tasks[-20:] + active_tasks
                     # Sort to preserve original order
@@ -1409,9 +1500,17 @@ def main():
         for ev in events[:8]:
             ev_type = ev.get("event_type", ev.get("type", "EVENT"))
             ev_src = ev.get("source", "system")
-            ev_task = ev.get("task_id") or "-"
-            ev_ts = ev.get("timestamp", "")
+            task_id_val = ev.get("task_id")
+            proj_val = ev.get("project")
             
+            if task_id_val:
+                badge_html = f'<span class="token-reduction" style="color:#38bdf8; font-weight:600;" title="{esc_attr(ev_src)}">{esc_html(str(task_id_val))}</span>'
+            elif proj_val and proj_val != "devcore":
+                badge_html = f'<span class="token-reduction" style="color:#a78bfa;" title="{esc_attr(ev_src)}">{esc_html(str(proj_val))}</span>'
+            else:
+                badge_html = f'<span class="token-reduction" style="color:#64748b; font-size:10px; font-weight:normal;" title="{esc_attr(ev_src)}">system</span>'
+
+            ev_ts = ev.get("timestamp", "")
             time_str = ""
             if ev_ts:
                 try:
@@ -1425,7 +1524,7 @@ def main():
             else:
                 time_str = "-"
                 
-            event_bus_html += f'    <div class="token-layer"><span class="token-name">{esc_html(time_str)} {esc_html(ev_type)}</span><span class="token-reduction" title="{esc_attr(ev_src)}">{esc_html(ev_task)}</span></div>\n'
+            event_bus_html += f'    <div class="token-layer"><span class="token-name">{esc_html(time_str)} {esc_html(ev_type)}</span>{badge_html}</div>\n'
     else:
         event_bus_html += "    <div style='font-size:10px; color:#64748b; padding:8px 0;'>Aucun evenement recent.</div>\n"
     event_bus_html += "  </div>\n</div>"

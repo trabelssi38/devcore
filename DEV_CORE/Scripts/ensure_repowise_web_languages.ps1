@@ -16,7 +16,8 @@ print(next(iter(spec.submodule_search_locations)))
 "@
     $root = & $Python -c $code
     if ($LASTEXITCODE -ne 0 -or -not $root) {
-        throw "Repowise Python package not found"
+        if (-not $Quiet) { Write-Host "[DEV_CORE] Repowise Python package not installed; skipping patch." }
+        exit 0
     }
     return [string]$root
 }

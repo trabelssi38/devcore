@@ -7,16 +7,17 @@ import os
 import sys
 import time
 import logging
-import msvcrt
-from logging.handlers import RotatingFileHandler
-from pathlib import Path
+PLATFORM_ROOT = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", Path(__file__).resolve().parents[1]))
+REPO_ROOT = Path(os.environ.get("DEVCORE_REPO_ROOT", PLATFORM_ROOT.parent))
+DATA_ROOT = Path(os.environ.get("DEVCORE_DATA_ROOT", r"C:\devcore\DEV_CORE_DATA" if os.name == "nt" else "/data"))
 
 # Append Hermes checkout to path to import native cron scheduler APIs
-HERMES_HOME = Path("C:/devcore/hermes")
-sys.path.append(str(HERMES_HOME))
+HERMES_HOME = Path(os.environ.get("HERMES_REPO_HOME", REPO_ROOT / "hermes"))
+if HERMES_HOME.exists():
+    sys.path.append(str(HERMES_HOME))
 
 # Configure logging
-LOG_DIR = Path("C:/devcore/DEV_CORE_DATA/Logs/hermes")
+LOG_DIR = DATA_ROOT / "Logs" / "hermes"
 LOG_DIR.mkdir(parents=True, exist_ok=True)
 LOG_FILE = LOG_DIR / "cron_tick.log"
 LOCK_FILE = Path(os.environ.get("HERMES_CRON_LOCK_FILE") or os.path.expanduser("~/.hermes/cron/.tick.lock"))
@@ -36,8 +37,13 @@ logger = logging.getLogger("HermesCronDaemon")
 def acquire_single_instance_lock():
     lock_handle = LOCK_FILE.open("a+b")
     try:
-        msvcrt.locking(lock_handle.fileno(), msvcrt.LK_NBLCK, 1)
-    except OSError:
+        if sys.platform == "win32":
+            import msvcrt
+            msvcrt.locking(lock_handle.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(lock_handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except (OSError, IOError):
         logger.warning(f"Another hermes_cron_tick.py instance owns {LOCK_FILE}; exiting.")
         lock_handle.close()
         sys.exit(0)
@@ -87,8 +93,13 @@ def main():
             time.sleep(60)
     finally:
         try:
-            msvcrt.locking(lock_handle.fileno(), msvcrt.LK_UNLCK, 1)
-        except OSError:
+            if sys.platform == "win32":
+                import msvcrt
+                msvcrt.locking(lock_handle.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+                fcntl.flock(lock_handle.fileno(), fcntl.LOCK_UN)
+        except Exception:
             pass
         lock_handle.close()
 
