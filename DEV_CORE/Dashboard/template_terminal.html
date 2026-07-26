@@ -483,6 +483,169 @@ function applyFilter(btn,days){
   });
 }
 
+/* ── Project Selection & Token Filtering (shared features) ── */
+window.activeFilteredProject = null;
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+
+function getModelCosts(metrics, projectName) {
+  if (!metrics) return {};
+  if (projectName) {
+    const key = projectName.toLowerCase();
+    const projectStats = metrics.projects && metrics.projects[key];
+    if (projectStats && projectStats.cost_by_model) return projectStats.cost_by_model;
+    if (metrics.model_costs && metrics.model_costs.projects && metrics.model_costs.projects[key]) {
+      return metrics.model_costs.projects[key];
+    }
+    return {};
+  }
+  if (metrics.model_costs && metrics.model_costs.global) return metrics.model_costs.global;
+  if (metrics.totals && metrics.totals.cost_by_model) return metrics.totals.cost_by_model;
+  return {};
+}
+
+function getUnregisteredModels(metrics, projectName) {
+  if (!metrics) return [];
+  if (projectName) {
+    const key = projectName.toLowerCase();
+    if (metrics.model_costs && metrics.model_costs.project_unregistered && Array.isArray(metrics.model_costs.project_unregistered[key])) {
+      return metrics.model_costs.project_unregistered[key];
+    }
+    const projectStats = metrics.projects && metrics.projects[key];
+    return Array.isArray(projectStats && projectStats.unregistered_models) ? projectStats.unregistered_models : [];
+  }
+  if (metrics.model_costs && Array.isArray(metrics.model_costs.unregistered)) return metrics.model_costs.unregistered;
+  return Array.isArray(metrics.totals && metrics.totals.unregistered_models) ? metrics.totals.unregistered_models : [];
+}
+
+function updateModelCostBreakdown(metrics, projectName) {
+  const container = document.getElementById('token-report-model-costs');
+  if (!container) return;
+  const title = document.getElementById('model-cost-title');
+  if (title) {
+    title.textContent = projectName ? `Coût par modèle : ${projectName}` : 'Coût global par modèle';
+  }
+  const unregistered = new Set(getUnregisteredModels(metrics, projectName));
+  const costEntries = Object.entries(getModelCosts(metrics, projectName))
+    .map(([model, value]) => [model, Number(value) || 0])
+    .filter(([, value]) => value > 0)
+    .sort((a, b) => b[1] - a[1]);
+  const selected = new Map();
+  costEntries.slice(0, 12).forEach(([model, value]) => selected.set(model, value));
+  costEntries.filter(([model]) => unregistered.has(model)).forEach(([model, value]) => selected.set(model, value));
+  const entries = Array.from(selected.entries()).sort((a, b) => b[1] - a[1]);
+
+  if (!entries.length) {
+    container.innerHTML = '<div style="font-size:10px; color:#64748b; padding:6px 0;">Aucun coût par modèle disponible.</div>';
+    return;
+  }
+
+  container.innerHTML = entries.map(([model, value]) => `
+    <div class="model-cost-row" style="display:flex; justify-content:space-between; gap:10px; padding:5px 0; border-bottom:1px solid rgba(255,255,255,0.04); font-size:10px;">
+      <span style="color:#cbd5e1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${escapeHtml(model)}">${escapeHtml(model)}</span>
+      ${unregistered.has(model) ? '<span style="font-size:8px; color:#f59e0b; border:1px solid rgba(245,158,11,0.35); border-radius:3px; padding:1px 3px; flex-shrink:0;">fallback</span>' : ''}
+      <span style="color:#fbbf24; font-family:monospace; flex-shrink:0;">$${value.toFixed(2)}</span>
+    </div>
+  `).join('');
+}
+
+function updateTokenReport(projectName) {
+  const dataEl = document.getElementById('token-metrics-data');
+  if (!dataEl) return;
+  let metrics = null;
+  try {
+    metrics = JSON.parse(dataEl.textContent);
+  } catch (e) {
+    console.error("Error parsing token metrics:", e);
+    return;
+  }
+  if (!metrics || typeof metrics !== 'object') return;
+
+  let tokens = 0;
+  let cacheHits = 0;
+  let cost = 0;
+  const projects = metrics.projects || {};
+  const totals = metrics.totals || {};
+
+  if (projectName) {
+    const projStats = projects[projectName.toLowerCase()];
+    if (projStats) {
+      tokens = Number(projStats.tokens || 0);
+      cacheHits = Number(projStats.cache_hits || 0);
+      cost = Number(projStats.cost_usd || 0);
+    }
+  } else {
+    tokens = Number(totals.tokens || 0);
+    cacheHits = Number(totals.cache_hits || 0);
+    cost = Number(totals.cost_usd || 0);
+  }
+
+  const tokensStr = tokens > 1000000 ? (tokens / 1000000).toFixed(2) + 'M' : (tokens / 1000).toFixed(1) + 'K';
+  const cachePct = tokens > 0 ? Math.round((cacheHits / tokens) * 100) : 0;
+  const costStr = '$' + cost.toFixed(2);
+
+  const tTokensEl = document.getElementById('token-report-total-tokens');
+  if (tTokensEl) tTokensEl.textContent = tokensStr;
+  const tCacheEl = document.getElementById('token-report-cache-hits');
+  if (tCacheEl) tCacheEl.textContent = cachePct + '%';
+  const tCostEl = document.getElementById('token-report-total-cost');
+  if (tCostEl) tCostEl.textContent = costStr;
+
+  const headerCostEl = document.getElementById('token-report-header-cost');
+  if (headerCostEl) {
+    headerCostEl.textContent = `Coût total : ${costStr} USD`;
+  }
+
+  updateModelCostBreakdown(metrics, projectName);
+
+  const allocContainer = document.getElementById('token-report-alloc-container');
+  if (allocContainer) {
+    allocContainer.style.display = projectName ? 'none' : 'block';
+  }
+
+  document.querySelectorAll('.session-row').forEach(row => {
+    const proj = row.getAttribute('data-project');
+    if (!projectName || (proj && proj.toLowerCase() === projectName.toLowerCase())) {
+      row.style.display = 'flex';
+    } else {
+      row.style.display = 'none';
+    }
+  });
+}
+
+function toggleProjectFilter(rowEl, projectName) {
+  const isSelected = rowEl.classList.contains('selected');
+
+  document.querySelectorAll('.project-row').forEach(row => {
+    row.classList.remove('selected');
+  });
+
+  if (isSelected) {
+    window.activeFilteredProject = null;
+    document.querySelectorAll('.project-tasks-group').forEach(group => {
+      group.classList.remove('hidden');
+    });
+  } else {
+    rowEl.classList.add('selected');
+    window.activeFilteredProject = projectName;
+
+    document.querySelectorAll('.project-tasks-group').forEach(group => {
+      const proj = group.getAttribute('data-project');
+      if (proj === projectName) {
+        group.classList.remove('hidden');
+        group.open = true;
+      } else {
+        group.classList.add('hidden');
+      }
+    });
+  }
+
+  updateTokenReport(window.activeFilteredProject);
+}
+
 /* ── Timestamp (cockpit compat) ── */
 function updateTimestamp(){tick();}
 
@@ -559,6 +722,7 @@ loadSettings();
       localStorage.setItem('devcore_token_report_open', details.hasAttribute('open'));
     });
   }
+  updateTokenReport(window.activeFilteredProject);
 })();
 
 /* ── Auto-refresh via AJAX ── */
@@ -601,6 +765,26 @@ async function refreshDashboard(){
     if(s.plugin_status)         document.getElementById('plugin-status').innerHTML=s.plugin_status;
     if(s.knowledge_graph_summary) document.getElementById('knowledge-graph-summary').innerHTML=s.knowledge_graph_summary;
     if(s.automation_hooks)      document.getElementById('automation-hooks').innerHTML=s.automation_hooks;
+
+    // Save updated token metrics to the data block for dynamic JS logic
+    const tokenDataEl = document.getElementById('token-metrics-data');
+    if (tokenDataEl) tokenDataEl.textContent = JSON.stringify(data.token_metrics || {});
+
+    // Restore selected project styling and task filtering on dynamic refresh
+    if (window.activeFilteredProject) {
+      const row = document.querySelector(`.project-row[data-project="${window.activeFilteredProject}"]`);
+      if (row) row.classList.add('selected');
+      document.querySelectorAll('.project-tasks-group').forEach(group => {
+        const proj = group.getAttribute('data-project');
+        if (proj === window.activeFilteredProject) {
+          group.classList.remove('hidden');
+        } else {
+          group.classList.add('hidden');
+        }
+      });
+    }
+    updateTokenReport(window.activeFilteredProject);
+
     document.getElementById('api-ok').textContent=':20129 ✓';
     document.getElementById('api-ok').className='v-ok';
     document.getElementById('sys-status').textContent='ONLINE';
