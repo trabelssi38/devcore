@@ -489,14 +489,10 @@ details{margin-bottom: 8px}
     
     <!-- Tab: Tasks Content -->
     <div id="tab-tasks-content" style="display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden;">
-      <div class="scroll-area" style="display: flex; flex-direction: column;">
-        <div id="tasks-pipeline">
-          {{TASKS_PIPELINE}}
-        </div>
-        <div id="token-activity-report" style="border-top: 1px solid #2d3148; padding-top: 16px; margin-top: 20px;">
-          {{TOKEN_ACTIVITY_REPORT}}
-        </div>
+      <div class="scroll-area" id="tasks-pipeline">
+        {{TASKS_PIPELINE}}
       </div>
+      <div id="token-activity-report">{{TOKEN_ACTIVITY_REPORT}}</div>
     </div>
 
     <!-- Tab: Settings Content -->
