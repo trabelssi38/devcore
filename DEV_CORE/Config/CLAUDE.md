@@ -43,6 +43,15 @@ Veuillez vous référer et suivre STRICTEMENT les instructions du fichier de con
 
 ---
 
+## INTÉGRATION REPOWISE CODE HEALTH & RADAR (v10.0) :
+
+- **Port HTTP API Repowise** : `http://127.0.0.1:7337`
+- **Composant Dashboard** : *Repowise Code Health & Refactoring Radar* (Visualisation de la maintenabilité, performance statique et cibles prioritaires de refactoring).
+- **Mode Fallback** : Si le serveur HTTP 7337 est inactif, le Dashboard bascule automatiquement sur le mode indexé MCP (`⚡ MCP INDEXED`) sans perturber le fonctionnement des agents.
+- **Portes de Santé (Health Gates)** : Vérification automatique via `test_repowise_health_gate.ps1` (Score moyen global >= 5.0/10 obligatoire).
+
+---
+
 ## Discipline de code (Karpathy rules) :
 
 ### 1. Penser avant de coder

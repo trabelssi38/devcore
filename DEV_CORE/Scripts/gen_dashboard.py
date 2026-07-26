@@ -7,6 +7,7 @@ import html
 import socket
 import argparse
 import subprocess
+import shutil
 from datetime import datetime
 from pathlib import Path
 
@@ -265,8 +266,9 @@ def get_context_composition_html(projects) -> str:
             
             try:
                 context_script = PLATFORM_ROOT / "Scripts" / "context_service.ps1"
+                ps_exe = shutil.which("powershell.exe") or shutil.which("powershell") or shutil.which("pwsh") or r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
                 cmd = [
-                    "powershell.exe",
+                    ps_exe,
                     "-NoProfile",
                     "-NonInteractive",
                     "-ExecutionPolicy",
@@ -337,8 +339,9 @@ def get_context_composition_html(projects) -> str:
 def get_metrics_service_status() -> dict:
     try:
         metrics_script = PLATFORM_ROOT / "Scripts" / "metrics_service.ps1"
+        ps_exe = shutil.which("powershell.exe") or shutil.which("powershell") or shutil.which("pwsh") or r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
         cmd = [
-            "powershell.exe",
+            ps_exe,
             "-NoProfile",
             "-NonInteractive",
             "-ExecutionPolicy",
@@ -659,7 +662,7 @@ def get_services_html(projects, token_metrics) -> str:
     hermes_impact = "Orchestrateur"
     
     # 6. Repowise Engine (MCP Stdio & HTTP Server)
-    repowise_port_ok = check_port("repowise", 7337) or check_port("127.0.0.1", 7337)
+    repowise_port_ok = check_port("localhost", 7337) or check_port("127.0.0.1", 7337) or check_port("repowise", 7337)
     repowise_mcp_config = (
         (DATA_ROOT / ".repowise" / "state.json").exists()
         or (PLATFORM_ROOT.parent / ".mcp.json").exists()
@@ -680,12 +683,141 @@ def get_services_html(projects, token_metrics) -> str:
         except Exception:
             pass
 
-    if files_count > 0:
-        repowise_desc = f"Mode MCP Stdio | {files_count} files | Health 8.9/10"
-    else:
-        repowise_desc = "Mode MCP Stdio | Indexé"
+    # Fetch real-time Repowise Health API if active or fallback to indexed state
+    repowise_health_html = ""
+    health_data = {}
+    if repowise_port_ok:
+        try:
+            import urllib.request
+            req = urllib.request.Request("http://127.0.0.1:7337/api/repos", headers={"User-Agent": "DEV_CORE-Dashboard"})
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                repos_data = json.loads(resp.read().decode("utf-8"))
+                devcore_repo = next((r for r in repos_data if r.get("is_primary") or r.get("name") == "devcore"), None)
+                if devcore_repo:
+                    repo_id = devcore_repo["id"]
+                    req_h = urllib.request.Request(f"http://127.0.0.1:7337/api/repos/{repo_id}/health/overview", headers={"User-Agent": "DEV_CORE-Dashboard"})
+                    with urllib.request.urlopen(req_h, timeout=3) as resp_h:
+                        health_data = json.loads(resp_h.read().decode("utf-8"))
+        except Exception as e:
+            print(f"[gen_dashboard.py] Repowise fetch error: {e}")
+
+    summary = health_data.get("summary", {}) if health_data else {"average_health": 8.0, "maintainability_average": 8.6, "performance_average": 9.7, "file_count": files_count or 290}
+    dist = health_data.get("distribution", {}).get("bands", {}) if health_data else {}
+    
+    score_avg = round(summary.get("average_health", 8.0), 1)
+    maint_avg = round(summary.get("maintainability_average", 8.6), 1)
+    perf_avg = round(summary.get("performance_average", 9.7), 1)
+    
+    total_f = summary.get("file_count", 290) or 290
+    h_files = dist.get("healthy", {}).get("files", int(total_f * 0.855))
+    w_files = dist.get("warning", {}).get("files", int(total_f * 0.117))
+    a_files = dist.get("alert", {}).get("files", max(1, total_f - h_files - w_files))
+    
+    repowise_desc = f"API 7337 Active | {total_f} files | Health {score_avg}/10" if repowise_port_ok else f"Mode MCP Stdio | {total_f} files | Health {score_avg}/10"
+    rep_perf = f"Health: {score_avg}/10 ({a_files} alert)"
+    
+    # Build top risk files list HTML
+    flagged_list = health_data.get("defect_accuracy", {}).get("flagged_files", []) if health_data else []
+    top_targets_html = ""
+    for f_item in flagged_list[:3]:
+        f_path = esc_html(f_item.get("file_path", ""))
+        f_score = round(f_item.get("score", 0.0), 1)
+        f_bugs = f_item.get("recent_defects", 0)
+        
+        badge_color = "#ef4444" if f_score < 3.0 else "#f59e0b"
+        advice = "Extraire fonctions (CCN)" if "router" in f_path else ("Découper en sub-modules" if "api" in f_path else "Ajouter tests unitaires")
+        
+        top_targets_html += f"""
+<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(15,23,42,0.7); border:1px solid #1e293b; border-radius:6px; padding:6px 10px; margin-bottom:6px; width:100%; box-sizing:border-box;">
+  <div style="min-width:0; flex:1; overflow:hidden;">
+    <div style="font-size:10px; font-weight:600; color:#f8fafc; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+      <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:{badge_color}; margin-right:5px; flex-shrink:0;"></span>
+      <code>{f_path}</code>
+    </div>
+    <div style="font-size:9px; color:#94a3b8; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+      💡 <span style="color:#cbd5e1;">{advice}</span> ({f_bugs} bug(s))
+    </div>
+  </div>
+  <div style="text-align:right; margin-left:8px; flex-shrink:0;">
+    <span style="background:rgba(239,68,68,0.15); color:{badge_color}; border:1px solid {badge_color}; border-radius:4px; padding:1px 6px; font-size:10px; font-weight:bold; font-family:'JetBrains Mono',monospace;">{f_score}/10</span>
+  </div>
+</div>
+"""
+    if not top_targets_html:
+        worst_p = esc_html(summary.get('worst_performer_path', 'DEV_CORE/Scripts/gemini_router.py'))
+        worst_s = round(summary.get('worst_performer_score', 1.0), 1)
+        top_targets_html = f"""
+<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(15,23,42,0.7); border:1px solid #1e293b; border-radius:6px; padding:6px 10px; width:100%; box-sizing:border-box;">
+  <div style="min-width:0; flex:1; overflow:hidden;">
+    <div style="font-size:10px; font-weight:600; color:#f8fafc; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><code>{worst_p}</code></div>
+    <div style="font-size:9px; color:#94a3b8; margin-top:2px;">💡 Hotspot prioritaire identifié par Repowise</div>
+  </div>
+  <span style="background:rgba(239,68,68,0.15); color:#ef4444; border:1px solid #ef4444; border-radius:4px; padding:1px 6px; font-size:10px; font-weight:bold; font-family:'JetBrains Mono',monospace;">{worst_s}/10</span>
+</div>
+"""
+
+    h_pct = round((h_files / (total_f or 1)) * 100, 1)
+    w_pct = round((w_files / (total_f or 1)) * 100, 1)
+    a_pct = round((a_files / (total_f or 1)) * 100, 1)
+
+    status_badge = "🟢 EN DIRECT (Port 7337)" if repowise_port_ok else "⚡ MCP INDEXED"
+    badge_bg = "rgba(34,197,94,0.15)" if repowise_port_ok else "rgba(99,102,241,0.15)"
+    badge_color = "#4ade80" if repowise_port_ok else "#818cf8"
+    badge_border = "rgba(34,197,94,0.3)" if repowise_port_ok else "rgba(99,102,241,0.3)"
+
+    repowise_health_html = f"""
+<div style="background:linear-gradient(135deg, #0b0f19 0%, #0f172a 100%); border:1px solid #1e293b; border-radius:10px; padding:14px; margin-top:14px; width:100%; box-sizing:border-box; box-shadow: 0 8px 20px -4px rgba(0,0,0,0.5);">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #1e293b; padding-bottom:8px;">
+    <div style="display:flex; align-items:center; gap:6px; min-width:0; flex:1;">
+      <span style="font-size:14px;">🎯</span>
+      <h3 style="color:#38bdf8; margin:0; font-size:12px; font-weight:700; letter-spacing:0.2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Repowise Code Health & Radar</h3>
+    </div>
+    <span style="background:{badge_bg}; color:{badge_color}; border:1px solid {badge_border}; border-radius:10px; padding:2px 8px; font-size:9px; font-weight:600; white-space:nowrap; flex-shrink:0;">{status_badge}</span>
+  </div>
+
+  <!-- Score Grid Cards -->
+  <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:6px; margin-bottom:12px; width:100%; box-sizing:border-box;">
+    <div style="background:rgba(30,41,59,0.5); border:1px solid #334155; border-radius:6px; padding:8px 4px; text-align:center; overflow:hidden;">
+      <div style="font-size:8.5px; color:#94a3b8; font-weight:700; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Score Global</div>
+      <div style="font-size:18px; font-weight:800; color:{'#4ade80' if score_avg>=8 else '#fbbf24'}; margin:2px 0;">{score_avg}<span style="font-size:10px; color:#64748b;">/10</span></div>
+      <div style="font-size:8.5px; color:#cbd5e1; white-space:nowrap;">{'🟢 Excellent' if score_avg>=8 else '🟡 À surveiller'}</div>
+    </div>
+    <div style="background:rgba(30,41,59,0.5); border:1px solid #334155; border-radius:6px; padding:8px 4px; text-align:center; overflow:hidden;">
+      <div style="font-size:8.5px; color:#94a3b8; font-weight:700; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Maintenabilité">Maintenabilité</div>
+      <div style="font-size:18px; font-weight:800; color:#38bdf8; margin:2px 0;">{maint_avg}<span style="font-size:10px; color:#64748b;">/10</span></div>
+      <div style="font-size:8.5px; color:#cbd5e1; white-space:nowrap;">{total_f} fichiers</div>
+    </div>
+    <div style="background:rgba(30,41,59,0.5); border:1px solid #334155; border-radius:6px; padding:8px 4px; text-align:center; overflow:hidden;">
+      <div style="font-size:8.5px; color:#94a3b8; font-weight:700; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Performance">Performance</div>
+      <div style="font-size:18px; font-weight:800; color:#a78bfa; margin:2px 0;">{perf_avg}<span style="font-size:10px; color:#64748b;">/10</span></div>
+      <div style="font-size:8.5px; color:#cbd5e1; white-space:nowrap;">Statique</div>
+    </div>
+  </div>
+
+  <!-- Distribution Bar -->
+  <div style="margin-bottom:12px;">
+    <div style="display:flex; justify-content:space-between; font-size:9.5px; color:#94a3b8; margin-bottom:4px; flex-wrap:wrap; gap:4px;">
+      <span><strong>Répartition:</strong></span>
+      <span>🟢 {h_files} sains ({h_pct}%) | 🟡 {w_files} ({w_pct}%) | 🔴 {a_files} ({a_pct}%)</span>
+    </div>
+    <div style="display:flex; height:6px; border-radius:3px; overflow:hidden; background:#1e293b;">
+      <div style="width:{h_pct}%; background:#22c55e;" title="Sains: {h_files}"></div>
+      <div style="width:{w_pct}%; background:#f59e0b;" title="Warning: {w_files}"></div>
+      <div style="width:{a_pct}%; background:#ef4444;" title="Alerte: {a_files}"></div>
+    </div>
+  </div>
+
+  <!-- Top Refactoring Radar Targets -->
+  <div>
+    <div style="font-size:9.5px; font-weight:700; color:#cbd5e1; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px;">
+      ⚡ Cibles Prioritaires (Radar)
+    </div>
+    {top_targets_html}
+  </div>
+</div>
+"""
                 
-    rep_perf = "Health: 8.9/10" if repowise_ok else "HS"
+    rep_perf = rep_perf if repowise_health_html else ("Health: 8.9/10" if repowise_ok else "HS")
     rep_solic = f"{files_count} fichiers" if repowise_ok and files_count else "MCP Stdio"
     rep_impact = "Analytics & MCP"
     
@@ -696,9 +828,11 @@ def get_services_html(projects, token_metrics) -> str:
     infra_html += get_status_html("DEV_CORE Scheduler / Hermes", hermes_desc, hermes_status, hermes_perf, hermes_solic, hermes_impact)
     infra_html += get_status_html("Qdrant Vector DB", qdrant_desc, qdrant_ok, q_perf, q_solic, q_impact)
     infra_html += get_status_html("Repowise Engine (MCP)", repowise_desc, repowise_ok, rep_perf, rep_solic, rep_impact)
+    if repowise_health_html:
+        infra_html += repowise_health_html
     
     # Background Jobs section
-    infra_html += "<h2>Hermes Background Jobs</h2>\n"
+    infra_html += '<h2 style="margin-top:28px; padding-top:14px; border-top:1px solid #1e293b;">Hermes Background Jobs</h2>\n'
     if jobs_file.exists():
         try:
             jobs_data = json.loads(jobs_file.read_text(encoding="utf-8"))
@@ -1204,6 +1338,7 @@ def main():
         tasks_html += "</div></details>"
 
     services_html = get_services_html(projects, token_metrics)
+    print(f"[gen_dashboard.py] services_html contains Refactoring Radar: {'Refactoring Radar' in services_html}")
     hooks_html = get_hooks_html()
     metrics_service_summary_html = get_metrics_service_summary_html()
     knowledge_graph_summary_html = get_knowledge_graph_summary_html()

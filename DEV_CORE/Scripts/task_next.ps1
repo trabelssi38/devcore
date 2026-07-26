@@ -74,6 +74,25 @@ Write-Host ""
 # Mode hints
 $hint = $routingProfile.hint
 Write-Host "  Hint : $hint" -ForegroundColor DarkGray
+
+# Repowise Health Context
+try {
+    $repoRes = Invoke-RestMethod -Uri "http://127.0.0.1:7337/api/repos" -TimeoutSec 1 -ErrorAction SilentlyContinue
+    if ($repoRes) {
+        $projName = & "$PSScriptRoot\Get-ActiveProject.ps1"
+        $targetRepo = $repoRes | Where-Object { $_.name -eq $projName -or $_.workspace_alias -eq $projName -or ($projName -eq "devcore" -and $_.is_primary) } | Select-Object -First 1
+        if ($targetRepo) {
+            $health = Invoke-RestMethod -Uri "http://127.0.0.1:7337/api/repos/$($targetRepo.id)/health/overview" -TimeoutSec 1 -ErrorAction SilentlyContinue
+            if ($health -and $health.summary) {
+                $score = [math]::Round($health.summary.average_health, 1)
+                $alertCount = if ($health.distribution.bands.alert) { $health.distribution.bands.alert.files } else { 0 }
+                $worst = $health.summary.worst_performer_path
+                $worstScore = [math]::Round($health.summary.worst_performer_score, 1)
+                Write-Host "  [Repowise Health] Score: $score/10 | $alertCount fichier(s) en alerte (worst: $worst $worstScore/10)" -ForegroundColor Yellow
+            }
+        }
+    }
+} catch {}
 Write-Host ""
 
 # Ecrire le contexte session (isolأ© par projet)

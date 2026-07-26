@@ -50,7 +50,9 @@ $defaultTests = @(
     "test_repowise_workspace_hermes.ps1",
     "test_repowise_ui_proxy.ps1",
     "test_repowise_ipv6_proxy.ps1",
-    "test_repowise_watch_worker.ps1"
+    "test_repowise_watch_worker.ps1",
+    "test_repowise_workspace_sync.ps1",
+    "test_repowise_health_gate.ps1"
 )
 
 if (-not $Tests -or $Tests.Count -eq 0) {

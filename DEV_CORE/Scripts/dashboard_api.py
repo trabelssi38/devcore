@@ -1196,7 +1196,8 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
             # If it was the active task, run the official task_done.ps1 to execute hooks
             if is_active:
                 task_done_script = get_platform_path("Scripts", "task_done.ps1")
-                cmd = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", 
+                ps_exe = shutil.which("powershell.exe") or shutil.which("powershell") or shutil.which("pwsh") or r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+                cmd = [ps_exe, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", 
                        str(task_done_script), "-Force"]
                 print(f"[DashboardAPI] Running task_done.ps1 for active task completion (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
                 subprocess.run(cmd, capture_output=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC)
@@ -1259,9 +1260,16 @@ def main():
 
     ensure_api_token()
     ensure_csrf_token()
-    server_class = http.server.HTTPServer
-    if hasattr(http.server, "ThreadingHTTPServer"):
-        server_class = http.server.ThreadingHTTPServer
+    class QuietThreadingHTTPServer(http.server.ThreadingHTTPServer):
+        def handle_error(self, request, client_address):
+            exc_type, _, _ = sys.exc_info()
+            if exc_type in (ConnectionAbortedError, ConnectionResetError, BrokenPipeError):
+                return
+            super().handle_error(request, client_address)
+
+    server_class = QuietThreadingHTTPServer
+    if not hasattr(http.server, "ThreadingHTTPServer"):
+        server_class = http.server.HTTPServer
 
     socketserver.TCPServer.allow_reuse_address = True
     

@@ -220,6 +220,23 @@ background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;margin:6px;text-al
         Log "  Scan + Sync final OK" "Green"
     }
 
+    Log "7.8/8 Bilan Repowise Code Health"
+    try {
+        $repoRes = Invoke-RestMethod -Uri "http://127.0.0.1:7337/api/repos" -TimeoutSec 1 -ErrorAction SilentlyContinue
+        if ($repoRes) {
+            $devRepo = $repoRes | Where-Object { $_.is_primary -or $_.name -eq "devcore" } | Select-Object -First 1
+            if ($devRepo) {
+                $h = Invoke-RestMethod -Uri "http://127.0.0.1:7337/api/repos/$($devRepo.id)/health/overview" -TimeoutSec 1 -ErrorAction SilentlyContinue
+                if ($h -and $h.summary) {
+                    $sScore = [math]::Round($h.summary.average_health, 1)
+                    $aCount = if ($h.distribution.bands.alert) { $h.distribution.bands.alert.files } else { 0 }
+                    Log "  Repowise Code Health : $sScore/10 ($aCount alertes)" "Green"
+                    Record-Metric -MetricType "code_health_score" -Value $sScore -Unit "score" -Payload @{ alert_files = $aCount; worst_path = $h.summary.worst_performer_path }
+                }
+            }
+        }
+    } catch {}
+
     Log "8/8 Next actions"
     $na = "$DEV_CORE_DATA\Memory\next_actions.md"
     $enddayElapsed = ((Get-Date) - $ENDDAY_STARTED).TotalSeconds

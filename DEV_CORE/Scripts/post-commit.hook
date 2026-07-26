@@ -170,6 +170,29 @@ Set-Content \"\$evtDir/\$(Get-Date -Format 'yyyyMMdd_HHmmss')_commit.json\" \$ev
 $MSG
 EOF
 
+# 2.5 Vérifier la santé Repowise des fichiers modifiés dans ce commit (Non-bloquant)
+powershell.exe -NoProfile -ExecutionPolicy Bypass -NonInteractive -Command "
+try {
+    \$repoRes = Invoke-RestMethod -Uri 'http://127.0.0.1:7337/api/repos' -TimeoutSec 1 -ErrorAction SilentlyContinue
+    if (\$repoRes) {
+        \$projName = & '$SCRIPTS/Get-ActiveProject.ps1'
+        \$targetRepo = \$repoRes | Where-Object { \$_.name -eq \$projName -or \$_.workspace_alias -eq \$projName -or (\$projName -eq 'devcore' -and \$_.is_primary) } | Select-Object -First 1
+        if (\$targetRepo) {
+            \$health = Invoke-RestMethod -Uri \"http://127.0.0.1:7337/api/repos/\$(\$targetRepo.id)/health/overview\" -TimeoutSec 1 -ErrorAction SilentlyContinue
+            if (\$health -and \$health.defect_accuracy -and \$health.defect_accuracy.flagged_files) {
+                \$modified = git diff-tree --no-commit-id --name-only -r HEAD
+                foreach (\$file in \$modified) {
+                    \$matched = \$health.defect_accuracy.flagged_files | Where-Object { \$_.file_path -eq \$file -or \$_.file_path -replace '\\\\','/' -eq \$file }
+                    if (\$matched -and \$matched.score -lt 3.0) {
+                        Write-Host \"  [DEV_CORE Repowise] Warning : \$file est en zone d'alerte (Score: \$([math]::Round(\$matched.score, 2))/10). Pensez a refactorer ou ajouter un test.\" -ForegroundColor Yellow
+                    }
+                }
+            }
+        }
+    }
+} catch {}
+"
+
 # 3. Lancer le Scan + Sync + Dashboard et Repowise Update en arrière-plan (non-bloquant, asynchrone et robuste)
 echo "  [DEV_CORE] Scan, synchronisation et Repowise Update en fond..."
 powershell.exe -NoProfile -ExecutionPolicy Bypass -NonInteractive -Command "

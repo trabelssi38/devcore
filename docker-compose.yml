@@ -120,6 +120,7 @@ services:
       - GEMINI_ROUTER_HOST=gemini-router
       - DASHBOARD_API_HOST=dashboard-api
       - HEADROOM_HOST=host.docker.internal
+      - REPOWISE_HOST=host.docker.internal
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

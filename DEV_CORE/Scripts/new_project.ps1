@@ -101,6 +101,12 @@ if (-not (Test-Path $tFile)) {
 $SCRIPTS = Split-Path -Parent $MyInvocation.MyCommand.Definition
 & "$SCRIPTS\toonify.ps1" -InputFile $tFile | Out-Null
 
+# Synchroniser le workspace Repowise
+if (Test-Path "$SCRIPTS\sync_repowise_workspace.py") {
+    python "$SCRIPTS\sync_repowise_workspace.py" | Out-Null
+    Write-Host "  [OK] Workspace Repowise synchronise pour $Name" -ForegroundColor Green
+}
+
 Write-Host ""
 Write-Host "  Projet lie avec succes." -ForegroundColor Cyan
 Write-Host ""

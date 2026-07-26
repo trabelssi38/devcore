@@ -81,6 +81,12 @@ def ensure_repowise_ignore(proj_path):
                 print(f"[RepowiseUpdate] Error writing ignore file: {e}")
 
 def main():
+    try:
+        from sync_repowise_workspace import sync_workspace
+        sync_workspace()
+    except Exception as e:
+        print(f"[RepowiseUpdate] Warning: workspace sync failed: {e}")
+
     project_name = get_active_project()
     proj_path = get_project_path(project_name)
     if not proj_path:

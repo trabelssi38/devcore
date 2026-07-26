@@ -1,24 +1,104 @@
 {
   "projects": [
     {
-      "name": "devcore",
-      "path": "C:/devcore"
+      "name": "9router",
+      "path": "C:/src/9router"
+    },
+    {
+      "name": "awesome-claude-skills",
+      "path": "C:/src/awesome-claude-skills"
     },
     {
       "name": "cea_dashboard",
       "path": "C:/src/cea_dashboard"
     },
     {
+      "name": "cea_pwa",
+      "path": "C:/src/cea_pwa"
+    },
+    {
+      "name": "claude-howto",
+      "path": "C:/src/claude-howto"
+    },
+    {
+      "name": "cybotz_contract",
+      "path": "C:/src/cybotz contract"
+    },
+    {
       "name": "dashboard_recette_br",
       "path": "C:/src/dashboard_recette_br"
+    },
+    {
+      "name": "devcore",
+      "path": "C:/devcore"
+    },
+    {
+      "name": "everything-claude-code",
+      "path": "C:/src/everything-claude-code"
+    },
+    {
+      "name": "forms",
+      "path": "C:/src/forms"
+    },
+    {
+      "name": "forms2spring-angular-generator",
+      "path": "C:/src/forms2spring-angular-generator"
+    },
+    {
+      "name": "free-claude-code",
+      "path": "C:/src/free-claude-code"
+    },
+    {
+      "name": "iptv",
+      "path": "C:/src/iptv"
+    },
+    {
+      "name": "jar",
+      "path": "C:/src/jar"
     },
     {
       "name": "job_tracker",
       "path": "C:/src/job_tracker"
     },
     {
+      "name": "migration",
+      "path": "C:/src/migration"
+    },
+    {
+      "name": "oracle_legacy_intelligence_platform",
+      "path": "C:/src/oracle_legacy_intelligence_platform"
+    },
+    {
       "name": "oracle_plsq_dependency_analyzer",
       "path": "C:/src/oracle_legacy_intelligence_platform"
+    },
+    {
+      "name": "pramax_prefs_patch",
+      "path": "C:/src/pramax_prefs_patch"
+    },
+    {
+      "name": "promax_hook",
+      "path": "C:/src/promax_hook"
+    },
+    {
+      "name": "promax_jadx",
+      "path": "C:/src/promax_jadx"
+    },
+    {
+      "name": "rtk",
+      "path": "C:/src/rtk"
+    },
+    {
+      "name": "smartiptvmanager",
+      "path": "C:/src/SmartIPTVManager"
+    },
+    {
+      "name": "sneaker_feed",
+      "path": "C:/src/sneaker_feed"
+    },
+    {
+      "name": "xposed_promax",
+      "path": "C:/src/xposed_promax"
     }
   ]
 }

@@ -1,7 +1,7 @@
 ﻿{
     "mcpServers":  {
                        "repowise":  {
-                                        "command":  "C:\\Users\\trb_m\\AppData\\Roaming\\Python\\Python313\\Scripts\\repowise.exe",
+                                        "command":  "C:\\Program Files\\Python313\\Scripts\\repowise.exe",
                                         "args":  [
                                                      "mcp",
                                                      "C:/devcore",
