@@ -492,32 +492,59 @@ function hideBubble(){}
 function showConfirmModal(){}
 function hideConfirmModal(){}
 
-/* ── Settings save (same as cockpit) ── */
-async function saveSettings(){
-  try{
-    const body={
+/* ── Settings load & save (shared with cockpit) ── */
+async function loadSettings() {
+  try {
+    const res = await fetch('http://127.0.0.1:20129/api/settings');
+    if (!res.ok) throw new Error(res.status);
+    const data = await res.json();
+    document.getElementById('setting-active-client').value = data.active_client || 'antigravity';
+    document.getElementById('setting-refresh-rate').value = data.auto_refresh_seconds !== undefined ? data.auto_refresh_seconds : 15;
+    document.getElementById('setting-gemini-key').value = data.gemini_api_key || '';
+    document.getElementById('setting-anthropic-key').value = data.anthropic_api_key || '';
+    
+    const svcs = data.services || {};
+    document.getElementById('svc-qdrant').checked = svcs.qdrant !== false;
+    document.getElementById('svc-router').checked = svcs.gemini_router !== false;
+    document.getElementById('svc-api').checked = svcs.dashboard_api !== false;
+    document.getElementById('svc-headroom').checked = svcs.headroom !== false;
+    document.getElementById('svc-hermes').checked = svcs.hermes_daemon !== false;
+    document.getElementById('svc-repowise').checked = svcs.repowise !== false;
+  } catch(e) {
+    console.error("loadSettings:", e);
+  }
+}
+
+async function saveSettings() {
+  try {
+    const body = {
       active_client: document.getElementById('setting-active-client').value,
-      refresh_rate: parseInt(document.getElementById('setting-refresh-rate').value,10),
-      gemini_key: document.getElementById('setting-gemini-key').value||undefined,
-      anthropic_key: document.getElementById('setting-anthropic-key').value||undefined,
-      services:{
-        qdrant:document.getElementById('svc-qdrant').checked,
-        router:document.getElementById('svc-router').checked,
-        api:document.getElementById('svc-api').checked,
-        headroom:document.getElementById('svc-headroom').checked,
-        hermes:document.getElementById('svc-hermes').checked,
-        repowise:document.getElementById('svc-repowise').checked
+      auto_refresh_seconds: parseInt(document.getElementById('setting-refresh-rate').value, 10),
+      gemini_api_key: document.getElementById('setting-gemini-key').value || undefined,
+      anthropic_api_key: document.getElementById('setting-anthropic-key').value || undefined,
+      services: {
+        qdrant: document.getElementById('svc-qdrant').checked,
+        gemini_router: document.getElementById('svc-router').checked,
+        dashboard_api: document.getElementById('svc-api').checked,
+        headroom: document.getElementById('svc-headroom').checked,
+        hermes_daemon: document.getElementById('svc-hermes').checked,
+        repowise: document.getElementById('svc-repowise').checked
       }
     };
-    const token=localStorage.getItem('dc_api_token')||'';
-    await fetch('http://127.0.0.1:20129/api/settings',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-      body:JSON.stringify(body)
+    const token = localStorage.getItem('dc_api_token') || '';
+    await fetch('http://127.0.0.1:20129/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify(body)
     });
-    localStorage.setItem('dc_refresh_rate',body.refresh_rate);
-  }catch(e){console.error('saveSettings:',e)}
+    localStorage.setItem('dc_refresh_rate', body.auto_refresh_seconds);
+  } catch(e) {
+    console.error('saveSettings:', e);
+  }
 }
+
+// Load settings on startup
+loadSettings();
 
 /* ── Auto-refresh via AJAX ── */
 async function refreshDashboard(){
