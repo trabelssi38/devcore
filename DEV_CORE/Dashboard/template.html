@@ -1406,7 +1406,7 @@ function connectDashboardStream() {
     });
 }
 
-setupRefresh(15000);
+setupRefresh(60000); // 60s fallback polling since SSE is active
 refreshDashboard();
 connectDashboardStream();
 </script>

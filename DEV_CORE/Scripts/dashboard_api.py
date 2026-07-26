@@ -725,548 +725,373 @@ def refresh_dashboard_payload_cache():
     write_json_with_retry(cache_path, payload)
     return payload
 
-class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
-    def end_headers(self):
-        origin = self.headers.get("Origin")
-        if origin and is_origin_allowed(origin):
-            self.send_header("Access-Control-Allow-Origin", origin)
-            self.send_header("Vary", "Origin")
-        self.send_header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS')
-        self.send_header('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-CSRF-Token, X-Requested-With')
-        super().end_headers()
+# Standalone functions extracted from DashboardAPIHandler
+def get_settings():
+    settings_file = get_settings_file_path()
+    if not settings_file.exists():
+        defaults = dict(DEFAULT_PUBLIC_SETTINGS)
+        defaults["active_client"] = read_active_client()
+        return defaults
+    try:
+        settings = sanitize_public_settings(read_json_with_retry(settings_file))
+        settings.setdefault("auto_refresh_seconds", DEFAULT_PUBLIC_SETTINGS["auto_refresh_seconds"])
+        settings.setdefault("services", DEFAULT_PUBLIC_SETTINGS["services"])
+        settings["active_client"] = read_active_client()
+        return settings
+    except Exception:
+        return {}
 
-    def do_OPTIONS(self):
-        try:
-            origin = self.headers.get("Origin")
-            if origin and not is_origin_allowed(origin):
-                self.send_response(403)
-                self.end_headers()
-                return
-            self.send_response(204)
-            self.end_headers()
-        except ConnectionError:
-            pass
+def save_settings(data):
+    settings_file = get_settings_file_path()
+    settings_file.parent.mkdir(parents=True, exist_ok=True)
+    write_json_with_retry(settings_file, sanitize_public_settings(data))
 
-    def log_message(self, format, *args):
-        # Silence standard HTTP logs in the background terminal unless needed
-        pass
+    secrets_data = extract_setting_secrets(data)
+    if secrets_data:
+        secrets_file = get_settings_secrets_path()
+        secrets_file.parent.mkdir(parents=True, exist_ok=True)
+        write_json_with_retry(secrets_file, secrets_data)
 
-    def get_settings(self):
-        settings_file = get_settings_file_path()
-        if not settings_file.exists():
-            defaults = dict(DEFAULT_PUBLIC_SETTINGS)
-            defaults["active_client"] = read_active_client()
-            return defaults
-        try:
-            settings = sanitize_public_settings(read_json_with_retry(settings_file))
-            settings.setdefault("auto_refresh_seconds", DEFAULT_PUBLIC_SETTINGS["auto_refresh_seconds"])
-            settings.setdefault("services", DEFAULT_PUBLIC_SETTINGS["services"])
-            settings["active_client"] = read_active_client()
-            return settings
-        except Exception:
-            return {}
+    active_client = data.get("active_client")
+    write_active_client(active_client)
 
-    def save_settings(self, data):
-        settings_file = get_settings_file_path()
-        settings_file.parent.mkdir(parents=True, exist_ok=True)
-        write_json_with_retry(settings_file, sanitize_public_settings(data))
+def complete_task(project, task_id):
+    tasks_file = get_project_tasks_file(project)
+    if not tasks_file.exists():
+        return False, f"Project board not found: {tasks_file}"
 
-        secrets_data = extract_setting_secrets(data)
-        if secrets_data:
-            secrets_file = get_settings_secrets_path()
-            secrets_file.parent.mkdir(parents=True, exist_ok=True)
-            write_json_with_retry(secrets_file, secrets_data)
+    try:
+        print(f"[DashboardAPI] Completing task {task_id} on project {project}...")
+        board = read_json_with_retry(tasks_file)
 
-        active_client = data.get("active_client")
-        write_active_client(active_client)
+        task_found = False
+        is_active = False
+        for task in board.get("tasks", []):
+            if task.get("id") == task_id:
+                task_found = True
+                is_active = (task.get("status") == "active")
+                task["status"] = "done"
+                task["steps_done"] = task.get("steps_total", 1)
+                task["completed_at"] = datetime.now().isoformat()
+                break
 
-    def do_GET(self):
-        try:
-            self._handle_get()
-        except ConnectionError:
-            # Silence tracebacks if the client disconnected prematurely
-            pass
+        if not task_found:
+            return False, f"Task {task_id} not found in project {project}"
 
-    def _handle_get(self):
-        parsed_url = urllib.parse.urlparse(self.path)
-        path = parsed_url.path
-        query = urllib.parse.parse_qs(parsed_url.query)
-        if requires_authentication(path) and not is_authorized(self.headers):
-            self.send_auth_error_response()
-            return
+        write_json_with_retry(tasks_file, board)
+        print(f"[DashboardAPI] Successfully saved completed task status in tasks.json.")
 
-        if path == "/favicon.ico":
-            self.send_response(204)
-            self.send_header("Cache-Control", "public, max-age=3600")
-            self.end_headers()
-            return
-
-        if path == "/api/settings":
-            try:
-                settings = self.get_settings()
-                self.send_response(200)
-                self.send_header("Content-Type", "application/json")
-                self.end_headers()
-                self.wfile.write(json.dumps(settings, indent=4).encode("utf-8"))
-            except Exception as e:
-                self.send_error_response(str(e))
-            return
-
-
-        if path == "/api/done":
-            self.send_method_not_allowed_response("POST")
-
-        elif path == "/api/delete":
-            self.send_method_not_allowed_response("DELETE")
-
-        elif path in ["/", "/index.html"]:
-            try:
-                index_path = get_platform_path("Dashboard", "index.html")
-                if index_path.exists():
-                    with open(index_path, "r", encoding="utf-8") as f:
-                        html_content = inject_auth_fetch(f.read())
-                    self.send_response(200)
-                    self.send_header("Content-Type", "text/html; charset=utf-8")
-                    self.end_headers()
-                    self.wfile.write(html_content.encode("utf-8"))
-                else:
-                    self.send_error_response("index.html not found")
-            except ConnectionError:
-                pass
-            except Exception as e:
-                self.send_error_response(str(e))
-        elif path == "/index_terminal.html":
-            try:
-                term_path = get_platform_path("Dashboard", "index_terminal.html")
-                if term_path.exists():
-                    with open(term_path, "r", encoding="utf-8") as f:
-                        html_content = inject_auth_fetch(f.read())
-                    self.send_response(200)
-                    self.send_header("Content-Type", "text/html; charset=utf-8")
-                    self.end_headers()
-                    self.wfile.write(html_content.encode("utf-8"))
-                else:
-                    self.send_error_response("index_terminal.html not found — run gen_dashboard.py first")
-            except ConnectionError:
-                pass
-            except Exception as e:
-                self.send_error_response(str(e))
-        elif path == "/api/status":
-            self.send_success_response("API Server Active")
-        elif path == "/api/dashboard":
-            try:
-                limit_val = query.get("limit", [None])[0]
-                payload = build_dashboard_payload()
-                if limit_val and limit_val.isdigit():
-                    lim = int(limit_val)
-                    if isinstance(payload.get("events_raw"), list):
-                        payload["events_raw"] = payload["events_raw"][:lim]
-                self.send_cached_json_response(payload)
-            except subprocess.TimeoutExpired as te:
-                print(f"[DashboardAPI] Timeout calling gen_dashboard.ps1 -Json: {te}")
-                self.send_error_response(f"Dashboard payload generation timed out after {DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s")
-            except Exception as e:
-                self.send_error_response(str(e))
-        elif path == "/api/dashboard/tasks":
-            try:
-                db_path = get_data_path("devcore.db")
-                project = query.get("project", [""])[0]
-                limit_val = int(query.get("limit", ["20"])[0])
-                offset_val = int(query.get("offset", ["0"])[0])
-                import sqlite3
-                conn = sqlite3.connect(db_path)
-                cur = conn.cursor()
-                if project:
-                    cur.execute("SELECT id, project, title, status, mode, steps_total, steps_done, started_at, completed_at FROM tasks WHERE project = ? ORDER BY CAST(SUBSTR(id, 3) AS INTEGER) DESC LIMIT ? OFFSET ?", (project, limit_val, offset_val))
-                else:
-                    cur.execute("SELECT id, project, title, status, mode, steps_total, steps_done, started_at, completed_at FROM tasks ORDER BY CAST(SUBSTR(id, 3) AS INTEGER) DESC LIMIT ? OFFSET ?", (limit_val, offset_val))
-                cols = [c[0] for c in cur.description]
-                rows = [dict(zip(cols, r)) for r in cur.fetchall()]
-                conn.close()
-                self.send_json_response({"tasks": rows, "count": len(rows), "limit": limit_val, "offset": offset_val})
-            except Exception as e:
-                self.send_error_response(str(e))
-        elif path == "/api/dashboard/events":
-            try:
-                db_path = get_data_path("devcore.db")
-                limit_val = int(query.get("limit", ["10"])[0])
-                import sqlite3
-                conn = sqlite3.connect(db_path)
-                cur = conn.cursor()
-                cur.execute("SELECT id, event_type, timestamp, source, tool_name, duration, success, payload FROM events ORDER BY id DESC LIMIT ?", (limit_val,))
-                cols = [c[0] for c in cur.description]
-                rows = [dict(zip(cols, r)) for r in cur.fetchall()]
-                conn.close()
-                self.send_json_response({"events": rows, "count": len(rows)})
-            except Exception as e:
-                self.send_error_response(str(e))
-        elif path == "/api/dashboard/tokens":
-            try:
-                db_path = get_data_path("devcore.db")
-                limit_val = int(query.get("limit", ["50"])[0])
-                import sqlite3
-                conn = sqlite3.connect(db_path)
-                cur = conn.cursor()
-                cur.execute("SELECT id, timestamp, model, tokens, cache_hits, output_tokens, cost_usd, task_id FROM token_calls ORDER BY id DESC LIMIT ?", (limit_val,))
-                cols = [c[0] for c in cur.description]
-                rows = [dict(zip(cols, r)) for r in cur.fetchall()]
-                conn.close()
-                self.send_json_response({"token_calls": rows, "count": len(rows)})
-            except Exception as e:
-                self.send_error_response(str(e))
-        elif path == "/api/dashboard/resource":
-            resource_name = query.get("name", [""])[0]
-            try:
-                payload = build_dashboard_resource(
-                    resource_name,
-                    page=query.get("page", ["1"])[0],
-                    page_size=query.get("page_size", [str(DEFAULT_DASHBOARD_RESOURCE_PAGE_SIZE)])[0],
-                )
-                self.send_cached_json_response(payload)
-            except Exception as e:
-                self.send_error_response(str(e))
-        elif path == "/api/dashboard/stream":
-            try:
-                sec = query.get("section", [None])[0]
-                self.send_dashboard_stream_response(section=sec, once=query.get("once", ["0"])[0] == "1")
-            except Exception as e:
-                self.send_error_response(str(e))
-        elif path == "/api/plugin/check":
-            plugin_id = query.get("id", [""])[0]
-            if not plugin_id:
-                self.send_error_response("Missing plugin id")
-                return
-            try:
-                result = run_plugin_check(plugin_id)
-                self.send_json_response(result)
-            except subprocess.TimeoutExpired as te:
-                print(f"[DashboardAPI] Timeout calling dc plugin check: {te}")
-                self.send_error_response(f"Plugin check timed out after {DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s")
-            except Exception as e:
-                self.send_error_response(str(e))
-        elif path == "/api/refresh":
-            self.send_method_not_allowed_response("POST")
+        if is_active:
+            task_done_script = get_platform_path("Scripts", "task_done.ps1")
+            ps_exe = shutil.which("powershell.exe") or shutil.which("powershell") or shutil.which("pwsh") or r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+            cmd = [ps_exe, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", 
+                   str(task_done_script), "-Force"]
+            print(f"[DashboardAPI] Running task_done.ps1 for active task completion (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
+            subprocess.run(cmd, capture_output=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC)
+            return True, f"Active task {task_id} completed successfully via task_done.ps1"
         else:
-            self.send_response(404)
-            self.end_headers()
-
-    def do_POST(self):
-        try:
-            self._handle_post()
-        except ConnectionError:
-            pass
-
-    def _handle_post(self):
-        parsed_url = urllib.parse.urlparse(self.path)
-        path = parsed_url.path
-
-        if requires_authentication(path) and not is_authorized(self.headers):
-            self.send_auth_error_response()
-            return
-        if requires_csrf("POST", path) and not is_csrf_authorized(self.headers):
-            self.send_csrf_error_response()
-            return
-
-        if path == "/api/settings":
-            try:
-                data = self.read_json_body()
-                self.save_settings(data)
-                self.send_success_response("Settings saved successfully")
-            except RequestTooLarge as e:
-                self.send_payload_too_large_response(str(e))
-            except Exception as e:
-                self.send_error_response(str(e))
-        elif path == "/api/done":
-            try:
-                data = self.read_json_body()
-                project = data.get("project", "")
-                task_id = data.get("id", "")
-                if not project or not task_id:
-                    self.send_error_response("Missing project or id")
-                    return
-
-                success, msg = self.complete_task(project, task_id)
-                if success:
-                    self.send_success_response(msg)
-                else:
-                    self.send_error_response(msg)
-            except RequestTooLarge as e:
-                self.send_payload_too_large_response(str(e))
-            except Exception as e:
-                self.send_error_response(str(e))
-        elif path == "/api/refresh":
-            try:
-                payload = refresh_dashboard_payload_cache()
-                self.send_json_response(payload)
-            except subprocess.TimeoutExpired as te:
-                print(f"[DashboardAPI] Timeout calling gen_dashboard.ps1: {te}")
-                self.send_error_response(f"Dashboard regeneration timed out after {DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s")
-            except Exception as e:
-                self.send_error_response(str(e))
-        else:
-            self.send_response(404)
-            self.end_headers()
-
-    def do_DELETE(self):
-        try:
-            self._handle_delete()
-        except ConnectionError:
-            pass
-
-    def _handle_delete(self):
-        parsed_url = urllib.parse.urlparse(self.path)
-        path = parsed_url.path
-
-        if requires_authentication(path) and not is_authorized(self.headers):
-            self.send_auth_error_response()
-            return
-        if requires_csrf("DELETE", path) and not is_csrf_authorized(self.headers):
-            self.send_csrf_error_response()
-            return
-
-        if path == "/api/delete":
-            try:
-                data = self.read_json_body()
-                project = data.get("project", "")
-                task_id = data.get("id", "")
-                if not project or not task_id:
-                    self.send_error_response("Missing project or id")
-                    return
-
-                success, msg = self.delete_task(project, task_id)
-                if success:
-                    self.send_success_response(msg)
-                else:
-                    self.send_error_response(msg)
-            except RequestTooLarge as e:
-                self.send_payload_too_large_response(str(e))
-            except Exception as e:
-                self.send_error_response(str(e))
-        else:
-            self.send_response(404)
-            self.end_headers()
-
-    def read_json_body(self):
-        if is_request_too_large(self.headers):
-            raise RequestTooLarge(f"Request body exceeds {get_max_request_body_bytes()} bytes")
-        content_length = int(self.headers.get('Content-Length', 0))
-        if content_length <= 0:
-            return {}
-        post_data = self.rfile.read(content_length)
-        return json.loads(post_data.decode('utf-8'))
-
-    def send_success_response(self, message):
-        try:
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps({"success": True, "message": message}).encode("utf-8"))
-        except ConnectionError:
-            pass
-
-    def send_json_response(self, payload):
-        try:
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
-            self.end_headers()
-            self.wfile.write(json.dumps(payload, ensure_ascii=False).encode("utf-8"))
-        except ConnectionError:
-            pass
-
-    def send_cached_json_response(self, payload):
-        try:
-            response = build_cached_json_response(payload, self.headers)
-            self.send_response(response["status"])
-            for key, value in response["headers"].items():
-                self.send_header(key, value)
-            self.end_headers()
-            if response["body"]:
-                self.wfile.write(response["body"])
-        except ConnectionError:
-            pass
-
-    def send_dashboard_stream_response(self, section=None, once=False):
-        self.send_response(200)
-        self.send_header("Content-Type", "text/event-stream; charset=utf-8")
-        self.send_header("Cache-Control", "no-cache")
-        self.send_header("Connection", "keep-alive")
-        self.send_header("X-Accel-Buffering", "no")
-        self.end_headers()
-
-        full_previous = load_dashboard_read_model() or {}
-        if section:
-            previous = {k: v for k, v in full_previous.items() if section.lower() in k.lower()}
-        else:
-            previous = full_previous
-
-        event_id = read_model_fingerprint(previous)
-        snapshot = {
-            "schema_version": 1,
-            "section": section or "all",
-            "generated_at": datetime.now().isoformat(),
-            "fingerprint": event_id,
-            "read_model": previous,
-        }
-        self.wfile.write(format_sse_event("dashboard.snapshot", snapshot, event_id=event_id, retry=3000))
-        self.wfile.flush()
-        if once:
-            return
-
-        last_heartbeat = time.monotonic()
-        while True:
-            time.sleep(DASHBOARD_SSE_POLL_SECONDS)
-            full_current = load_dashboard_read_model() or {}
-            if section:
-                current = {k: v for k, v in full_current.items() if section.lower() in k.lower()}
-            else:
-                current = full_current
-
-            delta = build_dashboard_delta(previous, current)
-            if delta["has_changes"]:
-                delta["section"] = section or "all"
-                self.wfile.write(
-                    format_sse_event("dashboard.delta", delta, event_id=delta["fingerprint"])
-                )
-                self.wfile.flush()
-                previous = current
-                last_heartbeat = time.monotonic()
-            elif time.monotonic() - last_heartbeat >= DASHBOARD_SSE_HEARTBEAT_SECONDS:
-                self.wfile.write(format_sse_comment("heartbeat"))
-                self.wfile.flush()
-                last_heartbeat = time.monotonic()
-
-    def send_error_response(self, error):
-        try:
-            self.send_response(400)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps({"success": False, "error": error}).encode("utf-8"))
-        except ConnectionError:
-            pass
-
-    def send_auth_error_response(self):
-        try:
-            self.send_response(401)
-            self.send_header("Content-Type", "application/json")
-            self.send_header("WWW-Authenticate", "Bearer")
-            self.end_headers()
-            self.wfile.write(json.dumps({"success": False, "error": "Unauthorized"}).encode("utf-8"))
-        except ConnectionError:
-            pass
-
-    def send_csrf_error_response(self):
-        try:
-            self.send_response(403)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps({"success": False, "error": "CSRF validation failed"}).encode("utf-8"))
-        except ConnectionError:
-            pass
-
-    def send_payload_too_large_response(self, error):
-        try:
-            self.send_response(413)
-            self.send_header("Content-Type", "application/json")
-            self.end_headers()
-            self.wfile.write(json.dumps({"success": False, "error": error}).encode("utf-8"))
-        except ConnectionError:
-            pass
-
-    def send_method_not_allowed_response(self, allowed_method):
-        try:
-            self.send_response(405)
-            self.send_header("Content-Type", "application/json")
-            self.send_header("Allow", allowed_method)
-            self.end_headers()
-            self.wfile.write(json.dumps({"success": False, "error": "Method Not Allowed"}).encode("utf-8"))
-        except ConnectionError:
-            pass
-
-    def complete_task(self, project, task_id):
-        tasks_file = get_project_tasks_file(project)
-        if not tasks_file.exists():
-            return False, f"Project board not found: {tasks_file}"
-
-        try:
-            print(f"[DashboardAPI] Completing task {task_id} on project {project}...")
-            board = read_json_with_retry(tasks_file)
-
-            task_found = False
-            is_active = False
-            for task in board.get("tasks", []):
-                if task.get("id") == task_id:
-                    task_found = True
-                    is_active = (task.get("status") == "active")
-                    task["status"] = "done"
-                    task["steps_done"] = task.get("steps_total", 1)
-                    task["completed_at"] = datetime.now().isoformat()
-                    break
-
-            if not task_found:
-                return False, f"Task {task_id} not found in project {project}"
-
-            # Write the file first with retries
-            write_json_with_retry(tasks_file, board)
-            print(f"[DashboardAPI] Successfully saved completed task status in tasks.json.")
-
-            # If it was the active task, run the official task_done.ps1 to execute hooks
-            if is_active:
-                task_done_script = get_platform_path("Scripts", "task_done.ps1")
-                ps_exe = shutil.which("powershell.exe") or shutil.which("powershell") or shutil.which("pwsh") or r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
-                cmd = [ps_exe, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", 
-                       str(task_done_script), "-Force"]
-                print(f"[DashboardAPI] Running task_done.ps1 for active task completion (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
-                subprocess.run(cmd, capture_output=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC)
-                return True, f"Active task {task_id} completed successfully via task_done.ps1"
-            else:
-                # Regenerate the dashboard
-                dashboard_script = get_platform_path("Scripts", "gen_dashboard.py")
-                cmd = [sys.executable, str(dashboard_script)]
-                print(f"[DashboardAPI] Running gen_dashboard.py for dashboard refresh (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
-                subprocess.run(cmd, capture_output=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC)
-                return True, f"Task {task_id} completed successfully"
-
-        except subprocess.TimeoutExpired as te:
-            print(f"[DashboardAPI] Timeout expired executing completion script: {te}")
-            return True, f"Task {task_id} completed but post-completion command timed out"
-        except Exception as e:
-            print(f"[DashboardAPI] Error completing task: {e}")
-            return False, str(e)
-
-    def delete_task(self, project, task_id):
-        tasks_file = get_project_tasks_file(project)
-        if not tasks_file.exists():
-            return False, f"Project board not found: {tasks_file}"
-
-        try:
-            print(f"[DashboardAPI] Deleting task {task_id} on project {project}...")
-            board = read_json_with_retry(tasks_file)
-
-            original_count = len(board.get("tasks", []))
-            board["tasks"] = [t for t in board.get("tasks", []) if t.get("id") != task_id]
-
-            if len(board["tasks"]) == original_count:
-                return False, f"Task {task_id} not found in project {project}"
-
-            if board.get("current_task") == task_id:
-                board["current_task"] = None
-
-            write_json_with_retry(tasks_file, board)
-            print(f"[DashboardAPI] Successfully saved deleted task in tasks.json.")
-
-            # Regenerate the dashboard
             dashboard_script = get_platform_path("Scripts", "gen_dashboard.py")
             cmd = [sys.executable, str(dashboard_script)]
             print(f"[DashboardAPI] Running gen_dashboard.py for dashboard refresh (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
             subprocess.run(cmd, capture_output=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC)
-            return True, f"Task {task_id} deleted successfully"
+            return True, f"Task {task_id} completed successfully"
 
-        except subprocess.TimeoutExpired as te:
-            print(f"[DashboardAPI] Timeout expired executing delete refresh script: {te}")
-            return True, f"Task {task_id} deleted but dashboard refresh timed out"
+    except subprocess.TimeoutExpired as te:
+        print(f"[DashboardAPI] Timeout expired executing completion script: {te}")
+        return True, f"Task {task_id} completed but post-completion command timed out"
+    except Exception as e:
+        print(f"[DashboardAPI] Error completing task: {e}")
+        return False, str(e)
+
+def delete_task(project, task_id):
+    tasks_file = get_project_tasks_file(project)
+    if not tasks_file.exists():
+        return False, f"Project board not found: {tasks_file}"
+
+    try:
+        print(f"[DashboardAPI] Deleting task {task_id} on project {project}...")
+        board = read_json_with_retry(tasks_file)
+
+        original_count = len(board.get("tasks", []))
+        board["tasks"] = [t for t in board.get("tasks", []) if t.get("id") != task_id]
+
+        if len(board["tasks"]) == original_count:
+            return False, f"Task {task_id} not found in project {project}"
+
+        if board.get("current_task") == task_id:
+            board["current_task"] = None
+
+        write_json_with_retry(tasks_file, board)
+        print(f"[DashboardAPI] Successfully saved deleted task in tasks.json.")
+
+        dashboard_script = get_platform_path("Scripts", "gen_dashboard.py")
+        cmd = [sys.executable, str(dashboard_script)]
+        print(f"[DashboardAPI] Running gen_dashboard.py for dashboard refresh (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
+        subprocess.run(cmd, capture_output=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC)
+        return True, f"Task {task_id} deleted successfully"
+
+    except subprocess.TimeoutExpired as te:
+        print(f"[DashboardAPI] Timeout expired executing delete refresh script: {te}")
+        return True, f"Task {task_id} deleted but dashboard refresh timed out"
+    except Exception as e:
+        print(f"[DashboardAPI] Error deleting task: {e}")
+        return False, str(e)
+
+# FastAPI imports and Application Setup
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.middleware.cors import CORSMiddleware
+import asyncio
+import uvicorn
+import shutil
+
+app = FastAPI(title="DEV_CORE Dashboard API Server", version="10.1.0")
+
+# CORS setup matching get_allowed_origins()
+allowed_origins = get_allowed_origins()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=allowed_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+def check_auth(request: Request) -> bool:
+    path = request.url.path
+    if not requires_authentication(path):
+        return True
+    
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return False
+    token = auth_header[7:]
+    return validate_api_token(token)
+
+def check_csrf(request: Request, method: str) -> bool:
+    path = request.url.path
+    if not requires_csrf(method, path):
+        return True
+    
+    csrf_header = request.headers.get("X-CSRF-Token")
+    if not csrf_header:
+        return False
+    return validate_csrf_token(csrf_header)
+
+def get_last_modified_timestamp():
+    # Watch tasks.json, devcore.db, and events.jsonl
+    projName = "devcore" # Default project
+    try:
+        proj_script = get_platform_path("Scripts", "Get-ActiveProject.ps1")
+        if proj_script.exists():
+            ps_exe = shutil.which("powershell.exe") or shutil.which("powershell") or shutil.which("pwsh") or r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+            res = subprocess.run([ps_exe, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(proj_script)], capture_output=True, text=True, timeout=2)
+            if res.returncode == 0 and res.stdout.strip():
+                projName = res.stdout.strip()
+    except Exception:
+        pass
+    
+    files_to_watch = [
+        get_data_path("Memory", projName, "tasks.json"),
+        get_data_path("devcore.db"),
+        get_data_path("Bus", "events.jsonl")
+    ]
+    
+    mtimes = []
+    for f in files_to_watch:
+        if f.exists():
+            try:
+                mtimes.append(f.stat().st_mtime)
+            except Exception:
+                pass
+    return max(mtimes) if mtimes else 0.0
+
+async def event_generator(request: Request):
+    # Emit initial connection event
+    yield "event: message\ndata: Connected\n\n"
+    
+    last_ts = get_last_modified_timestamp()
+    last_heartbeat = asyncio.get_event_loop().time()
+    
+    while True:
+        if await request.is_disconnected():
+            break
+        
+        await asyncio.sleep(1.0)
+        
+        try:
+            current_ts = get_last_modified_timestamp()
+            if current_ts > last_ts:
+                last_ts = current_ts
+                # Regenerate dashboard to refresh server cache
+                try:
+                    refresh_dashboard_payload_cache()
+                except Exception as e:
+                    print(f"[DashboardAPI-SSE] Error updating cache: {e}")
+                
+                # Emit delta with has_changes=True to trigger client refresh
+                delta = {
+                    "schema_version": 1,
+                    "generated_at": datetime.now().isoformat(),
+                    "has_changes": True,
+                    "changed_keys": ["all"],
+                    "fingerprint": f"ts_{current_ts}",
+                    "read_model": {},
+                }
+                yield f"event: dashboard.delta\ndata: {json.dumps(delta)}\n\n"
+                last_heartbeat = asyncio.get_event_loop().time()
+                
+            elif asyncio.get_event_loop().time() - last_heartbeat >= DASHBOARD_SSE_HEARTBEAT_SECONDS:
+                yield ": heartbeat\n\n"
+                last_heartbeat = asyncio.get_event_loop().time()
         except Exception as e:
-            print(f"[DashboardAPI] Error deleting task: {e}")
-            return False, str(e)
+            print(f"[DashboardAPI-SSE] Error in loop: {e}")
+
+@app.get("/")
+@app.get("/index.html", response_class=HTMLResponse)
+async def serve_index(request: Request):
+    index_path = get_platform_path("Dashboard", "index.html")
+    if not index_path.exists():
+        raise HTTPException(status_code=404, detail="index.html not found")
+    html_content = index_path.read_text(encoding="utf-8")
+    return HTMLResponse(content=inject_auth_fetch(html_content))
+
+@app.get("/index_terminal.html", response_class=HTMLResponse)
+async def serve_terminal_index(request: Request):
+    term_path = get_platform_path("Dashboard", "index_terminal.html")
+    if not term_path.exists():
+        raise HTTPException(status_code=404, detail="index_terminal.html not found")
+    html_content = term_path.read_text(encoding="utf-8")
+    return HTMLResponse(content=inject_auth_fetch(html_content))
+
+@app.get("/api/status")
+async def status_route():
+    return {"status": "success", "message": "API Server Active"}
+
+@app.get("/api/settings")
+async def get_settings_route(request: Request):
+    if not check_auth(request):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    return get_settings()
+
+@app.post("/api/settings")
+async def post_settings_route(request: Request):
+    if not check_auth(request):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    if not check_csrf(request, "POST"):
+        raise HTTPException(status_code=403, detail="Invalid CSRF Token")
+    
+    data = await request.json()
+    save_settings(data)
+    return {"status": "success", "message": "Settings saved successfully"}
+
+@app.get("/api/dashboard")
+async def get_dashboard_route(request: Request, limit: int = None):
+    if not check_auth(request):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    try:
+        payload = build_dashboard_payload()
+        if limit is not None:
+            if isinstance(payload.get("events_raw"), list):
+                payload["events_raw"] = payload["events_raw"][:limit]
+        
+        # Build cached/gzip response if possible
+        response_data = build_cached_json_response(payload, dict(request.headers))
+        if response_data["status"] == 304:
+            return JSONResponse(status_code=304, headers=response_data["headers"], content=None)
+        
+        return JSONResponse(status_code=response_data["status"], headers=response_data["headers"], content=payload)
+    except subprocess.TimeoutExpired as te:
+        print(f"[DashboardAPI] Timeout calling gen_dashboard.ps1 -Json: {te}")
+        raise HTTPException(status_code=504, detail=f"Dashboard payload generation timed out after {DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/dashboard/tasks")
+async def get_dashboard_tasks_route(request: Request, project: str = "", limit: int = 20, offset: int = 0):
+    if not check_auth(request):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    try:
+        db_path = get_data_path("devcore.db")
+        import sqlite3
+        conn = sqlite3.connect(db_path)
+        cur = conn.cursor()
+        if project:
+            cur.execute("SELECT id, project, title, status, mode, steps_total, steps_done, started_at, completed_at FROM tasks WHERE project = ? ORDER BY CAST(SUBSTR(id, 3) AS INTEGER) DESC LIMIT ? OFFSET ?", (project, limit, offset))
+        else:
+            cur.execute("SELECT id, project, title, status, mode, steps_total, steps_done, started_at, completed_at FROM tasks ORDER BY CAST(SUBSTR(id, 3) AS INTEGER) DESC LIMIT ? OFFSET ?", (limit, offset))
+        rows = cur.fetchall()
+        tasks = []
+        for r in rows:
+            tasks.append({
+                "id": r[0], "project": r[1], "title": r[2], "status": r[3],
+                "mode": r[4], "steps_total": r[5], "steps_done": r[6],
+                "started_at": r[7], "completed_at": r[8]
+            })
+        conn.close()
+        return tasks
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/done")
+async def post_done_route(request: Request):
+    if not check_auth(request):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    if not check_csrf(request, "POST"):
+        raise HTTPException(status_code=403, detail="Invalid CSRF Token")
+    
+    data = await request.json()
+    project = data.get("project", "")
+    task_id = data.get("id", "")
+    if not project or not task_id:
+        raise HTTPException(status_code=400, detail="Missing project or id")
+    
+    success, msg = complete_task(project, task_id)
+    if success:
+        return {"status": "success", "message": msg}
+    else:
+        raise HTTPException(status_code=500, detail=msg)
+
+@app.delete("/api/delete")
+async def delete_route(request: Request):
+    if not check_auth(request):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    if not check_csrf(request, "DELETE"):
+        raise HTTPException(status_code=403, detail="Invalid CSRF Token")
+    
+    data = await request.json()
+    project = data.get("project", "")
+    task_id = data.get("id", "")
+    if not project or not task_id:
+        raise HTTPException(status_code=400, detail="Missing project or id")
+    
+    success, msg = delete_task(project, task_id)
+    if success:
+        return {"status": "success", "message": msg}
+    else:
+        raise HTTPException(status_code=500, detail=msg)
+
+@app.post("/api/refresh")
+async def post_refresh_route(request: Request):
+    if not check_auth(request):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    if not check_csrf(request, "POST"):
+        raise HTTPException(status_code=403, detail="Invalid CSRF Token")
+    
+    try:
+        payload = refresh_dashboard_payload_cache()
+        return JSONResponse(content=payload)
+    except subprocess.TimeoutExpired as te:
+        print(f"[DashboardAPI] Timeout calling gen_dashboard.ps1: {te}")
+        raise HTTPException(status_code=504, detail=f"Dashboard regeneration timed out after {DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/dashboard/stream")
+async def dashboard_stream_route(request: Request):
+    return StreamingResponse(event_generator(request), media_type="text/event-stream")
 
 def main():
     if "--rotate-token" in sys.argv:
@@ -1276,27 +1101,14 @@ def main():
 
     ensure_api_token()
     ensure_csrf_token()
-    class QuietThreadingHTTPServer(http.server.ThreadingHTTPServer):
-        def handle_error(self, request, client_address):
-            exc_type, _, _ = sys.exc_info()
-            if exc_type in (ConnectionAbortedError, ConnectionResetError, BrokenPipeError):
-                return
-            super().handle_error(request, client_address)
-
-    server_class = QuietThreadingHTTPServer
-    if not hasattr(http.server, "ThreadingHTTPServer"):
-        server_class = http.server.HTTPServer
-
-    socketserver.TCPServer.allow_reuse_address = True
     
     bind_host = get_bind_host()
-    with server_class((bind_host, PORT), DashboardAPIHandler) as httpd:
-        print(f"DEV_CORE Dashboard API Server listening on {bind_host}:{PORT}...")
-        try:
-            httpd.serve_forever()
-        except KeyboardInterrupt:
-            print("\nShutting down API Server.")
-            sys.exit(0)
+    print(f"DEV_CORE Dashboard API Server listening on {bind_host}:{PORT}...")
+    try:
+        uvicorn.run(app, host=bind_host, port=PORT, log_level="warning")
+    except KeyboardInterrupt:
+        print("\nShutting down API Server.")
+        sys.exit(0)
 
 if __name__ == "__main__":
     main()

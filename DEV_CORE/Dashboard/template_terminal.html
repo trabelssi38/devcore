@@ -928,8 +928,29 @@ async function refreshDashboard(){
   }
 }
 
-const REFRESH_RATE=parseInt(localStorage.getItem('dc_refresh_rate')||'15',10);
-if(REFRESH_RATE>0) setInterval(refreshDashboard, REFRESH_RATE*1000);
+const REFRESH_RATE=60; // 60s fallback polling since SSE is active
+setInterval(refreshDashboard, REFRESH_RATE*1000);
+
+/* ── SSE Real-time Stream ── */
+function connectStream() {
+  const sse = new EventSource('/api/dashboard/stream');
+  sse.addEventListener('dashboard.delta', function(e) {
+    try {
+      const payload = JSON.parse(e.data);
+      if (payload && payload.has_changes) {
+        refreshDashboard();
+      }
+    } catch(err) {
+      console.error('SSE delta error:', err);
+    }
+  });
+  sse.onerror = function() {
+    console.warn('SSE connection lost. Reconnecting in 5s...');
+    sse.close();
+    setTimeout(connectStream, 5000);
+  };
+}
+connectStream();
 </script>
 </body>
 </html>
