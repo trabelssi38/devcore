@@ -3,16 +3,18 @@
 This is the unified source of truth for all AI agents working in this workspace.
 Follow these rules strictly.
 
-## 0. AUTO-BOOTSTRAP PROTOCOL ENFORCEMENT (Automatique)
+## 0. OBLIGATION DE CRÉATION ET ACTIVATION DE TÂCHE (Règle #1)
 
-Le Gemini Router (Port 20130) supervise la conformité du protocole :
-- Si aucune tâche formelle n'est déclarée active dans `tasks.json`, une session éphémère (ex: `EPH-1721352000`) est automatiquement attribuée.
-- Un message de rappel de protocole est réinjecté dans les réponses système toutes les 5 requêtes LLM tant qu'aucune tâche formelle n'est activée.
-- Pour stopper les rappels et enregistrer formellement votre travail :
-  ```powershell
-  python C:\devcore\DEV_CORE\Scripts\task_service.ps1 -Action Next
-  # ou via la CLI Python si disponible
-  ```
+Avant TOUTE écriture de code ou modification de fichier :
+1. **Créer / Activer la tâche** :
+   ```powershell
+   python C:\devcore\DEV_CORE\Scripts\dc.py task add "Titre de la tâche"
+   # ou via task_service :
+   powershell -ExecutionPolicy Bypass -File "C:\devcore\DEV_CORE\Scripts\task_service.ps1" -Action Add -Title "Titre de la tâche"
+   ```
+2. **Impact** : Définir `current_task: "T-XXX"` dans `tasks.json` lie immédiatement 100% des tokens, requêtes LLM et logs de la session à la tâche `T-XXX`.
+3. **Commit** : Préfixer systématiquement les messages de commit avec `[T-XXX]` (ex: `git commit -m "[T-268] feat: description"`).
+4. **Sans tâche active** : Toute requête LLM sera marquée comme `Hors Tâche (Session libre)` et les tâches créées à posteriori par Git n'auront aucun jeton associé.
 
 ---
 
