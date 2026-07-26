@@ -838,7 +838,7 @@ def delete_task(project, task_id):
         return False, str(e)
 
 # FastAPI imports and Application Setup
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, Request, HTTPException, Response
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
@@ -999,9 +999,9 @@ async def get_dashboard_route(request: Request, limit: int = None):
         # Build cached/gzip response if possible
         response_data = build_cached_json_response(payload, dict(request.headers))
         if response_data["status"] == 304:
-            return JSONResponse(status_code=304, headers=response_data["headers"], content=None)
+            return Response(status_code=304, headers=response_data["headers"])
         
-        return JSONResponse(status_code=response_data["status"], headers=response_data["headers"], content=payload)
+        return Response(status_code=response_data["status"], headers=response_data["headers"], content=response_data["body"])
     except subprocess.TimeoutExpired as te:
         print(f"[DashboardAPI] Timeout calling gen_dashboard.ps1 -Json: {te}")
         raise HTTPException(status_code=504, detail=f"Dashboard payload generation timed out after {DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s")
