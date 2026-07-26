@@ -8,24 +8,46 @@ Mode : Single Client (pas de handoffs multi-agents)
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Installation & Lancement
 
+La plateforme s'exécute dans un environnement conteneurisé à l'aide de Docker Compose pour orchestrer l'ensemble des services système.
+
+### Prérequis
+- **Docker Desktop** (avec support WSL 2 sous Windows)
+- **PowerShell 7.0+** (recommandé pour l'exécution locale de la CLI `dc`)
+- Une clé API Google Gemini et/ou Anthropic (définie dans le fichier `.env` ou via l'interface de configuration du Cockpit)
+
+### Étape 1 : Cloner et Configurer l'environnement
+1. Clonez ce dépôt sous `C:\devcore`.
+2. Créez votre fichier `.env` à la racine à partir du modèle :
+   ```bash
+   cp .env.example .env
+   ```
+3. Remplissez vos clés d'API dans `.env` (notamment `GEMINI_API_KEY` et/ou `ANTHROPIC_API_KEY`).
+
+### Étape 2 : Démarrer l'infrastructure multi-services
+Lancez l'orchestration Docker Compose pour construire et démarrer l'ensemble des conteneurs en tâche de fond :
+```bash
+docker-compose up -d --build
+```
+*Cette commande démarre PostgreSQL (5432), Qdrant (6333), Gemini Router (20130), Dashboard API (20129), le Scheduler natif v10, l'API devcore (20131), l'interface Web (30000) et les serveurs MCP.*
+
+### Étape 3 : Configurer la CLI locale (Hôte Windows)
+Pour utiliser le raccourci `dc` directement depuis votre console hôte Windows PowerShell :
 ```powershell
-# 1. Installation
 cd C:\devcore\DEV_CORE\Scripts
 .\setup.ps1
+```
+*Note : Cela installe l'alias permanent `dc` pointant vers `dc.ps1`.*
 
-# 2. Démarrer les services
-docker run -d -p 6333:6333 qdrant/qdrant
-
-# 3. Lancer DEV_CORE
+### Étape 4 : Lancer le cycle et valider l'installation
+```powershell
+# Initialiser le cycle quotidien
 dc launch
 
-# 4. Vérifier
+# Exécuter les diagnostics de santé et de conformité
 dc check
 dc health
-dc check --gate
-dc verify --ci
 ```
 
 ---
@@ -51,24 +73,47 @@ dc task status
 
 ---
 
-## 🎯 Modes cognitifs
+## 🎯 Modes Cognitifs & Gemini Router
 
-| Mode | Usage | Budget | Modèles |
-|------|-------|--------|---------|
-| **reasoning** | Architecture, spec, décisions | 32k | Gemini 2.5 Pro |
-| **coding** | Implémentation, TDD, patches | 8k | Gemini 2.5 Pro |
-| **bulk** | Génération masse, docs, tests | 16k | Gemini 2.5 Flash |
+La plateforme utilise un routeur intelligent (**Gemini Router**) qui intercepte les requêtes LLM locales (port `20130`), analyse l'intention cognitive et redirige l'exécution vers le modèle optimal selon le mode requis :
 
-Le mode est géré par Gemini Router pour le choix du modèle optimal.
+| Mode | Usage | Budget Contexte | Modèle Google Gemini Cible |
+|------|-------|-----------------|-----------------------------|
+| **reasoning** | Architecture, spécifications, décisions critiques | 32k tokens | Gemini 2.5 Pro |
+| **coding** | Implémentation de code, cycle TDD, génération de patches | 8k tokens | Gemini 2.5 Pro |
+| **bulk** | Génération de masse, documentation, écriture de tests unitaires | 16k tokens | Gemini 2.5 Flash |
+
+Le routeur communique directement avec l'API Google Gemini sans intermédiaire externe.
 
 ---
 
-## 📁 Structure
+## 📁 Structure du Projet
 
-```
+```text
 C:\devcore\
-├── DEV_CORE\              # Plateforme (scripts, skills, config)
-└── DEV_CORE_DATA\         # Données (mémoire, logs, vault)
+├── DEV_CORE\                   # Code source de la plateforme
+│   ├── API\                    # Moteur de base de données PostgreSQL & API FastAPI
+│   ├── Bus\                    # Bus d'événements interne
+│   ├── Config\                 # Fichiers de configuration (settings, active client, API keys)
+│   ├── Dashboard\              # Fichiers HTML/CSS/JS (Cockpit index.html & Terminal index_terminal.html)
+│   ├── Database\               # Modèles de base de données SQLAlchemy & Migrations
+│   ├── docker\                 # Dockerfiles de l'environnement Python/Node
+│   ├── docs\                   # Fiches d'architecture (ADR, Sprints, UI plans)
+│   ├── MCP\                    # Serveurs MCP (Qdrant & DevCore Scripts)
+│   ├── Scheduler\              # Tâches d'arrière-plan du planificateur natif
+│   ├── Scripts\                # Scripts Powerhell principaux (dc.ps1, launch.ps1, etc.)
+│   ├── Skills\                 # Compétences packagées pour les agents autonomes
+│   ├── Web\                    # Interface web frontend (Next.js)
+│   └── ...
+├── DEV_CORE_DATA\              # Volume persistant de données (exclus de Git)
+│   ├── Database\               # SQLite (legacy) & stockage de fichiers DB
+│   ├── Memory\                 # Tâches (tasks.json), index (MEMORY.md)
+│   ├── Logs\                   # Journaux d'exécution
+│   ├── Obsidian\               # Vault Obsidian des notes de l'agent
+│   ├── qdrant_storage\         # Vecteurs de la base de données Qdrant
+│   └── Sessions\               # Historique de sessions
+├── docker-compose.yml          # Fichier d'orchestration multi-services
+└── README.md                   # Ce fichier
 ```
 
 ---
