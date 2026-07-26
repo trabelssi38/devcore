@@ -160,7 +160,7 @@ def load_model_pricing():
     if not pricing_path.exists():
         return registry
     try:
-        loaded = json.loads(pricing_path.read_text(encoding="utf-8"))
+        loaded = json.loads(pricing_path.read_text(encoding="utf-8-sig"))
     except Exception:
         return registry
     if not isinstance(loaded, dict) or not isinstance(loaded.get("models"), dict):
@@ -459,7 +459,7 @@ def discover_projects(memory_path):
         if not tasks_file.exists():
             continue
         try:
-            board = json.loads(tasks_file.read_text(encoding="utf-8"))
+            board = json.loads(tasks_file.read_text(encoding="utf-8-sig"))
             for task in board.get("tasks", []):
                 tid = task.get("id")
                 if tid:
