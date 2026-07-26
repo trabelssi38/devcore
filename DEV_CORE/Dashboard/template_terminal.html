@@ -32,7 +32,7 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .btn-switch:hover{background:rgba(99,102,241,.22);border-color:#818cf8}
 
 /* ── LAYOUT ── */
-.main{flex:1;display:grid;grid-template-columns:290px 1fr 500px;overflow:hidden;height:calc(100vh - 28px)}
+.main{flex:1;display:grid;grid-template-columns:330px 1fr 500px;overflow:hidden;height:calc(100vh - 28px)}
 .col{border-right:1px solid var(--brd);display:flex;flex-direction:column;overflow:hidden}
 .col:last-child{border-right:none}
 .col-hd{height:22px;flex-shrink:0;display:flex;align-items:center;padding:0 8px;background:var(--bg2);border-bottom:1px solid var(--brd);font-size:9.5px;font-weight:700;letter-spacing:.15em;color:var(--txt2);text-transform:uppercase;gap:5px}
@@ -255,6 +255,28 @@ tr[style*="border-bottom:1px solid #334155"] {
 }
 tr[style*="border-bottom:1px solid #1e293b"] {
   border-bottom: 1px solid var(--brd2) !important;
+}
+
+/* ── Warning & Protocol Compliance Terminal styling overrides ── */
+div[style*="background:#1a1d27"][style*="border:1px solid #2d3148"] {
+  background: var(--bg2) !important;
+  border: 1px solid var(--brd) !important;
+  border-radius: 2px !important;
+  padding: 8px !important;
+}
+div[style*="background-color:rgba(239,68,68,0.1)"] {
+  background: rgba(255, 68, 85, 0.07) !important;
+  border-left: 2px solid var(--red) !important;
+  border-top: 1px solid var(--brd) !important;
+  border-right: 1px solid var(--brd) !important;
+  border-bottom: 1px solid var(--brd) !important;
+  border-radius: 2px !important;
+  color: #ff99a8 !important;
+  padding: 6px 8px !important;
+}
+div[style*="color:#cbd5e1"][style*="font-size:10.5px"] {
+  color: var(--txt) !important;
+  font-family: inherit !important;
 }
 </style>
 </head>
