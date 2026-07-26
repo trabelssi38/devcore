@@ -240,6 +240,15 @@ Voir : `C:\devcore\DEV_CORE\docs\PLATFORM_DOCUMENTATION.md`
 
 ## 🔄 Changelog v10+
 
+### 2026-07-26 — v10.1 Dual Cockpit/Terminal Layouts & Interactive Filtering
+
+- ✅ **Système de double template** : Interface Cockpit moderne et interface Terminal rétro-futuriste (style CRT scanline vert/cyan phosphoreux) avec bouton de basculement instantané `⌨ TERMINAL` / `⊞ COCKPIT`.
+- ✅ **Filtrage interactif par Projet** : Possibilité de cliquer sur n'importe quel projet pour filtrer immédiatement les tâches actives et adapter dynamiquement le rapport de jetons (coûts et volume par modèle de l'API Gemini/Claude/GPT).
+- ✅ **Persistance d'état du rapport de consommation** : L'état d'ouverture/fermeture du bloc détails de consommation de jetons est sauvegardé dans le stockage local (`localStorage`) pour persister lors des rafraîchissements partiels dynamiques (AJAX toutes les 15s) et rechargements de page.
+- ✅ **Configuration unifiée** : Synchronisation complète du formulaire de configuration (taux de rafraîchissement, clés d'API, démarrage des services) entre les deux templates.
+- ✅ **Intégration du DEV_CORE Scheduler natif** : Remplacement de l'ancien démon autonome Hermes par le planificateur natif de la v10 et affichage dans la topbar sous le statut `SCHEDULER ACTIVE`.
+- ✅ **Nettoyage et stabilisation du dépôt** : Suppression des répertoires corrompus ou temporaires (comme `C`), retrait du fichier auto-généré dynamique `index_terminal.html` du suivi Git et inclusion dans `.gitignore` pour un dépôt propre.
+
 ### 2026-07-09 — v10.0 Core Stabilization
 
 - ✅ **CLI durci** : suppression de `Invoke-Expression` du dispatcher principal `dc.ps1` et dispatch par commandes validées.
