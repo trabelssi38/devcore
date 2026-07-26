@@ -181,6 +181,81 @@ code {
   color: var(--cyan) !important;
   font-family: inherit !important;
 }
+
+/* ── Consumption Report Terminal Overrides ── */
+details[style*="#111420"] {
+  background: var(--bg) !important;
+  border: 1px solid var(--brd) !important;
+  border-radius: 4px !important;
+  margin-top: 16px !important;
+  box-shadow: none !important;
+}
+summary[style*="#1a1d27"] {
+  background: var(--bg2) !important;
+  border-bottom: 1px solid var(--brd) !important;
+  padding: 8px 12px !important;
+}
+summary[style*="#1a1d27"] svg {
+  stroke: var(--cyan) !important;
+}
+summary[style*="#1a1d27"] span[style*="color: #6366f1"] {
+  color: var(--cyan) !important;
+  font-weight: 700 !important;
+  text-shadow: 0 0 5px var(--cyan) !important;
+}
+div[style*="grid-template-columns: repeat(3, 1fr)"] {
+  gap: 8px !important;
+  margin-bottom: 12px !important;
+}
+div[style*="background: rgba(30, 41, 59, 0.4)"] {
+  background: var(--bg2) !important;
+  border: 1px solid var(--brd2) !important;
+  border-radius: 2px !important;
+  padding: 8px !important;
+}
+div[style*="background: rgba(30, 41, 59, 0.4)"] div[style*="color: #64748b"] {
+  color: var(--txt2) !important;
+}
+div[style*="background: rgba(30, 41, 59, 0.4)"] div[id*="token-report"] {
+  font-size: 15px !important;
+}
+div[style*="background:#1e293b"] {
+  background: var(--dimmer) !important;
+  border-radius: 2px !important;
+  height: 6px !important;
+  margin: 10px 0 6px !important;
+}
+div[id="token-report-model-costs"] {
+  background: var(--bg2) !important;
+  border: 1px solid var(--brd2) !important;
+  border-radius: 2px !important;
+  padding: 6px 8px !important;
+}
+div[style*="background: rgba(30, 41, 59, 0.2)"] {
+  background: var(--bg2) !important;
+  border: 1px solid var(--brd2) !important;
+  border-radius: 2px !important;
+  padding: 6px 10px !important;
+  margin-bottom: 4px !important;
+}
+div[style*="background: rgba(30, 41, 59, 0.2)"] span[style*="background: #6366f1"] {
+  background: var(--cyan) !important;
+  box-shadow: 0 0 5px var(--cyan) !important;
+}
+div[style*="background: rgba(30, 41, 59, 0.2)"] span[style*="background: rgba(99,102,241,0.2)"] {
+  background: var(--bg) !important;
+  border: 1px solid var(--brd) !important;
+  color: var(--cyan) !important;
+}
+table[style*="width:100%"] {
+  font-size: 11px !important;
+}
+tr[style*="border-bottom:1px solid #334155"] {
+  border-bottom: 1px solid var(--brd) !important;
+}
+tr[style*="border-bottom:1px solid #1e293b"] {
+  border-bottom: 1px solid var(--brd2) !important;
+}
 </style>
 </head>
 <body>
