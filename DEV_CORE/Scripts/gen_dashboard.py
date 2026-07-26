@@ -766,41 +766,41 @@ def get_services_html(projects, token_metrics) -> str:
     badge_border = "rgba(34,197,94,0.3)" if repowise_port_ok else "rgba(99,102,241,0.3)"
 
     repowise_health_html = f"""
-<div style="background:linear-gradient(135deg, #0b0f19 0%, #0f172a 100%); border:1px solid #1e293b; border-radius:10px; padding:14px; margin-top:14px; width:100%; box-sizing:border-box; box-shadow: 0 8px 20px -4px rgba(0,0,0,0.5);">
-  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #1e293b; padding-bottom:8px;">
-    <div style="display:flex; align-items:center; gap:6px; min-width:0; flex:1;">
-      <span style="font-size:14px;">🎯</span>
-      <h3 style="color:#38bdf8; margin:0; font-size:12px; font-weight:700; letter-spacing:0.2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Repowise Code Health & Radar</h3>
+<div style="background:linear-gradient(135deg, #0b0f19 0%, #0f172a 100%); border:1px solid #1e293b; border-radius:10px; padding:16px; margin-top:16px; width:100%; box-sizing:border-box; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);">
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:1px solid #1e293b; padding-bottom:10px;">
+    <div style="display:flex; align-items:center; gap:8px; min-width:0; flex:1;">
+      <span style="font-size:16px;">🎯</span>
+      <h3 style="color:#38bdf8; margin:0; font-size:13px; font-weight:700; letter-spacing:0.3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Repowise Code Health & Refactoring Radar</h3>
     </div>
-    <span style="background:{badge_bg}; color:{badge_color}; border:1px solid {badge_border}; border-radius:10px; padding:2px 8px; font-size:9px; font-weight:600; white-space:nowrap; flex-shrink:0;">{status_badge}</span>
+    <span style="background:{badge_bg}; color:{badge_color}; border:1px solid {badge_border}; border-radius:12px; padding:3px 10px; font-size:10px; font-weight:600; white-space:nowrap; flex-shrink:0;">{status_badge}</span>
   </div>
 
   <!-- Score Grid Cards -->
-  <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:6px; margin-bottom:12px; width:100%; box-sizing:border-box;">
-    <div style="background:rgba(30,41,59,0.5); border:1px solid #334155; border-radius:6px; padding:8px 4px; text-align:center; overflow:hidden;">
-      <div style="font-size:8.5px; color:#94a3b8; font-weight:700; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">Score Global</div>
-      <div style="font-size:18px; font-weight:800; color:{'#4ade80' if score_avg>=8 else '#fbbf24'}; margin:2px 0;">{score_avg}<span style="font-size:10px; color:#64748b;">/10</span></div>
-      <div style="font-size:8.5px; color:#cbd5e1; white-space:nowrap;">{'🟢 Excellent' if score_avg>=8 else '🟡 À surveiller'}</div>
+  <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:10px; margin-bottom:14px; width:100%; box-sizing:border-box;">
+    <div style="background:rgba(30,41,59,0.5); border:1px solid #334155; border-radius:8px; padding:10px 6px; text-align:center; overflow:hidden;">
+      <div style="font-size:9.5px; color:#94a3b8; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; white-space:nowrap;">Score Global</div>
+      <div style="font-size:20px; font-weight:800; color:{'#4ade80' if score_avg>=8 else '#fbbf24'}; margin:3px 0;">{score_avg}<span style="font-size:11px; color:#64748b;">/10</span></div>
+      <div style="font-size:9.5px; color:#cbd5e1; white-space:nowrap;">{'🟢 Excellent' if score_avg>=8 else '🟡 À surveiller'}</div>
     </div>
-    <div style="background:rgba(30,41,59,0.5); border:1px solid #334155; border-radius:6px; padding:8px 4px; text-align:center; overflow:hidden;">
-      <div style="font-size:8.5px; color:#94a3b8; font-weight:700; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Maintenabilité">Maintenabilité</div>
-      <div style="font-size:18px; font-weight:800; color:#38bdf8; margin:2px 0;">{maint_avg}<span style="font-size:10px; color:#64748b;">/10</span></div>
-      <div style="font-size:8.5px; color:#cbd5e1; white-space:nowrap;">{total_f} fichiers</div>
+    <div style="background:rgba(30,41,59,0.5); border:1px solid #334155; border-radius:8px; padding:10px 6px; text-align:center; overflow:hidden;">
+      <div style="font-size:9.5px; color:#94a3b8; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; white-space:nowrap;" title="Maintenabilité">Maintenabilité</div>
+      <div style="font-size:20px; font-weight:800; color:#38bdf8; margin:3px 0;">{maint_avg}<span style="font-size:11px; color:#64748b;">/10</span></div>
+      <div style="font-size:9.5px; color:#cbd5e1; white-space:nowrap;">{total_f} fichiers</div>
     </div>
-    <div style="background:rgba(30,41,59,0.5); border:1px solid #334155; border-radius:6px; padding:8px 4px; text-align:center; overflow:hidden;">
-      <div style="font-size:8.5px; color:#94a3b8; font-weight:700; text-transform:uppercase; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Performance">Performance</div>
-      <div style="font-size:18px; font-weight:800; color:#a78bfa; margin:2px 0;">{perf_avg}<span style="font-size:10px; color:#64748b;">/10</span></div>
-      <div style="font-size:8.5px; color:#cbd5e1; white-space:nowrap;">Statique</div>
+    <div style="background:rgba(30,41,59,0.5); border:1px solid #334155; border-radius:8px; padding:10px 6px; text-align:center; overflow:hidden;">
+      <div style="font-size:9.5px; color:#94a3b8; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; white-space:nowrap;" title="Performance">Performance</div>
+      <div style="font-size:20px; font-weight:800; color:#a78bfa; margin:3px 0;">{perf_avg}<span style="font-size:11px; color:#64748b;">/10</span></div>
+      <div style="font-size:9.5px; color:#cbd5e1; white-space:nowrap;">Statique</div>
     </div>
   </div>
 
   <!-- Distribution Bar -->
-  <div style="margin-bottom:12px;">
-    <div style="display:flex; justify-content:space-between; font-size:9.5px; color:#94a3b8; margin-bottom:4px; flex-wrap:wrap; gap:4px;">
-      <span><strong>Répartition:</strong></span>
-      <span>🟢 {h_files} sains ({h_pct}%) | 🟡 {w_files} ({w_pct}%) | 🔴 {a_files} ({a_pct}%)</span>
+  <div style="margin-bottom:14px;">
+    <div style="display:flex; justify-content:space-between; font-size:10.5px; color:#94a3b8; margin-bottom:5px;">
+      <span><strong>Répartition du Code:</strong></span>
+      <span>🟢 {h_files} sains ({h_pct}%) | 🟡 {w_files} warning ({w_pct}%) | 🔴 {a_files} alerte ({a_pct}%)</span>
     </div>
-    <div style="display:flex; height:6px; border-radius:3px; overflow:hidden; background:#1e293b;">
+    <div style="display:flex; height:8px; border-radius:4px; overflow:hidden; background:#1e293b;">
       <div style="width:{h_pct}%; background:#22c55e;" title="Sains: {h_files}"></div>
       <div style="width:{w_pct}%; background:#f59e0b;" title="Warning: {w_files}"></div>
       <div style="width:{a_pct}%; background:#ef4444;" title="Alerte: {a_files}"></div>
@@ -809,8 +809,8 @@ def get_services_html(projects, token_metrics) -> str:
 
   <!-- Top Refactoring Radar Targets -->
   <div>
-    <div style="font-size:9.5px; font-weight:700; color:#cbd5e1; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px;">
-      ⚡ Cibles Prioritaires (Radar)
+    <div style="font-size:10.5px; font-weight:700; color:#cbd5e1; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">
+      ⚡ Cibles Prioritaires de Refactoring (Radar)
     </div>
     {top_targets_html}
   </div>
@@ -1729,6 +1729,29 @@ def main():
             print("[gen_dashboard.py] Dashboard index.html generated successfully.")
         except Exception as e:
             print(f"[gen_dashboard.py] Error generating dashboard: {e}")
+
+    # Render template_terminal.html -> index_terminal.html
+    term_template_file = PLATFORM_ROOT / "Dashboard" / "template_terminal.html"
+    term_output_file = PLATFORM_ROOT / "Dashboard" / "index_terminal.html"
+    if term_template_file.exists():
+        try:
+            tterm = term_template_file.read_text(encoding="utf-8")
+            tterm = tterm.replace('{{PROJECT_CARDS}}', cards_html)
+            tterm = tterm.replace('{{TASKS_PIPELINE}}', tasks_html)
+            tterm = tterm.replace('{{SERVICES_MONITORING}}', services_html)
+            tterm = tterm.replace('{{AUTOMATION_HOOKS}}', hooks_html)
+            tterm = tterm.replace('{{TOKEN_ACTIVITY_REPORT}}', token_activity_html)
+            tterm = tterm.replace('{{CONTEXT_COMPOSITION}}', context_composition_html)
+            tterm = tterm.replace('{{METRICS_SERVICE_SUMMARY}}', metrics_service_summary_html)
+            tterm = tterm.replace('{{EVENT_BUS_RECENT}}', event_bus_html + "<div style='margin-top:12px;'></div>" + alerts_html)
+            tterm = tterm.replace('{{KNOWLEDGE_GRAPH_SUMMARY}}', knowledge_graph_summary_html)
+            tterm = tterm.replace('{{PLUGIN_STATUS}}', plugin_status_html)
+            tterm = tterm.replace('{{TASK_DETAILS_MAP}}', json.dumps(task_details))
+            tterm = tterm.replace('{{TOKEN_METRICS_JSON}}', json.dumps(token_metrics))
+            term_output_file.write_text(tterm, encoding="utf-8")
+            print("[gen_dashboard.py] Terminal index_terminal.html generated successfully.")
+        except Exception as e:
+            print(f"[gen_dashboard.py] Error generating terminal dashboard: {e}")
 
     if args.json:
         original_stdout.buffer.write(payload_str.encode("utf-8"))

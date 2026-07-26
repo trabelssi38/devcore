@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>DEV_CORE v10.0 — TERM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#020408;--bg2:#060c12;--bg3:#0a1220;--brd:#0d2235;--brd2:#0a1a28;--green:#00ff88;--green2:#00cc66;--cyan:#00d4ff;--yellow:#ffe44e;--red:#ff4455;--dim:#2a4a5c;--dimmer:#1a2a35;--txt:#7ec8e3;--txt2:#4a8099;--ind:#6366f1}
+*{box-sizing:border-box;margin:0;padding:0;scrollbar-width:thin;scrollbar-color:var(--dim) transparent}
+html,body{height:100vh;overflow:hidden}
+body{font-family:'JetBrains Mono',Consolas,monospace;background:var(--bg);color:var(--txt);display:flex;flex-direction:column;font-size:12.5px;line-height:1.4}
+
+/* CRT scanline */
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.025) 2px,rgba(0,0,0,0.025) 4px);pointer-events:none;z-index:9998}
+
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(99,102,241,.3)}70%{box-shadow:0 0 0 6px rgba(99,102,241,0)}100%{box-shadow:0 0 0 0 rgba(99,102,241,0)}}
+
+/* ── TOPBAR ── */
+#topbar{height:28px;flex-shrink:0;background:var(--bg2);border-bottom:1px solid var(--brd);display:flex;align-items:center;padding:0 12px;justify-content:space-between;z-index:100}
+#tbar-l{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--green);font-weight:700;letter-spacing:.1em;text-shadow:0 0 8px var(--green)}
+.seg{border-left:1px solid var(--brd);padding:0 10px;font-size:10px;color:var(--txt2);letter-spacing:.04em}
+.seg:first-child{border-left:none}
+.v-ok{color:var(--green)}.v-cyan{color:var(--cyan)}.v-dim{color:var(--dim)}.v-err{color:var(--red)}
+#tbar-r{display:flex;align-items:center;gap:10px}
+#pulse{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 1.4s infinite;flex-shrink:0}
+#ts{font-size:10px;color:var(--dim)}
+#cursor{display:inline-block;width:5px;height:10px;background:var(--green);vertical-align:middle;margin-left:2px;animation:blink .8s step-end infinite;box-shadow:0 0 4px var(--green)}
+.btn-switch{background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);color:#818cf8;padding:3px 10px;border-radius:4px;font-family:inherit;font-size:10px;font-weight:700;cursor:pointer;letter-spacing:.07em;transition:background .15s,border-color .15s}
+.btn-switch:hover{background:rgba(99,102,241,.22);border-color:#818cf8}
+
+/* ── LAYOUT ── */
+.main{flex:1;display:grid;grid-template-columns:290px 1fr 500px;overflow:hidden;height:calc(100vh - 28px)}
+.col{border-right:1px solid var(--brd);display:flex;flex-direction:column;overflow:hidden}
+.col:last-child{border-right:none}
+.col-hd{height:22px;flex-shrink:0;display:flex;align-items:center;padding:0 8px;background:var(--bg2);border-bottom:1px solid var(--brd);font-size:9.5px;font-weight:700;letter-spacing:.15em;color:var(--txt2);text-transform:uppercase;gap:5px}
+.col-hd::before{content:'//';color:var(--dim);font-weight:400}
+.pane{flex:1;overflow-y:auto;padding:6px 10px}
+.pane::-webkit-scrollbar{width:3px}
+.pane::-webkit-scrollbar-track{background:transparent}
+.pane::-webkit-scrollbar-thumb{background:var(--dim);border-radius:1px}
+
+/* ── SECTION HEADERS ── */
+.sec{font-size:9.5px;font-weight:700;color:var(--dim);letter-spacing:.2em;text-transform:uppercase;padding:8px 0 4px;border-bottom:1px solid var(--brd2);margin-bottom:6px}
+.sec:first-child{padding-top:2px}
+h2{font-size:9.5px;color:var(--dim);margin:10px 0 6px;text-transform:uppercase;letter-spacing:.15em;font-weight:700;border-bottom:1px solid var(--brd2);padding-bottom:4px}
+h3{font-size:11.5px;color:var(--cyan);margin:0}
+
+/* ─────────────────────────────────
+   COCKPIT CSS CLASS OVERRIDES
+   ─────────────────────────────────*/
+/* Mission/task rows */
+.mission{display:block;border:1px solid var(--brd2);border-radius:2px;margin-bottom:4px;padding:5px 8px;transition:border-color .15s;animation:fadeIn .15s ease forwards;cursor:default}
+.mission:hover{border-color:var(--dim)}
+.mission.active-task{border-color:rgba(99,102,241,.45);background:rgba(99,102,241,.05);box-shadow:0 0 8px rgba(99,102,241,.12);animation:pulse 2s infinite}
+.mission-title{font-size:11.5px;font-weight:500;color:var(--txt);display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mission.active-task .mission-title{color:#c4b5fd;font-weight:600}
+.mission.done .mission-title{color:var(--txt2)}
+.hidden{display:none!important}
+/* Badge */
+.badge{display:inline-block;padding:0 5px;border-radius:1px;font-size:9px;font-weight:700;letter-spacing:.03em;border:1px solid currentColor;background:transparent}
+.active{color:#a5b4fc;border-color:#312e81}
+.done{color:#4ade80;border-color:#14532d}
+.todo{color:var(--dim);border-color:var(--dimmer)}
+/* Steps */
+.steps-container{display:block;margin-top:4px;padding:5px 8px;background:rgba(0,0,0,.2);border-radius:2px;border-left:2px solid rgba(99,102,241,.4)}
+.step-item{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--txt2);margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.step-item.step-done{color:var(--green2)}
+.step-item b{font-family:inherit;font-size:11px}
+/* Component / service rows */
+.component{display:flex;justify-content:space-between;align-items:center;padding:4px 8px;border:1px solid var(--brd2);border-radius:2px;margin-bottom:4px}
+.component.interactive{cursor:pointer;transition:border-color .15s}
+.component.interactive:hover{border-color:var(--dim)}
+.component-name{font-size:11.5px;color:var(--txt)}
+.component-detail{font-size:10px;color:var(--dim)}
+/* Token layers */
+.token-layer{display:flex;justify-content:space-between;padding:4px 8px;border:1px solid var(--brd2);border-radius:2px;margin-bottom:3px}
+.token-name{font-size:11px;color:var(--txt)}
+.token-reduction{font-size:11px;color:var(--green2);font-weight:600}
+/* Status colors */
+.status-ok{color:var(--green)}
+.status-warn{color:var(--yellow)}
+.status-error{color:var(--red)}
+.status-todo{color:var(--dim)}
+.status-degraded-badge{display:inline-flex;align-items:center;color:var(--yellow);border:1px solid rgba(234,179,8,.35);padding:0 5px;border-radius:2px;font-size:9px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+/* Project row */
+.project-row{display:flex;justify-content:space-between;align-items:center;padding:4px 8px;border:1px solid var(--brd2);border-radius:2px;margin-bottom:4px;cursor:pointer;transition:border-color .15s}
+.project-row:hover{border-color:var(--dim)}
+.project-row.selected{border-color:rgba(99,102,241,.45);background:rgba(99,102,241,.05)}
+.project-dot{width:5px;height:5px;border-radius:50%;background:currentColor;box-shadow:0 0 4px currentColor;flex-shrink:0}
+/* Card */
+.card{display:block;border:1px solid var(--brd2);border-radius:2px;padding:8px 10px;margin-bottom:5px}
+.card-title{font-size:9px;color:var(--txt2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px;display:block}
+.card-val{font-size:17px;font-weight:600;color:var(--cyan)}
+.card-sub{font-size:10px;color:var(--dim);margin-top:3px;display:block}
+/* Filter buttons */
+.filters{display:flex;gap:4px;margin-bottom:6px}
+.filter-btn{font-size:9px;background:var(--bg3);border:1px solid var(--brd2);color:var(--txt2);padding:2px 6px;border-radius:2px;cursor:pointer;font-family:inherit}
+.filter-btn.active{background:rgba(99,102,241,.2);color:#a5b4fc;border-color:rgba(99,102,241,.4)}
+/* details/summary */
+details{margin-bottom:4px}
+summary{cursor:pointer;outline:none;list-style:none;font-size:11px;color:var(--txt);padding:3px 0}
+summary::-webkit-details-marker{display:none}
+/* Buttons */
+.btn-action{font-size:9px;padding:1px 5px;border-radius:1px;cursor:pointer;border-width:1px;border-style:solid;display:inline-flex;align-items:center;justify-content:center;height:18px;user-select:none;margin-left:3px}
+.btn-details{background:rgba(99,102,241,.08);border-color:rgba(99,102,241,.25);color:#a5b4fc}
+.btn-done{background:rgba(16,185,129,.1);border-color:rgba(16,185,129,.25);color:#34d399}
+.btn-delete{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.25);color:#f87171}
+/* Tab container */
+.tab-container{display:flex;gap:8px;border-bottom:1px solid var(--brd);padding-bottom:6px;margin-bottom:8px;align-items:center;width:100%}
+.tab-btn{background:none;border:none;border-bottom:2px solid transparent;color:var(--dim);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;padding:4px 8px;letter-spacing:0.05em;transition:all 0.15s}
+.tab-btn.active{color:var(--cyan);border-bottom:2px solid var(--cyan);text-shadow:0 0 6px var(--cyan)}
+/* Suppress bubble/modal */
+#details-bubble,.modal-overlay{display:none!important}
+/* Forms inside settings */
+form select,form input{background:var(--bg)!important;border:1px solid var(--brd)!important;border-radius:2px!important;color:var(--txt)!important;font-family:inherit!important;font-size:11px!important;padding:4px 6px!important}
+form label{font-size:10px!important;color:var(--txt2)!important}
+form button[type="submit"]{background:rgba(99,102,241,.2)!important;border:1px solid rgba(99,102,241,.4)!important;color:#a5b4fc!important;font-family:inherit!important;font-size:10px!important;padding:4px 10px!important;border-radius:2px!important;cursor:pointer}
+/* Quick link */
+.qlink{display:flex;align-items:center;gap:6px;padding:2px 4px;cursor:pointer;font-size:11px;transition:color .1s}
+.qlink:hover{color:var(--green)}
+.qlink::before{content:'→';color:var(--dim);font-size:10px}
+/* Footer */
+.term-footer{font-size:9px;color:var(--dim);text-align:center;padding:8px 0;letter-spacing:.05em}
+
+/* ─────────────────────────────────
+   REPOWISE DUAL-TEMPLATE TERMINAL ACCENTS
+   ─────────────────────────────────*/
+div[style*="linear-gradient"] {
+  background: var(--bg2) !important;
+  border: 1px solid var(--brd) !important;
+  border-radius: 4px !important;
+  padding: 12px !important;
+  margin-top: 12px !important;
+  box-shadow: none !important;
+}
+div[style*="border-bottom:1px solid #1e293b"] {
+  border-bottom: 1px solid var(--brd) !important;
+  margin-bottom: 12px !important;
+  padding-bottom: 8px !important;
+}
+h3[style*="color:#38bdf8"] {
+  color: var(--cyan) !important;
+  font-size: 12px !important;
+  text-shadow: 0 0 6px var(--cyan) !important;
+}
+span[style*="background:rgba"] {
+  border-radius: 2px !important;
+  font-size: 9.5px !important;
+  padding: 2px 8px !important;
+  border: 1px solid var(--brd) !important;
+}
+div[style*="grid-template-columns: repeat(3"] {
+  gap: 8px !important;
+  margin-bottom: 12px !important;
+}
+div[style*="background:rgba(30,41,59,0.5)"] {
+  background: var(--bg) !important;
+  border: 1px solid var(--brd2) !important;
+  border-radius: 2px !important;
+  padding: 8px 6px !important;
+}
+div[style*="font-size:20px"] {
+  font-size: 16px !important;
+  margin: 2px 0 !important;
+}
+div[style*="height:8px"] {
+  height: 6px !important;
+  border-radius: 2px !important;
+  background: var(--dimmer) !important;
+}
+div[style*="background:rgba(15,23,42,0.7)"] {
+  background: var(--bg) !important;
+  border: 1px solid var(--brd2) !important;
+  border-radius: 2px !important;
+  padding: 5px 8px !important;
+}
+code {
+  color: var(--cyan) !important;
+  font-family: inherit !important;
+}
+</style>
+</head>
+<body>
+<script id="task-details-data" type="application/json">{{TASK_DETAILS_MAP}}</script>
+<script id="token-metrics-data" type="application/json">{{TOKEN_METRICS_JSON}}</script>
+
+<!-- ─── TOPBAR ─── -->
+<div id="topbar">
+  <div id="tbar-l">▶ DEV_CORE<span id="cursor"></span>&nbsp;<span style="color:var(--dim);font-weight:300;font-size:9px">v10.0 · TERMINAL MODE</span></div>
+  <div style="display:flex;align-items:center">
+    <div class="seg">SYS <span class="v-ok" id="sys-status">ONLINE</span></div>
+    <div class="seg">API <span class="v-cyan" id="api-ok">:20129 ✓</span></div>
+    <div class="seg">TASKS <span class="v-cyan" id="task-count">—</span></div>
+    <div class="seg">HERMES <span class="v-ok">LIVE</span></div>
+    <div class="seg">REPOWISE <span class="v-cyan">MCP</span></div>
+  </div>
+  <div id="tbar-r">
+    <span id="ts">—</span>
+    <div id="pulse"></div>
+    <button class="btn-switch" onclick="window.location.href='/'">⊞ COCKPIT</button>
+  </div>
+</div>
+
+<!-- ─── MAIN GRID ─── -->
+<div class="main">
+
+  <!-- COL 1 : PROJETS & INFO -->
+  <div class="col" style="background:#030609">
+    <div class="col-hd">PROJETS & INFO</div>
+    <div class="pane">
+      <h2>Projets</h2>
+      <div id="project-cards">{{PROJECT_CARDS}}</div>
+
+      <h2>Token Optimization Stack</h2>
+      <div style="margin-bottom:6px">
+        <div class="token-layer"><span class="token-name">1. CLAUDE.md terse</span><span class="token-reduction">-69%</span></div>
+        <div class="token-layer" style="border-color:rgba(99,102,241,.4)"><span class="token-name">2. Headroom Proxy</span><span class="token-reduction">unifié</span></div>
+        <div class="token-layer"><span class="token-name">3. TencentDB Canvas</span><span class="token-reduction">-90%</span></div>
+        <div class="token-layer"><span class="token-name">4. Ghost finder</span><span class="token-reduction">audit</span></div>
+        <div style="padding:4px 6px;background:rgba(34,197,94,.1);border:1px solid var(--green2);border-radius:2px;margin-top:4px;text-align:center;font-size:9px;font-weight:600;color:var(--green2)">
+          Réduction cumulée: ~98% (Réversible)
+        </div>
+      </div>
+
+      <div id="context-composition">{{CONTEXT_COMPOSITION}}</div>
+
+      <div id="metrics-service-summary">{{METRICS_SERVICE_SUMMARY}}</div>
+
+      <div id="event-bus-recent">{{EVENT_BUS_RECENT}}</div>
+
+      <div id="plugin-status">{{PLUGIN_STATUS}}</div>
+
+      <div id="knowledge-graph-summary">{{KNOWLEDGE_GRAPH_SUMMARY}}</div>
+
+      <h2>Automation Hooks</h2>
+      <div id="automation-hooks">{{AUTOMATION_HOOKS}}</div>
+
+      <h2>Quick Links</h2>
+      <div class="component interactive" onclick="window.open('../../README.md','_blank')"><div class="component-name">README.md</div><div class="status-ok">→</div></div>
+      <div class="component interactive" onclick="window.open('../../DEV_CORE_DATA/Logs/scripts/','_blank')"><div class="component-name">Logs Plateforme</div><div class="status-ok">→</div></div>
+    </div>
+  </div>
+
+  <!-- COL 2 : PIPELINE / TASKS -->
+  <div class="col">
+    <div class="col-hd">PIPELINE / TASKS</div>
+    <div class="pane" style="display:flex; flex-direction:column; overflow:hidden;">
+      
+      <!-- Tab Header Container -->
+      <div class="tab-container">
+        <button id="tab-tasks-btn" class="tab-btn active" onclick="switchTab('tasks')">[1] Tâches & Sessions</button>
+        <button id="tab-settings-btn" class="tab-btn" onclick="switchTab('settings')">[2] Configuration</button>
+        
+        <!-- Filters aligned to the right -->
+        <div class="filters" id="pipeline-filters" style="margin-left:auto; margin-bottom:0;">
+          <button class="filter-btn active" onclick="applyFilter(this,0)">All</button>
+          <button class="filter-btn" onclick="applyFilter(this,1)">1j</button>
+          <button class="filter-btn" onclick="applyFilter(this,7)">7j</button>
+          <button class="filter-btn" onclick="applyFilter(this,30)">Mois</button>
+        </div>
+      </div>
+
+      <!-- Tab Content Area -->
+      <div style="flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden;">
+        <!-- Tab: Tasks -->
+        <div id="tab-tasks-content" style="display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden;">
+          <div id="tasks-pipeline" style="flex:1; overflow-y:auto; padding-right:4px;">
+            {{TASKS_PIPELINE}}
+          </div>
+          <div id="token-activity-report" style="border-top:1px solid var(--brd); padding-top:8px; margin-top:8px; flex-shrink:0; background:var(--bg);">
+            {{TOKEN_ACTIVITY_REPORT}}
+          </div>
+        </div>
+
+        <!-- Tab: Settings -->
+        <div id="tab-settings-content" style="display:none; flex:1; overflow-y:auto; padding-right:4px;">
+        <form id="settings-form" onsubmit="event.preventDefault();saveSettings();" style="padding:8px;border:1px solid var(--brd);border-radius:2px">
+          <div style="margin-bottom:8px">
+            <label style="display:block;margin-bottom:4px;font-weight:600">Client Actif</label>
+            <select id="setting-active-client" style="width:100%">
+              <option value="antigravity">Antigravity (default)</option>
+              <option value="claude-code">Claude Code</option>
+              <option value="hermes">Hermes Standalone</option>
+            </select>
+          </div>
+          <div style="margin-bottom:8px">
+            <label style="display:block;margin-bottom:4px;font-weight:600">Rafraichissement (s)</label>
+            <select id="setting-refresh-rate" style="width:100%">
+              <option value="15">15s (défaut)</option>
+              <option value="30">30s</option>
+              <option value="60">60s</option>
+              <option value="0">Désactivé</option>
+            </select>
+          </div>
+          <div style="margin-bottom:8px">
+            <label style="display:block;margin-bottom:4px;font-weight:600">Cle API Gemini</label>
+            <input type="text" name="username" autocomplete="username" value="devcore-dashboard-settings" hidden aria-hidden="true" tabindex="-1" />
+            <input type="password" id="setting-gemini-key" autocomplete="new-password" style="width:100%" placeholder="Laisser vide" />
+          </div>
+          <div style="margin-bottom:8px">
+            <label style="display:block;margin-bottom:4px;font-weight:600">Cle API Anthropic</label>
+            <input type="password" id="setting-anthropic-key" autocomplete="new-password" style="width:100%" placeholder="Laisser vide" />
+          </div>
+          <div style="margin-bottom:8px">
+            <label style="display:block;margin-bottom:6px;font-weight:600">Services au Demarrage</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+              <label><input type="checkbox" id="svc-qdrant" checked /> Qdrant (6333)</label>
+              <label><input type="checkbox" id="svc-router" checked /> Router (20130)</label>
+              <label><input type="checkbox" id="svc-api" checked /> API (20129)</label>
+              <label><input type="checkbox" id="svc-headroom" checked /> Headroom (8787)</label>
+              <label><input type="checkbox" id="svc-hermes" checked /> Hermes</label>
+              <label><input type="checkbox" id="svc-repowise" checked /> Repowise</label>
+            </div>
+          </div>
+          <div style="text-align:right"><button type="submit">Enregistrer</button></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- COL 3 : INFRASTRUCTURE -->
+  <div class="col" style="background:#020508">
+    <div class="col-hd">INFRASTRUCTURE</div>
+    <div class="pane" id="services-monitoring">
+      {{SERVICES_MONITORING}}
+      <div class="term-footer">Auto-refresh 15s · DEV_CORE v10.0.0</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Hidden elements for cockpit JS compatibility -->
+<div id="confirm-modal" class="modal-overlay" style="display:none"></div>
+<div id="details-bubble" style="display:none!important"></div>
+
+<script>
+/* ── CLOCK ── */
+function tick(){
+  const n=new Date(),p=v=>String(v).padStart(2,'0');
+  document.getElementById('ts').textContent=`${n.getFullYear()}-${p(n.getMonth()+1)}-${p(n.getDate())} ${p(n.getHours())}:${p(n.getMinutes())}:${p(n.getSeconds())}`;
+}
+tick();setInterval(tick,1000);
+
+/* ── Task count from embedded JSON ── */
+(function(){
+  try{
+    const td=JSON.parse(document.getElementById('task-details-data').textContent||'{}');
+    const n=Object.keys(td).length;
+    if(n>0) document.getElementById('task-count').textContent=n;
+  }catch(e){}
+})();
+
+/* ── Tab switch ── */
+function switchTab(tab){
+  const tc=document.getElementById('tab-tasks-content');
+  const sc=document.getElementById('tab-settings-content');
+  const tb=document.getElementById('tab-tasks-btn');
+  const sb=document.getElementById('tab-settings-btn');
+  if(tab==='tasks'){
+    tc.style.display='flex'; sc.style.display='none';
+    tb.classList.add('active');
+    sb.classList.remove('active');
+  }else{
+    tc.style.display='none'; sc.style.display='block';
+    sb.classList.add('active');
+    tb.classList.remove('active');
+  }
+}
+
+/* ── Filter ── */
+function applyFilter(btn,days){
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const now=new Date();
+  const cutoff=days>0?new Date(now.getTime()-(days*24*60*60*1000)):null;
+  document.querySelectorAll('.mission').forEach(m=>{
+    const d=m.getAttribute('data-date');
+    if(!d||!cutoff){m.classList.remove('hidden');return;}
+    const td=new Date(d);
+    if(td<cutoff&&m.classList.contains('done')) m.classList.add('hidden');
+    else m.classList.remove('hidden');
+  });
+}
+
+/* ── Timestamp (cockpit compat) ── */
+function updateTimestamp(){tick();}
+
+/* ── Bubble stubs (cockpit HTML injects onclick) ── */
+function showBubble(){}
+function hideBubble(){}
+function showConfirmModal(){}
+function hideConfirmModal(){}
+
+/* ── Settings save (same as cockpit) ── */
+async function saveSettings(){
+  try{
+    const body={
+      active_client: document.getElementById('setting-active-client').value,
+      refresh_rate: parseInt(document.getElementById('setting-refresh-rate').value,10),
+      gemini_key: document.getElementById('setting-gemini-key').value||undefined,
+      anthropic_key: document.getElementById('setting-anthropic-key').value||undefined,
+      services:{
+        qdrant:document.getElementById('svc-qdrant').checked,
+        router:document.getElementById('svc-router').checked,
+        api:document.getElementById('svc-api').checked,
+        headroom:document.getElementById('svc-headroom').checked,
+        hermes:document.getElementById('svc-hermes').checked,
+        repowise:document.getElementById('svc-repowise').checked
+      }
+    };
+    const token=localStorage.getItem('dc_api_token')||'';
+    await fetch('http://127.0.0.1:20129/api/settings',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body:JSON.stringify(body)
+    });
+    localStorage.setItem('dc_refresh_rate',body.refresh_rate);
+  }catch(e){console.error('saveSettings:',e)}
+}
+
+/* ── Auto-refresh via AJAX ── */
+async function refreshDashboard(){
+  try{
+    const res=await fetch('http://127.0.0.1:20129/api/dashboard',{cache:'no-store'});
+    if(!res.ok) throw new Error(res.status);
+    const data=await res.json();
+    const s=data.sections||{};
+    if(s.project_cards)         document.getElementById('project-cards').innerHTML=s.project_cards;
+    if(s.tasks_pipeline)        document.getElementById('tasks-pipeline').innerHTML=s.tasks_pipeline;
+    if(s.services_monitoring)   document.getElementById('services-monitoring').innerHTML=s.services_monitoring+'<div class="term-footer">Auto-refresh 15s · DEV_CORE v10.0.0</div>';
+    if(s.token_activity_report) document.getElementById('token-activity-report').innerHTML=s.token_activity_report;
+    if(s.context_composition)   document.getElementById('context-composition').innerHTML=s.context_composition;
+    if(s.metrics_service_summary) document.getElementById('metrics-service-summary').innerHTML=s.metrics_service_summary;
+    if(s.event_bus_recent)      document.getElementById('event-bus-recent').innerHTML=s.event_bus_recent;
+    if(s.plugin_status)         document.getElementById('plugin-status').innerHTML=s.plugin_status;
+    if(s.knowledge_graph_summary) document.getElementById('knowledge-graph-summary').innerHTML=s.knowledge_graph_summary;
+    if(s.automation_hooks)      document.getElementById('automation-hooks').innerHTML=s.automation_hooks;
+    document.getElementById('api-ok').textContent=':20129 ✓';
+    document.getElementById('api-ok').className='v-ok';
+    document.getElementById('sys-status').textContent='ONLINE';
+    document.getElementById('sys-status').className='v-ok';
+    const td=data.task_details||{};
+    const n=Object.keys(td).length;
+    if(n>0) document.getElementById('task-count').textContent=n;
+  }catch(e){
+    document.getElementById('api-ok').textContent=':20129 ✗';
+    document.getElementById('api-ok').className='v-err';
+  }
+}
+
+const REFRESH_RATE=parseInt(localStorage.getItem('dc_refresh_rate')||'15',10);
+if(REFRESH_RATE>0) setInterval(refreshDashboard, REFRESH_RATE*1000);
+</script>
+</body>
+</html>

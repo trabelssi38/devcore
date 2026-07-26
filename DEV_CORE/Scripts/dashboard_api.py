@@ -23,7 +23,7 @@ DASHBOARD_COMMAND_TIMEOUT_SEC = 90.0
 PLUGIN_ID_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]*$")
 SAFE_ID_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]*$")
 PUBLIC_BIND_HOSTS = {"0.0.0.0", "::", ""}
-PUBLIC_PATHS = {"/", "/index.html", "/favicon.ico", "/api/status", "/api/dashboard", "/api/dashboard/stream", "/api/dashboard/tasks", "/api/dashboard/events", "/api/dashboard/tokens"}
+PUBLIC_PATHS = {"/", "/index.html", "/index_terminal.html", "/favicon.ico", "/api/status", "/api/dashboard", "/api/dashboard/stream", "/api/dashboard/tasks", "/api/dashboard/events", "/api/dashboard/tokens"}
 TOKEN_BYTES = 32
 CSRF_BYTES = 32
 CSRF_HEADER = "X-CSRF-Token"
@@ -831,6 +831,22 @@ class DashboardAPIHandler(http.server.BaseHTTPRequestHandler):
                     self.wfile.write(html_content.encode("utf-8"))
                 else:
                     self.send_error_response("index.html not found")
+            except ConnectionError:
+                pass
+            except Exception as e:
+                self.send_error_response(str(e))
+        elif path == "/index_terminal.html":
+            try:
+                term_path = get_platform_path("Dashboard", "index_terminal.html")
+                if term_path.exists():
+                    with open(term_path, "r", encoding="utf-8") as f:
+                        html_content = inject_auth_fetch(f.read())
+                    self.send_response(200)
+                    self.send_header("Content-Type", "text/html; charset=utf-8")
+                    self.end_headers()
+                    self.wfile.write(html_content.encode("utf-8"))
+                else:
+                    self.send_error_response("index_terminal.html not found — run gen_dashboard.py first")
             except ConnectionError:
                 pass
             except Exception as e:
