@@ -629,6 +629,10 @@ function updateContainerHTML(containerId, newHTMLString) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(`<div>${newHTMLString}</div>`, 'text/html');
   const newContainer = doc.body.firstChild;
+  for (let i = 0; i < container.attributes.length; i++) {
+    const attr = container.attributes[i];
+    newContainer.setAttribute(attr.name, attr.value);
+  }
   morphDOM(container, newContainer);
 }
 
