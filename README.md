@@ -312,6 +312,12 @@ Voir : `C:\devcore\DEV_CORE\docs\PLATFORM_DOCUMENTATION.md`
 - ✅ **Registre projets** : ajout de `DEV_CORE\Config\projects.json`, maintenu par `new_project.ps1`.
 - ✅ **Contrôle opérationnel** : scripts `ensure_repowise_watch.ps1` et `repowise_watch_worker.ps1` avec logs et statut.
 
+### 2026-07-26 — v10.1 UTF-8 BOM Compatibility & Robust Sticky Token Report
+
+- ✅ **Compatibilité UTF-8 BOM dans token_report.py** : Correction de la lecture des fichiers `tasks.json` et `model_pricing.json` pour utiliser l'encodage `utf-8-sig` au lieu de `utf-8` brut. Cela permet de lire sans erreur les fichiers contenant une signature BOM (Byte Order Mark) et d'associer correctement toutes les tâches à leurs projets respectifs dans `token_metrics_summary.json` (résolvant le problème de disparition des badges de tokens/coûts des tâches).
+- ✅ **Fix de la fonction updateContainerHTML (morphDOM)** : Correction d'une régression majeure où le rafraîchissement dynamique écrasait et supprimait par erreur les attributs HTML (`id`, `class`, `style`) des conteneurs cibles. La fonction copie désormais les attributs de l'ancien conteneur vers le nouveau avant d'effectuer la comparaison morphique DOM, préservant ainsi la scrollbar des tâches (`.scroll-area`) et les identifiants d'API.
+- ✅ **Rapport de Consommation & Supervision Headroom Toujours Visibles** : Restauration de la structure du layout tout en appliquant un comportement de type *sticky footer* en CSS Flexbox (`min-height: 0` sur `#tasks-pipeline` et `flex-shrink: 0` sur `#token-activity-report`). Le rapport de consommation de tokens reste ainsi ancré en permanence au bas de la colonne et entièrement visible dans le viewport (première vue), tandis que la liste des tâches défile de manière indépendante.
+
 ### 2026-07-06 — v9.1 Ollama & 9Router Removal & Direct Gemini Routing
 
 - ✅ **Désactivation de 9Router & Ollama** : Suppression totale des dépendances et du processus 9Router (Port 20128) ainsi que d'Ollama (Port 11434) de l'orchestration, du diagnostic sémantique et du tableau de bord.
