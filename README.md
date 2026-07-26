@@ -107,17 +107,18 @@ C:\devcore\
 ## 📊 Dashboard
 
 Ouvrir dans un navigateur (Recommandé pour éviter les restrictions CORS) :
-```
-http://127.0.0.1:20129/
-```
-*(Alternative locale hors-ligne : `file:///C:/devcore/DEV_CORE/Dashboard/index.html`)*
+- **Mode Cockpit** (Design graphique moderne) : `http://127.0.0.1:20129/`
+- **Mode Terminal** (CRT-scanline rétro-futuriste vert/cyan) : `http://127.0.0.1:20129/index_terminal.html`
 
-Auto-refresh 15s — Affiche :
-- Multi-projets : Cards récapitulatives par projet
-- Worktrees : Tags [worktree] dans la pipeline
-- Infrastructure Temps Réel : Monitoring ports (Qdrant, Gemini Router, API Dashboard, Headroom)
-- Automation Hooks : Horodatage réel des dernières exécutions
-- Pipeline tasks globale (T-01 → T-04)
+*(Alternatives locales hors-ligne : [index.html](file:///C:/devcore/DEV_CORE/Dashboard/index.html) et [index_terminal.html](file:///C:/devcore/DEV_CORE/Dashboard/index_terminal.html))*
+
+### Fonctionnalités Clés :
+- **Basculement instantané** : Bouton `⌨ TERMINAL` dans le Cockpit et `⊞ COCKPIT` sur la topbar du Terminal.
+- **Filtrage par Projet** : En cliquant sur une ligne projet (colonne 1), le dashboard filtre instantanément les tâches du pipeline et met à jour le **Rapport de Consommation** pour n'afficher que les tokens et les coûts de modèles spécifiques à ce projet.
+- **Rapport de Consommation & Headroom** : Section interactive avec sauvegarde automatique de l'état ouvert/fermé dans le `localStorage` lors des cycles de rafraîchissement.
+- **Services & Infrastructure** : Monitoring en temps réel avec intégration du **DEV_CORE Scheduler natif v10** (remplaçant Hermes autonome), du **Repowise Engine (MCP)** au sommet de la pile de surveillance, ainsi que de Gemini Router, Dashboard API Server, Headroom Proxy et Qdrant Vector DB.
+- **Configuration Unifiée** : Paramètres de configuration (client actif, taux de rafraîchissement, clés API Gemini et Anthropic, activation des services) synchronisés entre les deux templates.
+- **Pipeline de tâches globale** (T-01 → T-04) avec options de filtrage par date (tous, 1j, 7j, 30j).
 
 ---
 
