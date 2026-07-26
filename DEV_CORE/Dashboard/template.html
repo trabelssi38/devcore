@@ -558,6 +558,78 @@ details{margin-bottom: 8px}
 </div>
 
 <script>
+function morphDOM(oldNode, newNode) {
+  if (oldNode.nodeType !== newNode.nodeType || oldNode.nodeName !== newNode.nodeName) {
+    oldNode.parentNode.replaceChild(newNode.cloneNode(true), oldNode);
+    return;
+  }
+  if (oldNode.nodeType === Node.TEXT_NODE || oldNode.nodeType === Node.COMMENT_NODE) {
+    if (oldNode.textContent !== newNode.textContent) {
+      oldNode.textContent = newNode.textContent;
+    }
+    return;
+  }
+  const oldAttrs = oldNode.attributes;
+  const newAttrs = newNode.attributes;
+  for (let i = oldAttrs.length - 1; i >= 0; i--) {
+    const attrName = oldAttrs[i].name;
+    if (attrName === 'open' && oldNode.nodeName === 'DETAILS') continue;
+    if (!newNode.hasAttribute(attrName)) {
+      oldNode.removeAttribute(attrName);
+    }
+  }
+  for (let i = 0; i < newAttrs.length; i++) {
+    const attrName = newAttrs[i].name;
+    const attrVal = newAttrs[i].value;
+    if (attrName === 'open' && oldNode.nodeName === 'DETAILS') continue;
+    if (oldNode.getAttribute(attrName) !== attrVal) {
+      oldNode.setAttribute(attrName, attrVal);
+    }
+  }
+  const oldChildren = Array.from(oldNode.childNodes);
+  const newChildren = Array.from(newNode.childNodes);
+  let oldIdx = 0;
+  let newIdx = 0;
+  while (newIdx < newChildren.length) {
+    const newChild = newChildren[newIdx];
+    const oldChild = oldChildren[oldIdx];
+    if (!oldChild) {
+      oldNode.appendChild(newChild.cloneNode(true));
+      newIdx++;
+    } else if (oldChild.nodeName === newChild.nodeName) {
+      morphDOM(oldChild, newChild);
+      oldIdx++;
+      newIdx++;
+    } else {
+      const nextMatchIdx = oldChildren.slice(oldIdx).findIndex(c => c.nodeName === newChild.nodeName);
+      if (nextMatchIdx !== -1) {
+        for (let k = 0; k < nextMatchIdx; k++) {
+          oldNode.removeChild(oldChildren[oldIdx + k]);
+        }
+        morphDOM(oldChildren[oldIdx + nextMatchIdx], newChild);
+        oldIdx += nextMatchIdx + 1;
+        newIdx++;
+      } else {
+        oldNode.insertBefore(newChild.cloneNode(true), oldChild);
+        newIdx++;
+      }
+    }
+  }
+  while (oldIdx < oldChildren.length) {
+    oldNode.removeChild(oldChildren[oldIdx]);
+    oldIdx++;
+  }
+}
+
+function updateContainerHTML(containerId, newHTMLString) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(`<div>${newHTMLString}</div>`, 'text/html');
+  const newContainer = doc.body.firstChild;
+  morphDOM(container, newContainer);
+}
+
 function updateTimestamp() {
   const now = new Date();
   document.getElementById('timestamp').textContent = now.toLocaleString('fr-FR');
@@ -837,32 +909,12 @@ function refreshDashboard() {
 
       const oldProjects = document.getElementById('project-cards');
       if (oldProjects) {
-        oldProjects.innerHTML = payload.sections.project_cards || '';
+        updateContainerHTML('project-cards', payload.sections.project_cards || '');
       }
 
       const oldTasks = document.getElementById('tasks-pipeline');
       if (oldTasks) {
-        const openSummaries = new Set();
-        document.querySelectorAll('#tasks-pipeline details').forEach(d => {
-          const summary = d.querySelector('summary');
-          if (summary && d.open) {
-            openSummaries.add(summary.textContent.trim());
-          }
-        });
-
-        oldTasks.innerHTML = payload.sections.tasks_pipeline || '';
-
-        document.querySelectorAll('#tasks-pipeline details').forEach(d => {
-          const summary = d.querySelector('summary');
-          if (summary) {
-            const title = summary.textContent.trim();
-            if (openSummaries.has(title)) {
-              d.open = true;
-            } else {
-              d.removeAttribute('open');
-            }
-          }
-        });
+        updateContainerHTML('tasks-pipeline', payload.sections.tasks_pipeline || '');
       }
 
       const oldTokenReport = document.getElementById('token-activity-report');
@@ -874,7 +926,7 @@ function refreshDashboard() {
         } else if (localStorage.getItem('devcore_token_report_open') !== null) {
           wasOpen = localStorage.getItem('devcore_token_report_open') === 'true';
         }
-        oldTokenReport.innerHTML = payload.sections.token_activity_report || '';
+        updateContainerHTML('token-activity-report', payload.sections.token_activity_report || '');
         const newDetails = oldTokenReport.querySelector('details');
         if (newDetails) {
           if (wasOpen) {
@@ -890,37 +942,37 @@ function refreshDashboard() {
 
       const oldInfra = document.getElementById('services-monitoring');
       if (oldInfra) {
-        oldInfra.innerHTML = payload.sections.services_monitoring || '';
+        updateContainerHTML('services-monitoring', payload.sections.services_monitoring || '');
       }
 
       const oldHooks = document.getElementById('automation-hooks');
       if (oldHooks) {
-        oldHooks.innerHTML = payload.sections.automation_hooks || '';
+        updateContainerHTML('automation-hooks', payload.sections.automation_hooks || '');
       }
 
       const oldContext = document.getElementById('context-composition');
       if (oldContext) {
-        oldContext.innerHTML = payload.sections.context_composition || '';
+        updateContainerHTML('context-composition', payload.sections.context_composition || '');
       }
 
       const oldMetricsService = document.getElementById('metrics-service-summary');
       if (oldMetricsService) {
-        oldMetricsService.innerHTML = payload.sections.metrics_service_summary || '';
+        updateContainerHTML('metrics-service-summary', payload.sections.metrics_service_summary || '');
       }
 
       const oldEventBus = document.getElementById('event-bus-recent');
       if (oldEventBus) {
-        oldEventBus.innerHTML = payload.sections.event_bus_recent || '';
+        updateContainerHTML('event-bus-recent', payload.sections.event_bus_recent || '');
       }
 
       const oldKnowledgeGraph = document.getElementById('knowledge-graph-summary');
       if (oldKnowledgeGraph) {
-        oldKnowledgeGraph.innerHTML = payload.sections.knowledge_graph_summary || '';
+        updateContainerHTML('knowledge-graph-summary', payload.sections.knowledge_graph_summary || '');
       }
 
       const oldPluginStatus = document.getElementById('plugin-status');
       if (oldPluginStatus) {
-        oldPluginStatus.innerHTML = payload.sections.plugin_status || '';
+        updateContainerHTML('plugin-status', payload.sections.plugin_status || '');
       }
 
       window.taskDetailsMap = payload.task_details || {};
