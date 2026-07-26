@@ -113,7 +113,7 @@ summary::-webkit-details-marker{display:none}
 .tab-btn{background:none;border:none;border-bottom:2px solid transparent;color:var(--dim);font-family:inherit;font-size:11px;font-weight:700;cursor:pointer;padding:4px 8px;letter-spacing:0.05em;transition:all 0.15s}
 .tab-btn.active{color:var(--cyan);border-bottom:2px solid var(--cyan);text-shadow:0 0 6px var(--cyan)}
 /* Suppress bubble/modal */
-#details-bubble,.modal-overlay{display:none!important}
+.modal-overlay{display:none!important}
 /* Forms inside settings */
 form select,form input{background:var(--bg)!important;border:1px solid var(--brd)!important;border-radius:2px!important;color:var(--txt)!important;font-family:inherit!important;font-size:11px!important;padding:4px 6px!important}
 form label{font-size:10px!important;color:var(--txt2)!important}
@@ -278,6 +278,55 @@ div[style*="color:#cbd5e1"][style*="font-size:10.5px"] {
   color: var(--txt) !important;
   font-family: inherit !important;
 }
+
+/* ── Terminal Details Bubble ── */
+#details-bubble {
+  display: none;
+  position: absolute;
+  z-index: 10000;
+  background: var(--bg2) !important;
+  border: 1px solid var(--cyan) !important;
+  border-radius: 2px !important;
+  box-shadow: 0 0 15px rgba(0, 242, 254, 0.25) !important;
+  font-family: 'JetBrains Mono', monospace !important;
+  color: var(--txt) !important;
+  transition: opacity 0.15s ease;
+  opacity: 0;
+}
+#details-bubble.show {
+  opacity: 1;
+}
+.bubble-header {
+  background: rgba(0, 242, 254, 0.08) !important;
+  border-bottom: 1px solid var(--brd) !important;
+  color: var(--cyan) !important;
+  font-weight: 700 !important;
+  padding: 6px 10px !important;
+  font-size: 10px !important;
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  letter-spacing: 0.05em;
+}
+.bubble-close {
+  background: none !important;
+  border: none !important;
+  color: var(--dim) !important;
+  cursor: pointer !important;
+  font-size: 14px !important;
+  line-height: 1 !important;
+  padding: 0 !important;
+}
+.bubble-close:hover {
+  color: var(--red) !important;
+}
+.bubble-content {
+  padding: 10px !important;
+  font-size: 10px !important;
+  max-height: 250px !important;
+  overflow-y: auto !important;
+  line-height: 1.45 !important;
+}
 </style>
 </head>
 <body>
@@ -432,7 +481,7 @@ div[style*="color:#cbd5e1"][style*="font-size:10.5px"] {
 
 <!-- Hidden elements for cockpit JS compatibility -->
 <div id="confirm-modal" class="modal-overlay" style="display:none"></div>
-<div id="details-bubble" style="display:none!important"></div>
+<div id="details-bubble" style="display:none"></div>
 
 <script>
 /* ── CLOCK ── */
@@ -649,7 +698,88 @@ function toggleProjectFilter(rowEl, projectName) {
 /* ── Timestamp (cockpit compat) ── */
 function updateTimestamp(){tick();}
 
-/* ── Bubble stubs (cockpit HTML injects onclick) ── */
+/* ── Bubble stubs & Details implementation ── */
+let taskDetailsMap = {};
+try {
+  const detailsDataEl = document.getElementById('task-details-data');
+  if (detailsDataEl) {
+    taskDetailsMap = JSON.parse(detailsDataEl.textContent || '{}');
+  }
+} catch(e) {
+  console.error("Error parsing initial task details:", e);
+}
+
+function showDetails(projectName, taskId, taskStatus, btnEl, event) {
+  if (event) event.stopPropagation();
+  
+  // Reload task details if updated
+  try {
+    const detailsDataEl = document.getElementById('task-details-data');
+    if (detailsDataEl) {
+      taskDetailsMap = JSON.parse(detailsDataEl.textContent || '{}');
+    }
+  } catch(e) {}
+
+  const key = `${projectName}_${taskId}`;
+  const text = taskDetailsMap[key];
+  if (!text) return;
+
+  const bubble = document.getElementById('details-bubble');
+  const safeText = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;")
+    .replace(/\n/g, "<br/>");
+
+  bubble.innerHTML = `
+    <div class="bubble-header">
+      <span>⚙ DETAILS : ${taskId}</span>
+      <button class="bubble-close" onclick="closeDetails(event)">&times;</button>
+    </div>
+    <div class="bubble-content">
+      <div style="margin-bottom:0;">${safeText}</div>
+    </div>
+  `;
+
+  bubble.style.display = 'block';
+  
+  const rect = btnEl.getBoundingClientRect();
+  const bubbleWidth = 320;
+  bubble.style.width = bubbleWidth + 'px';
+  
+  let left = rect.left + (rect.width / 2) - (bubbleWidth / 2);
+  let top = rect.bottom + window.scrollY + 8;
+  
+  if (left < 10) left = 10;
+  if (left + bubbleWidth > window.innerWidth - 10) {
+    left = window.innerWidth - bubbleWidth - 10;
+  }
+  
+  const bubbleHeight = bubble.offsetHeight;
+  if (rect.bottom + bubbleHeight + 20 > window.innerHeight) {
+    top = rect.top + window.scrollY - bubbleHeight - 8;
+  }
+
+  bubble.style.left = left + 'px';
+  bubble.style.top = top + 'px';
+
+  bubble.offsetHeight; // reflow
+  bubble.classList.add('show');
+}
+
+function closeDetails(event) {
+  if (event) event.stopPropagation();
+  const bubble = document.getElementById('details-bubble');
+  bubble.classList.remove('show');
+  setTimeout(() => {
+    if (!bubble.classList.contains('show')) {
+      bubble.style.display = 'none';
+    }
+  }, 150);
+}
+
 function showBubble(){}
 function hideBubble(){}
 function showConfirmModal(){}
