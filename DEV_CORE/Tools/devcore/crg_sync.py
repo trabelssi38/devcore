@@ -136,7 +136,7 @@ def parse_powershell(file_rel_path, file_abs_path):
     return nodes, edges
 
 def get_crg_nodes_edges():
-    repo_root = r"C:\devcore"
+    repo_root = str(Path(__file__).resolve().parents[4])
     data_dir = os.path.join(repo_root, "DEV_CORE_DATA", "Knowledge")
     graph_path = os.path.join(data_dir, "crg_graph.json")
     if os.path.exists(graph_path):
@@ -149,7 +149,7 @@ def get_crg_nodes_edges():
     return [], []
 
 def main():
-    repo_root = r"C:\devcore"
+    repo_root = str(Path(__file__).resolve().parents[4])
     data_dir = os.path.join(repo_root, "DEV_CORE_DATA", "Knowledge")
     graph_path = os.path.join(data_dir, "crg_graph.json")
     os.makedirs(data_dir, exist_ok=True)

@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 
 
-DEV_CORE = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", r"C:\devcore\DEV_CORE"))
+DEV_CORE = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", str(Path(__file__).resolve().parents[2] / "DEV_CORE")))
 DEFAULT_REGISTRY_PATH = DEV_CORE / "Config" / "ai_capability_registry.json"
 
 

@@ -15,7 +15,7 @@ class WorkspaceIsolationError(ValueError):
 
 
 def default_data_root() -> Path:
-    return Path(os.environ.get("DEVCORE_DATA_ROOT", r"C:\devcore\DEV_CORE_DATA"))
+    return Path(os.environ.get("DEVCORE_DATA_ROOT", str(Path(__file__).resolve().parents[3] / "DEV_CORE_DATA")))
 
 
 @dataclass(frozen=True)

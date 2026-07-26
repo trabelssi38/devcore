@@ -4,7 +4,7 @@ import sqlite3
 import os
 import sys
 
-devcore_data = os.environ.get("DEVCORE_DATA_ROOT", "C:\\devcore\\DEV_CORE_DATA")
+devcore_data = os.environ.get("DEVCORE_DATA_ROOT", str(Path(__file__).resolve().parents[3] / "DEV_CORE_DATA"))
 memory_dir = os.path.join(devcore_data, "Memory")
 db_path = os.path.join(memory_dir, "conversations.db")
 

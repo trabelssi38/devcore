@@ -15,7 +15,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
+$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { $PSScriptRoot }
 $MEMORY_SERVICE = Join-Path $DEV_CORE "Scripts\memory_service.ps1"
 $CANVAS_MANAGER = Join-Path $DEV_CORE "Scripts\canvas_manager.ps1"
 

@@ -1,7 +1,7 @@
 # lesson_extractor.ps1 -- DEV_CORE Auto layer
 # Extrait les lecons depuis : git log, tasks done, MEMORY.md
-$DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
+$DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { (Split-Path -Parent $PSScriptRoot) }
+$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) "DEV_CORE_DATA") }
 $TODAY         = Get-Date -Format "yyyy-MM-dd"
 $LOG           = "$DEV_CORE_DATA\Logs\scripts\lesson_extractor_$TODAY.log"
 . "$DEV_CORE\Scripts\platform_version.ps1"

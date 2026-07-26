@@ -16,7 +16,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
+$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { (Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE_DATA") }
 $TODAY = if ($Date) { $Date } else { Get-Date -Format "yyyy-MM-dd" }
 $METRICS_DIR = Join-Path $DEV_CORE_DATA "Logs\metrics"
 $METRICS_FILE = Join-Path $METRICS_DIR "metrics-$TODAY.jsonl"

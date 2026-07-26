@@ -2,7 +2,7 @@
 param([Parameter(Mandatory=$true)][string]$PromptFr)
 
 $ErrorActionPreference = 'Stop'
-$DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
+$DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { $PSScriptRoot }
 $projectCwd    = (Get-Location).Path
 Set-Location $DEV_CORE
 $env:PYTHONPATH        = (Join-Path $DEV_CORE "Tools")
@@ -10,7 +10,7 @@ $env:DEVCORE_ASK_PROMPT_FR = $PromptFr
 $env:DEVCORE_ASK_CWD       = $projectCwd
 
 # Injecter task_id courant si disponible
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
+$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { (Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE_DATA") }
 $tFile = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
 if (Test-Path $tFile) {
     $board = Get-Content $tFile -Raw | ConvertFrom-Json

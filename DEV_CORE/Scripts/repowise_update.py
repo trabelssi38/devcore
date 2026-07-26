@@ -10,10 +10,10 @@ import subprocess
 from pathlib import Path
 
 # Paths
-PLATFORM_ROOT = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", r"C:\devcore\DEV_CORE"))
-DATA_ROOT = Path(os.environ.get("DEVCORE_DATA_ROOT", r"C:\devcore\DEV_CORE_DATA"))
+PLATFORM_ROOT = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", str(Path(__file__).resolve().parents[2] / "DEV_CORE")))
+DATA_ROOT = Path(os.environ.get("DEVCORE_DATA_ROOT", str(Path(__file__).resolve().parents[2] / "DEV_CORE_DATA")))
 PROJECTS_JSON = PLATFORM_ROOT / "Config" / "projects.json"
-TEMPLATE_IGNORE = Path(r"C:\devcore\.repowiseignore")
+TEMPLATE_IGNORE = Path(__file__).resolve().parents[2] / ".repowiseignore"
 
 def resolve_repowise_exe():
     user_home = Path(os.path.expanduser("~"))
@@ -55,7 +55,7 @@ def get_project_path(project_name):
             
     # Fallbacks
     if project_name == "devcore":
-        return Path(r"C:\devcore")
+        return Path(__file__).resolve().parents[2]
     
     c_src = Path(r"C:\src") / project_name
     if c_src.exists():

@@ -59,7 +59,7 @@ if (-not $Tests -or $Tests.Count -eq 0) {
     $Tests = $defaultTests
 }
 if ([string]::IsNullOrWhiteSpace($ProgressPath)) {
-    $dataRoot = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
+    $dataRoot = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE_DATA" }
     $ProgressPath = Join-Path $dataRoot "Logs\scripts\ci_powershell_tests.last.json"
 }
 

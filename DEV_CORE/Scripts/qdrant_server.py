@@ -8,7 +8,7 @@ import math
 import sys
 from pathlib import Path
 
-DEV_CORE_DATA = os.environ.get("DEVCORE_DATA_ROOT", "C:\\devcore\\DEV_CORE_DATA")
+DEV_CORE_DATA = os.environ.get("DEVCORE_DATA_ROOT", str(Path(__file__).resolve().parents[3] / "DEV_CORE_DATA"))
 STORAGE_FILE = Path(DEV_CORE_DATA) / "Runtime" / "qdrant_storage.json"
 
 DEFAULT_COLLECTIONS = ["decisions", "lessons", "patterns", "codebase", "rules"]

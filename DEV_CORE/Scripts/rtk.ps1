@@ -51,7 +51,7 @@ end {
     Write-Host "`n  [RTK] Output compresse : $originalSize chars -> $newSize chars (Gain: -$savings%)" -ForegroundColor Cyan
 
     if ($StatsSave) {
-        $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
+        $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { (Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE_DATA") }
         $KPI_FILE = "$DEV_CORE_DATA\Metrics\kpi.csv"
         $metricsDir = Split-Path $KPI_FILE
         if (-not (Test-Path $metricsDir)) { New-Item -ItemType Directory -Path $metricsDir -Force | Out-Null }

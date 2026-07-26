@@ -9,7 +9,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
+$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { (Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE_DATA") }
 $TODAY = if ($Date) { $Date } else { Get-Date -Format "yyyy-MM-dd" }
 $LEARNING_DIR = Join-Path $DEV_CORE_DATA "Learning"
 $REPORT_FILE = Join-Path $LEARNING_DIR "learning-report-$TODAY.json"

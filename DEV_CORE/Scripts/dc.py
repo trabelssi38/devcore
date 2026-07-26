@@ -83,7 +83,7 @@ def get_active_project():
     return project_name
 
 def get_data_root():
-    return Path(os.environ.get("DEVCORE_DATA_ROOT", r"C:\devcore\DEV_CORE_DATA"))
+    return Path(os.environ.get("DEVCORE_DATA_ROOT", str(Path(__file__).resolve().parents[2] / "DEV_CORE_DATA")))
 
 def get_platform_title():
     try:

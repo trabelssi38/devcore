@@ -141,8 +141,8 @@ def get_qdrant_points_count() -> int:
 
 
 # Load environment or default paths
-PLATFORM_ROOT = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", r"C:\devcore\DEV_CORE"))
-DATA_ROOT = Path(os.environ.get("DEVCORE_DATA_ROOT", r"C:\devcore\DEV_CORE_DATA"))
+PLATFORM_ROOT = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", str(Path(__file__).resolve().parents[2] / "DEV_CORE")))
+DATA_ROOT = Path(os.environ.get("DEVCORE_DATA_ROOT", str(Path(__file__).resolve().parents[2] / "DEV_CORE_DATA")))
 
 IS_IN_DOCKER = Path("/.dockerenv").exists() or os.getenv("DEVCORE_PLATFORM_ROOT") == "/app/DEV_CORE"
 

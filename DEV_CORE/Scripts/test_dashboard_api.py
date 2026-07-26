@@ -398,8 +398,7 @@ def test_dashboard_settings_do_not_return_secret_keys(tmp_path):
     dashboard_api.PLATFORM_ROOT = str(tmp_path / "DEV_CORE")
     dashboard_api.DATA_ROOT = str(tmp_path / "DEV_CORE_DATA")
 
-    handler = object.__new__(dashboard_api.DashboardAPIHandler)
-    settings = handler.get_settings()
+    settings = dashboard_api.get_settings()
 
     assert "gemini_api_key" not in settings
     assert "anthropic_api_key" not in settings
@@ -410,8 +409,7 @@ def test_dashboard_settings_separate_config_secrets_and_runtime_state(tmp_path):
     dashboard_api.PLATFORM_ROOT = str(tmp_path / "DEV_CORE")
     dashboard_api.DATA_ROOT = str(tmp_path / "DEV_CORE_DATA")
 
-    handler = object.__new__(dashboard_api.DashboardAPIHandler)
-    handler.save_settings(
+    dashboard_api.save_settings(
         {
             "active_client": "codex",
             "auto_refresh_seconds": 30,

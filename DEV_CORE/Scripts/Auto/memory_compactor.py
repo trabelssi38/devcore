@@ -8,8 +8,8 @@ import urllib.error
 from datetime import datetime
 from pathlib import Path
 
-PLATFORM_ROOT = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", r"C:\devcore\DEV_CORE"))
-DATA_ROOT = Path(os.environ.get("DEVCORE_DATA_ROOT", r"C:\devcore\DEV_CORE_DATA"))
+PLATFORM_ROOT = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", str(Path(__file__).resolve().parents[4] / "DEV_CORE")))
+DATA_ROOT = Path(os.environ.get("DEVCORE_DATA_ROOT", str(Path(__file__).resolve().parents[4] / "DEV_CORE_DATA")))
 ROUTER_URL = os.environ.get("DEVCORE_ROUTER_URL", "http://127.0.0.1:20130/v1/chat/completions")
 
 LESSONS_PATH = DATA_ROOT / "Memory" / "LESSONS.md"

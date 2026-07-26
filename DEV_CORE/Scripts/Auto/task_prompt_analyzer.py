@@ -340,8 +340,8 @@ def parse_implementation_plan_md(file_path):
     return tasks
 
 def main():
-    dev_core = os.environ.get("DEVCORE_PLATFORM_ROOT", "C:\\devcore\\DEV_CORE")
-    dev_core_data = os.environ.get("DEVCORE_DATA_ROOT", "C:\\devcore\\DEV_CORE_DATA")
+    dev_core = os.environ.get("DEVCORE_PLATFORM_ROOT", str(Path(__file__).resolve().parents[4] / "DEV_CORE"))
+    dev_core_data = os.environ.get("DEVCORE_DATA_ROOT", str(Path(__file__).resolve().parents[4] / "DEV_CORE_DATA"))
     today_str = datetime.now().strftime("%Y-%m-%d")
     
     active_proj = get_active_project(dev_core, dev_core_data)
@@ -615,8 +615,8 @@ def main():
                                         target_file = args.get("TargetFile")
                                         if target_file:
                                             target_file = target_file.replace("\\\\", "\\").replace('"', '')
-                                            if target_file.lower().startswith("c:\\devcore"):
-                                                rel = os.path.relpath(target_file, "C:\\devcore")
+                                            if target_file.lower().startswith(str(Path(__file__).resolve().parents[4])):
+                                                rel = os.path.relpath(target_file, str(Path(__file__).resolve().parents[4]))
                                                 if not any(x in rel.lower() for x in [".git", "scratch", "logs", ".gemini", "tempmediastorage"]):
                                                     modified_files.add(rel)
                                                     

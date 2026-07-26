@@ -206,19 +206,19 @@ switch -Regex ($cmd) {
     "^task scan$"                               { & "$SCRIPTS\task_scan.ps1"; break }
     "^task sync$"                               { & "$SCRIPTS\task_sync.ps1"; break }
     "^toon convert-tasks$|^toon ct$" {
-        $DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { 'C:\devcore\DEV_CORE_DATA' }
+        $DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE_DATA" }
         & "$SCRIPTS\toonify.ps1" -InputFile "$DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json" -StatsSave
         break
     }
     "^toon encode (.+)$" { & "$SCRIPTS\toonify.ps1" -InputFile $Matches[1] -StatsSave; break }
     "^toon decode (.+)$" { & "$SCRIPTS\toonify.ps1" -InputFile $Matches[1] -Decode; break }
     "^toon session$" {
-        $DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { 'C:\devcore\DEV_CORE_DATA' }
+        $DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE_DATA" }
         Get-Content "$DATA\Logs\scripts\session_context.toon" -ErrorAction SilentlyContinue
         break
     }
     "^toon$" {
-        $DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { 'C:\devcore\DEV_CORE_DATA' }
+        $DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE_DATA" }
         & "$SCRIPTS\toonify.ps1" -InputFile "$DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json" -StatsSave
         break
     }

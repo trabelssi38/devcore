@@ -10,7 +10,7 @@ import argparse
 from pathlib import Path
 from datetime import datetime
 
-DATA_ROOT = Path(os.environ.get("DEVCORE_DATA_ROOT", r"C:\devcore\DEV_CORE_DATA"))
+DATA_ROOT = Path(os.environ.get("DEVCORE_DATA_ROOT", str(Path(__file__).resolve().parents[3] / "DEV_CORE_DATA")))
 DB_PATH = DATA_ROOT / "devcore.db"
 
 def init_db(db_conn):

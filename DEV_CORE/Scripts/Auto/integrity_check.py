@@ -6,8 +6,8 @@ import re
 import subprocess
 from pathlib import Path
 
-DEV_CORE = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", r"C:\devcore\DEV_CORE"))
-DATA_ROOT = Path(os.environ.get("DEVCORE_DATA_ROOT", r"C:\devcore\DEV_CORE_DATA"))
+DEV_CORE = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", str(Path(__file__).resolve().parents[4] / "DEV_CORE")))
+DATA_ROOT = Path(os.environ.get("DEVCORE_DATA_ROOT", str(Path(__file__).resolve().parents[4] / "DEV_CORE_DATA")))
 
 def get_active_project() -> str:
     cached = os.environ.get("DEVCORE_ACTIVE_PROJECT_NAME")

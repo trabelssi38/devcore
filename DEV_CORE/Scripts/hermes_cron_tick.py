@@ -9,7 +9,7 @@ import time
 import logging
 PLATFORM_ROOT = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", Path(__file__).resolve().parents[1]))
 REPO_ROOT = Path(os.environ.get("DEVCORE_REPO_ROOT", PLATFORM_ROOT.parent))
-DATA_ROOT = Path(os.environ.get("DEVCORE_DATA_ROOT", r"C:\devcore\DEV_CORE_DATA" if os.name == "nt" else "/data"))
+DATA_ROOT = Path(os.environ.get("DEVCORE_DATA_ROOT", str(Path(__file__).resolve().parents[3] / "DEV_CORE_DATA") if os.name == "nt" else "/data"))
 
 # Append Hermes checkout to path to import native cron scheduler APIs
 HERMES_HOME = Path(os.environ.get("HERMES_REPO_HOME", REPO_ROOT / "hermes"))

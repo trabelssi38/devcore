@@ -4,8 +4,8 @@
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-$DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
+$DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { (Split-Path -Parent $PSScriptRoot) }
+$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) "DEV_CORE_DATA") }
 $projName = & "$PSScriptRoot\..\Get-ActiveProject.ps1"
 $tFile = "$DEV_CORE_DATA\Memory\$projName\tasks.json"
 $issues = @()

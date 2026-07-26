@@ -66,8 +66,8 @@ def get_active_project(dev_core, dev_core_data):
     return "devcore"
 
 def main():
-    dev_core = os.environ.get("DEVCORE_PLATFORM_ROOT", "C:\\devcore\\DEV_CORE")
-    dev_core_data = os.environ.get("DEVCORE_DATA_ROOT", "C:\\devcore\\DEV_CORE_DATA")
+    dev_core = os.environ.get("DEVCORE_PLATFORM_ROOT", str(Path(__file__).resolve().parents[4] / "DEV_CORE"))
+    dev_core_data = os.environ.get("DEVCORE_DATA_ROOT", str(Path(__file__).resolve().parents[4] / "DEV_CORE_DATA"))
     today_str = datetime.now().strftime("%Y-%m-%d")
     
     log_dir = os.path.join(dev_core_data, "Logs", "scripts")

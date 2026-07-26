@@ -18,7 +18,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $SOURCE_WAS_SPECIFIED = $PSBoundParameters.ContainsKey("Source")
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
+$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { (Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE_DATA") }
 $TODAY = if ($Date) { $Date } else { Get-Date -Format "yyyy-MM-dd" }
 $EVENTS_DIR = Join-Path $DEV_CORE_DATA "Bus\events"
 $EVENTS_FILE = Join-Path $EVENTS_DIR "events-$TODAY.jsonl"

@@ -244,7 +244,7 @@ def build_report(registry, remote, source_errors, diff, applied, checked_at):
 
 def default_paths():
     platform_root = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", Path(__file__).resolve().parents[2]))
-    data_root = Path(os.environ.get("DEVCORE_DATA_ROOT", r"C:\devcore\DEV_CORE_DATA"))
+    data_root = Path(os.environ.get("DEVCORE_DATA_ROOT", str(Path(__file__).resolve().parents[4] / "DEV_CORE_DATA")))
     return (
         platform_root / "Config" / "model_pricing.json",
         data_root / "Logs" / "pricing" / "model_pricing_sync_report.json",

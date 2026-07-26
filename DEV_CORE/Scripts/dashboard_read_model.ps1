@@ -8,7 +8,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
+$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { (Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE_DATA") }
 $EVENTS_DIR = Join-Path $DEV_CORE_DATA "Bus\events"
 $DASHBOARD_DIR = Join-Path $DEV_CORE_DATA "Dashboard"
 $READ_MODEL_FILE = Join-Path $DASHBOARD_DIR "read_model.json"

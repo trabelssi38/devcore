@@ -1,6 +1,6 @@
 # ensure_repowise_watch.ps1 -- continuously scan DEV_CORE declared projects with Repowise
 param(
-    [string]$RepoRoot = "C:\devcore",
+    [string]$RepoRoot = $(Split-Path -Parent (Split-Path -Parent $PSScriptRoot)),
     [string]$RepowisePath = "",
     [switch]$StatusOnly,
     [switch]$Stop
@@ -8,8 +8,8 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
+$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { $PSScriptRoot }
+$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { (Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE_DATA") }
 $HomeDir = [Environment]::GetFolderPath("UserProfile")
 $MemoryDir = Join-Path $DEV_CORE_DATA "Memory"
 $LogDir = Join-Path $env:LOCALAPPDATA "devcore\Logs\repowise_watch"

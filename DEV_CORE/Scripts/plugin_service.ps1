@@ -11,7 +11,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
+$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { (Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE_DATA") }
 $PLUGINS_DIR = Join-Path $DEV_CORE_DATA "Plugins"
 $INSTALLED_DIR = Join-Path $PLUGINS_DIR "installed"
 $CHECKS_DIR = Join-Path $PLUGINS_DIR "checks"

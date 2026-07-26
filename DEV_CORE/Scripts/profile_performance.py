@@ -10,8 +10,8 @@ import sqlite3
 from pathlib import Path
 from datetime import datetime
 
-DATA_ROOT = Path(os.environ.get("DEVCORE_DATA_ROOT", r"C:\devcore\DEV_CORE_DATA"))
-DEVCORE_ROOT = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", r"C:\devcore\DEV_CORE"))
+DATA_ROOT = Path(os.environ.get("DEVCORE_DATA_ROOT", str(Path(__file__).resolve().parents[3] / "DEV_CORE_DATA")))
+DEVCORE_ROOT = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", str(Path(__file__).resolve().parents[3] / "DEV_CORE")))
 REPORT_PATH = DATA_ROOT / "Logs" / "performance_profile_report.json"
 
 sys.path.insert(0, str(DEVCORE_ROOT / "Scripts"))

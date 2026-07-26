@@ -5,7 +5,7 @@ param(
     [switch]$Json
 )
 
-$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
+$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { $PSScriptRoot }
 $SCRIPTS = Join-Path $DEV_CORE "Scripts"
 
 $commandMap = [ordered]@{

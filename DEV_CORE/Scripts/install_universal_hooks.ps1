@@ -2,7 +2,7 @@
 # Installe les hooks pour tous les clients IA et tous les IDE (via PowerShell Profile)
 # Chaque client IA a ses propres noms d'evenements -- ce script les gere correctement.
 
-$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
+$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { $PSScriptRoot }
 $sessionStartScript = "$DEV_CORE\Scripts\session_start.ps1"
 $postToolScript     = "$DEV_CORE\Scripts\post_tool_hook.ps1"
 $sessionEndScript   = "$DEV_CORE\Scripts\session_end.ps1"

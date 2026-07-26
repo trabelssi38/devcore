@@ -68,7 +68,7 @@ def create_app(task_repository: TaskRepository | None = None) -> FastAPI:
         "http://localhost:20129",
         "http://127.0.0.1:20129",
     ]
-    platform_root = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", r"C:\devcore\DEV_CORE"))
+    platform_root = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", str(Path(__file__).resolve().parents[3] / "DEV_CORE")))
     security_config_path = platform_root / "Config" / "security.json"
     if security_config_path.exists():
         try:

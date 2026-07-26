@@ -11,8 +11,8 @@ import json
 import re
 from pathlib import Path
 
-PLATFORM_ROOT = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", r"C:\devcore\DEV_CORE"))
-REPO_ROOT = Path(os.environ.get("DEVCORE_REPO_ROOT", r"C:\devcore"))
+PLATFORM_ROOT = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", str(Path(__file__).resolve().parents[3] / "DEV_CORE")))
+REPO_ROOT = Path(os.environ.get("DEVCORE_REPO_ROOT", str(Path(__file__).resolve().parents[3])))
 PROJECTS_JSON = PLATFORM_ROOT / "Config" / "projects.json"
 WORKSPACE_YAML = REPO_ROOT / ".repowise-workspace.yaml"
 

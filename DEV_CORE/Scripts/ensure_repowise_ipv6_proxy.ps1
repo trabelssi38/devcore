@@ -38,12 +38,12 @@ if ($existing) {
     exit 0
 }
 
-$logDir = "C:\devcore\DEV_CORE_DATA\Logs\scripts"
+$logDir = Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE_DATA\Logs\scripts"
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 $out = Join-Path $logDir "repowise_ipv6_proxy.log"
 $err = Join-Path $logDir "repowise_ipv6_proxy_err.log"
 
-Start-Process -FilePath $Python -ArgumentList @($ScriptPath) -WorkingDirectory "C:\devcore" -WindowStyle Hidden -RedirectStandardOutput $out -RedirectStandardError $err -ErrorAction SilentlyContinue | Out-Null
+Start-Process -FilePath $Python -ArgumentList @($ScriptPath) -WorkingDirectory $(Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) -WindowStyle Hidden -RedirectStandardOutput $out -RedirectStandardError $err -ErrorAction SilentlyContinue | Out-Null
 Start-Sleep -Milliseconds 800
 
 if (Test-Tcp -HostName "::1" -Port 7337) {

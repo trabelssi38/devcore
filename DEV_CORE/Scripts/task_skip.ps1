@@ -1,7 +1,7 @@
 # task_skip.ps1 -- DEV_CORE v9.0 single client
 param([string]$Reason="")
 
-$DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
+$DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { $PSScriptRoot }
 
 if (-not $Reason) {
     $Reason = Read-Host "  Raison du skip (optionnel)"

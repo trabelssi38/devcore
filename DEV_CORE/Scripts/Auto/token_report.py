@@ -855,7 +855,7 @@ def main():
 
     tdate = args.date or datetime.now().strftime("%Y-%m-%d")
     userprofile = os.environ.get("USERPROFILE") or str(Path.home())
-    devcore_data = os.environ.get("DEVCORE_DATA_ROOT", r"C:\devcore\DEV_CORE_DATA")
+    devcore_data = os.environ.get("DEVCORE_DATA_ROOT", str(Path(__file__).resolve().parents[4] / "DEV_CORE_DATA"))
     reports_dir = Path(devcore_data) / "Logs" / "token_reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
     memory_path = Path(devcore_data) / "Memory"

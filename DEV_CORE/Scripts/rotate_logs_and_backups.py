@@ -8,7 +8,7 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
-DEV_CORE_DATA = Path(os.environ.get("DEVCORE_DATA_ROOT", r"C:\devcore\DEV_CORE_DATA"))
+DEV_CORE_DATA = Path(os.environ.get("DEVCORE_DATA_ROOT", str(Path(__file__).resolve().parents[3] / "DEV_CORE_DATA")))
 
 def rotate_script_logs(max_days=30):
     logs_dir = DEV_CORE_DATA / "Logs" / "scripts"

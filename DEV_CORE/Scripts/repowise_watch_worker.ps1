@@ -8,7 +8,7 @@ param(
 
 $ErrorActionPreference = "Continue"
 $env:PYTHONIOENCODING = if ($env:PYTHONIOENCODING) { $env:PYTHONIOENCODING } else { "utf-8" }
-$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
+$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { $PSScriptRoot }
 
 New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
 $safeName = $ProjectName -replace '[\\/:*?"<>| ]', '_'

@@ -9,6 +9,10 @@ from typing import Iterable
 
 EXCLUDED_DIRS = {
     ".git",
+    ".claude",
+    ".vscode",
+    ".idea",
+    ".pytest_cache",
     ".repowise",
     ".repowise-workspace",
     "__pycache__",

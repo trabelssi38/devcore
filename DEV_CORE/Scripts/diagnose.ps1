@@ -5,8 +5,8 @@
 #         dc check --fix --dry-run  (simule les reparations sans modifier)
 param([switch]$Fix, [switch]$Gate, [switch]$DryRun)
 
-$DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\devcore\DEV_CORE" }
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { "C:\devcore\DEV_CORE_DATA" }
+$DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { $PSScriptRoot }
+$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { (Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE_DATA") }
 $CLAUDE_DIR    = "$env:USERPROFILE\.claude"
 $GEMINI_DIR    = "$env:USERPROFILE\.gemini"
 . "$PSScriptRoot\platform_version.ps1"

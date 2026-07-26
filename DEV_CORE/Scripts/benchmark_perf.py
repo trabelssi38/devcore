@@ -22,8 +22,8 @@ from datetime import datetime
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
-PLATFORM_ROOT = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", r"C:\devcore\DEV_CORE"))
-DATA_ROOT = Path(os.environ.get("DEVCORE_DATA_ROOT", r"C:\devcore\DEV_CORE_DATA"))
+PLATFORM_ROOT = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", str(Path(__file__).resolve().parents[3] / "DEV_CORE")))
+DATA_ROOT = Path(os.environ.get("DEVCORE_DATA_ROOT", str(Path(__file__).resolve().parents[3] / "DEV_CORE_DATA")))
 REPO_ROOT = PLATFORM_ROOT.parent
 ITERATIONS = int(os.environ.get("BENCH_ITERATIONS", "5"))
 

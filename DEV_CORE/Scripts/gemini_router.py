@@ -21,8 +21,8 @@ app = FastAPI(title="Gemini Router with Fallback")
 def health_check():
     return {"status": "healthy", "service": "gemini-router", "port": 20130}
 
-DEV_CORE = os.environ.get("DEVCORE_PLATFORM_ROOT", "C:\\devcore\\DEV_CORE")
-DEV_CORE_DATA = os.environ.get("DEVCORE_DATA_ROOT", "C:\\devcore\\DEV_CORE_DATA")
+DEV_CORE = os.environ.get("DEVCORE_PLATFORM_ROOT", str(Path(__file__).resolve().parents[3] / "DEV_CORE"))
+DEV_CORE_DATA = os.environ.get("DEVCORE_DATA_ROOT", str(Path(__file__).resolve().parents[3] / "DEV_CORE_DATA"))
 KEY_PATH = os.environ.get(
     "GEMINI_API_KEY_FILE",
     os.path.join(DEV_CORE, "Config", "gemini_api_key.txt"),
