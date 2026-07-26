@@ -15,6 +15,7 @@ __pycache__/
 # Generated local client/dashboard state
 .claude/
 DEV_CORE/Dashboard/index.html
+DEV_CORE/Dashboard/index_terminal.html
 
 # Logs
 *.log
