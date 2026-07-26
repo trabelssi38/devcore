@@ -821,15 +821,16 @@ def get_services_html(projects, token_metrics) -> str:
     rep_solic = f"{files_count} fichiers" if repowise_ok and files_count else "MCP Stdio"
     rep_impact = "Analytics & MCP"
     
-    infra_html = "<h2>Services & Infrastructure</h2>\n"
+    infra_html = ""
+    if repowise_health_html:
+        infra_html += repowise_health_html
+    infra_html += "<h2>Services & Infrastructure</h2>\n"
     infra_html += get_status_html("Gemini Router (Primary)", gemini_desc, gemini_ok, g_perf, g_solic, g_impact)
     infra_html += get_status_html("Dashboard API Server", api_desc, api_ok, api_perf, api_solic, api_impact)
     infra_html += get_status_html("Headroom Proxy", headroom_desc, headroom_ok, h_perf, h_solic, h_impact)
     infra_html += get_status_html("DEV_CORE Scheduler / Hermes", hermes_desc, hermes_status, hermes_perf, hermes_solic, hermes_impact)
     infra_html += get_status_html("Qdrant Vector DB", qdrant_desc, qdrant_ok, q_perf, q_solic, q_impact)
     infra_html += get_status_html("Repowise Engine (MCP)", repowise_desc, repowise_ok, rep_perf, rep_solic, rep_impact)
-    if repowise_health_html:
-        infra_html += repowise_health_html
     
     # Background Jobs section
     infra_html += '<h2 style="margin-top:28px; padding-top:14px; border-top:1px solid #1e293b;">Hermes Background Jobs</h2>\n'
