@@ -546,6 +546,21 @@ async function saveSettings() {
 // Load settings on startup
 loadSettings();
 
+// Init toggle listener on start
+(function(){
+  const details = document.querySelector('#token-activity-report details');
+  if(details){
+    let wasOpen = localStorage.getItem('devcore_token_report_open');
+    if(wasOpen !== null) {
+      if(wasOpen === 'true') details.setAttribute('open', '');
+      else details.removeAttribute('open');
+    }
+    details.addEventListener('toggle', () => {
+      localStorage.setItem('devcore_token_report_open', details.hasAttribute('open'));
+    });
+  }
+})();
+
 /* ── Auto-refresh via AJAX ── */
 async function refreshDashboard(){
   try{
@@ -556,7 +571,30 @@ async function refreshDashboard(){
     if(s.project_cards)         document.getElementById('project-cards').innerHTML=s.project_cards;
     if(s.tasks_pipeline)        document.getElementById('tasks-pipeline').innerHTML=s.tasks_pipeline;
     if(s.services_monitoring)   document.getElementById('services-monitoring').innerHTML=s.services_monitoring+'<div class="term-footer">Auto-refresh 15s · DEV_CORE v10.0.0</div>';
-    if(s.token_activity_report) document.getElementById('token-activity-report').innerHTML=s.token_activity_report;
+    
+    if(s.token_activity_report) {
+      const oldTR = document.getElementById('token-activity-report');
+      const existingDetails = oldTR.querySelector('details');
+      let wasOpen = true;
+      if (existingDetails) {
+        wasOpen = existingDetails.hasAttribute('open');
+      } else if (localStorage.getItem('devcore_token_report_open') !== null) {
+        wasOpen = localStorage.getItem('devcore_token_report_open') === 'true';
+      }
+      oldTR.innerHTML = s.token_activity_report;
+      const newDetails = oldTR.querySelector('details');
+      if (newDetails) {
+        if (wasOpen) {
+          newDetails.setAttribute('open', '');
+        } else {
+          newDetails.removeAttribute('open');
+        }
+        newDetails.addEventListener('toggle', () => {
+          localStorage.setItem('devcore_token_report_open', newDetails.hasAttribute('open'));
+        });
+      }
+    }
+    
     if(s.context_composition)   document.getElementById('context-composition').innerHTML=s.context_composition;
     if(s.metrics_service_summary) document.getElementById('metrics-service-summary').innerHTML=s.metrics_service_summary;
     if(s.event_bus_recent)      document.getElementById('event-bus-recent').innerHTML=s.event_bus_recent;
