@@ -1,4 +1,5 @@
 # ensure_repowise_mcp.ps1 -- configure Repowise MCP for DEV_CORE clients
+param(
     [string]$RepoRoot = $(Split-Path -Parent (Split-Path -Parent $PSScriptRoot)),
     [string]$RepowisePath = ""
 )
