@@ -1,19 +1,46 @@
-# Dashboard Services Monitoring
+# Dashboard Services Monitoring & Repowise Code Health Radar
 
-## Goal
-Rendre dynamique l'affichage de l'état (status) et de la dernière exécution des services backend (Cron, Hermes, Hooks, Qdrant, Obsidian) dans le dashboard pour détecter facilement les défaillances.
+## Overview
+Ce document décrit l'architecture et les mécanismes du système de monitoring des services et de santé du code (Repowise Code Health & Refactoring Radar) intégrés au Cockpit DEV_CORE v10.0.
 
-## Tasks
-- [x] Task 1: Mettre à jour `gen_dashboard.ps1` pour vérifier l'état des services réseau (Qdrant `6333`, Hermes `20128`, Ollama `11434`) via `Test-NetConnection` ou un ping HTTP rapide, et stocker l'état.
-  - **Verify**: Le script identifie correctement si les ports locaux sont ouverts.
-- [x] Task 2: Ajouter dans `gen_dashboard.ps1` la lecture de la dernière exécution des crons et hooks en vérifiant le fichier `LastWriteTime` de leurs fichiers de logs respectifs dans `DEV_CORE_DATA\Logs\scripts\`.
-  - **Verify**: Le script extrait un horodatage (timestamp) récent pour chaque script d'automatisation.
-- [x] Task 3: Modifier `Dashboard\template.html` pour remplacer les blocs de code HTML statiques des composants d'infrastructure par des balises dynamiques (ex: `{{HERMES_STATUS}}`, `{{HOOKS_STATUS}}`, `{{QDRANT_STATUS}}`, etc.) ou un bloc global `{{INFRA_STATUS}}`.
-  - **Verify**: Le template est purgé des données en dur.
-- [x] Task 4: Modifier `gen_dashboard.ps1` pour générer le HTML de ces composants avec des indicateurs visuels : vert (`status-ok`) si c'est récent/en ligne, rouge (`status-error`) si c'est hors ligne ou si le log date de plusieurs jours.
-  - **Verify**: `index.html` affiche l'état réel et l'heure exacte.
+---
 
-## Done When
-- [x] L'état réseau de Qdrant, Hermes et Ollama est vérifié en temps réel.
-- [x] L'heure d'exécution des hooks et crons est affichée.
-- [x] Une défaillance (port fermé, log trop ancien) est immédiatement visible visuellement (rouge).
+## 🏗️ Architecture & Composants
+
+### 1. Monitoring des Services Réseau & Infrastructure
+Le cockpit surveille l'état d'activité des services clés :
+* **Gemini Router (Primary)** — Port `20130` (IA Passerelle LLM)
+* **Dashboard API Server** — Port `20129` (Administration Cockpit API)
+* **Headroom Proxy** — Port `8787` (Optimisation & réduction de tokens)
+* **DEV_CORE Scheduler / Hermes** — Fréquence d'exécution des tâches d'arrière-plan
+* **Qdrant Vector DB** — Port `6333` (Base de données vectorielle)
+* **Repowise Engine** — Port `7337` (Moteur d'analyse statique et RAG de code)
+
+### 2. Repowise Code Health & Refactoring Radar Multi-Projets
+* **Cartes Dynamiques** : Chaque projet indexé par UUID dans Repowise (`dashboard_recette_br`, `devcore`, `job_tracker`, etc.) génère une carte HTML `repowise-health-card` distincte.
+* **Badges d'État** :
+  * `🟢 EN DIRECT (Port 7337)` : Métriques réelles (Score Global, Maintenabilité, Performance, Répartition sains/warning/alerte, Cibles de refactoring) récupérées via l'API HTTP Repowise.
+  * `⚡ MCP INDEXED` : Mode fallback lorsque l'API HTTP 7337 est incalculable ou inactive.
+* **Filtrage JavaScript au Clic** : La fonction `updateRepowiseHealth(projectName)` masque les cartes des autres projets pour n'afficher que celle correspondant au projet sélectionné dans la liste du cockpit.
+
+---
+
+## ⚡ Optimisations & Résolution Réseau (Windows IPv6 / Proxys)
+
+1. **Priorité IPv4 Directe (`127.0.0.1`)** :
+   * Les vérifications de ports TCP (`check_port` dans Python et `Check-Port` dans PowerShell) et les requêtes HTTP utilisent directement `127.0.0.1` au lieu de `localhost`.
+   * Sous Windows 10/11, cela élimine les latences et timeouts (0.5s par requête) causés par la résolution IPv6 `::1` prioritaire.
+
+2. **Bypass des Proxys HTTP (`ProxyHandler({})`)** :
+   * Les appels `urllib.request` vers `127.0.0.1:7337` utilisent un opener `_urllib_req.ProxyHandler({})` pour éviter toute interception par le proxy Headroom local (port `20130`/`8787`).
+
+3. **Délégation PowerShell -> Python (`gen_dashboard.ps1`)** :
+   * `gen_dashboard.ps1` délègue l'étape d'injection HTML finale à `gen_dashboard.py`, garantissant l'intégration uniforme des cartes Repowise Health lors des déclenchements automatiques (post-task hooks).
+
+---
+
+## 📋 Statut de Validation
+- [x] Vérification réseau en temps réel pour tous les services (Gemini Router, Dashboard API, Headroom, Qdrant, Repowise).
+- [x] Rendu multi-cartes et filtrage par projet au clic.
+- [x] Tolérance aux pannes avec mode fallback réactif.
+- [x] Synchronisation Git et automatisation des événements.
