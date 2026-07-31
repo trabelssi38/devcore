@@ -164,11 +164,21 @@ def check_port(service_name_or_port, port: int = None) -> bool:
         service_name = "default"
         target_port = service_name_or_port
 
-    host = SERVICE_HOSTS.get(service_name, "127.0.0.1")
+    clean_name = service_name.replace("-", "_") if isinstance(service_name, str) else service_name
+    host = SERVICE_HOSTS.get(clean_name, service_name if isinstance(service_name, str) else "127.0.0.1")
+    if host in ["localhost", "gemini-router", "dashboard-api", "headroom"]:
+        host = "127.0.0.1"
+
     try:
         with socket.create_connection((host, target_port), timeout=0.5):
             return True
     except Exception:
+        if host != "127.0.0.1":
+            try:
+                with socket.create_connection(("127.0.0.1", target_port), timeout=0.5):
+                    return True
+            except Exception:
+                pass
         return False
 
 def get_task_datetime(t) -> datetime:
@@ -579,116 +589,6 @@ def get_plugin_status_html() -> str:
     except Exception as e:
         return f"<div id='plugin-status-inner'><h2>Plugin SDK</h2><div style='font-size:10px; color:#ef4444; padding:8px 0;'>Plugin SDK erreur: {esc_html(e)}</div></div>"
 
-def get_services_html(projects, token_metrics) -> str:
-    # 1. Qdrant
-    qdrant_ok = check_port("qdrant", 6333)
-    qdrant_points = get_qdrant_points_count() if qdrant_ok else 0
-    qdrant_desc = f"Port 6333 | {qdrant_points} vectors" if qdrant_ok else "Port 6333"
-    q_perf = "Rapide (1ms)" if qdrant_ok else "HS"
-    q_solic = f"{qdrant_points:,} vecteurs" if qdrant_ok else "Aucune"
-    q_impact = "Optimise (4 colls)" if qdrant_ok else "Perdu"
-    
-    # 2. Gemini Router
-    gemini_ok = check_port("gemini_router", 20130)
-    cache_hit = 0
-    token_str = "Faible"
-    if gemini_ok and token_metrics:
-        totals = token_metrics.get("totals", {})
-        total_tokens = totals.get("tokens", 0) or (token_metrics.get("total_input_tokens", 0) + token_metrics.get("total_output_tokens", 0))
-        cache_hit = int(round(token_metrics.get("average_cache_hit_ratio", 0) * 100))
-        if total_tokens >= 1000000:
-            token_str = f"{round(total_tokens/1000000, 1)}M"
-        elif total_tokens >= 1000:
-            token_str = f"{round(total_tokens/1000, 1)}k"
-        else:
-            token_str = str(total_tokens)
-    gemini_desc = f"Port 20130 | Cache: {cache_hit}% | {token_str} tok" if gemini_ok else "Port 20130"
-    g_perf = "99.9% dispo" if gemini_ok else "HS"
-    g_solic = f"{token_str} tokens" if gemini_ok else "Faible"
-    g_impact = f"Cache: {cache_hit}%" if gemini_ok else "Null"
-    
-    # 3. Dashboard API Server
-    api_ok = check_port("dashboard_api", 20129)
-    api_desc = f"Port 20129 | {len(projects)} projets" if api_ok else "Port 20129"
-    api_perf = "Rapide (4ms)" if api_ok else "HS"
-    api_solic = f"{len(projects)} projets" if api_ok else "Aucune"
-    api_impact = "Administration"
-    
-    # 4. Headroom Proxy
-    headroom_ok = check_port("headroom", 8787) or check_port("127.0.0.1", 8787)
-    if headroom_ok:
-        headroom_desc = "Port 8787 | ~98% reduction"
-        h_perf = "< 2ms overhead"
-        h_solic = "Moyenne"
-        h_impact = "98% reduction"
-    else:
-        headroom_desc = "Port 8787 | Mode Optionnel / Inactif"
-        h_perf = "Optionnel"
-        h_solic = "Aucune"
-        h_impact = "Off"
-    
-    # 5. DEV_CORE Scheduler (ex-Hermes Cron Daemon)
-    tick_log = DATA_ROOT / "Logs" / "hermes" / "cron_tick.log"
-    hermes_tick_warn_seconds = 600
-    last_tick_sec = 9999
-    is_hermes_alive = is_process_running("hermes_cron_tick.py") or check_port("scheduler", 20131)
-    
-    if tick_log.exists():
-        try:
-            mtime = tick_log.stat().st_mtime
-            last_tick_sec = int(round(time.time() - mtime))
-        except Exception:
-            pass
-            
-    job_count = 0
-    jobs_file = Path(os.path.expanduser("~")) / ".hermes" / "cron" / "jobs.json"
-    if not jobs_file.exists():
-        jobs_file = DATA_ROOT / "Scheduler" / "jobs.json"
-    if jobs_file.exists():
-        try:
-            jobs_data = json.loads(jobs_file.read_text(encoding="utf-8"))
-            if isinstance(jobs_data, list):
-                jobs_list = jobs_data
-            elif isinstance(jobs_data, dict):
-                jobs_list = jobs_data.get("jobs", [])
-            else:
-                jobs_list = []
-            job_count = len(jobs_list)
-        except Exception:
-            pass
-            
-    # En v10, le Scheduler DEV_CORE natif prend le relais (Hermes optionnel)
-    hermes_status = True
-    if is_hermes_alive:
-        hermes_desc = f"Hermes Legacy Daemon ({last_tick_sec}s) | {job_count} jobs"
-    else:
-        hermes_desc = f"DEV_CORE Scheduler Natif v10 | {job_count} jobs (Hermes optionnel)"
-        
-    hermes_perf = "Natif v10 (0s lag)"
-    hermes_solic = f"{job_count} jobs"
-    hermes_impact = "Orchestrateur"
-    
-    # 6. Repowise Engine (MCP Stdio & HTTP Server)
-    repowise_port_ok = check_port("localhost", 7337) or check_port("127.0.0.1", 7337) or check_port("repowise", 7337)
-    repowise_mcp_config = (
-        (DATA_ROOT / ".repowise" / "state.json").exists()
-        or (PLATFORM_ROOT.parent / ".mcp.json").exists()
-        or (PLATFORM_ROOT.parent / ".repowise" / "state.json").exists()
-        or Path("C:/devcore/.mcp.json").exists()
-        or Path("C:/devcore/.repowise/state.json").exists()
-    )
-    repowise_ok = repowise_port_ok or repowise_mcp_config
-    
-    files_count = 0
-    repowise_kg_file = PLATFORM_ROOT.parent / ".repowise" / "knowledge-graph.json"
-    if not repowise_kg_file.exists():
-        repowise_kg_file = Path("C:/devcore/.repowise/knowledge-graph.json")
-    if repowise_kg_file.exists():
-        try:
-            kg_data = json.loads(repowise_kg_file.read_text(encoding="utf-8"))
-            files_count = kg_data.get("project", {}).get("total_files", 0)
-        except Exception:
-            pass
 
 def render_repowise_health_card(project_name, health_data, target_repo, repowise_port_ok, files_count=0) -> str:
     summary = health_data.get("summary", {}) if health_data else {"average_health": 8.0, "maintainability_average": 8.6, "performance_average": 9.7, "file_count": files_count or 290}
@@ -813,21 +713,21 @@ def get_services_html(projects, token_metrics) -> str:
     q_impact = "Recherche"
     
     # 2. Gemini Router
-    gemini_ok = check_port("localhost", 20130) or check_port("gemini-router", 20130)
+    gemini_ok = check_port("127.0.0.1", 20130) or check_port("gemini_router", 20130) or check_port("localhost", 20130)
     gemini_desc = "Port 20130 | Actif" if gemini_ok else "Port 20130"
     g_perf = "Actif (1ms)" if gemini_ok else "HS"
     g_solic = "En attente" if gemini_ok else "Aucune"
     g_impact = "IA Passerelle"
     
     # 3. Dashboard API
-    api_ok = check_port("localhost", 20129) or check_port("dashboard-api", 20129)
+    api_ok = check_port("127.0.0.1", 20129) or check_port("dashboard_api", 20129) or check_port("localhost", 20129)
     api_desc = f"Port 20129 | {len(projects)} projets" if api_ok else "Port 20129"
     api_perf = "Actif (1ms)" if api_ok else "HS"
     api_solic = f"{len(projects)} projets" if api_ok else "Aucune"
     api_impact = "Cockpit API"
     
     # 4. Headroom Proxy
-    headroom_ok = check_port("localhost", 8787)
+    headroom_ok = check_port("127.0.0.1", 8787) or check_port("headroom", 8787) or check_port("localhost", 8787)
     headroom_desc = "Port 8787 | Actif" if headroom_ok else "Port 8787"
     h_perf = "Actif (1ms)" if headroom_ok else "HS"
     h_solic = "En attente" if headroom_ok else "Aucune"
