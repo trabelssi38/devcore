@@ -875,7 +875,9 @@ def get_services_html(projects, token_metrics) -> str:
     hermes_impact = "Orchestrateur"
     
     # 6. Repowise Engine (MCP Stdio & HTTP Server)
-    repowise_port_ok = check_port("localhost", 7337) or check_port("127.0.0.1", 7337) or check_port("repowise", 7337)
+    # Note: check_port("localhost") may fail due to IPv6 resolution (::1) even when 127.0.0.1 is active.
+    # We always try HTTP directly on 127.0.0.1 regardless, and use repowise_api_ok for badge.
+    repowise_port_ok = check_port("127.0.0.1", 7337) or check_port("localhost", 7337) or check_port("repowise", 7337)
     repowise_mcp_config = (
         (DATA_ROOT / ".repowise" / "state.json").exists()
         or (PLATFORM_ROOT.parent / ".mcp.json").exists()
@@ -896,59 +898,81 @@ def get_services_html(projects, token_metrics) -> str:
         except Exception:
             pass
 
-    # Fetch real-time Repowise Health API if active for all projects
+    # Fetch real-time Repowise Health API — always attempt directly on 127.0.0.1
+    # (bypasses IPv6 localhost resolution that causes check_port to return False)
+    import urllib.request as _urllib_req
     repowise_health_html = ""
     repowise_cards = []
+    repowise_api_ok = False  # True only if HTTP call actually succeeds
     
     active_total_files = files_count or 290
     active_health_score = 8.0
     active_alert_files = 1
     
-    if repowise_port_ok:
-        try:
-            import urllib.request
-            req = urllib.request.Request("http://127.0.0.1:7337/api/repos", headers={"User-Agent": "DEV_CORE-Dashboard"})
-            with urllib.request.urlopen(req, timeout=3) as resp:
-                repos_data = json.loads(resp.read().decode("utf-8"))
-                
-                proj_names = [p["name"] for p in projects]
-                act_proj = get_active_project()
-                if act_proj not in proj_names:
-                    proj_names.append(act_proj)
-                if "devcore" not in proj_names:
-                    proj_names.append("devcore")
+    try:
+        _no_proxy_opener = _urllib_req.build_opener(_urllib_req.ProxyHandler({}))
+        _req_repos = _urllib_req.Request("http://127.0.0.1:7337/api/repos", headers={"User-Agent": "DEV_CORE-Dashboard"})
+        with _no_proxy_opener.open(_req_repos, timeout=3) as _resp_repos:
+            repos_data = json.loads(_resp_repos.read().decode("utf-8"))
+        repowise_api_ok = True
+        repowise_port_ok = True  # Confirm port is truly reachable
+
+        # Build project name lookup — only keep repos with a real UUID (not ws: prefix)
+        # ws: prefix repos have no health data and return 404 immediately
+        indexed_repos = {}
+        for r in repos_data:
+            r_id = r.get("id", "")
+            if r_id and not r_id.startswith("ws:"):
+                r_name = r.get("name") or r.get("workspace_alias") or ""
+                if r_name:
+                    indexed_repos[r_name] = r
                     
-                for p_name in proj_names:
-                    target_repo = next((r for r in repos_data if r.get("name") == p_name or r.get("workspace_alias") == p_name), None)
-                    if not target_repo and p_name == "devcore":
-                        target_repo = next((r for r in repos_data if r.get("is_primary")), None)
-                    
-                    if target_repo:
-                        repo_id = target_repo["id"]
-                        try:
-                            req_h = urllib.request.Request(f"http://127.0.0.1:7337/api/repos/{repo_id}/health/overview", headers={"User-Agent": "DEV_CORE-Dashboard"})
-                            with urllib.request.urlopen(req_h, timeout=3) as resp_h:
-                                health_data = json.loads(resp_h.read().decode("utf-8"))
-                                card_html = render_repowise_health_card(p_name, health_data, target_repo, repowise_port_ok)
-                                repowise_cards.append(card_html)
-                                
-                                if p_name == act_proj:
-                                    sum_d = health_data.get("summary", {})
-                                    active_total_files = sum_d.get("file_count") or active_total_files
-                                    active_health_score = round(sum_d.get("average_health", 8.0), 1)
-                                    dist_d = health_data.get("distribution", {}).get("bands", {})
-                                    h_f = dist_d.get("healthy", {}).get("files", int(active_total_files * 0.855))
-                                    w_f = dist_d.get("warning", {}).get("files", int(active_total_files * 0.117))
-                                    active_alert_files = max(1, active_total_files - h_f - w_f)
-                        except Exception as e_h:
-                            print(f"[gen_dashboard.py] Repowise fetch health error for {p_name}: {e_h}")
-        except Exception as e:
-            print(f"[gen_dashboard.py] Repowise fetch repos error: {e}")
+        # Prioritise: active project first, then devcore, then others
+        act_proj = get_active_project()
+        priority_names = [act_proj]
+        if "devcore" != act_proj:
+            priority_names.append("devcore")
+        other_names = [p["name"] for p in projects if p["name"] not in priority_names]
+        ordered_names = priority_names + other_names
+        print(f"[gen_dashboard.py] Repowise: {len(indexed_repos)} indexed repos, act={act_proj}")
+
+        for p_name in ordered_names:
+            target_repo = indexed_repos.get(p_name)
+            # Fallback for devcore: try is_primary flag
+            if not target_repo and p_name == "devcore":
+                target_repo = next((r for r in repos_data if r.get("is_primary") and not r.get("id", "").startswith("ws:")), None)
+                if target_repo:
+                    indexed_repos["devcore"] = target_repo
+
+            if target_repo:
+                repo_id = target_repo["id"]
+                try:
+                    _url_h = f"http://127.0.0.1:7337/api/repos/{repo_id}/health/overview"
+                    _req_h = _urllib_req.Request(_url_h, headers={"User-Agent": "DEV_CORE-Dashboard"})
+                    with _no_proxy_opener.open(_req_h, timeout=2) as _resp_h:
+                        health_data = json.loads(_resp_h.read().decode("utf-8"))
+                    # Badge is green when real data is present
+                    card_html = render_repowise_health_card(p_name, health_data, target_repo, True)
+                    repowise_cards.append(card_html)
+
+                    if p_name == act_proj:
+                        sum_d = health_data.get("summary", {})
+                        active_total_files = sum_d.get("file_count") or active_total_files
+                        active_health_score = round(sum_d.get("average_health", 8.0), 1)
+                        dist_d = health_data.get("distribution", {}).get("bands", {})
+                        h_f = dist_d.get("healthy", {}).get("files", int(active_total_files * 0.855))
+                        w_f = dist_d.get("warning", {}).get("files", int(active_total_files * 0.117))
+                        active_alert_files = max(1, active_total_files - h_f - w_f)
+                except Exception as e_h:
+                    print(f"[gen_dashboard.py] Repowise health error for {p_name} (id={repo_id}): {e_h}")
+        print(f"[gen_dashboard.py] Repowise: {len(repowise_cards)} cards generated ({', '.join(c.split('data-project="')[1].split('"')[0] for c in repowise_cards if 'data-project' in c)})") 
+    except Exception as e_repos:
+        print(f"[gen_dashboard.py] Repowise API unreachable (127.0.0.1:7337): {e_repos}")
 
     if not repowise_cards:
+        act_proj = get_active_project()
         card_html = render_repowise_health_card("devcore", {}, None, False, files_count=files_count)
         repowise_cards.append(card_html)
-        act_proj = get_active_project()
         if act_proj != "devcore":
             card_html = render_repowise_health_card(act_proj, {}, None, False)
             repowise_cards.append(card_html)
@@ -1832,7 +1856,21 @@ def main():
     cache_path = DATA_ROOT / "Dashboard" / "dashboard_payload.json"
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     payload_str = json.dumps(payload, indent=2, ensure_ascii=False)
-    cache_path.write_text(payload_str, encoding="utf-8")
+    try:
+        cache_path.write_text(payload_str, encoding="utf-8")
+    except Exception as e_cache:
+        import time as _time
+        _written = False
+        for _ in range(3):
+            _time.sleep(0.1)
+            try:
+                cache_path.write_text(payload_str, encoding="utf-8")
+                _written = True
+                break
+            except Exception:
+                pass
+        if not _written:
+            print(f"[gen_dashboard.py] Cache payload write warning: {e_cache}")
 
     # Save payload hash
     import hashlib

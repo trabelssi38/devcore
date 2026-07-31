@@ -1079,7 +1079,19 @@ if (Test-Path $TEMPLATE_FILE) {
     }
     $dashboardPayload | ConvertTo-Json -Depth 30 -Compress | Set-Content $payloadCachePath -Encoding UTF8
 
-    $template | Set-Content $OUTPUT_FILE -Encoding UTF8
+    # Déléguer la génération HTML finale à gen_dashboard.py (qui intègre les cartes Repowise Health)
+    $pyScript = Join-Path $PSScriptRoot "gen_dashboard.py"
+    if (Test-Path $pyScript) {
+        $pyExe = if (Test-Path "C:\Program Files\Python313\python.exe") { "C:\Program Files\Python313\python.exe" } else { "python" }
+        $pyResult = & $pyExe $pyScript -SkipTokenRefresh 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "[gen_dashboard.ps1] gen_dashboard.py failed (code $LASTEXITCODE), falling back to PS template" -ForegroundColor Yellow
+            $template | Set-Content $OUTPUT_FILE -Encoding UTF8
+        }
+    } else {
+        # Fallback: écriture directe si gen_dashboard.py absent
+        $template | Set-Content $OUTPUT_FILE -Encoding UTF8
+    }
     $elapsed = ((Get-Date) - $dashboardStarted).TotalSeconds
     Record-DashboardMetric -MetricType "duration" -Value $elapsed -Unit "seconds" -Payload @{ status = "success"; output = $OUTPUT_FILE }
     Record-DashboardMetric -MetricType "dashboard_refresh" -Value 1 -Unit "count" -Payload @{ status = "success"; json = [bool]$Json }
