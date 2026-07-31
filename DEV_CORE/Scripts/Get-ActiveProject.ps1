@@ -15,11 +15,22 @@ try {
     # 1. Vérifier si on est dans un dépôt Git et identifier le projet canonique
     $gitCommonDir = git rev-parse --git-common-dir 2>$null
     if ($LASTEXITCODE -eq 0 -and $gitCommonDir) {
-        $absoluteCommonDir = (Resolve-Path $gitCommonDir -ErrorAction SilentlyContinue).Path
-        if ($absoluteCommonDir -match "\\.git$") {
-            $projectName = (Get-Item -Force $absoluteCommonDir).Parent.Name
+        $resolved = Resolve-Path $gitCommonDir -ErrorAction SilentlyContinue
+        if ($resolved) {
+            $absoluteCommonDir = $resolved.Path -replace '/', '\'
+            if ($absoluteCommonDir -match "\\\.git$") {
+                $projectName = (Get-Item -Force $absoluteCommonDir).Parent.Name
+            } else {
+                $projectName = (Get-Item -Force $absoluteCommonDir).Name
+            }
         } else {
-            $projectName = (Get-Item -Force $absoluteCommonDir).Name
+            $projectName = (Get-Item -Force .).Name
+        }
+        if ($projectName -eq ".git" -or -not $projectName) {
+            $projectName = (Get-Item -Force (git rev-parse --show-toplevel 2>$null)).Name
+        }
+        if ($projectName -eq ".git" -or -not $projectName) {
+            $projectName = (Get-Item -Force $currentPwd).Name
         }
 
         # Détecter si on est dans un worktree
@@ -58,6 +69,36 @@ try {
     if (-not (Test-Path $runtimeDir)) {
         New-Item -ItemType Directory -Path $runtimeDir -Force | Out-Null
     }
+    # Valider le projet par rapport à projects.json
+    $isValid = $false
+    $configPath = if ($env:DEVCORE_CONFIG_ROOT) { Join-Path $env:DEVCORE_CONFIG_ROOT "projects.json" } else { Join-Path (Split-Path -Parent $PSScriptRoot) "Config\projects.json" }
+    if (Test-Path $configPath) {
+        try {
+            $projectsJson = Get-Content -Raw -Path $configPath -ErrorAction SilentlyContinue | ConvertFrom-Json
+            $validNames = $projectsJson.projects.name
+            if ($validNames -contains $projectName) {
+                $isValid = $true
+            }
+        } catch {}
+    }
+    
+    # Si le projet détecté est invalide (comme 'app' dans le sandbox), restaurer la valeur précédente si elle est valide
+    $activeTxtPath = "$runtimeDir\active_project.txt"
+    if (-not $isValid -and (Test-Path $activeTxtPath)) {
+        $prevValue = (Get-Content -Path $activeTxtPath -ErrorAction SilentlyContinue).Trim()
+        # strip BOM if any
+        $prevValue = $prevValue -replace '^\xEF\xBB\xBF'
+        if ($validNames -contains $prevValue) {
+            $projectName = $prevValue
+            $isValid = $true
+        }
+    }
+    
+    # Fallback ultime si toujours invalide
+    if (-not $isValid) {
+        $projectName = "devcore"
+    }
+
     Set-Content -Path "$runtimeDir\active_project.txt" -Value $projectName -Encoding UTF8 -ErrorAction SilentlyContinue
 
     # Retourner uniquement le nom canonique

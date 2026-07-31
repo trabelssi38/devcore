@@ -105,7 +105,7 @@ def get_active_task_and_mode() -> tuple:
     project_name = "devcore"
     if os.path.exists(active_project_path):
         try:
-            with open(active_project_path, "r", encoding="utf-8") as f:
+            with open(active_project_path, "r", encoding="utf-8-sig") as f:
                 project_name = f.read().strip() or "devcore"
         except Exception:
             pass

@@ -212,6 +212,13 @@ def get_active_project() -> str:
     cached = os.environ.get("DEVCORE_ACTIVE_PROJECT_NAME")
     if cached:
         return cached
+    # Read active_project.txt if present
+    try:
+        txt_file = DATA_ROOT / "Runtime" / "active_project.txt"
+        if txt_file.exists():
+            return txt_file.read_text(encoding="utf-8-sig").strip()
+    except Exception:
+        pass
     # Fallback to directory name
     return Path(os.getcwd()).name
 
@@ -683,24 +690,7 @@ def get_services_html(projects, token_metrics) -> str:
         except Exception:
             pass
 
-    # Fetch real-time Repowise Health API if active or fallback to indexed state
-    repowise_health_html = ""
-    health_data = {}
-    if repowise_port_ok:
-        try:
-            import urllib.request
-            req = urllib.request.Request("http://127.0.0.1:7337/api/repos", headers={"User-Agent": "DEV_CORE-Dashboard"})
-            with urllib.request.urlopen(req, timeout=3) as resp:
-                repos_data = json.loads(resp.read().decode("utf-8"))
-                devcore_repo = next((r for r in repos_data if r.get("is_primary") or r.get("name") == "devcore"), None)
-                if devcore_repo:
-                    repo_id = devcore_repo["id"]
-                    req_h = urllib.request.Request(f"http://127.0.0.1:7337/api/repos/{repo_id}/health/overview", headers={"User-Agent": "DEV_CORE-Dashboard"})
-                    with urllib.request.urlopen(req_h, timeout=3) as resp_h:
-                        health_data = json.loads(resp_h.read().decode("utf-8"))
-        except Exception as e:
-            print(f"[gen_dashboard.py] Repowise fetch error: {e}")
-
+def render_repowise_health_card(project_name, health_data, target_repo, repowise_port_ok, files_count=0) -> str:
     summary = health_data.get("summary", {}) if health_data else {"average_health": 8.0, "maintainability_average": 8.6, "performance_average": 9.7, "file_count": files_count or 290}
     dist = health_data.get("distribution", {}).get("bands", {}) if health_data else {}
     
@@ -713,10 +703,15 @@ def get_services_html(projects, token_metrics) -> str:
     w_files = dist.get("warning", {}).get("files", int(total_f * 0.117))
     a_files = dist.get("alert", {}).get("files", max(1, total_f - h_files - w_files))
     
-    repowise_desc = f"API 7337 Active | {total_f} files | Health {score_avg}/10" if repowise_port_ok else f"Mode MCP Stdio | {total_f} files | Health {score_avg}/10"
-    rep_perf = f"Health: {score_avg}/10 ({a_files} alert)"
+    h_pct = round((h_files / (total_f or 1)) * 100, 1)
+    w_pct = round((w_files / (total_f or 1)) * 100, 1)
+    a_pct = round((a_files / (total_f or 1)) * 100, 1)
     
-    # Build top risk files list HTML
+    status_badge = "🟢 EN DIRECT (Port 7337)" if repowise_port_ok else "⚡ MCP INDEXED"
+    badge_bg = "rgba(34,197,94,0.15)" if repowise_port_ok else "rgba(99,102,241,0.15)"
+    badge_color = "#4ade80" if repowise_port_ok else "#818cf8"
+    badge_border = "rgba(34,197,94,0.3)" if repowise_port_ok else "rgba(99,102,241,0.3)"
+    
     flagged_list = health_data.get("defect_accuracy", {}).get("flagged_files", []) if health_data else []
     top_targets_html = ""
     for f_item in flagged_list[:3]:
@@ -724,14 +719,14 @@ def get_services_html(projects, token_metrics) -> str:
         f_score = round(f_item.get("score", 0.0), 1)
         f_bugs = f_item.get("recent_defects", 0)
         
-        badge_color = "#ef4444" if f_score < 3.0 else "#f59e0b"
+        badge_col = "#ef4444" if f_score < 3.0 else "#f59e0b"
         advice = "Extraire fonctions (CCN)" if "router" in f_path else ("Découper en sub-modules" if "api" in f_path else "Ajouter tests unitaires")
         
         top_targets_html += f"""
 <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(15,23,42,0.7); border:1px solid #1e293b; border-radius:6px; padding:6px 10px; margin-bottom:6px; width:100%; box-sizing:border-box;">
   <div style="min-width:0; flex:1; overflow:hidden;">
     <div style="font-size:10px; font-weight:600; color:#f8fafc; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-      <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:{badge_color}; margin-right:5px; flex-shrink:0;"></span>
+      <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:{badge_col}; margin-right:5px; flex-shrink:0;"></span>
       <code>{f_path}</code>
     </div>
     <div style="font-size:9px; color:#94a3b8; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
@@ -739,7 +734,7 @@ def get_services_html(projects, token_metrics) -> str:
     </div>
   </div>
   <div style="text-align:right; margin-left:8px; flex-shrink:0;">
-    <span style="background:rgba(239,68,68,0.15); color:{badge_color}; border:1px solid {badge_color}; border-radius:4px; padding:1px 6px; font-size:10px; font-weight:bold; font-family:'JetBrains Mono',monospace;">{f_score}/10</span>
+    <span style="background:rgba(239,68,68,0.15); color:{badge_col}; border:1px solid {badge_col}; border-radius:4px; padding:1px 6px; font-size:10px; font-weight:bold; font-family:'JetBrains Mono',monospace;">{f_score}/10</span>
   </div>
 </div>
 """
@@ -756,21 +751,12 @@ def get_services_html(projects, token_metrics) -> str:
 </div>
 """
 
-    h_pct = round((h_files / (total_f or 1)) * 100, 1)
-    w_pct = round((w_files / (total_f or 1)) * 100, 1)
-    a_pct = round((a_files / (total_f or 1)) * 100, 1)
-
-    status_badge = "🟢 EN DIRECT (Port 7337)" if repowise_port_ok else "⚡ MCP INDEXED"
-    badge_bg = "rgba(34,197,94,0.15)" if repowise_port_ok else "rgba(99,102,241,0.15)"
-    badge_color = "#4ade80" if repowise_port_ok else "#818cf8"
-    badge_border = "rgba(34,197,94,0.3)" if repowise_port_ok else "rgba(99,102,241,0.3)"
-
-    repowise_health_html = f"""
-<div style="background:linear-gradient(135deg, #0b0f19 0%, #0f172a 100%); border:1px solid #1e293b; border-radius:10px; padding:16px; margin-top:16px; width:100%; box-sizing:border-box; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);">
+    return f"""
+<div class="repowise-health-card" data-project="{esc_attr(project_name)}" style="background:linear-gradient(135deg, #0b0f19 0%, #0f172a 100%); border:1px solid #1e293b; border-radius:10px; padding:16px; margin-top:16px; width:100%; box-sizing:border-box; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);">
   <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; border-bottom:1px solid #1e293b; padding-bottom:10px;">
     <div style="display:flex; align-items:center; gap:8px; min-width:0; flex:1;">
       <span style="font-size:16px;">🎯</span>
-      <h3 style="color:#38bdf8; margin:0; font-size:13px; font-weight:700; letter-spacing:0.3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Repowise Code Health & Refactoring Radar</h3>
+      <h3 style="color:#38bdf8; margin:0; font-size:13px; font-weight:700; letter-spacing:0.3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Repowise Health : {esc_html(project_name)}</h3>
     </div>
     <span style="background:{badge_bg}; color:{badge_color}; border:1px solid {badge_border}; border-radius:12px; padding:3px 10px; font-size:10px; font-weight:600; white-space:nowrap; flex-shrink:0;">{status_badge}</span>
   </div>
@@ -798,7 +784,7 @@ def get_services_html(projects, token_metrics) -> str:
   <div style="margin-bottom:14px;">
     <div style="display:flex; justify-content:space-between; font-size:10.5px; color:#94a3b8; margin-bottom:5px;">
       <span><strong>Répartition du Code:</strong></span>
-      <span>🟢 {h_files} sains ({h_pct}%) | 🟡 {w_files} warning ({w_pct}%) | 🔴 {a_files} alerte ({a_pct}%)</span>
+      <span>🟢 {h_files} sains ({h_pct}%) | 🟡 {w_files} ({w_pct}%) | 🔴 {a_files} ({a_pct}%)</span>
     </div>
     <div style="display:flex; height:8px; border-radius:4px; overflow:hidden; background:#1e293b;">
       <div style="width:{h_pct}%; background:#22c55e;" title="Sains: {h_files}"></div>
@@ -816,9 +802,162 @@ def get_services_html(projects, token_metrics) -> str:
   </div>
 </div>
 """
+
+def get_services_html(projects, token_metrics) -> str:
+    # 1. Qdrant
+    qdrant_ok = check_port("qdrant", 6333)
+    qdrant_points = get_qdrant_points_count() if qdrant_ok else 0
+    qdrant_desc = f"Port 6333 | {qdrant_points} vectors" if qdrant_ok else "Port 6333"
+    q_perf = "Rapide (1ms)" if qdrant_ok else "HS"
+    q_solic = f"{qdrant_points} vecteurs" if qdrant_ok else "Aucune"
+    q_impact = "Recherche"
+    
+    # 2. Gemini Router
+    gemini_ok = check_port("localhost", 20130) or check_port("gemini-router", 20130)
+    gemini_desc = "Port 20130 | Actif" if gemini_ok else "Port 20130"
+    g_perf = "Actif (1ms)" if gemini_ok else "HS"
+    g_solic = "En attente" if gemini_ok else "Aucune"
+    g_impact = "IA Passerelle"
+    
+    # 3. Dashboard API
+    api_ok = check_port("localhost", 20129) or check_port("dashboard-api", 20129)
+    api_desc = f"Port 20129 | {len(projects)} projets" if api_ok else "Port 20129"
+    api_perf = "Actif (1ms)" if api_ok else "HS"
+    api_solic = f"{len(projects)} projets" if api_ok else "Aucune"
+    api_impact = "Cockpit API"
+    
+    # 4. Headroom Proxy
+    headroom_ok = check_port("localhost", 8787)
+    headroom_desc = "Port 8787 | Actif" if headroom_ok else "Port 8787"
+    h_perf = "Actif (1ms)" if headroom_ok else "HS"
+    h_solic = "En attente" if headroom_ok else "Aucune"
+    h_impact = "Portail Web"
+    
+    # 5. Scheduler (Hermes)
+    is_hermes_alive = False
+    jobs_file = DATA_ROOT / "Scheduler" / "jobs.json"
+    last_tick_file = DATA_ROOT / "Scheduler" / "last_tick.txt"
+    last_tick_sec = 9999
+    if last_tick_file.exists():
+        try:
+            t_str = last_tick_file.read_text(encoding="utf-8").strip()
+            if t_str:
+                diff = time.time() - float(t_str)
+                last_tick_sec = int(diff)
+                if diff < 120:
+                    is_hermes_alive = True
+        except Exception:
+            pass
+            
+    job_count = 0
+    if jobs_file.exists():
+        try:
+            jobs_data = json.loads(jobs_file.read_text(encoding="utf-8"))
+            if isinstance(jobs_data, list):
+                jobs_list = jobs_data
+            elif isinstance(jobs_data, dict):
+                jobs_list = jobs_data.get("jobs", [])
+            else:
+                jobs_list = []
+            job_count = len(jobs_list)
+        except Exception:
+            pass
+            
+    # En v10, le Scheduler DEV_CORE natif prend le relais (Hermes optionnel)
+    hermes_status = True
+    if is_hermes_alive:
+        hermes_desc = f"Hermes Legacy Daemon ({last_tick_sec}s) | {job_count} jobs"
+    else:
+        hermes_desc = f"DEV_CORE Scheduler Natif v10 | {job_count} jobs (Hermes optionnel)"
+        
+    hermes_perf = "Natif v10 (0s lag)"
+    hermes_solic = f"{job_count} jobs"
+    hermes_impact = "Orchestrateur"
+    
+    # 6. Repowise Engine (MCP Stdio & HTTP Server)
+    repowise_port_ok = check_port("localhost", 7337) or check_port("127.0.0.1", 7337) or check_port("repowise", 7337)
+    repowise_mcp_config = (
+        (DATA_ROOT / ".repowise" / "state.json").exists()
+        or (PLATFORM_ROOT.parent / ".mcp.json").exists()
+        or (PLATFORM_ROOT.parent / ".repowise" / "state.json").exists()
+        or Path("C:/devcore/.mcp.json").exists()
+        or Path("C:/devcore/.repowise/state.json").exists()
+    )
+    repowise_ok = repowise_port_ok or repowise_mcp_config
+    
+    files_count = 0
+    repowise_kg_file = PLATFORM_ROOT.parent / ".repowise" / "knowledge-graph.json"
+    if not repowise_kg_file.exists():
+        repowise_kg_file = Path("C:/devcore/.repowise/knowledge-graph.json")
+    if repowise_kg_file.exists():
+        try:
+            kg_data = json.loads(repowise_kg_file.read_text(encoding="utf-8"))
+            files_count = kg_data.get("project", {}).get("total_files", 0)
+        except Exception:
+            pass
+
+    # Fetch real-time Repowise Health API if active for all projects
+    repowise_health_html = ""
+    repowise_cards = []
+    
+    active_total_files = files_count or 290
+    active_health_score = 8.0
+    active_alert_files = 1
+    
+    if repowise_port_ok:
+        try:
+            import urllib.request
+            req = urllib.request.Request("http://127.0.0.1:7337/api/repos", headers={"User-Agent": "DEV_CORE-Dashboard"})
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                repos_data = json.loads(resp.read().decode("utf-8"))
                 
-    rep_perf = rep_perf if repowise_health_html else ("Health: 8.9/10" if repowise_ok else "HS")
-    rep_solic = f"{files_count} fichiers" if repowise_ok and files_count else "MCP Stdio"
+                proj_names = [p["name"] for p in projects]
+                act_proj = get_active_project()
+                if act_proj not in proj_names:
+                    proj_names.append(act_proj)
+                if "devcore" not in proj_names:
+                    proj_names.append("devcore")
+                    
+                for p_name in proj_names:
+                    target_repo = next((r for r in repos_data if r.get("name") == p_name or r.get("workspace_alias") == p_name), None)
+                    if not target_repo and p_name == "devcore":
+                        target_repo = next((r for r in repos_data if r.get("is_primary")), None)
+                    
+                    if target_repo:
+                        repo_id = target_repo["id"]
+                        try:
+                            req_h = urllib.request.Request(f"http://127.0.0.1:7337/api/repos/{repo_id}/health/overview", headers={"User-Agent": "DEV_CORE-Dashboard"})
+                            with urllib.request.urlopen(req_h, timeout=3) as resp_h:
+                                health_data = json.loads(resp_h.read().decode("utf-8"))
+                                card_html = render_repowise_health_card(p_name, health_data, target_repo, repowise_port_ok)
+                                repowise_cards.append(card_html)
+                                
+                                if p_name == act_proj:
+                                    sum_d = health_data.get("summary", {})
+                                    active_total_files = sum_d.get("file_count") or active_total_files
+                                    active_health_score = round(sum_d.get("average_health", 8.0), 1)
+                                    dist_d = health_data.get("distribution", {}).get("bands", {})
+                                    h_f = dist_d.get("healthy", {}).get("files", int(active_total_files * 0.855))
+                                    w_f = dist_d.get("warning", {}).get("files", int(active_total_files * 0.117))
+                                    active_alert_files = max(1, active_total_files - h_f - w_f)
+                        except Exception as e_h:
+                            print(f"[gen_dashboard.py] Repowise fetch health error for {p_name}: {e_h}")
+        except Exception as e:
+            print(f"[gen_dashboard.py] Repowise fetch repos error: {e}")
+
+    if not repowise_cards:
+        card_html = render_repowise_health_card("devcore", {}, None, False, files_count=files_count)
+        repowise_cards.append(card_html)
+        act_proj = get_active_project()
+        if act_proj != "devcore":
+            card_html = render_repowise_health_card(act_proj, {}, None, False)
+            repowise_cards.append(card_html)
+
+    repowise_health_html = "\n".join(repowise_cards)
+    
+    repowise_desc = f"API 7337 Active | {active_total_files} files | Health {active_health_score}/10" if repowise_port_ok else f"Mode MCP Stdio | {active_total_files} files | Health {active_health_score}/10"
+    rep_perf = f"Health: {active_health_score}/10 ({active_alert_files} alert)"
+    rep_solic = f"{active_total_files} fichiers" if repowise_ok and active_total_files else "MCP Stdio"
     rep_impact = "Analytics & MCP"
     
     infra_html = ""
@@ -1713,6 +1852,7 @@ def main():
             template = template.replace('{{PROJECT_CARDS}}', cards_html)
             template = template.replace('{{TASKS_PIPELINE}}', tasks_html)
             template = template.replace('{{SERVICES_MONITORING}}', services_html)
+            template = template.replace('{{ACTIVE_PROJECT_NAME}}', get_active_project())
             template = template.replace('{{AUTOMATION_HOOKS}}', hooks_html)
             template = template.replace('{{TOKEN_ACTIVITY_REPORT}}', token_activity_html)
             template = template.replace('{{CONTEXT_COMPOSITION}}', context_composition_html)
@@ -1740,6 +1880,7 @@ def main():
             tterm = tterm.replace('{{PROJECT_CARDS}}', cards_html)
             tterm = tterm.replace('{{TASKS_PIPELINE}}', tasks_html)
             tterm = tterm.replace('{{SERVICES_MONITORING}}', services_html)
+            tterm = tterm.replace('{{ACTIVE_PROJECT_NAME}}', get_active_project())
             tterm = tterm.replace('{{AUTOMATION_HOOKS}}', hooks_html)
             tterm = tterm.replace('{{TOKEN_ACTIVITY_REPORT}}', token_activity_html)
             tterm = tterm.replace('{{CONTEXT_COMPOSITION}}', context_composition_html)

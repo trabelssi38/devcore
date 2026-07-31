@@ -560,6 +560,8 @@ details{margin-bottom: 8px}
 </div>
 
 <script>
+window.devcoreActiveProject = "{{ACTIVE_PROJECT_NAME}}";
+
 function morphDOM(oldNode, newNode) {
   if (oldNode.nodeType !== newNode.nodeType || oldNode.nodeName !== newNode.nodeName) {
     oldNode.parentNode.replaceChild(newNode.cloneNode(true), oldNode);
@@ -1001,6 +1003,7 @@ function refreshDashboard() {
         });
       }
       updateTokenReport(window.activeFilteredProject);
+      updateRepowiseHealth(window.activeFilteredProject);
 
       if (indicator) {
         indicator.style.background = '#22c55e';
@@ -1178,6 +1181,18 @@ function updateTokenReport(projectName) {
   });
 }
 
+function updateRepowiseHealth(projectName) {
+  const activeProj = projectName || window.devcoreActiveProject || 'devcore';
+  document.querySelectorAll('.repowise-health-card').forEach(card => {
+    const cardProj = card.getAttribute('data-project');
+    if (cardProj && cardProj.toLowerCase() === activeProj.toLowerCase()) {
+      card.style.display = 'block';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+}
+
 function toggleProjectFilter(rowEl, projectName) {
   const isSelected = rowEl.classList.contains('selected');
   
@@ -1207,6 +1222,7 @@ function toggleProjectFilter(rowEl, projectName) {
   }
   
   updateTokenReport(window.activeFilteredProject);
+  updateRepowiseHealth(window.activeFilteredProject);
 }
 
 const taskDetailsMap = JSON.parse(document.getElementById('task-details-data').textContent);

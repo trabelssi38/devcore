@@ -26,12 +26,16 @@ if (-not (Test-Path $projectFile)) {
     # Creer .devcore/project.json
     New-Item -ItemType Directory -Path "$(Get-Location)\.devcore" -Force | Out-Null
     @{ name = $projName; stack = $stack; initialized_at = (Get-Date -f "o") } | ConvertTo-Json | Set-Content $projectFile -Encoding UTF8
-    
-    # Auto-installer le hook post-commit si .git existe
-    $gitHooksDir = "$(Get-Location)\.git\hooks"
-    if (Test-Path $gitHooksDir) {
-        Copy-Item -Path "$DEV_CORE\Scripts\post-commit.hook" -Destination "$gitHooksDir\post-commit" -Force
-        Log "Hook post-commit installe automatiquement"
+}
+
+# Auto-installer ou mettre a jour le hook post-commit si .git existe
+$gitHooksDir = "$(Get-Location)\.git\hooks"
+if (Test-Path $gitHooksDir) {
+    $targetHook = "$gitHooksDir\post-commit"
+    $sourceHook = "$DEV_CORE\Scripts\post-commit.hook"
+    if (-not (Test-Path $targetHook) -or (Get-Item $sourceHook).LastWriteTime -gt (Get-Item $targetHook).LastWriteTime) {
+        Copy-Item -Path $sourceHook -Destination $targetHook -Force
+        Log "Hook post-commit installe ou mis a jour"
     }
 }
 
