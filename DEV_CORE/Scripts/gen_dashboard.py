@@ -166,7 +166,9 @@ def check_port(service_name_or_port, port: int = None) -> bool:
 
     clean_name = service_name.replace("-", "_") if isinstance(service_name, str) else service_name
     host = SERVICE_HOSTS.get(clean_name, service_name if isinstance(service_name, str) else "127.0.0.1")
-    if host in ["localhost", "gemini-router", "dashboard-api", "headroom"]:
+    if host == "localhost":
+        host = "127.0.0.1"
+    elif not IS_IN_DOCKER and host in ["gemini-router", "dashboard-api", "headroom"]:
         host = "127.0.0.1"
 
     try:

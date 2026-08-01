@@ -119,6 +119,7 @@ services:
       - QDRANT_HOST=qdrant
       - GEMINI_ROUTER_HOST=gemini-router
       - DASHBOARD_API_HOST=dashboard-api
+      - API_HOST=api
       - HEADROOM_HOST=host.docker.internal
       - REPOWISE_HOST=host.docker.internal
     extra_hosts:

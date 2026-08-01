@@ -159,3 +159,11 @@ Chronologie consolidee des implementations et plans. Source principale : histori
 | Catégorisation Event Bus | Badges de périmètre : `task_id` (cyan), `project` (violet) et `system` (gris neutre) | Suppression des étiquettes `devcore` trompeuses sur les métriques d'infrastructure |
 | Daemon Hermes & Cron | Verrouillage `fcntl` (Linux) / `msvcrt` (Windows) & résolution dynamique `DEVCORE_PLATFORM_ROOT` | Compatibilité conteneur-first et environnement Linux / Windows native |
 
+## Maintenance & Correctifs Cockpit & Clients IA (Août 2026)
+
+| Domaine | Correctif | Impact |
+|---|---|---|
+| Détection des services en conteneur | Bypass du mapping `127.0.0.1` pour les hôtes de conteneurs dans `gen_dashboard.py` (comme `gemini-router`) | Le statut de Gemini Router dans le Cockpit s'affiche désormais correctement au vert (`True`) au lieu de rester au rouge (HS). |
+| Enregistrement des compétences Antigravity | Ajout de la mise à jour automatique de `.antigravity-install-manifest.json` dans `adapt_client.ps1` | Les compétences liées au projet (notamment `devcore-automation`) sont automatiquement activées sous Antigravity, permettant le suivi automatique du protocole DevCore. |
+| Statut Core API | Configuration de la variable `API_HOST=api` pour le service `dashboard-api` dans `docker-compose.yml` | La vérification de port pour le service Core API réussit désormais, affichant le service en ligne dans le Cockpit. |
+

@@ -92,6 +92,28 @@ if ($skillsTarget) {
         }
     }
     Write-Host "  [adapt_client] Skills lies dans $skillsTarget" -ForegroundColor Green
+
+    if ($resolved -eq "antigravity" -and -not $DryRun) {
+        $manifestPath = "$env:USERPROFILE\.gemini\config\skills\.antigravity-install-manifest.json"
+        if (Test-Path $manifestPath) {
+            try {
+                $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
+                $modified = $false
+                foreach ($skill in $skills) {
+                    if ($manifest.entries -notcontains $skill) {
+                        $manifest.entries += $skill
+                        $modified = $true
+                    }
+                }
+                if ($modified) {
+                    $manifest | ConvertTo-Json -Depth 100 | Set-Content $manifestPath -Encoding UTF8
+                    Write-Host "  [adapt_client] Skills enregistres dans le manifeste Antigravity" -ForegroundColor Green
+                }
+            } catch {
+                Write-Host "  [adapt_client] WARN : Impossible de mettre a jour le manifeste Antigravity : $_" -ForegroundColor Yellow
+            }
+        }
+    }
 }
 
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
