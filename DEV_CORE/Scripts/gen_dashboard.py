@@ -1012,6 +1012,14 @@ def get_services_html(projects, token_metrics) -> str:
     active_total_files = files_count or 290
     active_health_score = 8.0
     active_alert_files = 1
+
+    # Prioritise: active project first, then devcore, then others
+    act_proj = get_active_project()
+    priority_names = [act_proj]
+    if "devcore" != act_proj:
+        priority_names.append("devcore")
+    other_names = [p["name"] for p in projects if p["name"] not in priority_names]
+    ordered_names = priority_names + other_names
     
     try:
         _no_proxy_opener = _urllib_req.build_opener(_urllib_req.ProxyHandler({}))
@@ -1031,13 +1039,6 @@ def get_services_html(projects, token_metrics) -> str:
                 if r_name:
                     indexed_repos[r_name] = r
                     
-        # Prioritise: active project first, then devcore, then others
-        act_proj = get_active_project()
-        priority_names = [act_proj]
-        if "devcore" != act_proj:
-            priority_names.append("devcore")
-        other_names = [p["name"] for p in projects if p["name"] not in priority_names]
-        ordered_names = priority_names + other_names
         print(f"[gen_dashboard.py] Repowise: {len(indexed_repos)} indexed repos, act={act_proj}")
 
         for p_name in ordered_names:
@@ -1069,16 +1070,24 @@ def get_services_html(projects, token_metrics) -> str:
                         active_alert_files = max(1, active_total_files - h_f - w_f)
                 except Exception as e_h:
                     print(f"[gen_dashboard.py] Repowise health error for {p_name} (id={repo_id}): {e_h}")
-        print(f"[gen_dashboard.py] Repowise: {len(repowise_cards)} cards generated ({', '.join(c.split('data-project="')[1].split('"')[0] for c in repowise_cards if 'data-project' in c)})") 
+        print(f"[gen_dashboard.py] Repowise: {len(repowise_cards)} cards generated ({', '.join(c.split('data-project=\"')[1].split('\"')[0] for c in repowise_cards if 'data-project' in c)})") 
     except Exception as e_repos:
         print(f"[gen_dashboard.py] Repowise API unreachable (127.0.0.1:7337): {e_repos}")
 
-    if not repowise_cards:
-        act_proj = get_active_project()
-        card_html = render_repowise_health_card("devcore", {}, None, False, files_count=files_count)
-        repowise_cards.append(card_html)
-        if act_proj != "devcore":
-            card_html = render_repowise_health_card(act_proj, {}, None, False)
+    # Ensure fallback cards are generated for any projects that didn't get one
+    generated_projects = set()
+    for card in repowise_cards:
+        if 'data-project="' in card:
+            try:
+                p_name = card.split('data-project="')[1].split('"')[0]
+                generated_projects.add(p_name)
+            except Exception:
+                pass
+
+    for p_name in ordered_names:
+        if p_name not in generated_projects:
+            f_count = files_count if p_name == "devcore" else 0
+            card_html = render_repowise_health_card(p_name, {}, None, False, files_count=f_count)
             repowise_cards.append(card_html)
 
     repowise_health_html = "\n".join(repowise_cards)
