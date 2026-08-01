@@ -452,7 +452,7 @@ def discover_projects(memory_path):
         if not project_dir.is_dir():
             continue
         name = project_dir.name.lower()
-        if name not in ["archive", "patterns", "scores", "default"] and name not in valid_projects:
+        if name not in ["archive", "patterns", "scores", "default", "scripts"] and name not in valid_projects:
             valid_projects.append(name)
 
         tasks_file = project_dir / "tasks.json"
@@ -463,7 +463,11 @@ def discover_projects(memory_path):
             for task in board.get("tasks", []):
                 tid = task.get("id")
                 if tid:
-                    task_to_project[tid.upper()] = name
+                    tid_upper = tid.upper()
+                    if tid_upper not in task_to_project:
+                        task_to_project[tid_upper] = []
+                    if name not in task_to_project[tid_upper]:
+                        task_to_project[tid_upper].append(name)
         except Exception:
             continue
 
@@ -485,6 +489,8 @@ def detect_project(text, valid_projects, fallback="devcore"):
 
 
 def discover_sources(userprofile):
+    import time
+    cutoff = time.time() - 10 * 86400
     home = Path(userprofile)
     sources = []
 
@@ -495,29 +501,49 @@ def discover_sources(userprofile):
                 continue
             overview = folder / ".system_generated" / "logs" / "overview.txt"
             transcript = folder / ".system_generated" / "logs" / "transcript.jsonl"
+            target_path = None
             if overview.exists():
-                sources.append({"client": "antigravity", "app": "antigravity", "session_id": folder.name, "path": overview})
+                target_path = overview
             elif transcript.exists():
-                sources.append({"client": "antigravity", "app": "antigravity", "session_id": folder.name, "path": transcript})
+                target_path = transcript
+            
+            if target_path:
+                try:
+                    if target_path.stat().st_mtime >= cutoff:
+                        sources.append({"client": "antigravity", "app": "antigravity", "session_id": folder.name, "path": target_path})
+                except Exception:
+                    pass
 
     codex_sessions = home / ".codex" / "sessions"
     if codex_sessions.exists():
         for path in codex_sessions.rglob("*.jsonl"):
-            sources.append({"client": "codex", "app": "codex", "session_id": path.stem, "path": path})
+            try:
+                if path.stat().st_mtime >= cutoff:
+                    sources.append({"client": "codex", "app": "codex", "session_id": path.stem, "path": path})
+            except Exception:
+                pass
 
     claude_projects = home / ".claude" / "projects"
     if claude_projects.exists():
         for path in claude_projects.rglob("*.jsonl"):
             if "\\subagents\\" in str(path).lower() or "/subagents/" in str(path).lower():
                 continue
-            sources.append({"client": "claude", "app": "claude-code", "session_id": path.stem, "path": path})
+            try:
+                if path.stat().st_mtime >= cutoff:
+                    sources.append({"client": "claude", "app": "claude-code", "session_id": path.stem, "path": path})
+            except Exception:
+                pass
 
     opencode_home = Path(os.environ.get("OPENCODE_HOME", home / ".config" / "opencode"))
     if opencode_home.exists():
         for path in opencode_home.rglob("*.jsonl"):
             if "node_modules" in [part.lower() for part in path.parts]:
                 continue
-            sources.append({"client": "opencode", "app": "opencode", "session_id": path.stem, "path": path})
+            try:
+                if path.stat().st_mtime >= cutoff:
+                    sources.append({"client": "opencode", "app": "opencode", "session_id": path.stem, "path": path})
+            except Exception:
+                pass
 
     return sources
 
@@ -581,9 +607,12 @@ def parse_source(source, valid_projects, task_to_project, pricing_registry=None)
             for task_id in task_ids:
                 current_task = task_id
                 session_tasks.add(task_id)
-                mapped_project = task_to_project.get(task_id.upper())
-                if mapped_project:
-                    detected_project = mapped_project
+                proj_list = task_to_project.get(task_id.upper())
+                if proj_list:
+                    if detected_project in proj_list:
+                        pass
+                    else:
+                        detected_project = proj_list[0]
 
         role = payload.get("role") or payload.get("source") or payload.get("type") or row.get("type")
         role_text = str(role).lower()
@@ -636,8 +665,17 @@ def parse_source(source, valid_projects, task_to_project, pricing_registry=None)
             )
             share = max(len(targets), 1)
             for task_id in targets:
+                task_proj = detected_project
+                proj_list = task_to_project.get(task_id.upper())
+                if proj_list:
+                    if detected_project in proj_list:
+                        task_proj = detected_project
+                    else:
+                        task_proj = proj_list[0]
+
                 if task_id not in task_tokens:
                     task_tokens[task_id] = {
+                        "project": task_proj,
                         "tokens": 0,
                         "cache_hits": 0,
                         "output_tokens": 0,
@@ -737,10 +775,11 @@ def aggregate_sessions(sessions):
         merge_model_usage(clients_data[client]["model_usage"], session.get("model_usage", {}))
 
         for tid, usage in session["_task_tokens"].items():
-            task_key = f"{project}_{tid}"
+            proj = usage.get("project", project)
+            task_key = f"{proj}_{tid}"
             if task_key not in tasks_data:
                 tasks_data[task_key] = {
-                    "project": project,
+                    "project": proj,
                     "tokens": 0,
                     "cache_hits": 0,
                     "output_tokens": 0,
