@@ -1379,6 +1379,17 @@ def main():
     generated_at = datetime.now().isoformat()
     memory_dir = DATA_ROOT / "Memory"
     
+    # Refresh token metrics unless explicitly skipped
+    if not getattr(args, "skip_token_refresh", False):
+        try:
+            script_dir = Path(__file__).resolve().parent
+            token_script = script_dir / "Auto" / "token_report.py"
+            if token_script.exists():
+                import subprocess
+                subprocess.run([sys.executable, str(token_script)], capture_output=True, text=True, timeout=15)
+        except Exception as err:
+            pass
+
     # Load token metrics at the start
     token_metrics = {}
     token_json = DATA_ROOT / "Logs" / "token_reports" / "token_metrics_summary.json"
@@ -1688,10 +1699,33 @@ def main():
                 task_stats = None
                 if token_metrics and "tasks" in token_metrics:
                     tasks_stats_dict = token_metrics["tasks"]
+                    # Case-insensitive dict lookup helper
+                    lower_dict = {k.lower(): v for k, v in tasks_stats_dict.items()}
+                    
                     if task_key in tasks_stats_dict:
                         task_stats = tasks_stats_dict[task_key]
+                    elif task_key.lower() in lower_dict:
+                        task_stats = lower_dict[task_key.lower()]
                     elif t_id in tasks_stats_dict:
                         task_stats = tasks_stats_dict[t_id]
+                    elif t_id.lower() in lower_dict:
+                        task_stats = lower_dict[t_id.lower()]
+                    else:
+                        # Try padded/unpadded variations (e.g. T-2 vs T-02)
+                        if t_id.upper().startswith("T-"):
+                            try:
+                                num = int(t_id[2:])
+                                alt_ids = [f"T-{num}", f"T-{num:02d}"]
+                                for alt_id in alt_ids:
+                                    alt_key = f"{p_name}_{alt_id}".lower()
+                                    if alt_key in lower_dict:
+                                        task_stats = lower_dict[alt_key]
+                                        break
+                                    elif alt_id.lower() in lower_dict:
+                                        task_stats = lower_dict[alt_id.lower()]
+                                        break
+                            except ValueError:
+                                pass
                 
                 if task_stats:
                     try:

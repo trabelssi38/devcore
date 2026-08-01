@@ -920,8 +920,12 @@ def main():
             for t in session.get("tasks", []):
                 # Structure of task keys in result_summary['tasks']: f"{session.get('project')}_{t}"
                 recent_task_keys.add(f"{session.get('project')}_{t}".lower())
-        for tid, proj in task_to_project.items():
-            recent_task_keys.add(f"{proj}_{tid}".lower())
+        for tid, proj_val in task_to_project.items():
+            if isinstance(proj_val, list):
+                for p_item in proj_val:
+                    recent_task_keys.add(f"{p_item}_{tid}".lower())
+            else:
+                recent_task_keys.add(f"{proj_val}_{tid}".lower())
             
         result_summary["tasks"] = {
             k: v for k, v in result_summary["tasks"].items()
