@@ -239,8 +239,27 @@ switch ($Action) {
     "Publish" {
         Ensure-EventsDir | Out-Null
         $event = New-BusEvent
-        $read = Read-EventFile -Path $EVENTS_FILE
-        $duplicate = Test-DuplicateEvent -Candidate $event -ExistingEvents $read.events
+        $duplicate = $false
+        if (Test-Path -LiteralPath $EVENTS_FILE) {
+            $escId = [regex]::Escape($event.id)
+            $duplicate = Select-String -Path $EVENTS_FILE -Pattern "`"id`"\s*:\s*`"$escId`"" -Quiet
+            if (-not $duplicate -and $event.correlation_id) {
+                $escCorrelation = [regex]::Escape($event.correlation_id)
+                $escType = [regex]::Escape($event.event_type)
+                $escTask = [regex]::Escape($event.task_id)
+                $escSrc = [regex]::Escape($event.source)
+                $lines = Select-String -Path $EVENTS_FILE -Pattern "`"correlation_id`"\s*:\s*`"$escCorrelation`""
+                foreach ($l in $lines) {
+                    $lineStr = $l.Line
+                    if ($lineStr -match "`"event_type`"\s*:\s*`"$escType`"" -and
+                        $lineStr -match "`"task_id`"\s*:\s*`"$escTask`"" -and
+                        $lineStr -match "`"source`"\s*:\s*`"$escSrc`"") {
+                        $duplicate = $true
+                        break
+                    }
+                }
+            }
+        }
         if (-not $duplicate) {
             ($event | ConvertTo-Json -Depth 30 -Compress) | Add-Content -LiteralPath $EVENTS_FILE -Encoding UTF8
         }

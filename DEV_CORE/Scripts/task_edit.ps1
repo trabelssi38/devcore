@@ -16,4 +16,4 @@ if ($PSBoundParameters.ContainsKey("Mode"))  { $editArgs.Mode = $Mode }
 if ($PSBoundParameters.ContainsKey("Steps")) { $editArgs.Steps = $Steps }
 
 & "$PSScriptRoot\task_service.ps1" @editArgs
-& "$PSScriptRoot\gen_dashboard.ps1"
+Start-Process powershell -ArgumentList "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$PSScriptRoot\gen_dashboard.ps1`"" -WindowStyle Hidden

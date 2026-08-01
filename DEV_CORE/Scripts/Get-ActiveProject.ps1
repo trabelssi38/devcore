@@ -12,34 +12,34 @@ if ($env:DEVCORE_ACTIVE_PROJECT_PWD -eq $currentPwd -and $env:DEVCORE_ACTIVE_PRO
 }
 
 try {
-    # 1. Vérifier si on est dans un dépôt Git et identifier le projet canonique
-    $gitCommonDir = git rev-parse --git-common-dir 2>$null
-    if ($LASTEXITCODE -eq 0 -and $gitCommonDir) {
-        $resolved = Resolve-Path $gitCommonDir -ErrorAction SilentlyContinue
-        if ($resolved) {
-            $absoluteCommonDir = $resolved.Path -replace '/', '\'
-            if ($absoluteCommonDir -match "\\\.git$") {
-                $projectName = (Get-Item -Force $absoluteCommonDir).Parent.Name
-            } else {
-                $projectName = (Get-Item -Force $absoluteCommonDir).Name
-            }
-        } else {
-            $projectName = (Get-Item -Force .).Name
+    # 1. Vérifier si on est dans un dépôt Git par recherche parent (très rapide)
+    $dir = Get-Item .
+    $gitDir = $null
+    while ($dir) {
+        $testPath = Join-Path $dir.FullName ".git"
+        if (Test-Path -LiteralPath $testPath) {
+            $gitDir = $testPath
+            break
         }
-        if ($projectName -eq ".git" -or -not $projectName) {
-            $projectName = (Get-Item -Force (git rev-parse --show-toplevel 2>$null)).Name
-        }
-        if ($projectName -eq ".git" -or -not $projectName) {
-            $projectName = (Get-Item -Force $currentPwd).Name
-        }
+        $dir = $dir.Parent
+    }
 
-        # Détecter si on est dans un worktree
-        $topLevel = git rev-parse --show-toplevel 2>$null
-        $worktreeName = "main"
-        if ($LASTEXITCODE -eq 0 -and $topLevel) {
-            $wtFolder = (Get-Item -Force $topLevel).Name
-            if ($wtFolder -ne $projectName) {
-                $worktreeName = $wtFolder
+    if ($gitDir) {
+        if (Test-Path -LiteralPath $gitDir -PathType Container) {
+            $projectName = (Get-Item -Force -LiteralPath $gitDir).Parent.Name
+            $worktreeName = "main"
+        } else {
+            # C'est un fichier worktree
+            $worktreeName = (Get-Item -Force -LiteralPath $gitDir).Parent.Name
+            try {
+                $content = Get-Content -Path $gitDir -Raw -ErrorAction SilentlyContinue
+                if ($content -match "gitdir:\s*(.*)\.git/worktrees/") {
+                    $projectName = (Get-Item -Force -LiteralPath $Matches[1]).Name
+                } else {
+                    $projectName = $worktreeName
+                }
+            } catch {
+                $projectName = $worktreeName
             }
         }
     } else {

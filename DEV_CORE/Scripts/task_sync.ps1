@@ -75,7 +75,7 @@ if ($suggestions.Count -eq 0) {
     Write-Host ""
     Write-Host "  [INFO] Aucune nouvelle suggestion" -ForegroundColor Yellow
     Write-Host ""
-    & "$PSScriptRoot\gen_dashboard.ps1"
+    Start-Process powershell -ArgumentList "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$PSScriptRoot\gen_dashboard.ps1`"" -WindowStyle Hidden
     return
 }
 
@@ -123,5 +123,5 @@ try {
 } catch {}
 
 if ($env:DEVCORE_SKIP_DASHBOARD -ne "1") {
-    & "$PSScriptRoot\gen_dashboard.ps1"
+    Start-Process powershell -ArgumentList "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$PSScriptRoot\gen_dashboard.ps1`"" -WindowStyle Hidden
 }

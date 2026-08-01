@@ -135,4 +135,4 @@ $toonCtx | Set-Content "$DEV_CORE_DATA\Logs\scripts\session_context.toon" -Encod
 $toonCtx | Set-Content "$projDir\session_context.toon" -Encoding UTF8
 
 
-& "$PSScriptRoot\gen_dashboard.ps1"
+Start-Process powershell -ArgumentList "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$PSScriptRoot\gen_dashboard.ps1`"" -WindowStyle Hidden

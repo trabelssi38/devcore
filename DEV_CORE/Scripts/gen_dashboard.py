@@ -116,11 +116,21 @@ def is_process_running(script_name: str) -> bool:
     return False
 
 def get_qdrant_points_count() -> int:
+    cache_file = DATA_ROOT / "Runtime" / "qdrant_points_cache.json"
+    if cache_file.exists():
+        try:
+            mtime = cache_file.stat().st_mtime
+            if time.time() - mtime < 30:
+                data = json.loads(cache_file.read_text(encoding="utf-8"))
+                return data.get("points_count", 0)
+        except Exception:
+            pass
+
     import urllib.request
     host = SERVICE_HOSTS.get("qdrant", "127.0.0.1")
     try:
         req = urllib.request.Request(f"http://{host}:6333/collections", method="GET")
-        with urllib.request.urlopen(req, timeout=2) as response:
+        with urllib.request.urlopen(req, timeout=0.5) as response:
             data = json.loads(response.read().decode("utf-8"))
             collections = data.get("result", {}).get("collections", [])
             
@@ -130,11 +140,18 @@ def get_qdrant_points_count() -> int:
             if c_name:
                 try:
                     req_c = urllib.request.Request(f"http://{host}:6333/collections/{c_name}", method="GET")
-                    with urllib.request.urlopen(req_c, timeout=2) as resp_c:
+                    with urllib.request.urlopen(req_c, timeout=0.5) as resp_c:
                         data_c = json.loads(resp_c.read().decode("utf-8"))
                         points_count += data_c.get("result", {}).get("points_count", 0)
                 except Exception:
                     pass
+        
+        try:
+            cache_file.parent.mkdir(parents=True, exist_ok=True)
+            cache_file.write_text(json.dumps({"points_count": points_count}), encoding="utf-8")
+        except Exception:
+            pass
+            
         return points_count
     except Exception:
         return 0
@@ -171,13 +188,14 @@ def check_port(service_name_or_port, port: int = None) -> bool:
     elif not IS_IN_DOCKER and host in ["gemini-router", "dashboard-api", "headroom"]:
         host = "127.0.0.1"
 
+    timeout_val = 0.1 if host in ("127.0.0.1", "localhost", "::1", "host.docker.internal") else 0.5
     try:
-        with socket.create_connection((host, target_port), timeout=0.5):
+        with socket.create_connection((host, target_port), timeout=timeout_val):
             return True
     except Exception:
         if host != "127.0.0.1":
             try:
-                with socket.create_connection(("127.0.0.1", target_port), timeout=0.5):
+                with socket.create_connection(("127.0.0.1", target_port), timeout=0.1):
                     return True
             except Exception:
                 pass
@@ -274,6 +292,85 @@ def sync_tasks_from_memory(conn):
         except Exception:
             pass
 
+def get_freshness_score(path_obj: Path) -> float:
+    if not path_obj.exists():
+        return 0.0
+    try:
+        mtime = path_obj.stat().st_mtime
+        age_days = (time.time() - mtime) / 86400.0
+        if age_days <= 7: return 1.0
+        if age_days <= 30: return 0.8
+        if age_days <= 90: return 0.6
+        return 0.4
+    except Exception:
+        return 0.0
+
+def get_relevance_score(content: str, needle: str, scenario_type: str, base: float = 0.45) -> float:
+    score = base
+    lower_content = content.lower() if content else ""
+    terms = [t.lower() for t in needle.split() if len(t) > 2]
+    hits = 0
+    for term in terms:
+        if term in lower_content:
+            hits += 1
+    if terms:
+        score += min(0.35, 0.35 * (hits / len(terms)))
+    if scenario_type and scenario_type.lower() in lower_content:
+        score += 0.15
+    return min(1.0, round(score, 4))
+
+def get_matched_terms(content: str, needle: str) -> list:
+    lower_content = content.lower() if content else ""
+    terms = [t.lower() for t in needle.split() if len(t) > 2]
+    matches = []
+    for term in terms:
+        if term in lower_content:
+            matches.append(term)
+    return list(dict.fromkeys(matches))
+
+def new_source_justification(s_type: str, matched_terms: list, score: float, freshness: float, authority: float, included: bool) -> str:
+    reasons = []
+    if matched_terms:
+        reasons.append("matched query terms: " + ", ".join(matched_terms[:5]))
+    else:
+        reasons.append("no direct query term match")
+    if freshness >= 0.8:
+        reasons.append("fresh source")
+    else:
+        reasons.append("older source")
+    if authority >= 0.85:
+        reasons.append(f"high authority {s_type}")
+    else:
+        reasons.append(f"supporting {s_type}")
+    decision = "included" if included else "excluded"
+    return f"{decision}: score={score}; " + "; ".join(reasons)
+
+def new_source_score(s_id: str, tier: str, s_type: str, path_obj: Path, authority: float, relevance_base: float, query: str, task_type: str, include_threshold: float) -> dict:
+    content = ""
+    if path_obj.exists():
+        try:
+            content = path_obj.read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            pass
+    relevance = get_relevance_score(content, query, task_type, relevance_base)
+    freshness = get_freshness_score(path_obj)
+    score = round((relevance * 0.5) + (freshness * 0.2) + (authority * 0.3), 4)
+    included = (score >= include_threshold)
+    matched_terms = get_matched_terms(content, query)
+    return {
+        "id": s_id,
+        "tier": tier,
+        "type": s_type,
+        "path": str(path_obj),
+        "score": score,
+        "relevance": relevance,
+        "freshness": freshness,
+        "authority": authority,
+        "included": included,
+        "matched_terms": matched_terms,
+        "justification": new_source_justification(s_type, matched_terms, score, freshness, authority, included)
+    }
+
 def get_context_composition_html(projects) -> str:
     rows_html = ""
     for p in projects:
@@ -284,42 +381,66 @@ def get_context_composition_html(projects) -> str:
             task_type = task.get("mode") or "devcore"
             
             try:
-                context_script = PLATFORM_ROOT / "Scripts" / "context_service.ps1"
-                ps_exe = shutil.which("powershell.exe") or shutil.which("powershell") or shutil.which("pwsh") or r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
-                cmd = [
-                    ps_exe,
-                    "-NoProfile",
-                    "-NonInteractive",
-                    "-ExecutionPolicy",
-                    "Bypass",
-                    "-File",
-                    str(context_script),
-                    "-Action",
-                    "ScoreSources",
-                    "-Query",
-                    query,
-                    "-TaskType",
-                    task_type,
-                    "-Json"
-                ]
-                res = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-                if res.returncode == 0 and res.stdout.strip():
-                    score_payload = json.loads(res.stdout)
-                    sources = score_payload.get("sources", [])
-                    # Sort sources by score descending
-                    sources.sort(key=lambda s: float(s.get("score", 0.0)), reverse=True)
+                persona_path = DATA_ROOT / "Memory" / "persona.md"
+                scenario_path = DATA_ROOT / "Memory" / "Scenarios" / f"{task_type}.md"
+                fallback_scenario_path = DATA_ROOT / "Memory" / "Scenarios" / "devcore.md"
+                db_path = DATA_ROOT / "Memory" / "conversations.db"
+                
+                include_threshold = 0.5
+                sources = []
+                
+                sources.append(new_source_score("L3:persona", "L3", "persona", persona_path, 0.95, 0.35, query, task_type, include_threshold))
+                
+                if scenario_path.exists():
+                    sources.append(new_source_score(f"L2:scenario:{task_type}", "L2", "scenario", scenario_path, 0.90, 0.50, query, task_type, include_threshold))
+                elif fallback_scenario_path.exists():
+                    sources.append(new_source_score("L2:scenario:devcore", "L2", "scenario_fallback", fallback_scenario_path, 0.75, 0.35, query, task_type, include_threshold))
                     
-                    source_rows = ""
-                    for src in sources:
-                        included = src.get("included", False)
-                        status_text = "IN" if included else "OUT"
-                        status_color = "#22c55e" if included else "#64748b"
-                        src_path = esc_attr(src.get("path", ""))
-                        src_id = esc_html(src.get("id", ""))
-                        src_justification = esc_html(src.get("justification", ""))
-                        src_score = src.get("score", 0.0)
-                        
-                        source_rows += f"""
+                sources.append({
+                    "id": "L1:qdrant",
+                    "tier": "L1",
+                    "type": "vector",
+                    "path": "http://localhost:6333",
+                    "score": 0.0,
+                    "relevance": 0.0,
+                    "freshness": 1.0,
+                    "authority": 0.85,
+                    "included": False,
+                    "matched_terms": [],
+                    "justification": "excluded: vector search is scored by memory_hierarchy query results, not static source scoring"
+                })
+                
+                sqlite_exists = db_path.exists()
+                sqlite_score = 0.46 if sqlite_exists else 0.0
+                sqlite_freshness = get_freshness_score(db_path)
+                sqlite_just = "excluded: fallback FTS source kept below include threshold until higher tiers are insufficient" if sqlite_exists else "excluded: SQLite fallback database not found"
+                sources.append({
+                    "id": "L0:sqlite",
+                    "tier": "L0",
+                    "type": "conversation_fts",
+                    "path": str(db_path),
+                    "score": sqlite_score,
+                    "relevance": 0.30,
+                    "freshness": sqlite_freshness,
+                    "authority": 0.65,
+                    "included": False,
+                    "matched_terms": [],
+                    "justification": sqlite_just
+                })
+                
+                sources.sort(key=lambda s: float(s.get("score", 0.0)), reverse=True)
+                
+                source_rows = ""
+                for src in sources:
+                    included = src.get("included", False)
+                    status_text = "IN" if included else "OUT"
+                    status_color = "#22c55e" if included else "#64748b"
+                    src_path = esc_attr(src.get("path", ""))
+                    src_id = esc_html(src.get("id", ""))
+                    src_justification = esc_html(src.get("justification", ""))
+                    src_score = src.get("score", 0.0)
+                    
+                    source_rows += f"""
           <div class="context-source-row" style="display:grid; grid-template-columns: 38px 1fr 48px; gap:8px; align-items:start; padding:7px 0; border-bottom:1px solid rgba(255,255,255,0.04);">
             <span style="font-size:9px; color:{status_color}; font-family:'JetBrains Mono',monospace; font-weight:600;">{status_text}</span>
             <div style="min-width:0;">
@@ -329,7 +450,7 @@ def get_context_composition_html(projects) -> str:
             <span style="font-size:10px; color:#a5b4fc; font-family:'JetBrains Mono',monospace; text-align:right;">{src_score}</span>
           </div>
 """
-                    rows_html += f"""
+                rows_html += f"""
     <div class="context-task-card" data-project="{esc_attr(p['name'])}" style="background:#1a1d27; border:1px solid #2d3148; border-radius:6px; padding:10px; margin-bottom:8px;">
       <div style="display:flex; justify-content:space-between; gap:8px; align-items:center; margin-bottom:8px;">
         <div style="min-width:0;">
@@ -356,27 +477,108 @@ def get_context_composition_html(projects) -> str:
 """
 
 def get_metrics_service_status() -> dict:
+    import datetime
     try:
-        metrics_script = PLATFORM_ROOT / "Scripts" / "metrics_service.ps1"
-        ps_exe = shutil.which("powershell.exe") or shutil.which("powershell") or shutil.which("pwsh") or r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
-        cmd = [
-            ps_exe,
-            "-NoProfile",
-            "-NonInteractive",
-            "-ExecutionPolicy",
-            "Bypass",
-            "-File",
-            str(metrics_script),
-            "-Action",
-            "Status",
-            "-Json"
-        ]
-        res = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-        if res.returncode == 0:
-            return json.loads(res.stdout)
+        metrics_dir = DATA_ROOT / "Metrics"
+        today_str = datetime.date.today().strftime("%Y-%m-%d")
+        metrics_file = metrics_dir / f"metrics-{today_str}.jsonl"
+        
+        ok = False
+        try:
+            probe = metrics_dir / ".health"
+            probe.write_text("ok", encoding="utf-8")
+            if probe.exists():
+                probe.unlink()
+            ok = True
+        except Exception:
+            pass
+            
+        health = {
+            "schema_version": 1,
+            "ok": ok,
+            "metrics_dir": str(metrics_dir),
+            "store_path": str(metrics_file),
+            "writable": ok
+        }
+        
+        events = []
+        errors = 0
+        if metrics_file.exists():
+            with open(metrics_file, "r", encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        events.append(json.loads(line))
+                    except Exception:
+                        errors += 1
+                        
+        totals = {}
+        projects = {}
+        tasks = {}
+        sources = {}
+        
+        def add_grouped_metric(table, m_type, m_unit, m_val, m_src):
+            is_snapshot = (m_src == "token_report" and m_type in ["tokens", "cache_hits", "cost", "sessions"])
+            if m_type not in table:
+                table[m_type] = {}
+            if m_unit not in table[m_type]:
+                table[m_type][m_unit] = {"count": 0, "sum": 0.0, "latest": 0.0, "aggregation": "sum"}
+            
+            entry = table[m_type][m_unit]
+            entry["count"] += 1
+            entry["latest"] = round(float(m_val), 6)
+            if is_snapshot:
+                entry["aggregation"] = "latest"
+                entry["sum"] = round(float(m_val), 6)
+            else:
+                entry["sum"] = round(float(entry["sum"]) + float(m_val), 6)
+                
+        for ev in events:
+            m_type = ev.get("metric_type", "unknown")
+            m_unit = ev.get("unit", "count")
+            m_val = ev.get("value", 0.0)
+            m_src = ev.get("source", "unknown")
+            proj = ev.get("project", "unknown")
+            task_id = ev.get("task_id") or "none"
+            
+            add_grouped_metric(totals, m_type, m_unit, m_val, m_src)
+            
+            if proj not in projects:
+                projects[proj] = {"events_count": 0, "totals": {}}
+            projects[proj]["events_count"] += 1
+            add_grouped_metric(projects[proj]["totals"], m_type, m_unit, m_val, m_src)
+            
+            if task_id not in tasks:
+                tasks[task_id] = {"events_count": 0, "totals": {}}
+            tasks[task_id]["events_count"] += 1
+            add_grouped_metric(tasks[task_id]["totals"], m_type, m_unit, m_val, m_src)
+            
+            if m_src not in sources:
+                sources[m_src] = {"events_count": 0}
+            sources[m_src]["events_count"] += 1
+            
+        aggregate = {
+            "schema_version": 1,
+            "date": today_str,
+            "store_path": str(metrics_file),
+            "events_count": len(events),
+            "errors_count": errors,
+            "totals": totals,
+            "projects": projects,
+            "tasks": tasks,
+            "sources": sources
+        }
+        
+        return {
+            "schema_version": 1,
+            "health": health,
+            "aggregate": aggregate
+        }
     except Exception as e:
-        print(f"[Dashboard] Error calling metrics service: {e}")
-    return {}
+        print(f"[Dashboard] Error calling python metrics service: {e}")
+        return {}
 
 def get_metrics_service_summary_html() -> str:
     empty = "<div style='font-size:10px; color:#64748b; padding:8px 0;'>Metrics Service indisponible.</div>"
@@ -715,21 +917,21 @@ def get_services_html(projects, token_metrics) -> str:
     q_impact = "Recherche"
     
     # 2. Gemini Router
-    gemini_ok = check_port("127.0.0.1", 20130) or check_port("gemini_router", 20130) or check_port("localhost", 20130)
+    gemini_ok = check_port("gemini_router", 20130)
     gemini_desc = "Port 20130 | Actif" if gemini_ok else "Port 20130"
     g_perf = "Actif (1ms)" if gemini_ok else "HS"
     g_solic = "En attente" if gemini_ok else "Aucune"
     g_impact = "IA Passerelle"
     
     # 3. Dashboard API
-    api_ok = check_port("127.0.0.1", 20129) or check_port("dashboard_api", 20129) or check_port("localhost", 20129)
+    api_ok = check_port("dashboard_api", 20129)
     api_desc = f"Port 20129 | {len(projects)} projets" if api_ok else "Port 20129"
     api_perf = "Actif (1ms)" if api_ok else "HS"
     api_solic = f"{len(projects)} projets" if api_ok else "Aucune"
     api_impact = "Cockpit API"
     
     # 4. Headroom Proxy
-    headroom_ok = check_port("127.0.0.1", 8787) or check_port("headroom", 8787) or check_port("localhost", 8787)
+    headroom_ok = check_port("headroom", 8787)
     headroom_desc = "Port 8787 | Actif" if headroom_ok else "Port 8787"
     h_perf = "Actif (1ms)" if headroom_ok else "HS"
     h_solic = "En attente" if headroom_ok else "Aucune"
@@ -779,7 +981,7 @@ def get_services_html(projects, token_metrics) -> str:
     # 6. Repowise Engine (MCP Stdio & HTTP Server)
     # Note: check_port("localhost") may fail due to IPv6 resolution (::1) even when 127.0.0.1 is active.
     # We always try HTTP directly on 127.0.0.1 regardless, and use repowise_api_ok for badge.
-    repowise_port_ok = check_port("127.0.0.1", 7337) or check_port("localhost", 7337) or check_port("repowise", 7337)
+    repowise_port_ok = check_port("repowise", 7337)
     repowise_mcp_config = (
         (DATA_ROOT / ".repowise" / "state.json").exists()
         or (PLATFORM_ROOT.parent / ".mcp.json").exists()
@@ -814,7 +1016,7 @@ def get_services_html(projects, token_metrics) -> str:
     try:
         _no_proxy_opener = _urllib_req.build_opener(_urllib_req.ProxyHandler({}))
         _req_repos = _urllib_req.Request("http://127.0.0.1:7337/api/repos", headers={"User-Agent": "DEV_CORE-Dashboard"})
-        with _no_proxy_opener.open(_req_repos, timeout=3) as _resp_repos:
+        with _no_proxy_opener.open(_req_repos, timeout=0.2) as _resp_repos:
             repos_data = json.loads(_resp_repos.read().decode("utf-8"))
         repowise_api_ok = True
         repowise_port_ok = True  # Confirm port is truly reachable
@@ -851,7 +1053,7 @@ def get_services_html(projects, token_metrics) -> str:
                 try:
                     _url_h = f"http://127.0.0.1:7337/api/repos/{repo_id}/health/overview"
                     _req_h = _urllib_req.Request(_url_h, headers={"User-Agent": "DEV_CORE-Dashboard"})
-                    with _no_proxy_opener.open(_req_h, timeout=2) as _resp_h:
+                    with _no_proxy_opener.open(_req_h, timeout=0.2) as _resp_h:
                         health_data = json.loads(_resp_h.read().decode("utf-8"))
                     # Badge is green when real data is present
                     card_html = render_repowise_health_card(p_name, health_data, target_repo, True)

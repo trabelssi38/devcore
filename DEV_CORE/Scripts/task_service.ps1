@@ -20,17 +20,24 @@ $ErrorActionPreference = "Stop"
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { (Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE_DATA") }
 $EVENT_BUS = Join-Path $PSScriptRoot "event_bus.ps1"
 
+$Script:CachedProjectName = $null
 function Get-TaskServiceProject {
+    if ($Script:CachedProjectName) {
+        return $Script:CachedProjectName
+    }
     $currentPath = (Get-Location).Path
     if ($env:DEVCORE_ACTIVE_PROJECT_NAME -and $env:DEVCORE_ACTIVE_PROJECT_PWD -eq $currentPath) {
-        return $env:DEVCORE_ACTIVE_PROJECT_NAME
+        $Script:CachedProjectName = $env:DEVCORE_ACTIVE_PROJECT_NAME
+        return $Script:CachedProjectName
     }
 
     $projectScript = Join-Path $PSScriptRoot "Get-ActiveProject.ps1"
     if (Test-Path -LiteralPath $projectScript) {
-        return ((& $projectScript) | Select-Object -First 1).Trim()
+        $Script:CachedProjectName = ((& $projectScript) | Select-Object -First 1).Trim()
+        return $Script:CachedProjectName
     }
-    return "devcore"
+    $Script:CachedProjectName = "devcore"
+    return $Script:CachedProjectName
 }
 
 function Get-TaskBoardPath {

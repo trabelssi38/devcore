@@ -20,6 +20,9 @@ EXCLUDED_DIRS = {
 }
 EXCLUDED_PREFIXES = {
     "download/",
+    # Dashboard HTML files are runtime-generated artefacts — excluded for reproducibility
+    "Dashboard/index.html",
+    "Dashboard/index_terminal.html",
 }
 EXCLUDED_SUFFIXES = {
     ".pyc",

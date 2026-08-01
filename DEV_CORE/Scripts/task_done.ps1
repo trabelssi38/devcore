@@ -89,4 +89,4 @@ if ($nextTask) {
 Write-Host ""
 
 
-& "$PSScriptRoot\gen_dashboard.ps1"
+Start-Process powershell -ArgumentList "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$PSScriptRoot\gen_dashboard.ps1`"" -WindowStyle Hidden

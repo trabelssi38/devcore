@@ -7,4 +7,4 @@ param(
 
 & "$PSScriptRoot\task_service.ps1" -Action Add -Title $Title -Mode $Mode -DependsOn $DependsOn
 
-& "$PSScriptRoot\gen_dashboard.ps1"
+Start-Process powershell -ArgumentList "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$PSScriptRoot\gen_dashboard.ps1`"" -WindowStyle Hidden
