@@ -1386,9 +1386,11 @@ def main():
             token_script = script_dir / "Auto" / "token_report.py"
             if token_script.exists():
                 import subprocess
-                subprocess.run([sys.executable, str(token_script)], capture_output=True, text=True, timeout=15)
+                res = subprocess.run([sys.executable, str(token_script)], capture_output=True, text=True, timeout=60)
+                if res.returncode != 0:
+                    print(f"[WARNING] token_report.py returned code {res.returncode}: {res.stderr}")
         except Exception as err:
-            pass
+            print(f"[WARNING] Error running token_report.py: {err}")
 
     # Load token metrics at the start
     token_metrics = {}

@@ -444,32 +444,52 @@ def empty_stats_bucket(include_sessions=False):
 def discover_projects(memory_path):
     valid_projects = ["devcore", "cea_dashboard", "job_tracker", "default"]
     task_to_project = {}
-    memory_root = Path(memory_path)
-    if not memory_root.exists():
-        return valid_projects, task_to_project
 
-    for project_dir in memory_root.iterdir():
-        if not project_dir.is_dir():
-            continue
-        name = project_dir.name.lower()
-        if name not in ["archive", "patterns", "scores", "default", "scripts"] and name not in valid_projects:
-            valid_projects.append(name)
-
-        tasks_file = project_dir / "tasks.json"
-        if not tasks_file.exists():
-            continue
+    # 1. Read tasks from devcore.db
+    devcore_data = Path(memory_path).parent
+    db_path = devcore_data / "devcore.db"
+    if db_path.exists():
         try:
-            board = json.loads(tasks_file.read_text(encoding="utf-8-sig"))
-            for task in board.get("tasks", []):
-                tid = task.get("id")
-                if tid:
-                    tid_upper = tid.upper()
-                    if tid_upper not in task_to_project:
-                        task_to_project[tid_upper] = []
-                    if name not in task_to_project[tid_upper]:
-                        task_to_project[tid_upper].append(name)
+            conn = sqlite3.connect(db_path)
+            cur = conn.cursor()
+            cur.execute("SELECT id, project FROM tasks")
+            for tid, proj in cur.fetchall():
+                if proj and proj.lower() not in valid_projects:
+                    valid_projects.append(proj.lower())
+                tid_upper = tid.upper()
+                if tid_upper not in task_to_project:
+                    task_to_project[tid_upper] = []
+                if proj.lower() not in task_to_project[tid_upper]:
+                    task_to_project[tid_upper].append(proj.lower())
+            conn.close()
         except Exception:
-            continue
+            pass
+
+    # 2. Read tasks from Memory directory
+    memory_root = Path(memory_path)
+    if memory_root.exists():
+        for project_dir in memory_root.iterdir():
+            if not project_dir.is_dir():
+                continue
+            name = project_dir.name.lower()
+            if name not in ["archive", "patterns", "scores", "default", "scripts"] and name not in valid_projects:
+                valid_projects.append(name)
+
+            tasks_file = project_dir / "tasks.json"
+            if not tasks_file.exists():
+                continue
+            try:
+                board = json.loads(tasks_file.read_text(encoding="utf-8-sig"))
+                for task in board.get("tasks", []):
+                    tid = task.get("id")
+                    if tid:
+                        tid_upper = tid.upper()
+                        if tid_upper not in task_to_project:
+                            task_to_project[tid_upper] = []
+                        if name not in task_to_project[tid_upper]:
+                            task_to_project[tid_upper].append(name)
+            except Exception:
+                continue
 
     return valid_projects, task_to_project
 
@@ -502,10 +522,10 @@ def discover_sources(userprofile):
             overview = folder / ".system_generated" / "logs" / "overview.txt"
             transcript = folder / ".system_generated" / "logs" / "transcript.jsonl"
             target_path = None
-            if overview.exists():
-                target_path = overview
-            elif transcript.exists():
+            if transcript.exists():
                 target_path = transcript
+            elif overview.exists():
+                target_path = overview
             
             if target_path:
                 try:
