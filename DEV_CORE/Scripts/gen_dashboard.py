@@ -9,6 +9,54 @@ import hashlib
 from datetime import datetime
 from pathlib import Path
 
+
+# ---------------------------------------------------------------------------
+# File-based lock: sérialise les appels concurrents à gen_dashboard.py
+# (post-commit hook, task_sync.ps1, repowise_update.py, dashboard_api.py...)
+# Utilise O_CREAT | O_EXCL pour une création atomique cross-platform (Windows + Linux)
+# ---------------------------------------------------------------------------
+class DashboardLock:
+    """Context manager qui acquiert un lock fichier exclusif avant génération."""
+    LOCK_FILENAME = "gen_dashboard.lock"
+    WAIT_TIMEOUT  = 30   # secondes max pour attendre la libération du lock
+    STALE_TIMEOUT = 120  # secondes après lesquelles un lock est considéré périmé
+
+    def __init__(self):
+        lock_dir = Path(os.environ.get("DEVCORE_DATA_ROOT",
+                        str(Path(__file__).resolve().parents[2] / "DEV_CORE_DATA"))) / "Runtime"
+        lock_dir.mkdir(parents=True, exist_ok=True)
+        self.lock_path = lock_dir / self.LOCK_FILENAME
+
+    def __enter__(self):
+        deadline = time.monotonic() + self.WAIT_TIMEOUT
+        while True:
+            try:
+                # Création exclusive atomique : échoue si le fichier existe déjà
+                fd = os.open(str(self.lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                os.write(fd, str(os.getpid()).encode())
+                os.close(fd)
+                return self
+            except FileExistsError:
+                # Vérifie si le lock est périmé (processus mort)
+                try:
+                    mtime = self.lock_path.stat().st_mtime
+                    if time.time() - mtime > self.STALE_TIMEOUT:
+                        self.lock_path.unlink(missing_ok=True)
+                        continue
+                except OSError:
+                    pass
+                if time.monotonic() >= deadline:
+                    print("[gen_dashboard.py] Lock timeout (autre processus toujours actif). Skip.",
+                          file=sys.stderr)
+                    raise SystemExit(0)
+                time.sleep(0.5)
+
+    def __exit__(self, *_):
+        try:
+            self.lock_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+
 # Add parent directory to path so we can import from dashboard package
 sys.path.append(str(Path(__file__).resolve().parent))
 
@@ -44,6 +92,14 @@ def main():
     parser.add_argument("-Json", "--json", action="store_true")
     parser.add_argument("-SkipTokenRefresh", "--skip-token-refresh", action="store_true")
     args = parser.parse_args()
+
+    # Sérialiser les appels concurrents via lock fichier
+    # (en mode --json le lock est ignoré pour ne pas bloquer l'API)
+    if not args.json:
+        lock = DashboardLock()
+        lock.__enter__()
+        import atexit
+        atexit.register(lock.__exit__, None, None, None)
 
     # If running in JSON mode, redirect standard prints to stderr to keep stdout completely clean
     original_stdout = sys.stdout

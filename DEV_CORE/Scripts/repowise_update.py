@@ -139,5 +139,25 @@ def main():
         print(f"[RepowiseUpdate] ERROR running repowise: {e}", file=sys.stderr)
         sys.exit(1)
 
+    # Régénérer le dashboard APRÈS le scan Repowise pour avoir des données fraîches.
+    # Le lock dans gen_dashboard.py sérialise automatiquement les appels concurrents
+    # (task_sync.ps1 peut déjà avoir lancé une génération — elle se terminera d'abord).
+    if os.environ.get("DEVCORE_SKIP_DASHBOARD") != "1":
+        gen_dash = Path(__file__).resolve().parent / "gen_dashboard.py"
+        if gen_dash.exists():
+            print("[RepowiseUpdate] Triggering dashboard regeneration after Repowise scan...")
+            try:
+                subprocess.run(
+                    [sys.executable, str(gen_dash), "--skip-token-refresh"],
+                    cwd=str(proj_path),
+                    timeout=60
+                )
+                print("[RepowiseUpdate] Dashboard regenerated successfully.")
+            except subprocess.TimeoutExpired:
+                print("[RepowiseUpdate] WARNING: Dashboard regeneration timed out.", file=sys.stderr)
+            except Exception as e:
+                print(f"[RepowiseUpdate] WARNING: Could not regenerate dashboard: {e}", file=sys.stderr)
+
 if __name__ == "__main__":
     main()
+
