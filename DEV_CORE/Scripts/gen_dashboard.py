@@ -892,9 +892,9 @@ def get_deterministic_fallback_health(project_name, project_path, default_files=
     else:
         fallbacks = {
             "dashboard_recette_br": [
-                ("Dashboard/index.html", 2.1, 1),
-                ("src/App.js", 3.5, 2),
-                ("src/index.js", 5.2, 0)
+                ("client/js/analytics.js", 3.3, 2),
+                ("client/js/charts.js", 5.2, 1),
+                ("client/index.html", 6.5, 0)
             ],
             "job_tracker": [
                 ("job_tracker/api.py", 2.3, 2),
@@ -955,9 +955,9 @@ def render_repowise_health_card(project_name, health_data, target_repo, repowise
     w_files = dist.get("warning", {}).get("files", int(total_f * 0.117))
     a_files = dist.get("alert", {}).get("files", max(1, total_f - h_files - w_files))
     
-    h_pct = round((h_files / (total_f or 1)) * 100, 1)
-    w_pct = round((w_files / (total_f or 1)) * 100, 1)
-    a_pct = round((a_files / (total_f or 1)) * 100, 1)
+    h_pct = dist.get("healthy", {}).get("pct", round((h_files / (total_f or 1)) * 100, 1))
+    w_pct = dist.get("warning", {}).get("pct", round((w_files / (total_f or 1)) * 100, 1))
+    a_pct = dist.get("alert", {}).get("pct", round((a_files / (total_f or 1)) * 100, 1))
     
     status_badge = "🟢 EN DIRECT (Port 7337)" if repowise_port_ok else "⚡ MCP INDEXED"
     badge_bg = "rgba(34,197,94,0.15)" if repowise_port_ok else "rgba(99,102,241,0.15)"
@@ -969,7 +969,8 @@ def render_repowise_health_card(project_name, health_data, target_repo, repowise
     for f_item in flagged_list[:3]:
         f_path = esc_html(f_item.get("file_path", ""))
         f_score = round(f_item.get("score", 0.0), 1)
-        f_bugs = f_item.get("recent_defects", 0)
+        # API returns recent_fixes; fallback data uses recent_defects
+        f_bugs = f_item.get("recent_fixes", f_item.get("recent_defects", 0))
         
         badge_col = "#ef4444" if f_score < 3.0 else "#f59e0b"
         
@@ -1182,7 +1183,7 @@ def get_services_html(projects, token_metrics) -> str:
     try:
         _no_proxy_opener = _urllib_req.build_opener(_urllib_req.ProxyHandler({}))
         _req_repos = _urllib_req.Request("http://127.0.0.1:7337/api/repos", headers={"User-Agent": "DEV_CORE-Dashboard"})
-        with _no_proxy_opener.open(_req_repos, timeout=0.2) as _resp_repos:
+        with _no_proxy_opener.open(_req_repos, timeout=3) as _resp_repos:
             repos_data = json.loads(_resp_repos.read().decode("utf-8"))
         repowise_api_ok = True
         repowise_port_ok = True  # Confirm port is truly reachable
@@ -1212,11 +1213,13 @@ def get_services_html(projects, token_metrics) -> str:
                 try:
                     _url_h = f"http://127.0.0.1:7337/api/repos/{repo_id}/health/overview"
                     _req_h = _urllib_req.Request(_url_h, headers={"User-Agent": "DEV_CORE-Dashboard"})
-                    with _no_proxy_opener.open(_req_h, timeout=0.2) as _resp_h:
+                    with _no_proxy_opener.open(_req_h, timeout=4) as _resp_h:
                         health_data = json.loads(_resp_h.read().decode("utf-8"))
                     # Badge is green when real data is present
                     card_html = render_repowise_health_card(p_name, health_data, target_repo, True)
                     repowise_cards.append(card_html)
+                    h_sum = health_data.get("summary", {})
+                    print(f"[gen_dashboard.py] Card OK: {p_name} score={h_sum.get('average_health')} files={h_sum.get('file_count')} flagged={len(health_data.get('defect_accuracy',{}).get('flagged_files',[]))}")
 
                     if p_name == act_proj:
                         sum_d = health_data.get("summary", {})
