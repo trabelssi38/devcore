@@ -733,12 +733,14 @@ function completeTask(project, id) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ project, id })
         })
-        .then(r => r.json())
-        .then(data => {
-          if (data.success) {
+        .then(async r => {
+          const isJson = r.headers.get('content-type')?.includes('application/json');
+          const data = isJson ? await r.json() : null;
+          if (r.ok && (data?.success || data?.status === 'success')) {
             refreshDashboard();
           } else {
-            alert("Erreur : " + data.error);
+            const err = data?.error || data?.detail || data?.message || `Status ${r.status}`;
+            alert("Erreur : " + err);
           }
         })
         .catch(err => alert("Impossible de joindre le serveur API local (Port 20129). Veuillez vérifier qu'il est bien démarré."));
@@ -757,12 +759,14 @@ function deleteTask(project, id) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ project, id })
         })
-        .then(r => r.json())
-        .then(data => {
-          if (data.success) {
+        .then(async r => {
+          const isJson = r.headers.get('content-type')?.includes('application/json');
+          const data = isJson ? await r.json() : null;
+          if (r.ok && (data?.success || data?.status === 'success')) {
             refreshDashboard();
           } else {
-            alert("Erreur : " + data.error);
+            const err = data?.error || data?.detail || data?.message || `Status ${r.status}`;
+            alert("Erreur : " + err);
           }
         })
         .catch(err => alert("Impossible de joindre le serveur API local (Port 20129). Veuillez vérifier qu'il est bien démarré."));
@@ -1399,14 +1403,16 @@ function saveSettings() {
     },
     body: JSON.stringify(settings)
   })
-  .then(r => r.json())
-  .then(data => {
-    if (data.success) {
+  .then(async r => {
+    const isJson = r.headers.get('content-type')?.includes('application/json');
+    const data = isJson ? await r.json() : null;
+    if (r.ok && (data?.success || data?.status === 'success')) {
       alert("Paramètres enregistrés avec succès !");
       setupRefresh(settings.auto_refresh_seconds * 1000);
       switchTab('tasks');
     } else {
-      alert("Erreur lors de la sauvegarde : " + data.error);
+      const err = data?.error || data?.detail || data?.message || `Status ${r.status}`;
+      alert("Erreur lors de la sauvegarde : " + err);
     }
   })
   .catch(err => alert("Erreur de connexion au serveur API"));
