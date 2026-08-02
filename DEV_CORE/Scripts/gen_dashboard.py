@@ -893,8 +893,8 @@ def get_deterministic_fallback_health(project_name, project_path, default_files=
         fallbacks = {
             "dashboard_recette_br": [
                 ("client/js/analytics.js", 3.3, 2),
-                ("client/js/charts.js", 5.2, 1),
-                ("client/index.html", 6.5, 0)
+                ("client/js/charts.js", 3.8, 1),
+                ("client/js/app.js", 4.1, 3)
             ],
             "job_tracker": [
                 ("job_tracker/api.py", 2.3, 2),
@@ -965,10 +965,13 @@ def render_repowise_health_card(project_name, health_data, target_repo, repowise
     badge_border = "rgba(34,197,94,0.3)" if repowise_port_ok else "rgba(99,102,241,0.3)"
     
     flagged_list = health_data.get("defect_accuracy", {}).get("flagged_files", []) if health_data else []
+    # Filter out files with score >= 6.0 (they are healthy and no longer refactoring targets)
+    refactoring_targets = [f for f in flagged_list if float(f.get("score", 10.0)) < 6.0]
+    
     top_targets_html = ""
-    for f_item in flagged_list[:3]:
+    for f_item in refactoring_targets[:3]:
         f_path = esc_html(f_item.get("file_path", ""))
-        f_score = round(f_item.get("score", 0.0), 1)
+        f_score = round(float(f_item.get("score", 0.0)), 1)
         # API returns recent_fixes; fallback data uses recent_defects
         f_bugs = f_item.get("recent_fixes", f_item.get("recent_defects", 0))
         
@@ -1002,15 +1005,13 @@ def render_repowise_health_card(project_name, health_data, target_repo, repowise
 </div>
 """
     if not top_targets_html:
-        worst_p = esc_html(summary.get('worst_performer_path', 'DEV_CORE/Scripts/gemini_router.py'))
-        worst_s = round(summary.get('worst_performer_score', 1.0), 1)
-        top_targets_html = f"""
+        top_targets_html = """
 <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(15,23,42,0.7); border:1px solid #1e293b; border-radius:6px; padding:6px 10px; width:100%; box-sizing:border-box;">
   <div style="min-width:0; flex:1; overflow:hidden;">
-    <div style="font-size:10px; font-weight:600; color:#f8fafc; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"><code>{worst_p}</code></div>
-    <div style="font-size:9px; color:#94a3b8; margin-top:2px;">💡 Hotspot prioritaire identifié par Repowise</div>
+    <div style="font-size:10px; font-weight:600; color:#4ade80;">✨ Aucun hotspot critique (Codebase sain)</div>
+    <div style="font-size:9px; color:#94a3b8; margin-top:2px;">Tous les fichiers analysés dépassent le seuil de qualité (>= 6.0/10)</div>
   </div>
-  <span style="background:rgba(239,68,68,0.15); color:#ef4444; border:1px solid #ef4444; border-radius:4px; padding:1px 6px; font-size:10px; font-weight:bold; font-family:'JetBrains Mono',monospace;">{worst_s}/10</span>
+  <span style="background:rgba(34,197,94,0.15); color:#4ade80; border:1px solid #4ade80; border-radius:4px; padding:1px 6px; font-size:10px; font-weight:bold; font-family:'JetBrains Mono',monospace;">OK</span>
 </div>
 """
 
