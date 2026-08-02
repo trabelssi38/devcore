@@ -150,6 +150,7 @@ C:\devcore\
 - `DEV_CORE\Scripts\ensure_repowise_watch.ps1` — Lance le scan continu Repowise des projets déclarés
 - `DEV_CORE\Scripts\ensure_repowise_watch.ps1 -StatusOnly` — Affiche les watchers actifs
 - `DEV_CORE\Scripts\ensure_repowise_watch.ps1 -Stop` — Arrête les watchers
+- **Mise à jour automatique** — Scan continu et réindexation automatique SQLite (`.repowise/wiki.db`) lors des modifications de code et commits Git, synchronisés en direct avec le Cockpit (Port 20129).
 
 ---
 
