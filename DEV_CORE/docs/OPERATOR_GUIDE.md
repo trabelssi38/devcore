@@ -120,3 +120,44 @@ Dans le cadre de l'exploitation quotidienne, l'opérateur doit surveiller la con
 - [ ] Tâche active vérifiée depuis `DEV_CORE_DATA\Memory\<project>\tasks.json`.
 - [ ] Aucun conteneur ou agent libre en état d'alerte (`ALERTE (Hors Tâche)`) persistant dans le cockpit.
 - [ ] `endday.ps1 -SkipBackup` exécuté avant clôture d'une session courte.
+
+## Radar Repowise & Régénération Cockpit
+
+### Propagation des scores de santé
+
+Après chaque commit, la chaîne de propagation est :
+
+```
+post-commit hook
+├── task_sync.ps1 → gen_dashboard.py  (régénération immédiate, données partielles)
+└── repowise_update.py → scan → gen_dashboard.py  (régénération finale avec scores à jour)
+```
+
+Le cockpit est régénéré **deux fois** : une fois rapidement (tâches/événements), puis une seconde fois après le scan Repowise (~1-3 min). Les scores de la carte Radar sont uniquement fiables après la seconde régénération.
+
+### Lock fichier (`gen_dashboard.lock`)
+
+`gen_dashboard.py` utilise un lock fichier cross-platform (`DEV_CORE_DATA/Runtime/gen_dashboard.lock`) pour éviter les générations concurrentes. Si plusieurs processus tentent de générer le cockpit simultanément :
+
+- Le premier acquiert le lock et génère normalement.
+- Les suivants **attendent jusqu'à 30 s** puis s'exécutent séquentiellement.
+- Un lock périmé (>120 s, processus mort) est nettoyé automatiquement.
+- Le mode `--json` (API) n'est pas soumis au lock pour éviter de bloquer les requêtes.
+
+En cas de lock bloqué, supprimer manuellement :
+
+```powershell
+Remove-Item "$env:DEVCORE_DATA_ROOT\Runtime\gen_dashboard.lock" -Force
+```
+
+### Reconstruire la base SQLite si corrompue
+
+En cas de warning `database disk image is malformed` dans les logs :
+
+```powershell
+Remove-Item "$env:DEVCORE_DATA_ROOT\devcore.db" -Force
+Remove-Item "$env:DEVCORE_DATA_ROOT\devcore.db-shm" -Force -ErrorAction SilentlyContinue
+Remove-Item "$env:DEVCORE_DATA_ROOT\devcore.db-wal" -Force -ErrorAction SilentlyContinue
+python C:\devcore\DEV_CORE\Scripts\migrate_json_to_sqlite.py
+python C:\devcore\DEV_CORE\Scripts\gen_dashboard.py
+```

@@ -180,4 +180,12 @@ Chronologie consolidee des implementations et plans. Source principale : histori
 | Diagnostic Santé Repowise | Isolation de la base de données SQLite de diagnostic par projet | Résolution des métriques dupliquées. Chaque projet affiche désormais son score global et son compte de fichiers propre. |
 | Badges de Session | Ajout d'indicateurs `OK`, `OK (Session Libre)` et `ALERTE (Hors Tâche)` sur les sessions actives | Permet aux opérateurs d'identifier immédiatement les sessions orphelines et les fuites de tokens. |
 
+## Correctifs Cockpit, Repowise & Robustesse (Août 2026 — 2026-08-02)
 
+| Task | Implémentation | Impact |
+|---|---|---|
+| T-306 | **Auto-création de tâche** dans `session_start.ps1` : détection absence de tâche `todo`/`active` dans `tasks.json` et création autonome de `T-XX: Session de travail auto (YYYY-MM-DD)` | Antigravity démarre toujours avec une tâche active, plus de session orpheline |
+| T-307 | **Hardening JS cockpit** (`template.html`) : support des formats `{success:true}` et `{status:'success'}` dans les callbacks `fetch`, parsing `detail` pour HTTPException FastAPI | Boutons Supprimer/Terminer fonctionnels, messages d'erreur lisibles |
+| T-308 | **Diagnostic Radar Repowise non actualisé** : identifié que `task_sync.ps1` régénère le cockpit avant la fin du scan Repowise asynchrone (`Start-Process`) — `TimelineRenderer.ts`, `api.ts`, `server.js` affichaient des scores périmés | Cause racine identifiée et documentée |
+| T-309 | **Lock fichier cross-platform** (`DashboardLock` dans `gen_dashboard.py`) + **régénération post-Repowise** (`repowise_update.py`) : `os.open(O_CREAT\|O_EXCL)` garantit l'unicité, attente 30 s, nettoyage périmé 120 s. `gen_dashboard.py --skip-token-refresh` appelé après chaque scan Repowise réussi | Cockpit toujours à jour avec les derniers scores de santé, zéro conflit de génération concurrente |
+| T-310 | **Rebuild `devcore.db`** : suppression des fichiers corrompus (WAL/SHM), réexécution `migrate_json_to_sqlite.py` (401 tâches, 34 token metrics) | Base SQLite saine, dashboard API fonctionnel sans warnings |

@@ -7,7 +7,25 @@ and this project adheres to Semantic Versioning.
 
 ---
 
+## [10.0.1] - 2026-08-02
+
+### Added
+- **Auto-création de tâche au démarrage de session** (`session_start.ps1`) : si `tasks.json` ne contient aucune tâche `todo` ou `active`, une tâche `T-XX: Session de travail auto (YYYY-MM-DD)` est créée automatiquement pour garantir qu'Antigravity démarre toujours avec un contexte de tâche.
+- **Lock fichier cross-platform dans `gen_dashboard.py`** : nouvelle classe `DashboardLock` utilisant `os.open(O_CREAT|O_EXCL)` (atomique Windows + Linux) pour sérialiser les appels concurrents à la génération du cockpit depuis `task_sync.ps1`, `repowise_update.py`, les hooks post-commit et l'API. Attente jusqu'à 30 s, nettoyage automatique des locks périmés (>120 s). Lock ignoré en mode `--json` pour ne pas bloquer les requêtes API.
+- **Régénération du cockpit après scan Repowise** (`repowise_update.py`) : `gen_dashboard.py --skip-token-refresh` est maintenant appelé à la fin du scan Repowise. Les scores de santé (Radar) sont ainsi toujours à jour dans le cockpit sans délai de propagation.
+
+### Changed
+- **Hardening JavaScript des boutons d'action du cockpit** (`template.html`) : les appels `fetch` sur `/api/done`, `/api/delete` et `/api/settings` supportent désormais les deux formats de réponse FastAPI (`{success: true}` et `{status: 'success'}`). Parsing de l'erreur via la clé `detail` (format HTTPException FastAPI) pour remplacer le message silencieux `Erreur : undefined`.
+
+### Fixed
+- **Cockpit Radar non actualisé après commit** : diagnostiqué — `task_sync.ps1` régénérait le cockpit avant la fin du scan Repowise (processus asynchrone non bloquant). Corrigé via le lock et la régénération explicite dans `repowise_update.py`.
+- **Base SQLite `devcore.db` corrompue** : reconstruite proprement via `migrate_json_to_sqlite.py` (401 tâches, 34 métriques token migrées). Suppression des fichiers WAL/SHM corrompus préalablement.
+- **Suppression de tâche cockpit inopérante** (`/api/delete`) : corrigée par le hardening JS du format de réponse FastAPI.
+
+---
+
 ## [10.0.0] - 2026-08-02
+
 
 ### Added
 - **Supervision Headroom UI Status Badges**: Added explicit `OK (Session Libre)`, `ALERTE (Hors Tâche)`, and `OK` status indicators next to active sessions.
