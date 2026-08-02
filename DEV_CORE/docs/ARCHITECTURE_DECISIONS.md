@@ -267,3 +267,34 @@ Les diagnostics de santé (Repowise Health) doivent interroger la base de donné
 - Si le chemin est vide ou invalide, l'évaluation renvoie `None` au lieu de lire la base locale SQLite courante de `devcore`.
 - Chaque carte projet affiche désormais ses scores et son nombre de fichiers de façon parfaitement cloisonnée.
 
+## ADR-017 - Lock Fichier Cross-Platform pour la Génération du Cockpit
+
+**Statut** : accepté (Août 2026)
+
+Plusieurs processus indépendants (post-commit hook, `task_sync.ps1`, `repowise_update.py`, `dashboard_api.py`) peuvent déclencher une régénération de `gen_dashboard.py` simultanément, produisant des fichiers HTML partiels ou corrompus.
+
+**Décision** : `gen_dashboard.py` utilise un lock fichier basé sur `os.open(O_CREAT | O_EXCL)` — atomique sur Windows et Linux — stocké dans `DEV_CORE_DATA/Runtime/gen_dashboard.lock`. Les appels concurrents attendent jusqu'à 30 s. Les locks périmés (>120 s) sont nettoyés automatiquement. Le mode `--json` (appels API) est exempt du lock pour ne pas bloquer les requêtes du cockpit.
+
+**Conséquences**
+- Zéro conflit de génération concurrente : les processus s'exécutent séquentiellement dans l'ordre d'arrivée.
+- Pas de dépendance externe (`fcntl`, `msvcrt`) : compatibilité Windows et Linux garantie.
+- En cas de processus mort laissant un lock, le nettoyage automatique reprend dans les 120 s.
+- Pour forcer la suppression manuelle : `Remove-Item "$env:DEVCORE_DATA_ROOT\Runtime\gen_dashboard.lock" -Force`.
+
+## ADR-018 - Régénération du Cockpit après Scan Repowise (Chaîne de Propagation)
+
+**Statut** : accepté (Août 2026)
+
+Le post-commit hook lançait `task_sync.ps1` (génération immédiate du cockpit) et `repowise_update.py` (scan Repowise) en parallèle via `Start-Process`. Le cockpit était régénéré avant la fin du scan, affichant des scores de santé périmés dans la carte Radar.
+
+**Décision** : `repowise_update.py` appelle explicitement `gen_dashboard.py --skip-token-refresh` à la fin d'un scan réussi. Le cockpit est ainsi régénéré **deux fois** après chaque commit :
+
+1. Immédiatement par `task_sync.ps1` (tâches/événements à jour, scores Repowise de la passe précédente).
+2. ~1-3 min après par `repowise_update.py` (tous les scores Repowise à jour).
+
+Le lock ADR-017 garantit que ces deux générations ne se chevauchent jamais.
+
+**Conséquences**
+- La carte Radar du cockpit reflète toujours les scores du dernier commit après la fin du scan.
+- L'opérateur peut recharger le cockpit 1-3 min après un commit pour avoir les données Repowise fraîches.
+- `DEVCORE_SKIP_DASHBOARD=1` permet de désactiver la régénération automatique si nécessaire.
