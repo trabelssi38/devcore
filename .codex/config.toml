@@ -1,8 +1,8 @@
 [mcp_servers.repowise]
-command = 'repowise'
+command = 'C:\Program Files\Python313\Scripts\repowise.exe'
 args = [
   'mcp',
-  '/app',
+  'C:/devcore',
   '--transport',
   'stdio',
 ]
