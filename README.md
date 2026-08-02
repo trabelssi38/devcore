@@ -3,7 +3,7 @@
 **Single Client Mode** — Plateforme d'orchestration IA pour le développement logiciel
 
 Version : 10.0.0
-Updated : 2026-07-09
+Updated : 2026-08-02
 Mode : Single Client (pas de handoffs multi-agents)
 
 ---
@@ -98,10 +98,13 @@ C:\devcore\
 │   ├── Dashboard\              # Fichiers HTML/CSS/JS (Cockpit index.html & Terminal index_terminal.html)
 │   ├── Database\               # Modèles de base de données SQLAlchemy & Migrations
 │   ├── docker\                 # Dockerfiles de l'environnement Python/Node
-│   ├── docs\                   # Fiches d'architecture (ADR, Sprints, UI plans)
+│   ├── docs\                   # Fiches d'architecture (ADR, Sprints, UI plans, etc.)
 │   ├── MCP\                    # Serveurs MCP (Qdrant & DevCore Scripts)
+│   │   └── devcore-scripts\    # Serveur MCP modulaire (handlers/, services/)
 │   ├── Scheduler\              # Tâches d'arrière-plan du planificateur natif
-│   ├── Scripts\                # Scripts Powerhell principaux (dc.ps1, launch.ps1, etc.)
+│   ├── Scripts\                # Scripts Powershell et orchestrateurs Python
+│   │   ├── dashboard\          # Module de rendu Cockpit (utils, data_loader, html_renderer)
+│   │   └── router\             # Module de routage intelligent (config, providers, stream_parser)
 │   ├── Skills\                 # Compétences packagées pour les agents autonomes
 │   ├── Web\                    # Interface web frontend (Next.js)
 │   └── ...
@@ -109,10 +112,11 @@ C:\devcore\
 │   ├── Database\               # SQLite (legacy) & stockage de fichiers DB
 │   ├── Memory\                 # Tâches (tasks.json), index (MEMORY.md)
 │   ├── Logs\                   # Journaux d'exécution
+│   │   └── metrics\            # Logs de télémétrie des tokens (metrics-*.jsonl)
 │   ├── Obsidian\               # Vault Obsidian des notes de l'agent
 │   ├── qdrant_storage\         # Vecteurs de la base de données Qdrant
 │   └── Sessions\               # Historique de sessions
-├── docker-compose.yml          # Fichier d'orchestration multi-services
+├── docker-compose.yml          # Fichier d'orchestration multi-services Docker Compose
 └── README.md                   # Ce fichier
 ```
 
@@ -159,11 +163,17 @@ Ouvrir dans un navigateur (Recommandé pour éviter les restrictions CORS) :
 
 ### Fonctionnalités Clés :
 - **Basculement instantané** : Bouton `⌨ TERMINAL` dans le Cockpit et `⊞ COCKPIT` sur la topbar du Terminal.
+- **Grille Cockpit v10** : Quadrillage figé en `grid-template-columns: 330px 1fr 555px;` pour optimiser l'affichage sur écrans larges.
 - **Filtrage par Projet** : En cliquant sur une ligne projet (colonne 1), le dashboard filtre instantanément les tâches du pipeline et met à jour le **Rapport de Consommation** pour n'afficher que les tokens et les coûts de modèles spécifiques à ce projet.
-- **Rapport de Consommation & Headroom** : Section interactive avec sauvegarde automatique de l'état ouvert/fermé dans le `localStorage` lors des cycles de rafraîchissement.
+- **Supervision Headroom** : Section de supervision des consommations de jetons extraite des onglets pour rester visible et ancrée de manière persistante au bas de la colonne centrale.
+  - Comprend des indicateurs dynamiques d'ouverture/fermeture (`▶` / `▼`) gérés en CSS pur.
+  - Affiche le **Détail des Sessions** avec des badges de statut explicites :
+    - **`OK` (Vert)** : Session affectée et traçable à une tâche active.
+    - **`OK (Session Libre)` (Jaune)** : Session non affectée à une tâche, sous les limites de consommation.
+    - **`ALERTE (Hors Tâche)` (Rouge)** : Session hors tâche dépassant un volume critique de tokens (> 500k tks) ou coût (> $0.50).
 - **Services & Infrastructure** : Monitoring en temps réel avec intégration du **DEV_CORE Scheduler natif v10** (remplaçant Hermes autonome), du **Repowise Engine (MCP)** au sommet de la pile de surveillance, ainsi que de Gemini Router, Dashboard API Server, Headroom Proxy et Qdrant Vector DB.
 - **Configuration Unifiée** : Paramètres de configuration (client actif, taux de rafraîchissement, clés API Gemini et Anthropic, activation des services) synchronisés entre les deux templates.
-- **Pipeline de tâches globale** (T-01 → T-04) avec options de filtrage par date (tous, 1j, 7j, 30j).
+- **Pipeline de tâches globale** avec options de filtrage par date (tous, 1j, 7j, 30j).
 
 ---
 

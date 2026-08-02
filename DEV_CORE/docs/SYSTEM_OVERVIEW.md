@@ -28,11 +28,11 @@ Le systeme reste "single client" : un client actif execute le travail, tandis qu
 
 | Sous-systeme | Role | Source de verite | Runtime | Tests |
 |---|---|---|---|---|
-| Task lifecycle | Creer, selectionner, avancer, terminer les taches | `DEV_CORE_DATA\Memory\<project>\tasks.json` | `task_service.ps1`, `task_next.ps1`, hooks Git | `test_task_service.ps1`, `test_task_list_adapter.ps1` |
-| Routage IA | Choisir mode/profil/candidat modele | `Config\routing_profiles.json`, `Config\ai_capability_registry.json` | `routing_profile.ps1`, `gemini_router.py` | `test_routing_profile.ps1`, `test_ai_capability_registry.py` |
+| Task lifecycle | Creer, selectionner, avancer, terminer les taches | `DEV_CORE_DATA\Memory\<project>\tasks.json` | `task_service.ps1`, `task_next.ps1`, hooks Git, `task_prompt_analyzer.py` | `test_task_service.ps1`, `test_task_list_adapter.ps1` |
+| Routage IA | Choisir mode/profil/candidat modele | `Config\routing_profiles.json`, `Config\ai_capability_registry.json` | `routing_profile.ps1`, `gemini_router.py` (via `router/` package) | `test_routing_profile.ps1`, `test_ai_capability_registry.py` |
 | Compression/offload | Reduire contexte et logs volumineux | `Config\headroom_config.yaml`, canvas runtime | Headroom Proxy `8787`, `canvas_manager.ps1` | contrats indirects via docs/scripts |
 | Memoire | Lire/reutiliser decisions, lessons, patterns | `DEV_CORE_DATA\Memory`, Qdrant, Obsidian | `memory_service.ps1`, `memory_hierarchy.ps1`, `qdrant_sync.ps1` | `test_memory_service.ps1`, `test_qdrant_vector_contract.ps1` |
-| Dashboard/cockpit | Vue projet, services, tasks, tokens, plugins | `Dashboard\template.html`, `DEV_CORE_DATA\Dashboard` | `gen_dashboard.ps1`, `dashboard_api.py` | `test_dashboard_api.py`, contrats cockpit/security |
+| Dashboard/cockpit | Vue projet, services, tasks, tokens, plugins | `Dashboard\template.html`, `DEV_CORE_DATA\Dashboard` | `gen_dashboard.py` (via `dashboard/` package), `dashboard_api.py` | `test_dashboard_api.py`, contrats cockpit/security |
 | Event bus/read model | Journaliser evenements et snapshots dashboard | `DEV_CORE_DATA\Bus`, `Dashboard\read_model.json` | `event_bus.ps1`, `dashboard_read_model.ps1` | `test_event_bus.ps1`, `test_dashboard_read_model.ps1` |
 | API v1 | Exposer contrats et integrations externes | `API\devcore_api`, `Schemas\openapi-v1.json` | FastAPI `run_api.py` | `API\test_*.py` |
 | Database | Contrats SQL, repositories, outbox, audit | `Database\postgres_schema_v1.sql`, Alembic | `Database\devcore_db` | `Database\test_*.py` |
@@ -68,6 +68,7 @@ flowchart TD
 5. Commit avec tag `[T-XX]`.
 6. Le hook post-commit incremente `steps_done`, publie un evenement et regenere le dashboard.
 7. Si la tache est terminee, `task_done.ps1 -Force` chaine la suivante.
+8. En arrière-plan, le **Headroom Proxy** et le **Metrics Service** consignent les jetons dans les journaux de télémétrie.
 
 Quand aucune tache n'est active, le travail peut etre committe avec une tache creee explicitement via `dc new task`, ou avec un tag existant si la tache a ete detectee.
 
@@ -110,6 +111,7 @@ Les contrats domaine couvrent tasks, runs, events, plugins, workspaces, quotas, 
 |---|---|---|
 | Tasks projet | `DEV_CORE_DATA\Memory\<project>\tasks.json` | source de verite taches |
 | Logs scripts | `DEV_CORE_DATA\Logs\scripts` | diagnostic et session context |
+| Logs de télémétrie | `DEV_CORE_DATA\Logs\metrics` | logs d'activité et consommation des jetons par jour |
 | Dashboard payload | `DEV_CORE_DATA\Dashboard\dashboard_payload.json` | cache de lecture cockpit |
 | Event bus | `DEV_CORE_DATA\Bus\events` | append-only events |
 | Qdrant storage | `DEV_CORE_DATA\qdrant_storage` | collections vectorielles |

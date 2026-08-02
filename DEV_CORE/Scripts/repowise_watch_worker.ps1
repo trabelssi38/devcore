@@ -199,7 +199,7 @@ try {
     $statePath = Join-Path $resolvedProjectPath ".repowise\state.json"
     if (-not (Test-Path $statePath)) {
         Log "INIT index-only fast"
-        & $RepowisePath init --index-only --mode fast --no-workspace -y --no-claude-md --no-agents --no-codex $resolvedProjectPath *>> $logPath
+        & $RepowisePath init --mode fast --no-workspace -y --no-claude-md --no-agents --no-codex $resolvedProjectPath *>> $logPath
         Log "INIT exit=$LASTEXITCODE"
     } else {
         Log "UPDATE index-only no-docs"

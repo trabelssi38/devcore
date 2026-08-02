@@ -12,10 +12,12 @@ header{padding:6px 16px;height:36px;box-sizing:border-box;background:#141722;bor
 h1{font-size:14px;color:#6366f1;margin:0;font-weight:700}
 h2{font-size:11px;color:#94a3b8;margin:0 0 10px;text-transform:uppercase;letter-spacing:.05em}
 
-.main-layout{display:grid;grid-template-columns:310px 1fr 470px;flex:1;overflow:hidden;height:calc(100vh - 36px)}
+.main-layout{display:grid;grid-template-columns:330px 1fr 555px;flex:1;overflow:hidden;height:calc(100vh - 36px)}
 .column{display:flex;flex-direction:column;border-right:1px solid #2d3148;padding:12px 14px;overflow:hidden;min-height:0}
 .column:last-child{border-right:none}
 .scroll-area{flex:1;overflow-y:auto;padding-right:8px}
+#token-activity-report details:not([open]) .headroom-toggle-text::before { content: '▶ cliquez pour déplier'; }
+#token-activity-report details[open] .headroom-toggle-text::before { content: '▼ cliquez pour replier'; }
 
 .card{background:#1a1d27;border:1px solid #2d3148;border-radius:8px;padding:12px;margin-bottom:8px}
 .card-title{font-size:10px;color:#475569;text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
@@ -487,65 +489,70 @@ details{margin-bottom: 8px}
       </div>
     </div>
     
-    <!-- Tab: Tasks Content -->
-    <div id="tab-tasks-content" style="display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden;">
-      <div class="scroll-area" id="tasks-pipeline" style="min-height: 0;">
-        {{TASKS_PIPELINE}}
+    <!-- Tab Contents Container -->
+    <div style="flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden;">
+      <!-- Tab: Tasks Content -->
+      <div id="tab-tasks-content" style="display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden;">
+        <div class="scroll-area" id="tasks-pipeline" style="min-height: 0;">
+          {{TASKS_PIPELINE}}
+        </div>
       </div>
-      <div id="token-activity-report" style="flex-shrink: 0; border-top: 1px solid #2d3148; padding-top: 12px; margin-top: 12px; background: #0b0d12;">
-        {{TOKEN_ACTIVITY_REPORT}}
+
+      <!-- Tab: Settings Content -->
+      <div id="tab-settings-content" style="display: none; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; padding-right: 8px;">
+        <form id="settings-form" onsubmit="event.preventDefault(); saveSettings();" class="card" style="padding: 16px; background:#1a1d27; border: 1px solid #2d3148; border-radius:8px;">
+          <div style="margin-bottom: 16px;">
+            <label style="display:block; font-size:10px; color:#64748b; text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; font-weight:600;">Client Actif</label>
+            <select id="setting-active-client" style="width:100%; padding:8px; background:#0b0d12; border:1px solid #2d3148; border-radius:6px; color:#e2e8f0; font-family:inherit; font-size:12px; outline:none;">
+              <option value="antigravity">Antigravity (default)</option>
+              <option value="claude-code">Claude Code</option>
+              <option value="hermes">Hermes Standalone</option>
+            </select>
+          </div>
+          
+          <div style="margin-bottom: 16px;">
+            <label style="display:block; font-size:10px; color:#64748b; text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; font-weight:600;">Rafraichissement (secondes)</label>
+            <select id="setting-refresh-rate" style="width:100%; padding:8px; background:#0b0d12; border:1px solid #2d3148; border-radius:6px; color:#e2e8f0; font-family:inherit; font-size:12px; outline:none;">
+              <option value="15">15 secondes (défaut)</option>
+              <option value="30">30 secondes</option>
+              <option value="60">60 secondes</option>
+              <option value="0">Désactivé</option>
+            </select>
+          </div>
+          
+          <div style="margin-bottom: 16px;">
+            <label style="display:block; font-size:10px; color:#64748b; text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; font-weight:600;">Cle API Gemini</label>
+            <input type="text" name="username" autocomplete="username" value="devcore-dashboard-settings" hidden aria-hidden="true" tabindex="-1" />
+            <input type="password" id="setting-gemini-key" autocomplete="new-password" style="width:100%; padding:8px; background:#0b0d12; border:1px solid #2d3148; border-radius:6px; color:#e2e8f0; font-family:monospace; font-size:12px; box-sizing:border-box; outline:none;" placeholder="Laisser vide pour ne pas modifier" />
+          </div>
+
+          <div style="margin-bottom: 16px;">
+            <label style="display:block; font-size:10px; color:#64748b; text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; font-weight:600;">Cle API Anthropic</label>
+            <input type="password" id="setting-anthropic-key" autocomplete="new-password" style="width:100%; padding:8px; background:#0b0d12; border:1px solid #2d3148; border-radius:6px; color:#e2e8f0; font-family:monospace; font-size:12px; box-sizing:border-box; outline:none;" placeholder="Laisser vide pour ne pas modifier" />
+          </div>
+
+          <div style="margin-bottom: 20px;">
+            <label style="display:block; font-size:10px; color:#64748b; text-transform:uppercase; letter-spacing:.05em; margin-bottom:10px; font-weight:600;">Services Actifs au Demarrage</label>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+              <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#cbd5e1; cursor:pointer;"><input type="checkbox" id="svc-qdrant" checked /> Qdrant DB (6333)</label>
+              <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#cbd5e1; cursor:pointer;"><input type="checkbox" id="svc-router" checked /> Gemini Router (20130)</label>
+              <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#cbd5e1; cursor:pointer;"><input type="checkbox" id="svc-api" checked /> Dashboard API (20129)</label>
+              <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#cbd5e1; cursor:pointer;"><input type="checkbox" id="svc-headroom" checked /> Headroom (8787)</label>
+              <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#cbd5e1; cursor:pointer;"><input type="checkbox" id="svc-hermes" checked /> Hermes Daemon</label>
+              <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#cbd5e1; cursor:pointer;"><input type="checkbox" id="svc-repowise" checked /> Repowise Server</label>
+            </div>
+          </div>
+
+          <div style="display:flex; justify-content: flex-end;">
+            <button type="submit" style="background:#6366f1; border:none; color:white; padding:8px 16px; border-radius:6px; font-weight:600; cursor:pointer; font-family:inherit; font-size:12px; transition: background .2s;" onmouseover="this.style.background='#4f46e5'" onmouseout="this.style.background='#6366f1'">Enregistrer</button>
+          </div>
+        </form>
       </div>
     </div>
 
-    <!-- Tab: Settings Content -->
-    <div id="tab-settings-content" style="display: none; flex-direction: column; flex: 1; min-height: 0; overflow-y: auto; padding-right: 8px;">
-      <form id="settings-form" onsubmit="event.preventDefault(); saveSettings();" class="card" style="padding: 16px; background:#1a1d27; border: 1px solid #2d3148; border-radius:8px;">
-        <div style="margin-bottom: 16px;">
-          <label style="display:block; font-size:10px; color:#64748b; text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; font-weight:600;">Client Actif</label>
-          <select id="setting-active-client" style="width:100%; padding:8px; background:#0b0d12; border:1px solid #2d3148; border-radius:6px; color:#e2e8f0; font-family:inherit; font-size:12px; outline:none;">
-            <option value="antigravity">Antigravity (default)</option>
-            <option value="claude-code">Claude Code</option>
-            <option value="hermes">Hermes Standalone</option>
-          </select>
-        </div>
-        
-        <div style="margin-bottom: 16px;">
-          <label style="display:block; font-size:10px; color:#64748b; text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; font-weight:600;">Rafraichissement (secondes)</label>
-          <select id="setting-refresh-rate" style="width:100%; padding:8px; background:#0b0d12; border:1px solid #2d3148; border-radius:6px; color:#e2e8f0; font-family:inherit; font-size:12px; outline:none;">
-            <option value="15">15 secondes (défaut)</option>
-            <option value="30">30 secondes</option>
-            <option value="60">60 secondes</option>
-            <option value="0">Désactivé</option>
-          </select>
-        </div>
-        
-        <div style="margin-bottom: 16px;">
-          <label style="display:block; font-size:10px; color:#64748b; text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; font-weight:600;">Cle API Gemini</label>
-          <input type="text" name="username" autocomplete="username" value="devcore-dashboard-settings" hidden aria-hidden="true" tabindex="-1" />
-          <input type="password" id="setting-gemini-key" autocomplete="new-password" style="width:100%; padding:8px; background:#0b0d12; border:1px solid #2d3148; border-radius:6px; color:#e2e8f0; font-family:monospace; font-size:12px; box-sizing:border-box; outline:none;" placeholder="Laisser vide pour ne pas modifier" />
-        </div>
-
-        <div style="margin-bottom: 16px;">
-          <label style="display:block; font-size:10px; color:#64748b; text-transform:uppercase; letter-spacing:.05em; margin-bottom:6px; font-weight:600;">Cle API Anthropic</label>
-          <input type="password" id="setting-anthropic-key" autocomplete="new-password" style="width:100%; padding:8px; background:#0b0d12; border:1px solid #2d3148; border-radius:6px; color:#e2e8f0; font-family:monospace; font-size:12px; box-sizing:border-box; outline:none;" placeholder="Laisser vide pour ne pas modifier" />
-        </div>
-
-        <div style="margin-bottom: 20px;">
-          <label style="display:block; font-size:10px; color:#64748b; text-transform:uppercase; letter-spacing:.05em; margin-bottom:10px; font-weight:600;">Services Actifs au Demarrage</label>
-          <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-            <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#cbd5e1; cursor:pointer;"><input type="checkbox" id="svc-qdrant" checked /> Qdrant DB (6333)</label>
-            <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#cbd5e1; cursor:pointer;"><input type="checkbox" id="svc-router" checked /> Gemini Router (20130)</label>
-            <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#cbd5e1; cursor:pointer;"><input type="checkbox" id="svc-api" checked /> Dashboard API (20129)</label>
-            <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#cbd5e1; cursor:pointer;"><input type="checkbox" id="svc-headroom" checked /> Headroom (8787)</label>
-            <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#cbd5e1; cursor:pointer;"><input type="checkbox" id="svc-hermes" checked /> Hermes Daemon</label>
-            <label style="display:flex; align-items:center; gap:8px; font-size:12px; color:#cbd5e1; cursor:pointer;"><input type="checkbox" id="svc-repowise" checked /> Repowise Server</label>
-          </div>
-        </div>
-
-        <div style="display:flex; justify-content: flex-end;">
-          <button type="submit" style="background:#6366f1; border:none; color:white; padding:8px 16px; border-radius:6px; font-weight:600; cursor:pointer; font-family:inherit; font-size:12px; transition: background .2s;" onmouseover="this.style.background='#4f46e5'" onmouseout="this.style.background='#6366f1'">Enregistrer</button>
-        </div>
-      </form>
+    <!-- Supervision Headroom (Always Visible) -->
+    <div id="token-activity-report" style="flex-shrink: 0; border-top: 1px solid #2d3148; padding-top: 12px; margin-top: 12px; background: #0b0d12;">
+      {{TOKEN_ACTIVITY_REPORT}}
     </div>
   </div>
 

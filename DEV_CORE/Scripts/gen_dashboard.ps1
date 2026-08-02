@@ -978,7 +978,7 @@ if ($tokenSummary) {
   <summary style="padding: 12px 16px; background: #1a1d27; border-bottom: 1px solid #2d3148; cursor: pointer; display: flex; justify-content: space-between; align-items: center; user-select: none;">
     <span style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: #6366f1; letter-spacing: 0.05em; display: flex; align-items: center; gap: 8px;">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-      Rapport de Consommation & Activit&eacute; Agent
+      Supervision Headroom &middot; Rapport de Consommation &amp; Activit&eacute; Agent
     </span>
     <span id="token-report-header-cost" style="font-size: 11px; color: #cbd5e1; font-family: monospace;">Co&ucirc;t total : `$$totCostFormatted USD</span>
   </summary>

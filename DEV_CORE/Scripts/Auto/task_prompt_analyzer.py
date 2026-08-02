@@ -2,16 +2,17 @@ import os
 import json
 import re
 import subprocess
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 import random
+from pathlib import Path
 
 def read_file_with_retry(file_path, errors="ignore", retries=5, delay=0.05):
     for attempt in range(retries):
         try:
             with open(file_path, "r", encoding="utf-8-sig", errors=errors) as f:
                 return f.read()
-        except (IOError, PermissionError) as e:
+        except (IOError, PermissionError):
             if attempt < retries - 1:
                 time.sleep(delay + random.uniform(0.01, 0.05))
             else:
@@ -22,7 +23,7 @@ def read_lines_with_retry(file_path, errors="ignore", retries=5, delay=0.05):
         try:
             with open(file_path, "r", encoding="utf-8-sig", errors=errors) as f:
                 return f.readlines()
-        except (IOError, PermissionError) as e:
+        except (IOError, PermissionError):
             if attempt < retries - 1:
                 time.sleep(delay + random.uniform(0.01, 0.05))
             else:
@@ -34,7 +35,7 @@ def write_file_with_retry(file_path, content, mode="w", retries=5, delay=0.05):
             with open(file_path, mode, encoding="utf-8") as f:
                 f.write(content)
             return
-        except (IOError, PermissionError) as e:
+        except (IOError, PermissionError):
             if attempt < retries - 1:
                 time.sleep(delay + random.uniform(0.01, 0.05))
             else:
@@ -104,6 +105,19 @@ def balance_and_clean(text):
         
     return text
 
+def correct_french_grammar(title: str) -> str:
+    """Corrects common French grammatical errors and contractions."""
+    title = re.sub(r'\bde\s+le\b', 'du', title, flags=re.I)
+    title = re.sub(r'\bde\s+les\b', 'des', title, flags=re.I)
+    title = re.sub(r'\bde\s+un\b', "d'un", title, flags=re.I)
+    title = re.sub(r'\bde\s+une\b', "d'une", title, flags=re.I)
+    title = re.sub(r'\bde\s+l\'\b', "de l'", title, flags=re.I)
+    title = re.sub(r'\bà\s+le\b', 'au', title, flags=re.I)
+    title = re.sub(r'\bà\s+les\b', 'aux', title, flags=re.I)
+    title = re.sub(r'pertinantes', 'pertinentes', title, flags=re.I)
+    title = re.sub(r'incompletes', 'incomplètes', title, flags=re.I)
+    return balance_and_clean(title[0].upper() + title[1:])
+
 def formulate_title(accomplishment):
     text = accomplishment.strip()
     
@@ -148,19 +162,7 @@ def formulate_title(accomplishment):
             remaining = text[match.end():].strip()
             if remaining:
                 remaining = remaining[0].lower() + remaining[1:]
-            title = replacement + remaining
-            
-            # Post-processing grammar corrections
-            title = re.sub(r'\bde\s+le\b', 'du', title, flags=re.I)
-            title = re.sub(r'\bde\s+les\b', 'des', title, flags=re.I)
-            title = re.sub(r'\bde\s+un\b', "d'un", title, flags=re.I)
-            title = re.sub(r'\bde\s+une\b', "d'une", title, flags=re.I)
-            title = re.sub(r'\bde\s+l\'\b', "de l'", title, flags=re.I)
-            title = re.sub(r'\bà\s+le\b', 'au', title, flags=re.I)
-            title = re.sub(r'\bà\s+les\b', 'aux', title, flags=re.I)
-            title = re.sub(r'pertinantes', 'pertinentes', title, flags=re.I)
-            title = re.sub(r'incompletes', 'incomplètes', title, flags=re.I)
-            return balance_and_clean(title[0].upper() + title[1:])
+            return correct_french_grammar(replacement + remaining)
 
     # 3. Standard verb prefixes
     prefixes = [
@@ -184,19 +186,7 @@ def formulate_title(accomplishment):
             remaining = text[match.end():].strip()
             if remaining:
                 remaining = remaining[0].lower() + remaining[1:]
-            title = prefix + remaining
-            
-            # Post-processing grammar corrections
-            title = re.sub(r'\bde\s+le\b', 'du', title, flags=re.I)
-            title = re.sub(r'\bde\s+les\b', 'des', title, flags=re.I)
-            title = re.sub(r'\bde\s+un\b', "d'un", title, flags=re.I)
-            title = re.sub(r'\bde\s+une\b', "d'une", title, flags=re.I)
-            title = re.sub(r'\bde\s+l\'\b', "de l'", title, flags=re.I)
-            title = re.sub(r'\bà\s+le\b', 'au', title, flags=re.I)
-            title = re.sub(r'\bà\s+les\b', 'aux', title, flags=re.I)
-            title = re.sub(r'pertinantes', 'pertinentes', title, flags=re.I)
-            title = re.sub(r'incompletes', 'incomplètes', title, flags=re.I)
-            return balance_and_clean(title[0].upper() + title[1:])
+            return correct_french_grammar(prefix + remaining)
             
     # Fallback: remove pronoun prefixes
     text = re.sub(r'^(?:j\'ai|nous\s+avons|i\s+have|we\s+have|successfully)\s+', '', text, flags=re.I).strip()
@@ -245,13 +235,12 @@ def parse_task_md(file_path):
         
     try:
         lines = read_lines_with_retry(file_path, errors="ignore")
-    except Exception as e:
+    except Exception:
         return tasks
 
     current_task = None
     
     for line in lines:
-        stripped = line.strip()
         match = re.match(r'^(\s*)-\s*\[\s*([ xX/])\s*\]\s*(.+)', line)
         if not match:
             continue
@@ -262,8 +251,7 @@ def parse_task_md(file_path):
         
         content = re.sub(r'^\*\*+(.*?)\*\*+$', r'\1', content)
         content = re.sub(r'^#+\s*', '', content)
-        content = re.sub(r'^\d+(\.\d+)*\s*[\.\-:]?\s*', '', content)
-        content = content.strip()
+        content = re.sub(r'^\d+(\.\d+)*\s*[\.\-:]?\s*', '', content).strip()
         
         status = "done" if status_char == 'x' else "todo"
         
@@ -300,10 +288,7 @@ def parse_task_md(file_path):
                 
     for t in tasks:
         if t["steps"]:
-            if t["steps_done"] == t["steps_total"]:
-                t["status"] = "done"
-            else:
-                t["status"] = "todo"
+            t["status"] = "done" if t["steps_done"] == t["steps_total"] else "todo"
         else:
             t["steps"] = None
             t["steps_total"] = 1
@@ -318,7 +303,7 @@ def parse_implementation_plan_md(file_path):
         
     try:
         content = read_file_with_retry(file_path, errors="ignore")
-    except Exception as e:
+    except Exception:
         return tasks
         
     pattern = r'####\s*\[\s*(MODIFY|NEW|DELETE)\s*\]\s*\[\s*([^\]]+)\s*\]\s*\(\s*([^\)]+)\s*\)'
@@ -339,6 +324,135 @@ def parse_implementation_plan_md(file_path):
         
     return tasks
 
+def detect_explicit_user_tasks(overview_path, session_id, today_str, task_creation_patterns, log_fn) -> list:
+    """Helper to detect explicit task requests in user prompts to flatten nesting levels."""
+    user_tasks = []
+    if not os.path.exists(overview_path):
+        return user_tasks
+        
+    try:
+        lines = read_lines_with_retry(overview_path, errors="ignore")
+        for line in lines:
+            if not line.strip():
+                continue
+            try:
+                data = json.loads(line)
+                if data.get("source") != "USER_EXPLICIT" or data.get("type") != "USER_INPUT":
+                    continue
+                content = data.get("content", "")
+                if not content:
+                    continue
+                    
+                for pattern in task_creation_patterns:
+                    match = re.search(pattern, content)
+                    if not match:
+                        continue
+                    raw_title = match.group(1).strip()
+                    cleaned_title = raw_title.strip().rstrip(".?!,;*:\n").strip()
+                    cleaned_title = re.sub(r'^\s*["\'`]+|["\'`]+\s*$', '', cleaned_title).strip()
+                    
+                    if cleaned_title and len(cleaned_title) >= 5:
+                        task_mode = "coding"
+                        mode_test = cleaned_title.lower()
+                        if any(x in mode_test for x in ["plan", "analyse", "recherche", "investig", "document"]):
+                            task_mode = "reasoning"
+                        elif any(x in mode_test for x in ["test", "optimis", "déploy"]):
+                            task_mode = "bulk"
+                            
+                        user_tasks.append({
+                            "title": cleaned_title,
+                            "details": f"**Tâche créée à partir de la demande utilisateur :**\n- \"{content}\"",
+                            "mode": task_mode,
+                            "status": "todo",
+                            "steps_total": 1,
+                            "steps_done": 0,
+                            "source": session_id,
+                            "source_type": "user_prompt_detected",
+                            "detected": today_str,
+                            "started_at": None,
+                            "completed_at": None,
+                            "steps": None
+                        })
+                        log_fn(f"Detected explicit user task request: [{task_mode}] {cleaned_title}", "USERTASK")
+                    break
+            except Exception:
+                pass
+    except Exception:
+        pass
+    return user_tasks
+
+def parse_args_from_tc(args) -> dict:
+    if isinstance(args, str):
+        try:
+            return json.loads(args)
+        except Exception:
+            match = re.search(r'"TargetFile"\s*:\s*"([^"]+)"', args)
+            if match:
+                return {"TargetFile": match.group(1)}
+    elif isinstance(args, dict):
+        return args
+    return {}
+
+def extract_modified_files_from_chunk(data, workspace_root) -> set:
+    modified = set()
+    tool_calls = data.get("tool_calls", [])
+    for tc in tool_calls:
+        if tc.get("name") not in ["write_to_file", "replace_file_content", "multi_replace_file_content"]:
+            continue
+        args = parse_args_from_tc(tc.get("args"))
+        target_file = args.get("TargetFile")
+        if target_file:
+            target_file = target_file.replace("\\\\", "\\").replace('"', '')
+            if target_file.lower().startswith(workspace_root.lower()):
+                rel = os.path.relpath(target_file, workspace_root)
+                if not any(x in rel.lower() for x in [".git", "scratch", "logs", ".gemini", "tempmediastorage"]):
+                    modified.add(rel)
+    return modified
+
+def parse_session_files_and_accomplishments(overview_path) -> tuple:
+    """Helper to extract files and accomplishments from session overview to keep code flat."""
+    modified_files = set()
+    accomplishments = []
+    if not os.path.exists(overview_path):
+        return modified_files, accomplishments
+        
+    workspace_root = str(Path(__file__).resolve().parents[4])
+    
+    try:
+        lines = read_lines_with_retry(overview_path, errors="ignore")
+        for line in lines:
+            if not line.strip():
+                continue
+            try:
+                data = json.loads(line)
+                modified_files.update(extract_modified_files_from_chunk(data, workspace_root))
+                
+                if data.get("source") == "MODEL" and data.get("type") == "PLANNER_RESPONSE":
+                    content = data.get("content", "")
+                    if content:
+                        for sent in re.split(r'[.!?\n]+', content):
+                            sent = sent.strip()
+                            if not sent:
+                                continue
+                            match = re.search(r'(?i)\b(j\'ai|nous\s+avons|i\s+have|we\s+have)\b', sent)
+                            if not match:
+                                continue
+                            acc = sent[match.start():].strip()
+                            if len(acc) >= 15:
+                                if len(acc) > 120:
+                                    acc = acc[:117].rstrip()
+                                    acc = re.sub(r'\s+\S+$', '', acc) + "..."
+                                cleaned = clean_accomplishment(acc)
+                                if cleaned and cleaned not in accomplishments:
+                                    low = cleaned.lower()
+                                    if not any(x in low for x in ["j'ai lu", "j'ai vérifié", "i checked", "i read", "i verified", "j'ai vu"]):
+                                        accomplishments.append(cleaned)
+            except Exception:
+                pass
+    except Exception:
+        pass
+    return modified_files, accomplishments
+
 def main():
     dev_core = os.environ.get("DEVCORE_PLATFORM_ROOT", str(Path(__file__).resolve().parents[4] / "DEV_CORE"))
     dev_core_data = os.environ.get("DEVCORE_DATA_ROOT", str(Path(__file__).resolve().parents[4] / "DEV_CORE_DATA"))
@@ -347,13 +461,11 @@ def main():
     active_proj = get_active_project(dev_core, dev_core_data)
     
     queue_dir = os.path.join(dev_core_data, "Memory", active_proj)
-    if not os.path.exists(queue_dir):
-        os.makedirs(queue_dir)
+    os.makedirs(queue_dir, exist_ok=True)
         
     queue_path = os.path.join(queue_dir, "task_prompt_queue.jsonl")
     log_dir = os.path.join(dev_core_data, "Logs", "scripts")
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
+    os.makedirs(log_dir, exist_ok=True)
         
     log_path = os.path.join(log_dir, f"task_prompt_analyzer_{today_str}.log")
 
@@ -421,6 +533,12 @@ def main():
         return
 
     candidates = []
+    task_creation_patterns = [
+        r"(?i)(?:c'est\s+)?(?:une?\s+)?(?:nouvelle?|nouveau?|nouvel)\s+(?:tâche|tache|task)\s*[:\-,]?\s*(.+)",
+        r"(?i)cr[ée]er?\s+(?:une?|un?|des?)\s+(?:nouvelle?|nouveau?|nouvel)\s+(?:tâche|tache|task)\s*[:\-,]?\s*(.+)",
+        r"(?i)(?:it's\s+a\s+)?new\s+task\s*[:\-,]?\s*(.+)",
+        r"(?i)create\s+(?:a\s+)?new\s+task\s*[:\-,]?\s*(.+)"
+    ]
 
     for s_path, s_mtime, s_id in recent_sessions:
         if s_id in existing_sources:
@@ -467,7 +585,6 @@ def main():
         log(f"Scanning active session plans and checklists: {s_id}", "SCAN")
         
         session_candidates = []
-        from datetime import timedelta
         
         # Attempt to parse task.md (checklist)
         checklist_tasks = parse_task_md(task_path)
@@ -526,126 +643,11 @@ def main():
                     })
                     
         # Extract explicit user task creation requests (always check)
-        user_tasks = []
-        task_creation_patterns = [
-            r"(?i)(?:c'est\s+)?(?:une?\s+)?(?:nouvelle?|nouveau?|nouvel)\s+(?:tâche|tache|task)\s*[:\-,]?\s*(.+)",
-            r"(?i)cr[ée]er?\s+(?:une?|un?|des?)\s+(?:nouvelle?|nouveau?|nouvel)\s+(?:tâche|tache|task)\s*[:\-,]?\s*(.+)",
-            r"(?i)(?:it's\s+a\s+)?new\s+task\s*[:\-,]?\s*(.+)",
-            r"(?i)create\s+(?:a\s+)?new\s+task\s*[:\-,]?\s*(.+)"
-        ]
-        
-        if os.path.exists(overview_path):
-            try:
-                lines = read_lines_with_retry(overview_path, errors="ignore")
-                for line in lines:
-                        try:
-                            data = json.loads(line)
-                            source = data.get("source")
-                            type_ = data.get("type")
-                            content = data.get("content", "")
-                            
-                            if source == "USER_EXPLICIT" and type_ == "USER_INPUT" and content:
-                                for pattern in task_creation_patterns:
-                                    match = re.search(pattern, content)
-                                    if match:
-                                        raw_title = match.group(1).strip()
-                                        cleaned_title = raw_title.strip().rstrip(".?!,;*:\n").strip()
-                                        cleaned_title = re.sub(r'^\s*["\'`]+|["\'`]+\s*$', '', cleaned_title)
-                                        cleaned_title = cleaned_title.strip()
-                                        
-                                        if cleaned_title and len(cleaned_title) >= 5:
-                                            task_mode = "coding"
-                                            mode_test = cleaned_title.lower()
-                                            if any(x in mode_test for x in ["plan", "analyse", "recherche", "investig", "document"]):
-                                                task_mode = "reasoning"
-                                            elif any(x in mode_test for x in ["test", "optimis", "déploy"]):
-                                                task_mode = "bulk"
-                                                
-                                            user_tasks.append({
-                                                "title": cleaned_title,
-                                                "details": f"**Tâche créée à partir de la demande utilisateur :**\n- \"{content}\"",
-                                                "mode": task_mode,
-                                                "status": "todo",
-                                                "steps_total": 1,
-                                                "steps_done": 0,
-                                                "source": s_id,
-                                                "source_type": "user_prompt_detected",
-                                                "detected": today_str,
-                                                "started_at": None,
-                                                "completed_at": None,
-                                                "steps": None
-                                            })
-                                            log(f"Detected explicit user task request: [{task_mode}] {cleaned_title}", "USERTASK")
-                                        break
-                        except:
-                            pass
-            except Exception as e:
-                pass
+        user_tasks = detect_explicit_user_tasks(overview_path, s_id, today_str, task_creation_patterns, log)
                 
         # If neither checklist nor plan was found, fallback to default agent accomplishments scan
         if not session_candidates:
-            modified_files = set()
-            accomplishments = []
-            
-            if os.path.exists(overview_path):
-                try:
-                    lines = read_lines_with_retry(overview_path, errors="ignore")
-                    for line in lines:
-                            try:
-                                data = json.loads(line)
-                                source = data.get("source")
-                                type_ = data.get("type")
-                                content = data.get("content", "")
-                                tool_calls = data.get("tool_calls", [])
-                                
-                                for tc in tool_calls:
-                                    name = tc.get("name")
-                                    if name in ["write_to_file", "replace_file_content", "multi_replace_file_content"]:
-                                        args = tc.get("args", {})
-                                        if isinstance(args, str):
-                                            try:
-                                                args = json.loads(args)
-                                            except:
-                                                match = re.search(r'"TargetFile"\s*:\s*"([^"]+)"', args)
-                                                if match:
-                                                    args = {"TargetFile": match.group(1)}
-                                                else:
-                                                    args = {}
-                                                    
-                                        target_file = args.get("TargetFile")
-                                        if target_file:
-                                            target_file = target_file.replace("\\\\", "\\").replace('"', '')
-                                            if target_file.lower().startswith(str(Path(__file__).resolve().parents[4])):
-                                                rel = os.path.relpath(target_file, str(Path(__file__).resolve().parents[4]))
-                                                if not any(x in rel.lower() for x in [".git", "scratch", "logs", ".gemini", "tempmediastorage"]):
-                                                    modified_files.add(rel)
-                                                    
-                                for source_mod, type_mod, content_mod in [(data.get("source"), data.get("type"), data.get("content", ""))]:
-                                    if source_mod == "MODEL" and type_mod == "PLANNER_RESPONSE" and content_mod:
-                                        sentences = re.split(r'[.!?\n]+', content_mod)
-                                        for sent in sentences:
-                                            sent = sent.strip()
-                                            if not sent:
-                                                continue
-                                            match = re.search(r'(?i)\b(j\'ai|nous\s+avons|i\s+have|we\s+have)\b', sent)
-                                            if match:
-                                                start_idx = match.start()
-                                                accomplishment = sent[start_idx:].strip()
-                                                if len(accomplishment) >= 15:
-                                                    if len(accomplishment) > 120:
-                                                        accomplishment = accomplishment[:117].rstrip()
-                                                        accomplishment = re.sub(r'\s+\S+$', '', accomplishment)
-                                                        accomplishment += "..."
-                                                        
-                                                    cleaned = clean_accomplishment(accomplishment)
-                                                    if cleaned and cleaned not in accomplishments:
-                                                        low = cleaned.lower()
-                                                        if not any(x in low for x in ["j'ai lu", "j'ai vérifié", "i checked", "i read", "i verified", "j'ai vu"]):
-                                                            accomplishments.append(cleaned)
-                            except:
-                                pass
-                except Exception as e:
-                    pass
+            modified_files, accomplishments = parse_session_files_and_accomplishments(overview_path)
                     
             if modified_files or accomplishments:
                 files_list = sorted(list(modified_files))

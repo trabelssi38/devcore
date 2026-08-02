@@ -15,6 +15,7 @@ Chronologie consolidee des implementations et plans. Source principale : histori
 | T-186 a T-193 | Hermes/Repowise/plugins v2 | Runtime daemon restaure, Repowise loopback, manifest v2, health isolation |
 | T-194 a T-208 | Workspace, integrations, docs operateur/API | Identity, memberships, quota, audit logs, GitHub webhook, schedules, docs API |
 | T-209 a T-222 | Release hardening, CI bornes, routing IA | Load/failure tests, SBOM, release package, runbook, routing profiles, capability registry |
+| T-223 a T-293+ | Modularisation Python v10 & Supervision Headroom | Refactoring modulaire CCN 1.0, grille 330px/1fr/555px, détails Supervision Headroom persistants, badges de session libres (OK/ALERTE), isolation diagnostics de santé |
 
 ## Mai 2026 - fondations
 
@@ -166,4 +167,17 @@ Chronologie consolidee des implementations et plans. Source principale : histori
 | Détection des services en conteneur | Bypass du mapping `127.0.0.1` pour les hôtes de conteneurs dans `gen_dashboard.py` (comme `gemini-router`) | Le statut de Gemini Router dans le Cockpit s'affiche désormais correctement au vert (`True`) au lieu de rester au rouge (HS). |
 | Enregistrement des compétences Antigravity | Ajout de la mise à jour automatique de `.antigravity-install-manifest.json` dans `adapt_client.ps1` | Les compétences liées au projet (notamment `devcore-automation`) sont automatiquement activées sous Antigravity, permettant le suivi automatique du protocole DevCore. |
 | Statut Core API | Configuration de la variable `API_HOST=api` pour le service `dashboard-api` dans `docker-compose.yml` | La vérification de port pour le service Core API réussit désormais, affichant le service en ligne dans le Cockpit. |
+
+## Refactoring Modulaire v10 & Supervision Cockpit (Août 2026)
+
+| Domaine | Implémentation | Impact |
+|---|---|---|
+| Refactoring Modulaire | Découplage de `gen_dashboard.py`, `gemini_router.py` et `server.py` (MCP) en sous-packages | Réduction de la complexité cyclomatique (CCN) à 1.0. Architecture propre orientée responsabilité unique. |
+| Aplatissement d'Imbrication | Réduction des imbrications complexes de blocs dans `task_prompt_analyzer.py` (de 13 à 3) | Lisibilité accrue, maintenance facilitée et élimination de la duplication de code. |
+| Supervision Headroom | Extraction du bloc du cockpit hors des onglets et verrouillage de la persistance de l'état ouvert/fermé | Supervision toujours visible au bas de la colonne 2, sans perte d'état lors des transitions d'onglets. |
+| Grille Cockpit | Quadrillage figé de la mise en page à `grid-template-columns: 330px 1fr 555px;` | Rendu optimisé des colonnes de données sur les écrans modernes. |
+| Télémétrie & Logs de Métriques | Redirection de la lecture des logs vers le dossier correct `DEV_CORE_DATA/Logs/metrics` | Le graphique et l'activité du service de métriques se chargent et se mettent à jour automatiquement. |
+| Diagnostic Santé Repowise | Isolation de la base de données SQLite de diagnostic par projet | Résolution des métriques dupliquées. Chaque projet affiche désormais son score global et son compte de fichiers propre. |
+| Badges de Session | Ajout d'indicateurs `OK`, `OK (Session Libre)` et `ALERTE (Hors Tâche)` sur les sessions actives | Permet aux opérateurs d'identifier immédiatement les sessions orphelines et les fuites de tokens. |
+
 

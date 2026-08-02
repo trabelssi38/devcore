@@ -507,42 +507,6 @@ def write_json_with_retry(file_path, data, retries=5, delay=0.05):
                 raise
 
 
-def read_json_with_retry(file_path, retries=5, delay=0.05):
-    for attempt in range(retries):
-        try:
-            with open(file_path, "r", encoding="utf-8-sig") as f:
-                return json.load(f)
-        except (IOError, PermissionError) as e:
-            print(f"[DashboardAPI] Read attempt {attempt+1}/{retries} failed for {file_path}: {e}")
-            if attempt < retries - 1:
-                time.sleep(delay + random.uniform(0.01, 0.05))
-            else:
-                raise
-        except json.JSONDecodeError as e:
-            print(f"[DashboardAPI] JSON decode failed: {e}")
-            if attempt < retries - 1:
-                time.sleep(delay + random.uniform(0.01, 0.05))
-            else:
-                raise
-
-def write_json_with_retry(file_path, data, retries=5, delay=0.05):
-    for attempt in range(retries):
-        try:
-            temp_path = Path(file_path).with_suffix(".tmp")
-            with open(temp_path, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=4, ensure_ascii=False)
-            if Path(file_path).exists():
-                os.replace(str(temp_path), str(file_path))
-            else:
-                temp_path.rename(file_path)
-            return
-        except (IOError, PermissionError, OSError) as e:
-            print(f"[DashboardAPI] Write attempt {attempt+1}/{retries} failed for {file_path}: {e}")
-            if attempt < retries - 1:
-                time.sleep(delay + random.uniform(0.01, 0.05))
-            else:
-                raise
-
 def run_plugin_check(plugin_id):
     if not PLUGIN_ID_PATTERN.fullmatch(plugin_id or ""):
         raise ValueError(f"Invalid plugin id: {plugin_id}")

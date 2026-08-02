@@ -102,10 +102,21 @@ La commande `endday.ps1 -SkipBackup` doit rester non bloquante pour le travail c
 - Les mutations dashboard doivent passer par les endpoints protégés, pas par édition manuelle.
 - Pour intégrer un outil externe, partir de `API_REFERENCE.md` et de `DEV_CORE/Schemas/openapi-v1.json`.
 
+## Supervision des jetons & Sessions Libres (Headroom)
+
+Dans le cadre de l'exploitation quotidienne, l'opérateur doit surveiller la consommation des jetons et identifier les comportements anormaux des agents IA (boucles de requêtes, fuites de tokens) via la section **Supervision Headroom** :
+1. **Identifier les Sessions Libres** : Les sessions d'agents IA non associées à une tâche ID sont marquées avec le badge **`OK (Session Libre)`** (jaune) ou **`ALERTE (Hors Tâche)`** (rouge clignotant).
+2. **Interpréter le statut ALERTE** : Une session hors tâche passe en `ALERTE` dès qu'elle consomme plus de **500 000 tokens** ou engendre un coût estimé supérieur à **$0.50 USD**.
+3. **Actions de récupération** :
+   - En cas d'alerte, retrouver la session dans `DEV_CORE_DATA/Logs/metrics/metrics-YYYY-MM-DD.jsonl` pour analyser les payloads JSON des appels récents.
+   - S'assurer que l'agent est bien rattaché à sa tâche active en relançant `dc next task` ou en spécifiant l'ID dans l'environnement de l'agent.
+
 ## Checklist opérateur
 
 - [ ] `dc launch` terminé ou timeout diagnostiqué sans processus orphelin.
 - [ ] `dc check --gate` passe avant publication.
 - [ ] Logs récents consultés dans `DEV_CORE_DATA\Logs\scripts` en cas d'erreur.
+- [ ] Logs de télémétrie de jetons vérifiés dans `DEV_CORE_DATA\Logs\metrics\metrics-YYYY-MM-DD.jsonl`.
 - [ ] Tâche active vérifiée depuis `DEV_CORE_DATA\Memory\<project>\tasks.json`.
+- [ ] Aucun conteneur ou agent libre en état d'alerte (`ALERTE (Hors Tâche)`) persistant dans le cockpit.
 - [ ] `endday.ps1 -SkipBackup` exécuté avant clôture d'une session courte.

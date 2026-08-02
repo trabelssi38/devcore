@@ -32,8 +32,10 @@ body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradie
 .btn-switch:hover{background:rgba(99,102,241,.22);border-color:#818cf8}
 
 /* ── LAYOUT ── */
-.main{flex:1;display:grid;grid-template-columns:330px 1fr 500px;overflow:hidden;height:calc(100vh - 28px)}
+.main{flex:1;display:grid;grid-template-columns:330px 1fr 555px;overflow:hidden;height:calc(100vh - 28px)}
 .col{border-right:1px solid var(--brd);display:flex;flex-direction:column;overflow:hidden}
+#token-activity-report details:not([open]) .headroom-toggle-text::before { content: '▶ cliquez pour déplier'; }
+#token-activity-report details[open] .headroom-toggle-text::before { content: '▼ cliquez pour replier'; }
 .col:last-child{border-right:none}
 .col-hd{height:22px;flex-shrink:0;display:flex;align-items:center;padding:0 8px;background:var(--bg2);border-bottom:1px solid var(--brd);font-size:9.5px;font-weight:700;letter-spacing:.15em;color:var(--txt2);text-transform:uppercase;gap:5px}
 .col-hd::before{content:'//';color:var(--dim);font-weight:400}
@@ -411,59 +413,64 @@ div[style*="color:#cbd5e1"][style*="font-size:10.5px"] {
 
       <!-- Tab Content Area -->
       <div style="flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden;">
-        <!-- Tab: Tasks -->
-        <div id="tab-tasks-content" style="display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden;">
-          <div id="tasks-pipeline" style="flex:1; overflow-y:auto; padding-right:4px; min-height:0;">
-            {{TASKS_PIPELINE}}
+        <!-- Tab contents container -->
+        <div style="flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden;">
+          <!-- Tab: Tasks -->
+          <div id="tab-tasks-content" style="display:flex; flex-direction:column; flex:1; min-height:0; overflow:hidden;">
+            <div id="tasks-pipeline" style="flex:1; overflow-y:auto; padding-right:4px; min-height:0;">
+              {{TASKS_PIPELINE}}
+            </div>
           </div>
-          <div id="token-activity-report" style="border-top:1px solid var(--brd); padding-top:8px; margin-top:8px; flex-shrink:0; background:var(--bg);">
-            {{TOKEN_ACTIVITY_REPORT}}
+
+          <!-- Tab: Settings -->
+          <div id="tab-settings-content" style="display:none; flex:1; overflow-y:auto; padding-right:4px;">
+            <form id="settings-form" onsubmit="event.preventDefault();saveSettings();" style="padding:8px;border:1px solid var(--brd);border-radius:2px">
+              <div style="margin-bottom:8px">
+                <label style="display:block;margin-bottom:4px;font-weight:600">Client Actif</label>
+                <select id="setting-active-client" style="width:100%">
+                  <option value="antigravity">Antigravity (default)</option>
+                  <option value="claude-code">Claude Code</option>
+                  <option value="hermes">Hermes Standalone</option>
+                </select>
+              </div>
+              <div style="margin-bottom:8px">
+                <label style="display:block;margin-bottom:4px;font-weight:600">Rafraichissement (s)</label>
+                <select id="setting-refresh-rate" style="width:100%">
+                  <option value="15">15s (défaut)</option>
+                  <option value="30">30s</option>
+                  <option value="60">60s</option>
+                  <option value="0">Désactivé</option>
+                </select>
+              </div>
+              <div style="margin-bottom:8px">
+                <label style="display:block;margin-bottom:4px;font-weight:600">Cle API Gemini</label>
+                <input type="text" name="username" autocomplete="username" value="devcore-dashboard-settings" hidden aria-hidden="true" tabindex="-1" />
+                <input type="password" id="setting-gemini-key" autocomplete="new-password" style="width:100%" placeholder="Laisser vide" />
+              </div>
+              <div style="margin-bottom:8px">
+                <label style="display:block;margin-bottom:4px;font-weight:600">Cle API Anthropic</label>
+                <input type="password" id="setting-anthropic-key" autocomplete="new-password" style="width:100%" placeholder="Laisser vide" />
+              </div>
+              <div style="margin-bottom:8px">
+                <label style="display:block;margin-bottom:6px;font-weight:600">Services au Demarrage</label>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+                  <label><input type="checkbox" id="svc-qdrant" checked /> Qdrant (6333)</label>
+                  <label><input type="checkbox" id="svc-router" checked /> Router (20130)</label>
+                  <label><input type="checkbox" id="svc-api" checked /> API (20129)</label>
+                  <label><input type="checkbox" id="svc-headroom" checked /> Headroom (8787)</label>
+                  <label><input type="checkbox" id="svc-hermes" checked /> Hermes</label>
+                  <label><input type="checkbox" id="svc-repowise" checked /> Repowise</label>
+                </div>
+              </div>
+              <div style="text-align:right"><button type="submit">Enregistrer</button></div>
+            </form>
           </div>
         </div>
 
-        <!-- Tab: Settings -->
-        <div id="tab-settings-content" style="display:none; flex:1; overflow-y:auto; padding-right:4px;">
-        <form id="settings-form" onsubmit="event.preventDefault();saveSettings();" style="padding:8px;border:1px solid var(--brd);border-radius:2px">
-          <div style="margin-bottom:8px">
-            <label style="display:block;margin-bottom:4px;font-weight:600">Client Actif</label>
-            <select id="setting-active-client" style="width:100%">
-              <option value="antigravity">Antigravity (default)</option>
-              <option value="claude-code">Claude Code</option>
-              <option value="hermes">Hermes Standalone</option>
-            </select>
-          </div>
-          <div style="margin-bottom:8px">
-            <label style="display:block;margin-bottom:4px;font-weight:600">Rafraichissement (s)</label>
-            <select id="setting-refresh-rate" style="width:100%">
-              <option value="15">15s (défaut)</option>
-              <option value="30">30s</option>
-              <option value="60">60s</option>
-              <option value="0">Désactivé</option>
-            </select>
-          </div>
-          <div style="margin-bottom:8px">
-            <label style="display:block;margin-bottom:4px;font-weight:600">Cle API Gemini</label>
-            <input type="text" name="username" autocomplete="username" value="devcore-dashboard-settings" hidden aria-hidden="true" tabindex="-1" />
-            <input type="password" id="setting-gemini-key" autocomplete="new-password" style="width:100%" placeholder="Laisser vide" />
-          </div>
-          <div style="margin-bottom:8px">
-            <label style="display:block;margin-bottom:4px;font-weight:600">Cle API Anthropic</label>
-            <input type="password" id="setting-anthropic-key" autocomplete="new-password" style="width:100%" placeholder="Laisser vide" />
-          </div>
-          <div style="margin-bottom:8px">
-            <label style="display:block;margin-bottom:6px;font-weight:600">Services au Demarrage</label>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
-              <label><input type="checkbox" id="svc-qdrant" checked /> Qdrant (6333)</label>
-              <label><input type="checkbox" id="svc-router" checked /> Router (20130)</label>
-              <label><input type="checkbox" id="svc-api" checked /> API (20129)</label>
-              <label><input type="checkbox" id="svc-headroom" checked /> Headroom (8787)</label>
-              <label><input type="checkbox" id="svc-hermes" checked /> Hermes</label>
-              <label><input type="checkbox" id="svc-repowise" checked /> Repowise</label>
-            </div>
-          </div>
-          <div style="text-align:right"><button type="submit">Enregistrer</button></div>
-        </form>
-      </div>
+        <!-- Supervision Headroom (Always Visible) -->
+        <div id="token-activity-report" style="border-top:1px solid var(--brd); padding-top:8px; margin-top:8px; flex-shrink:0; background:var(--bg);">
+          {{TOKEN_ACTIVITY_REPORT}}
+        </div>
       </div>
     </div>
   </div>
@@ -976,7 +983,7 @@ async function refreshDashboard(){
           newDetails.removeAttribute('open');
         }
         newDetails.addEventListener('toggle', () => {
-          localStorage.setItem('devcore_token_report_open', newDetails.hasAttribute('open'));
+          localStorage.setItem('devcore_token_report_open', newDetails.open ? 'true' : 'false');
         });
       }
     }

@@ -130,3 +130,33 @@ Les erreurs HTTP non `2xx` lèvent `DevCoreApiError` avec `status` et payload `D
 - Les champs `schema_version` restent obligatoires sur les contrats versionnés.
 - Les tests Python et le client généré doivent passer avant publication.
 - L'OpenAPI est la source de vérité; ne pas modifier le client généré à la main.
+
+---
+
+## Cockpit Dashboard API Reference (Port 20129)
+
+Le serveur API du Cockpit (`dashboard_api.py`) est exposé localement sur le port `20129`. Il fournit le support pour les mises à jour réactives en temps réel et les interactions avec le tableau de bord.
+
+### 1. GET /api/dashboard
+Renvoie le payload complet du tableau de bord.
+- **Réponse 200** : Contient les sections HTML pré-rendues, le détail des métriques de tokens, et la liste des projets.
+
+### 2. GET /api/health
+Renvoie l'état détaillé de santé de l'infrastructure locale (Qdrant, Gemini Router, Headroom Proxy, API Server, Hermes, Repowise).
+
+### 3. GET /api/sse/events
+Flux unidirectionnel SSE (Server-Sent Events) diffusant les événements en temps réel.
+- **Paramètres optionnels** : `?section=tasks|events|tokens` pour s'abonner sélectivement à des canaux spécifiques.
+
+### 4. POST /api/config
+Met à jour la configuration globale du cockpit.
+- **Payload** : Fichier JSON contenant `active_client`, `refresh_rate`, `gemini_api_key`, `anthropic_api_key`.
+
+### 5. POST /api/tasks/complete
+Marque une tâche du pipeline comme complétée.
+- **Payload** : `{"project": "nom-projet", "task_id": "T-XX"}`
+
+### 6. POST /api/tasks/delete
+Supprime une tâche du pipeline.
+- **Payload** : `{"project": "nom-projet", "task_id": "T-XX"}`
+

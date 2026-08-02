@@ -97,6 +97,7 @@ services:
     volumes:
       - .:/app
       - ./DEV_CORE_DATA:/data
+      - C:\src:/src
     depends_on:
       postgres:
         condition: service_healthy
@@ -127,6 +128,7 @@ services:
     volumes:
       - .:/app
       - ./DEV_CORE_DATA:/data
+      - C:\src:/src
     ports:
       - "20129:20129"
     depends_on:

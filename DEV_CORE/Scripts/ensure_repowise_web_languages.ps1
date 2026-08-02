@@ -18,7 +18,7 @@ for path in getattr(repowise, '__path__', []):
     $root = & $Python -c $code
     if ($LASTEXITCODE -ne 0 -or -not $root) {
         if (-not $Quiet) { Write-Host "[DEV_CORE] Repowise Python package not installed; skipping patch." }
-        exit 0
+        return
     }
     return [string]$root.Trim()
 }
@@ -69,7 +69,7 @@ $specInitPath = Join-Path $specDir "__init__.py"
 
 if (-not (Test-Path $specDir) -or -not (Test-Path $modelsPath) -or -not (Test-Path $specInitPath)) {
     if (-not $Quiet) { Write-Host "[DEV_CORE] Repowise package layout non-standard; skipping web language patch." }
-    exit 0
+    return
 }
 
 $specs = @{
@@ -173,5 +173,5 @@ print('Repowise web languages OK')
     }
 } catch {
     if (-not $Quiet) { Write-Host "[DEV_CORE] Non-admin access or existing Repowise configuration; skipping web language patch." }
-    exit 0
+    return
 }

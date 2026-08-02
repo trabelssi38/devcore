@@ -134,7 +134,7 @@ function Get-RepowiseWatchProcess {
         Where-Object {
             $_.CommandLine -and
             $_.CommandLine -match "repowise_watch_worker\.ps1" -and
-            $_.CommandLine -match "-ProjectName\s+$escapedName(\s|$)" -and
+            $_.CommandLine -match $escapedName -and
             $_.CommandLine -match $escaped
         } |
         Select-Object -First 1
@@ -205,24 +205,11 @@ foreach ($name in (Get-DeclaredProjectNames)) {
         continue
     }
 
-    $argList = @(
-        "-NoProfile",
-        "-ExecutionPolicy", "Bypass",
-        "-NonInteractive",
-        "-File", $WorkerPath,
-        "-ProjectName", $name,
-        "-ProjectPath", $path,
-        "-RepowisePath", $resolvedRepowise,
-        "-LogDir", $LogDir
-    )
-
-    $safeName = $name -replace '[\\/:*?"<>| ]', '_'
-    $stdOut = Join-Path $LogDir "$safeName.stdout.log"
-    $stdErr = Join-Path $LogDir "$safeName.stderr.log"
-    $started = Start-Process -FilePath "powershell" -ArgumentList $argList -WindowStyle Hidden -PassThru -RedirectStandardOutput $stdOut -RedirectStandardError $stdErr -ErrorAction SilentlyContinue
-    if ($started) {
-        $projectStates += [pscustomObject]@{ project = $name; path = $path; status = "started"; pid = $started.Id }
-        Write-Host "[DEV_CORE] Repowise watch START -- $name pid=$($started.Id)"
+    $commandLine = "powershell.exe -NoProfile -ExecutionPolicy Bypass -NonInteractive -Command `"`& '$WorkerPath' -ProjectName '$name' -ProjectPath '$path' -RepowisePath '$resolvedRepowise' -LogDir '$LogDir'`""
+    $started = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = $commandLine }
+    if ($started -and $started.ReturnValue -eq 0) {
+        $projectStates += [pscustomObject]@{ project = $name; path = $path; status = "started"; pid = $started.ProcessId }
+        Write-Host "[DEV_CORE] Repowise watch START -- $name pid=$($started.ProcessId)"
     } else {
         $projectStates += [pscustomobject]@{ project = $name; path = $path; status = "failed"; pid = $null }
         Write-Host "[DEV_CORE] Repowise watch ERROR -- $name failed to start"

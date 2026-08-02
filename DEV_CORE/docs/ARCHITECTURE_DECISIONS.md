@@ -229,3 +229,41 @@ DEV_CORE v10 adopte une architecture orientée conteneurs par défaut (container
 - Les conteneurs s'adressent via les noms de services du Compose au lieu de `localhost`.
 - Les scripts PowerShell du host sont réduits à de simples wrappers d'amorçage.
 
+## ADR-014 - Modularisation des scripts Python monolithiques
+
+**Statut** : accepté (Août 2026)
+
+Afin de réduire la complexité cyclomatique (CCN) et d'éliminer la duplication de code, les scripts Python massifs d'orchestration (`gen_dashboard.py`, `gemini_router.py`, `server.py` MCP) ont été découpés en sous-packages modulaires.
+
+**Sources**
+- `DEV_CORE/Scripts/dashboard/` (utils, data_loader, html_renderer)
+- `DEV_CORE/Scripts/router/` (config, providers, stream_parser)
+- `DEV_CORE/MCP/devcore-scripts/handlers/` & `services/`
+
+**Conséquences**
+- La complexité cyclomatique de chaque point d'entrée est réduite à 1.0.
+- Les responsabilités sont isolées : chargement de données, configuration, et rendu HTML sont séparés.
+- Les tests unitaires peuvent cibler des modules spécifiques au lieu de devoir exécuter le script global.
+
+## ADR-015 - Supervision Headroom & Architecture des Métriques de Tokens
+
+**Statut** : accepté (Août 2026)
+
+La supervision des consommations de jetons (Supervision Headroom) est extraite des onglets dynamiques du cockpit pour rester ancrée de manière persistante au bas de la colonne centrale. Les sessions orphelines sont identifiées à l'aide de badges de statut calculés.
+
+**Conséquences**
+- Le composant de cockpit `#token-activity-report` est persistant sur toutes les vues.
+- L'état de dépliement/repliement de l'élément `<details>` est sauvegardé dans le `localStorage` et restauré de manière transparente à chaque cycle de rafraîchissement (toutes les 15s).
+- Les sessions libres sans tâche ID active se voient attribuer des statuts visuels clairs (`OK` ou `ALERTE` si la session dépasse 500k tokens ou $0.50).
+
+## ADR-016 - Isolation des Diagnostics de Santé Repowise par Projet
+
+**Statut** : accepté (Août 2026)
+
+Les diagnostics de santé (Repowise Health) doivent interroger la base de données SQLite de diagnostic propre à chaque projet au lieu de renvoyer par défaut les statistiques du projet principal `devcore`.
+
+**Conséquences**
+- La méthode `get_repowise_db_health` valide rigoureusement les chemins des dossiers de projet.
+- Si le chemin est vide ou invalide, l'évaluation renvoie `None` au lieu de lire la base locale SQLite courante de `devcore`.
+- Chaque carte projet affiche désormais ses scores et son nombre de fichiers de façon parfaitement cloisonnée.
+
