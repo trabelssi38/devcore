@@ -20,7 +20,7 @@ def init_db(db_conn):
     # Create tables
     db_conn.execute("""
         CREATE TABLE IF NOT EXISTS tasks (
-            id TEXT PRIMARY KEY,
+            id TEXT,
             project TEXT NOT NULL,
             title TEXT NOT NULL,
             status TEXT NOT NULL,
@@ -30,7 +30,8 @@ def init_db(db_conn):
             source TEXT,
             details TEXT,
             started_at TEXT,
-            completed_at TEXT
+            completed_at TEXT,
+            PRIMARY KEY (id, project)
         );
     """)
     db_conn.execute("CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project);")
