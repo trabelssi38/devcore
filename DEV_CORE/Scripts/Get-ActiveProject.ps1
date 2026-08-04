@@ -12,21 +12,40 @@ if ($env:DEVCORE_ACTIVE_PROJECT_PWD -eq $currentPwd -and $env:DEVCORE_ACTIVE_PRO
 }
 
 try {
-    # 1. Vérifier si on est dans un dépôt Git par recherche parent (très rapide)
+    # 0. Vérifier s'il y a un fichier .devcore/project.json dans le dossier courant ou ses parents (très utile en sandbox/worktree)
     $dir = Get-Item .
-    $gitDir = $null
+    $projectName = $null
+    $worktreeName = "main"
     while ($dir) {
-        $testPath = Join-Path $dir.FullName ".git"
-        if (Test-Path -LiteralPath $testPath) {
-            $gitDir = $testPath
-            break
+        $projectJsonPath = Join-Path $dir.FullName ".devcore\project.json"
+        if (Test-Path -LiteralPath $projectJsonPath) {
+            try {
+                $projObj = Get-Content -Raw -LiteralPath $projectJsonPath -ErrorAction SilentlyContinue | ConvertFrom-Json
+                if ($projObj -and $projObj.name) {
+                    $projectName = $projObj.name
+                    break
+                }
+            } catch {}
         }
         $dir = $dir.Parent
     }
 
-    if ($gitDir) {
-        if (Test-Path -LiteralPath $gitDir -PathType Container) {
-            $projectName = (Get-Item -Force -LiteralPath $gitDir).Parent.Name
+    # 1. Fallback sur le dépôt Git ou le dossier courant
+    if (-not $projectName) {
+        $dir = Get-Item .
+        $gitDir = $null
+        while ($dir) {
+            $testPath = Join-Path $dir.FullName ".git"
+            if (Test-Path -LiteralPath $testPath) {
+                $gitDir = $testPath
+                break
+            }
+            $dir = $dir.Parent
+        }
+
+        if ($gitDir) {
+            if (Test-Path -LiteralPath $gitDir -PathType Container) {
+                $projectName = (Get-Item -Force -LiteralPath $gitDir).Parent.Name
             $worktreeName = "main"
         } else {
             # C'est un fichier worktree
@@ -42,10 +61,11 @@ try {
                 $projectName = $worktreeName
             }
         }
-    } else {
-        # 2. Fallback: on prend le nom du dossier courant
-        $projectName = (Get-Item -Force .).Name
-        $worktreeName = "main"
+        } else {
+            # 2. Fallback: on prend le nom du dossier courant
+            $projectName = (Get-Item -Force .).Name
+            $worktreeName = "main"
+        }
     }
 
     # Nettoyer les noms pour être valides
