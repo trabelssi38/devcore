@@ -4,7 +4,7 @@ param(
     [switch]$SkipQdrant,
     [switch]$AgentMode,
     [switch]$Full,
-    [int]$StepTimeoutSeconds = 60
+    [int]$StepTimeoutSeconds = 120
 )
 
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { $PSScriptRoot }

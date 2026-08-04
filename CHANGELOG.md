@@ -11,6 +11,7 @@ and this project adheres to Semantic Versioning.
 
 ### Fixed
 - **Collisions d'IDs de tâches dans la base SQLite du Cockpit** : correction du schéma de la table `tasks` dans `migrate_json_to_sqlite.py` en remplaçant la clé primaire simple `id TEXT PRIMARY KEY` par une clé composite `PRIMARY KEY (id, project)`. Cela évite que les tâches ayant le même ID dans des projets différents (comme `T-94`) ne s'écrasent mutuellement et disparaissent du cockpit. Re-migration complète effectuée avec succès.
+- **Optimisation et évitement du timeout de `memory_compactor.py` dans `endday.ps1`** : passage du timeout d'étape de 60s à 120s et augmentation de la taille des blocs de compaction (`chunk_size`) de 20 à 40 items pour réduire le nombre de requêtes LLM consécutives et contourner le limiteur de débit du routeur local.
 
 ### Added
 - **Règle d'auto-démarrage Antigravity** : création d'une règle globale obligatoire `devcore-session-autostart.md` dans le répertoire des configurations globales (`~/.gemini/config/rules/`) pour forcer l'exécution automatique de `session_start.ps1` lors de l'initialisation de chaque session sous Antigravity.

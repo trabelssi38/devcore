@@ -103,13 +103,13 @@ def compact_lessons_file():
         if sec_title != "General":
             compacted_content.append(f"## {sec_title}")
         
-        # If section has more than 10 items, compact via LLM in chunks of 20
+        # If section has more than 10 items, compact via LLM in chunks of 40
         item_lines = [l for l in sec_lines if l.strip().startswith("-")]
         other_lines = [l for l in sec_lines if not l.strip().startswith("-")]
 
         if len(item_lines) > 10:
             print(f"[memory_compactor] Compacting section '{sec_title}' ({len(item_lines)} entries) in chunks via LLM...")
-            chunk_size = 20
+            chunk_size = 40
             compacted_items = []
             for i in range(0, len(item_lines), chunk_size):
                 chunk = item_lines[i:i+chunk_size]
