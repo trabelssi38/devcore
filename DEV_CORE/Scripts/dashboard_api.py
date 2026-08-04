@@ -788,6 +788,19 @@ def delete_task(project, task_id):
         write_json_with_retry(tasks_file, board)
         print(f"[DashboardAPI] Successfully saved deleted task in tasks.json.")
 
+        # Delete from SQLite database
+        db_path = Path(DATA_ROOT) / "devcore.db"
+        if db_path.exists():
+            try:
+                import sqlite3
+                conn = sqlite3.connect(str(db_path))
+                conn.execute("DELETE FROM tasks WHERE project = ? AND id = ?", (project, task_id))
+                conn.commit()
+                conn.close()
+                print(f"[DashboardAPI] Successfully deleted task {task_id} from SQLite database.")
+            except Exception as dbe:
+                print(f"[DashboardAPI] Warning: Failed to delete task from SQLite: {dbe}")
+
         dashboard_script = get_platform_path("Scripts", "gen_dashboard.py")
         cmd = [sys.executable, str(dashboard_script)]
         print(f"[DashboardAPI] Running gen_dashboard.py for dashboard refresh (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
