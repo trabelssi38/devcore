@@ -199,7 +199,16 @@ class SystemWatcher:
         docker_status = self.check_docker_status()
         report["docker"] = docker_status
 
-        all_ok = all(v is True for k, v in report.items() if k != "docker")
+        # 7. Multi-Project Git Scan
+        try:
+            from devcore_engine.infra.multi_project_git_scanner import MultiProjectGitScanner
+            git_scanner = MultiProjectGitScanner(self.conn)
+            scan_res = git_scanner.scan_all_projects(days=14)
+            report["git_scan"] = scan_res
+        except Exception as e:
+            self.log(f"Git scan warning: {e}")
+
+        all_ok = all(v is True for k, v in report.items() if k not in ("docker", "git_scan"))
         self.log(f"System audit completed. Overall status: {'HEALTHY' if all_ok else 'DEGRADED'}")
 
         return {

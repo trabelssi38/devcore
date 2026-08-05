@@ -44,7 +44,22 @@ def run_post_commit_hook() -> None:
     task_service = TaskService(conn)
     session_mgr = SessionManager(conn)
 
-    project_id = session_mgr.get_active_project()
+    # Determine project_id from current git repository directory or fallback to active project
+    git_repo_name = None
+    try:
+        git_res = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8-sig",
+            errors="replace"
+        )
+        if git_res.returncode == 0 and git_res.stdout.strip():
+            git_repo_name = Path(git_res.stdout.strip()).name
+    except Exception:
+        pass
+
+    project_id = git_repo_name or session_mgr.get_active_project()
 
     # Extract tag [T-XX]
     match = re.search(r"\[(T-\d+)\]", msg, re.IGNORECASE)
