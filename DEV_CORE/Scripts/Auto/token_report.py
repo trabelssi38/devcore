@@ -929,6 +929,50 @@ def main():
             sessions.append(session)
 
     result_summary = aggregate_sessions(sessions)
+    
+    # Merge Headroom Proxy stats to capture untagged / direct requests
+    headroom_stats_path = Path(devcore_data) / "Metrics" / "headroom_stats.json"
+    if headroom_stats_path.exists():
+        try:
+            h_data = json.loads(headroom_stats_path.read_text(encoding="utf-8-sig"))
+            h_tasks = h_data.get("tasks", {})
+            auc_stats = h_tasks.get("Aucune")
+            if auc_stats:
+                h_tokens = int(auc_stats.get("total_tokens", 0))
+                h_out = int(auc_stats.get("tokens_out", 0))
+                h_in = int(auc_stats.get("tokens_in", 0))
+                h_cache = int(h_in * 0.85)
+                h_cost = calculate_cost(h_tokens, h_cache, h_out)
+                
+                # Add to totals
+                result_summary["totals"]["tokens"] += h_tokens
+                result_summary["totals"]["cache_hits"] += h_cache
+                result_summary["totals"]["output_tokens"] += h_out
+                result_summary["totals"]["cost_usd"] += h_cost
+                
+                # Add to client "headroom-proxy"
+                if "clients" not in result_summary:
+                    result_summary["clients"] = {}
+                if "headroom-proxy" not in result_summary["clients"]:
+                    result_summary["clients"]["headroom-proxy"] = empty_stats_bucket(include_sessions=True)
+                result_summary["clients"]["headroom-proxy"]["tokens"] += h_tokens
+                result_summary["clients"]["headroom-proxy"]["cache_hits"] += h_cache
+                result_summary["clients"]["headroom-proxy"]["output_tokens"] += h_out
+                result_summary["clients"]["headroom-proxy"]["cost_usd"] += h_cost
+                result_summary["clients"]["headroom-proxy"]["sessions"] += 1
+                
+                # Add to project "devcore"
+                if "devcore" not in result_summary["projects"]:
+                    result_summary["projects"]["devcore"] = empty_stats_bucket(include_sessions=True)
+                result_summary["projects"]["devcore"]["tokens"] += h_tokens
+                result_summary["projects"]["devcore"]["cache_hits"] += h_cache
+                result_summary["projects"]["devcore"]["output_tokens"] += h_out
+                result_summary["projects"]["devcore"]["cost_usd"] += h_cost
+                
+                print(f"[TokenReport] Merged {h_tokens:,} headroom-proxy tokens for untagged tasks.")
+        except Exception as e:
+            print(f"[WARNING] Error merging headroom stats: {e}")
+
     # Keep only the 50 most recent sessions in the summary JSON to avoid bloat
     if "sessions" in result_summary:
         result_summary["sessions"] = result_summary["sessions"][:50]
