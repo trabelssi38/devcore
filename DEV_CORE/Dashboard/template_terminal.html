@@ -329,6 +329,31 @@ div[style*="color:#cbd5e1"][style*="font-size:10.5px"] {
   overflow-y: auto !important;
   line-height: 1.45 !important;
 }
+
+/* ── Terminal Modal Overlay ── */
+.modal-overlay {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  background: rgba(5, 10, 18, 0.88) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+  z-index: 20000 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 0.2s ease !important;
+  display: none !important;
+}
+.modal-overlay.show {
+  display: flex !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
 </style>
 </head>
 <body>
@@ -1104,10 +1129,12 @@ function connectStream() {
 }
 function showInteractions(projectName, taskId, btnEl, event) {
   if (event) event.stopPropagation();
+  console.log('[Cockpit Debug] showInteractions clicked:', { projectName, taskId });
   const interactionsMapEl = document.getElementById('task-interactions-data');
   const interactionsMap = interactionsMapEl ? JSON.parse(interactionsMapEl.textContent || '{}') : {};
   const key = `${projectName}_${taskId}`;
   let data = interactionsMap[key] || interactionsMap[taskId];
+  console.log('[Cockpit Debug] Interactions data resolved:', data);
   if (!data) {
     data = {
       task_id: taskId,
@@ -1122,6 +1149,11 @@ function showInteractions(projectName, taskId, btnEl, event) {
   const modal = document.getElementById('interactions-modal');
   const titleEl = document.getElementById('interactions-title');
   const bodyEl = document.getElementById('interactions-body');
+
+  if (!modal || !titleEl || !bodyEl) {
+    console.error('[Cockpit Debug] ERROR: Missing modal DOM elements!', { modal, titleEl, bodyEl });
+    return;
+  }
 
   titleEl.textContent = `Interactions IDE & Télémétrie : ${data.task_id} (${data.project})`;
 
@@ -1202,12 +1234,12 @@ function showInteractions(projectName, taskId, btnEl, event) {
   `;
 
   modal.style.display = 'flex';
-  setTimeout(() => {
-    modal.classList.add('show');
-  }, 10);
+  modal.classList.add('show');
+  console.log('[Cockpit Debug] Interactions modal opened successfully with class .show');
 }
 
 function closeInteractionsModal() {
+  console.log('[Cockpit Debug] closeInteractionsModal called');
   const modal = document.getElementById('interactions-modal');
   if (modal) {
     modal.classList.remove('show');
@@ -1218,6 +1250,15 @@ function closeInteractionsModal() {
     }, 200);
   }
 }
+
+document.addEventListener('click', function(e) {
+  const intModal = document.getElementById('interactions-modal');
+  if (intModal && intModal.classList.contains('show')) {
+    if (e.target === intModal) {
+      closeInteractionsModal();
+    }
+  }
+});
 connectStream();
 </script>
 

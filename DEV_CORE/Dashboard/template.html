@@ -302,8 +302,9 @@ details{margin-bottom: 8px}
   display: none;
 }
 .modal-overlay.show {
-  opacity: 1;
-  pointer-events: auto;
+  display: flex !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
 }
 .modal-card {
   background: rgba(26, 29, 39, 0.98);
@@ -1507,10 +1508,12 @@ setupRefresh(60000); // 60s fallback polling since SSE is active
 refreshDashboard();
 function showInteractions(projectName, taskId, btnEl, event) {
   if (event) event.stopPropagation();
+  console.log('[Cockpit Debug] showInteractions clicked:', { projectName, taskId });
   const interactionsMapEl = document.getElementById('task-interactions-data');
   const interactionsMap = interactionsMapEl ? JSON.parse(interactionsMapEl.textContent || '{}') : {};
   const key = `${projectName}_${taskId}`;
   let data = interactionsMap[key] || interactionsMap[taskId];
+  console.log('[Cockpit Debug] Interactions data resolved:', data);
   if (!data) {
     data = {
       task_id: taskId,
@@ -1525,6 +1528,11 @@ function showInteractions(projectName, taskId, btnEl, event) {
   const modal = document.getElementById('interactions-modal');
   const titleEl = document.getElementById('interactions-title');
   const bodyEl = document.getElementById('interactions-body');
+
+  if (!modal || !titleEl || !bodyEl) {
+    console.error('[Cockpit Debug] ERROR: Missing modal DOM elements!', { modal, titleEl, bodyEl });
+    return;
+  }
 
   titleEl.textContent = `Interactions IDE & Télémétrie : ${data.task_id} (${data.project})`;
 
@@ -1605,12 +1613,12 @@ function showInteractions(projectName, taskId, btnEl, event) {
   `;
 
   modal.style.display = 'flex';
-  setTimeout(() => {
-    modal.classList.add('show');
-  }, 10);
+  modal.classList.add('show');
+  console.log('[Cockpit Debug] Interactions modal opened successfully with class .show');
 }
 
 function closeInteractionsModal() {
+  console.log('[Cockpit Debug] closeInteractionsModal called');
   const modal = document.getElementById('interactions-modal');
   if (modal) {
     modal.classList.remove('show');
