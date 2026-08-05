@@ -145,3 +145,6 @@ Ouvrir dans un navigateur :
 - **Filtrage par Projet** : Sélection par projet avec ré-indexation dynamique du graphique.
 - **Configuration Unifiée** : Synchronisation des clés d'API et clients actifs.
 - **Optimisation SQLite & Silence Logs** : Avertissements d'importation de `sqlite-vec` réduits au silence via des variables d'environnement ciblées (`SQLITE_VEC_NO_WARN=1`) pour des diagnostics et logs 100% propres.
+- **Détails & Actions Intuitives** : Affichage exclusif de la check-list des étapes de tâches et des descriptions au sein du pop-up interactif du bouton *Détails*, préservant la compacité et la lisibilité du tableau de bord.
+
+---
