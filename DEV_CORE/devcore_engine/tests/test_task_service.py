@@ -41,16 +41,18 @@ class TestTaskService(unittest.TestCase):
         self.assertEqual(comp["status"], "done")
 
     def test_step_task(self):
-        self.ts.add_task("Multi step task", mode="coding", steps=3, project_id="devcore")
+        created = self.ts.add_task("Multi step task", mode="coding", steps=3, project_id="devcore")
+        t_id = created["id"]
         self.ts.next_task("devcore")
 
-        stepped = self.ts.step_task("T-01", step_number=1, project_id="devcore")
+        stepped = self.ts.step_task(t_id, step_number=1, project_id="devcore")
         self.assertEqual(stepped["steps_done"], 1)
         self.assertEqual(stepped["status"], "in_progress")
 
-        stepped2 = self.ts.step_task("T-01", step_number=3, project_id="devcore")
+        stepped2 = self.ts.step_task(t_id, step_number=3, project_id="devcore")
         self.assertEqual(stepped2["steps_done"], 3)
         self.assertEqual(stepped2["status"], "done")
+
 
 
 if __name__ == "__main__":

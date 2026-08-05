@@ -243,6 +243,9 @@ class TaskService:
         self.conn.commit()
 
         self.event_bus.publish("TaskStepDone", {"task_id": task_id, "steps_done": new_done, "steps_total": t["steps_total"]}, project=project_id, task_id=task_id)
+        self._sync_to_legacy_json(project_id)
+        return self.get_task(task_id)
+
     def edit_task(
         self,
         task_id: str,

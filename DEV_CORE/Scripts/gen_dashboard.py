@@ -148,7 +148,7 @@ def main():
             cur.execute("""
                 SELECT id, source, event_type, project, task_id, correlation_id, payload, created_at
                 FROM bus_events
-                ORDER BY created_at DESC, rowid DESC
+                ORDER BY REPLACE(created_at, 'T', ' ') DESC, rowid DESC
                 LIMIT 20;
             """)
             rows = cur.fetchall()
