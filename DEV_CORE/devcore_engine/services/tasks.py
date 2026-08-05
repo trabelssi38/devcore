@@ -9,7 +9,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.resolve()))
 
 import json
+import sqlite3
 from typing import Any, Dict, List, Optional
+
 
 from devcore_engine.db import connect_db, get_data_root
 from devcore_engine.services.events import EventBus
