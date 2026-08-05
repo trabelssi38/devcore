@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<title>DEV_CORE v10.0 — TERM</title>
+<title>DEV_CORE v{{VERSION}} — TERM</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -363,7 +363,7 @@ div[style*="color:#cbd5e1"][style*="font-size:10.5px"] {
 
 <!-- ─── TOPBAR ─── -->
 <div id="topbar">
-  <div id="tbar-l">▶ DEV_CORE<span id="cursor"></span>&nbsp;<span style="color:var(--dim);font-weight:300;font-size:9px">v10.0 · TERMINAL MODE</span></div>
+  <div id="tbar-l">▶ DEV_CORE<span id="cursor"></span>&nbsp;<span style="color:var(--dim);font-weight:300;font-size:9px">v{{VERSION}} · TERMINAL MODE</span></div>
   <div style="display:flex;align-items:center">
     <div class="seg">SYS <span class="v-ok" id="sys-status">ONLINE</span></div>
     <div class="seg">API <span class="v-cyan" id="api-ok">:20129 ✓</span></div>
@@ -506,7 +506,7 @@ div[style*="color:#cbd5e1"][style*="font-size:10.5px"] {
     <div class="col-hd">INFRASTRUCTURE</div>
     <div class="pane" id="services-monitoring">
       {{SERVICES_MONITORING}}
-      <div class="term-footer">Auto-refresh 15s · DEV_CORE v10.0.0</div>
+      <div class="term-footer">Auto-refresh 15s · DEV_CORE v{{VERSION}}</div>
     </div>
   </div>
 
@@ -518,6 +518,7 @@ div[style*="color:#cbd5e1"][style*="font-size:10.5px"] {
 
 <script>
 window.devcoreActiveProject = "{{ACTIVE_PROJECT_NAME}}";
+window.devcoreVersion = "{{VERSION}}";
 
 function morphDOM(oldNode, newNode) {
   if (oldNode.nodeType !== newNode.nodeType || oldNode.nodeName !== newNode.nodeName) {
@@ -1040,7 +1041,7 @@ async function refreshDashboard(){
     const s=data.sections||{};
     if(s.project_cards)         updateContainerHTML('project-cards', s.project_cards);
     if(s.tasks_pipeline)        updateContainerHTML('tasks-pipeline', s.tasks_pipeline);
-    if(s.services_monitoring)   updateContainerHTML('services-monitoring', s.services_monitoring+'<div class="term-footer">Auto-refresh 15s · DEV_CORE v10.0.0</div>');
+    if(s.services_monitoring)   updateContainerHTML('services-monitoring', s.services_monitoring+'<div class="term-footer">Auto-refresh 15s · DEV_CORE v' + (window.devcoreVersion || '10.2.0') + '</div>');
     
     if(s.token_activity_report) {
       const oldTR = document.getElementById('token-activity-report');

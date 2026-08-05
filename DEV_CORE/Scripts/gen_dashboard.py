@@ -89,6 +89,21 @@ from dashboard.html_renderer import (
     get_plugin_status_html
 )
 
+def get_platform_version(platform_root):
+    try:
+        toml_path = platform_root / "pyproject.toml"
+        if toml_path.exists():
+            with open(toml_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            for line in content.splitlines():
+                if line.strip().startswith("version"):
+                    parts = line.split("=")
+                    if len(parts) == 2:
+                        return parts[1].strip().strip('"').strip("'")
+    except Exception:
+        pass
+    return "10.2.0"
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-Json", "--json", action="store_true")
@@ -850,6 +865,7 @@ def main():
     # Render template.html -> index.html
     template_file = PLATFORM_ROOT / "Dashboard" / "template.html"
     output_file = PLATFORM_ROOT / "Dashboard" / "index.html"
+    version = get_platform_version(PLATFORM_ROOT)
     if template_file.exists():
         try:
             template = template_file.read_text(encoding="utf-8")
@@ -867,9 +883,10 @@ def main():
             template = template.replace('{{TASK_DETAILS_MAP}}', json.dumps(task_details))
             template = template.replace('{{TASK_INTERACTIONS_MAP}}', json.dumps(task_interactions_map))
             template = template.replace('{{TOKEN_METRICS_JSON}}', json.dumps(token_metrics))
+            template = template.replace('{{VERSION}}', version)
             legacy_v9 = "DEV_CORE " + "v9.0"
-            template = template.replace(legacy_v9 + ' Cockpit', 'DEV_CORE v10.0 — Cockpit')
-            template = template.replace(legacy_v9 + ' —', 'DEV_CORE v10.0 —')
+            template = template.replace(legacy_v9 + ' Cockpit', f'DEV_CORE v{version} — Cockpit')
+            template = template.replace(legacy_v9 + ' —', f'DEV_CORE v{version} —')
 
             
             output_file.write_text(template, encoding="utf-8")
@@ -897,6 +914,7 @@ def main():
             tterm = tterm.replace('{{TASK_DETAILS_MAP}}', json.dumps(task_details))
             tterm = tterm.replace('{{TASK_INTERACTIONS_MAP}}', json.dumps(task_interactions_map))
             tterm = tterm.replace('{{TOKEN_METRICS_JSON}}', json.dumps(token_metrics))
+            tterm = tterm.replace('{{VERSION}}', version)
             term_output_file.write_text(tterm, encoding="utf-8")
             print("[gen_dashboard.py] Terminal index_terminal.html generated successfully.")
         except Exception as e:
