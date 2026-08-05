@@ -55,8 +55,17 @@ class SessionManager:
         current_project = project_id or self.get_active_project()
         self.set_active_project(current_project)
 
-        # Ensure there is an active task, or pick next
+        # Ensure there is an active task, or create a default session task if none exists
         active_task = self.task_service.next_task(current_project)
+        if not active_task:
+            import datetime
+            today = datetime.date.today().strftime("%Y-%m-%d")
+            active_task = self.task_service.add_task(
+                f"Session de travail auto ({today})",
+                mode="coding",
+                steps=1,
+                project_id=current_project,
+            )
 
         evt_id = self.event_bus.publish(
             "SessionStarted",
