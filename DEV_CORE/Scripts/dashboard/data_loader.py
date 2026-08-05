@@ -59,9 +59,10 @@ def sync_tasks_from_memory(conn, data_root: Path = DATA_ROOT):
                         steps_done=excluded.steps_done,
                         metadata=excluded.metadata,
                         started_at=excluded.started_at,
-                        completed_at=excluded.completed_at,
+                        completed_at=CASE WHEN excluded.completed_at != '' THEN excluded.completed_at ELSE tasks.completed_at END,
                         updated_at=datetime('now');
                 """, (task_id, project_name, title, status, mode, steps_total, steps_done, details, started_at, completed_at))
+
             conn.commit()
         except Exception as e:
             print("Error during memory sync:", e)
@@ -331,7 +332,7 @@ def load_projects_and_tasks(data_root: Path = DATA_ROOT, platform_root: Path = P
                 
                 active_tasks = [t for t in tasks if t["status"] in ["todo", "active", "paused"]]
                 completed_tasks = [t for t in tasks if t["status"] in ["done", "skipped", "failed"]]
-                completed_tasks.sort(key=lambda t: get_task_datetime(t))
+                completed_tasks.sort(key=lambda t: (get_task_id_number(t), get_task_datetime(t)))
                 limited_tasks = completed_tasks[-20:] + active_tasks
 
                 

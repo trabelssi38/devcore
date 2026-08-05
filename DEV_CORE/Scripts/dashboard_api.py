@@ -1009,10 +1009,13 @@ async def get_dashboard_tasks_route(request: Request, project: str = "", limit: 
         import sqlite3
         conn = sqlite3.connect(db_path)
         cur = conn.cursor()
+        cols = [col[1] for col in cur.execute("PRAGMA table_info(tasks)").fetchall()]
+        proj_col = "project_id" if "project_id" in cols else "project"
         if project:
-            cur.execute("SELECT id, project, title, status, mode, steps_total, steps_done, started_at, completed_at FROM tasks WHERE project = ? ORDER BY CAST(SUBSTR(id, 3) AS INTEGER) DESC LIMIT ? OFFSET ?", (project, limit, offset))
+            cur.execute(f"SELECT id, {proj_col}, title, status, mode, steps_total, steps_done, started_at, completed_at FROM tasks WHERE {proj_col} = ? ORDER BY CAST(SUBSTR(id, 3) AS INTEGER) DESC LIMIT ? OFFSET ?", (project, limit, offset))
         else:
-            cur.execute("SELECT id, project, title, status, mode, steps_total, steps_done, started_at, completed_at FROM tasks ORDER BY CAST(SUBSTR(id, 3) AS INTEGER) DESC LIMIT ? OFFSET ?", (limit, offset))
+            cur.execute(f"SELECT id, {proj_col}, title, status, mode, steps_total, steps_done, started_at, completed_at FROM tasks ORDER BY CAST(SUBSTR(id, 3) AS INTEGER) DESC LIMIT ? OFFSET ?", (limit, offset))
+
         rows = cur.fetchall()
         tasks = []
         for r in rows:
