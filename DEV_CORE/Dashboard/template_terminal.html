@@ -883,6 +883,57 @@ function hideBubble(){}
 function showConfirmModal(){}
 function hideConfirmModal(){}
 
+const API_BASE = window.location.protocol === 'file:' ? 'http://127.0.0.1:20129' : '';
+
+function apiFetch(url, options) {
+  return fetch(url, options || {});
+}
+
+function completeTask(project, id, event) {
+  if (event) event.stopPropagation();
+  if (confirm(`Voulez-vous clôturer la tâche ${id} du projet ${project} ?`)) {
+    apiFetch(`${API_BASE}/api/done`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ project, id })
+      })
+      .then(async r => {
+        const isJson = r.headers.get('content-type')?.includes('application/json');
+        const data = isJson ? await r.json() : null;
+        if (r.ok && (data?.success || data?.status === 'success')) {
+          refreshDashboard();
+        } else {
+          const err = data?.error || data?.detail || data?.message || `Status ${r.status}`;
+          alert("Erreur : " + err);
+        }
+      })
+      .catch(err => alert("Impossible de joindre le serveur API local (Port 20129). Veuillez vérifier qu'il est bien démarré."));
+  }
+}
+
+function deleteTask(project, id, event) {
+  if (event) event.stopPropagation();
+  if (confirm(`Êtes-vous sûr de vouloir supprimer la tâche ${id} du projet ${project} ?\nCette action est irréversible.`)) {
+    apiFetch(`${API_BASE}/api/delete`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ project, id })
+      })
+      .then(async r => {
+        const isJson = r.headers.get('content-type')?.includes('application/json');
+        const data = isJson ? await r.json() : null;
+        if (r.ok && (data?.success || data?.status === 'success')) {
+          refreshDashboard();
+        } else {
+          const err = data?.error || data?.detail || data?.message || `Status ${r.status}`;
+          alert("Erreur : " + err);
+        }
+      })
+      .catch(err => alert("Impossible de joindre le serveur API local (Port 20129). Veuillez vérifier qu'il est bien démarré."));
+  }
+}
+
+
 /* ── Settings load & save (shared with cockpit) ── */
 async function loadSettings() {
   try {
