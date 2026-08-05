@@ -141,6 +141,7 @@ Ouvrir dans un navigateur :
 
 ### Fonctionnalités Clés :
 - **SQLite Vector DB** : Statut de la base virtuelle `sqlite-vec` surveillé en direct.
-- **Supervision Headroom** : Suivi persistant des sessions et tokens.
+- **Supervision Headroom & Télémétrie Unifiée** : Suivi persistant des sessions et tokens. Intègre à la fois l'activité automatisée de DevCore et le chat interactif direct de l'IDE Antigravity (via le client virtuel `headroom-proxy` et l'analyse de transcripts).
 - **Filtrage par Projet** : Sélection par projet avec ré-indexation dynamique du graphique.
 - **Configuration Unifiée** : Synchronisation des clés d'API et clients actifs.
+- **Optimisation SQLite & Silence Logs** : Avertissements d'importation de `sqlite-vec` réduits au silence via des variables d'environnement ciblées (`SQLITE_VEC_NO_WARN=1`) pour des diagnostics et logs 100% propres.
