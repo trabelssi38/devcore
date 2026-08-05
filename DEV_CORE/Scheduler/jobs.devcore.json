@@ -173,5 +173,30 @@
     },
     "policy": "skip",
     "timezone": "Europe/Paris"
+  },
+  {
+    "schema_version": 1,
+    "id": "system_watcher",
+    "name": "DEV_CORE Automated System Health Watcher & Auto-Healer",
+    "enabled": true,
+    "no_agent": true,
+    "schedule": {
+      "kind": "cron",
+      "expr": "* * * * *"
+    },
+    "command": {
+      "type": "powershell",
+      "path": "DEV_CORE/Scripts/system_watcher.ps1",
+      "args": []
+    },
+    "state": {
+      "next_run_at": null,
+      "last_run_at": null,
+      "last_status": null,
+      "last_error": null,
+      "completed": 0
+    },
+    "policy": "skip",
+    "timezone": "Europe/Paris"
   }
 ]

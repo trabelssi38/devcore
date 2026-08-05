@@ -84,6 +84,14 @@ class DiagnosticEngine:
             "details": "Online" if router_up else "Offline",
         })
 
+        # 6. Headroom Proxy check (Port 8787)
+        headroom_up = check_port("127.0.0.1", 8787)
+        checks.append({
+            "name": "Headroom Proxy (Port 8787)",
+            "status": "PASS" if headroom_up else "WARN",
+            "details": "Online" if headroom_up else "Offline",
+        })
+
         all_pass = all(c["status"] == "PASS" for c in checks)
         return {
             "overall_status": "PASS" if all_pass else "WARN",

@@ -23,9 +23,13 @@ dc launch
 ```
 Cette commande :
 - Initialise ou valide la base de données unifiée `DEV_CORE_DATA/devcore.db`.
-- Lance automatiquement les services arrière-plan en processus détachés silencieux :
-  - **Dashboard API** sur le port `20129`.
-  - **Gemini Router** sur le port `20130`.
+- Lance automatiquement le **System Watchdog & Auto-Healer** ([`system_watcher.py`](file:///c:/devcore/DEV_CORE/devcore_engine/infra/system_watcher.py)) qui surveille et auto-guérit en arrière-plan :
+  - **Dashboard API** (Port `20129`)
+  - **Gemini Router** (Port `20130`)
+  - **Headroom Proxy** (Port `8787`) avec timeout d'initialisation porté à 15s
+  - **Anthropic Adapter** (Port `8788`)
+  - **Repowise Server** (Port `7337`)
+  - **Scheduler Daemon** (`scheduler_tick.py`)
 
 ### 2. Arrêt Propre d'une Session
 ```powershell

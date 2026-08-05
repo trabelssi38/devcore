@@ -7,6 +7,17 @@ and this project adheres to Semantic Versioning.
 
 ---
 
+## [10.3.0] - 2026-08-05
+
+### Added
+- **Automated System Watchdog & Auto-Healer (`system_watcher.py`)** : Module d'auto-guérison native en Python auditant en continu les services de la plateforme (`Dashboard API`, `Gemini Router`, `Headroom Proxy`, `Anthropic Adapter`, `Repowise Server` et `Scheduler Daemon`). Redémarrage automatique et silencieux en arrière-plan en cas de panne avec émission d'événement `ServiceAutoHealed`.
+- **Intégration Cron Scheduler & Bootstrap** : Ajout du job récurrent `system_watcher` (`* * * * *`) dans `jobs.devcore.json` et auto-surveillance de la présence du daemon `scheduler_tick.py`.
+- **Diagnostic CLI Enrichi** : Ajout du contrôle direct de santé du port 8787 (Headroom Proxy) dans `devcore diagnose`.
+
+### Fixed
+- **Timeout Démarrage Headroom Proxy** : Augmentation du délai d'initialisation à 15 secondes pour autoriser le chargement complet des parsers AST, Tiktoken et LiteLLM avant vérification du port HTTP.
+- **PowerShell Launch Fallback** : Correction de la gestion d'exception pour `-WindowStyle Hidden` sur `headroom_start.ps1` afin de supporter l'exécution croisée sous PowerShell 5.1 et PowerShell Core 7.
+
 ## [10.2.0] - 2026-08-05
 
 ### Added

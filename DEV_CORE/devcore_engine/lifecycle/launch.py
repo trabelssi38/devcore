@@ -42,40 +42,14 @@ class PlatformLauncher:
         migrator = DevCoreMigrator()
         migration_stats = migrator.run_all()
 
-        # 2. Check Native Services & Auto-Start if offline (detached background process)
-        DETACHED_FLAG = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+        # 2. Check Native Services & Auto-Heal via SystemWatcher
+        from devcore_engine.infra.system_watcher import SystemWatcher
+        watcher = SystemWatcher(self.conn)
+        watch_result = watcher.audit_and_heal()
 
-        dashboard_up = check_port("127.0.0.1", 20129)
-        if not dashboard_up:
-            try:
-                subprocess.Popen(
-                    [sys.executable, str(Path(__file__).parent.parent.parent / "Scripts" / "dashboard_api.py")],
-                    cwd=str(Path(__file__).parent.parent.parent),
-                    creationflags=DETACHED_FLAG,
-                )
-                for _ in range(10):
-                    time.sleep(0.3)
-                    if check_port("127.0.0.1", 20129):
-                        dashboard_up = True
-                        break
-            except Exception:
-                pass
-
-        router_up = check_port("127.0.0.1", 20130)
-        if not router_up:
-            try:
-                subprocess.Popen(
-                    [sys.executable, str(Path(__file__).parent.parent.parent / "Scripts" / "gemini_router.py")],
-                    cwd=str(Path(__file__).parent.parent.parent),
-                    creationflags=DETACHED_FLAG,
-                )
-                for _ in range(10):
-                    time.sleep(0.3)
-                    if check_port("127.0.0.1", 20130):
-                        router_up = True
-                        break
-            except Exception:
-                pass
+        dashboard_up = watch_result["services"].get("dashboard_api", False)
+        router_up = watch_result["services"].get("gemini_router", False)
+        headroom_up = watch_result["services"].get("headroom_proxy", False)
 
 
 
