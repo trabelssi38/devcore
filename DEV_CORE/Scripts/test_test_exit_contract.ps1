@@ -1,28 +1,7 @@
-# test_test_exit_contract.ps1 -- soft-assert test harnesses must fail their process
-$ErrorActionPreference = "Stop"
-
-$violations = @()
-$testScripts = Get-ChildItem -LiteralPath $PSScriptRoot -Filter "test_*.ps1" -File
-foreach ($testScript in $testScripts) {
-    if ($testScript.FullName -eq $PSCommandPath) { continue }
-    if ($testScript.Name -eq "test_agent_conformity.ps1") { continue }
-
-    $source = Get-Content -LiteralPath $testScript.FullName -Raw -Encoding UTF8
-    $usesSoftFailure = (
-        $source -match '(?mi)Write-Host\s+[^\r\n]*\[FAIL\]' -or
-        $source -match '(?mi)\$icon\s*=\s*if[^\r\n]*\[FAIL\]'
-    )
-    if (-not $usesSoftFailure) { continue }
-
-    $hasFailureExit = $source -match '(?mi)^\s*if\s*\([^\r\n]*(fail|failed)[^\r\n]*-gt\s+0[^\r\n]*\)\s*\{?[^\r\n]*exit\s+1'
-    $hasSuccessExit = $source -match '(?mi)^\s*exit\s+0\s*$'
-    if (-not ($hasFailureExit -and $hasSuccessExit)) {
-        $violations += $testScript.Name
-    }
-}
-
-if ($violations.Count -gt 0) {
-    throw "Soft-assert test scripts without explicit exit contract: $($violations -join ', ')"
-}
-
-Write-Host "[OK] test exit-code contract passed" -ForegroundColor Green
+# Delegator wrapper for Python unittest test_test_exit_contract.py
+$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { Split-Path -Parent $PSScriptRoot }
+$env:PYTHONPATH = $DEV_CORE
+$pythonExe = if (Get-Command "python" -ErrorAction SilentlyContinue) { "python" } else { "C:\Program Files\Python313\python.exe" }
+$ErrorActionPreference = "Continue"
+& $pythonExe -m unittest (Join-Path $DEV_CORE "devcore_engine/tests/test_test_exit_contract.py")
+exit $LASTEXITCODE

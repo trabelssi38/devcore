@@ -1,4 +1,4 @@
-# init_conversations_db.py -- DEV_CORE v9.0
+# init_conversations_db.py -- DEV_CORE v10.0
 # Initialise la base de données SQLite L0 conversations.db
 import sqlite3
 import os

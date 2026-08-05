@@ -23,8 +23,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(prog="devcore", description="DEV_CORE Unified CLI Engine")
     subparsers = parser.add_subparsers(dest="command", help="Available subcommands")
 
-    # Diagnose
     diag_p = subparsers.add_parser("diagnose", help="Run system diagnostics")
+    diag_p.add_argument("--gate", action="store_true", help="Run gate check mode")
+    diag_p.add_argument("--json", action="store_true", help="Output JSON format")
+
 
     # Skills
     skill_p = subparsers.add_parser("skills", help="Skill operations")
@@ -123,7 +125,11 @@ def main() -> None:
         from devcore_engine.infra.diagnose import DiagnosticEngine
         diag = DiagnosticEngine()
         report = diag.run_diagnostics()
+        fails = [c for c in report.get("checks", []) if c.get("status") == "FAIL"]
         print(json.dumps(report, indent=2))
+        if getattr(args, "gate", False) and fails:
+            sys.exit(1)
+
 
     elif args.command == "skills":
         from devcore_engine.services.skills import SkillService

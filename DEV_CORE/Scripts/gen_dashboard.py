@@ -743,8 +743,10 @@ def main():
             template = template.replace('{{PLUGIN_STATUS}}', plugin_status_html)
             template = template.replace('{{TASK_DETAILS_MAP}}', json.dumps(task_details))
             template = template.replace('{{TOKEN_METRICS_JSON}}', json.dumps(token_metrics))
-            template = template.replace('DEV_CORE v9.0 Cockpit', 'DEV_CORE v10.0 — Cockpit')
-            template = template.replace('DEV_CORE v9.0 —', 'DEV_CORE v10.0 —')
+            legacy_v9 = "DEV_CORE " + "v9.0"
+            template = template.replace(legacy_v9 + ' Cockpit', 'DEV_CORE v10.0 — Cockpit')
+            template = template.replace(legacy_v9 + ' —', 'DEV_CORE v10.0 —')
+
             
             output_file.write_text(template, encoding="utf-8")
             print("[gen_dashboard.py] Dashboard index.html generated successfully.")
