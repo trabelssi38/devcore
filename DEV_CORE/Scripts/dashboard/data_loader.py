@@ -43,18 +43,29 @@ def sync_tasks_from_memory(conn, data_root: Path = DATA_ROOT):
                 steps_list = t.get("steps") if isinstance(t.get("steps"), list) else []
                 steps_total = int(t.get("steps_total", len(steps_list)))
                 steps_done = int(t.get("steps_done", 0))
-                source = str(t.get("source", "user"))
                 details = json.dumps(steps_list, ensure_ascii=False) if steps_list else str(t.get("details", ""))
                 started_at = str(t.get("started_at", t.get("created_at", "")))
                 completed_at = str(t.get("completed_at", ""))
                 conn.execute("""
-                    INSERT OR REPLACE INTO tasks 
-                    (id, project, title, status, mode, steps_total, steps_done, source, details, started_at, completed_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (task_id, project_name, title, status, mode, steps_total, steps_done, source, details, started_at, completed_at))
+                    INSERT INTO tasks 
+                    (id, project_id, title, status, mode, steps_total, steps_done, metadata, started_at, completed_at, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+                    ON CONFLICT(id) DO UPDATE SET
+                        project_id=excluded.project_id,
+                        title=excluded.title,
+                        status=excluded.status,
+                        mode=excluded.mode,
+                        steps_total=excluded.steps_total,
+                        steps_done=excluded.steps_done,
+                        metadata=excluded.metadata,
+                        started_at=excluded.started_at,
+                        completed_at=excluded.completed_at,
+                        updated_at=datetime('now');
+                """, (task_id, project_name, title, status, mode, steps_total, steps_done, details, started_at, completed_at))
             conn.commit()
-        except Exception:
-            pass
+        except Exception as e:
+            print("Error during memory sync:", e)
+
 
 def get_repowise_db_health(project_path: str) -> dict:
     if not project_path:
@@ -320,7 +331,9 @@ def load_projects_and_tasks(data_root: Path = DATA_ROOT, platform_root: Path = P
                 
                 active_tasks = [t for t in tasks if t["status"] in ["todo", "active", "paused"]]
                 completed_tasks = [t for t in tasks if t["status"] in ["done", "skipped", "failed"]]
+                completed_tasks.sort(key=lambda t: get_task_datetime(t))
                 limited_tasks = completed_tasks[-20:] + active_tasks
+
                 
                 for t in limited_tasks:
                     if t.get("details"):
