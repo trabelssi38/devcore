@@ -108,7 +108,7 @@ class MultiProjectGitScanner:
                 # Insert new task for this commit
                 cur.execute("""
                     INSERT INTO tasks (id, project_id, title, status, mode, steps_total, steps_done, metadata, started_at, completed_at, created_at, updated_at)
-                    VALUES (?, ?, ?, 'done', 'coding', 1, 1, ?, ?, ?, ?, datetime('now'))
+                    VALUES (?, ?, ?, 'done', 'git', 1, 1, ?, ?, ?, ?, datetime('now'))
                     ON CONFLICT(id) DO UPDATE SET
                         project_id=excluded.project_id,
                         title=excluded.title,

@@ -513,13 +513,19 @@ def main():
                     done_button = f"<button class='btn-action btn-done' title='Clôturer' onclick='completeTask(\"{esc_attr(p_name)}\", \"{esc_attr(t_id)}\", event)'>&#10004;</button>"
                 delete_button = f"<button class='btn-action btn-delete' title='Supprimer' onclick='deleteTask(\"{esc_attr(p_name)}\", \"{esc_attr(t_id)}\", event)'>&#128465;</button>"
 
+                if t_id.startswith("T-GIT-"):
+                    short_hash = t_id.replace("T-GIT-", "").lower()
+                    title_html = f"<span class='badge' style='background:rgba(99,102,241,0.15); border:1px solid rgba(99,102,241,0.3); color:#a5b4fc; font-family:monospace; font-size:9.5px; font-weight:600; margin-right:4px;' title='Commit Git {short_hash}'>git:{short_hash}</span> {esc_html(t.get('title', ''))}"
+                else:
+                    title_html = f"{esc_html(t_id)}: {esc_html(t.get('title', ''))}"
+
                 tasks_html += f"""
             <div class="mission {active_class} {badge_class}" data-date="{task_date}">
               <div class="mission-header" style="display:flex; gap:10px; align-items:center; width:100%">
                 <span class="badge {badge_class}">{badge_text}</span>
                 <div style="flex:1; min-width: 0;">
                   <div class="mission-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
-                    <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="{esc_attr(t_id)}: {esc_attr(t.get('title', ''))}">{esc_html(t_id)}: {esc_html(t.get('title', ''))}</span>
+                    <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="{esc_attr(t_id)}: {esc_attr(t.get('title', ''))}">{title_html}</span>
                     <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0;">
                       <div style="display:flex; align-items:center; gap:2px;">{task_tokens_str}{task_cost_str}{details_button}{interactions_button}</div>
                       <div style="display:flex; align-items:center; gap:2px;">{done_button}{delete_button}</div>
