@@ -476,19 +476,20 @@ def main():
                 }
 
                 steps_detail_html = ""
-                if t.get("steps"):
-                    steps_detail_html = "<div class='steps-container'>"
-                    for s in t.get("steps", []):
-                        if isinstance(s, dict):
-                            is_done = s.get("done", False)
-                            s_title = s.get("title", "")
-                        else:
-                            is_done = False
-                            s_title = str(s)
-                        icon = "<b style='color:#22c55e'>[v]</b>" if is_done else "<span style='color:#475569'>[ ]</span>"
-                        step_class = "step-done" if is_done else ""
-                        steps_detail_html += f"<div class='step-item {step_class}'>{icon} {esc_html(s_title)}</div>"
-                    steps_detail_html += "</div>"
+                # Desactiver l'affichage inline des etapes dans la carte de tâche
+                # if t.get("steps"):
+                #     steps_detail_html = "<div class='steps-container'>"
+                #     for s in t.get("steps", []):
+                #         if isinstance(s, dict):
+                #             is_done = s.get("done", False)
+                #             s_title = s.get("title", "")
+                #         else:
+                #             is_done = False
+                #             s_title = str(s)
+                #         icon = "<b style='color:#22c55e'>[v]</b>" if is_done else "<span style='color:#475569'>[ ]</span>"
+                #         step_class = "step-done" if is_done else ""
+                #         steps_detail_html += f"<div class='step-item {step_class}'>{icon} {esc_html(s_title)}</div>"
+                #     steps_detail_html += "</div>"
 
                 task_date_val = get_task_datetime(t)
                 if task_date_val != datetime.min:
