@@ -248,6 +248,7 @@ def main():
 
     # Build task_interactions_map
     events_by_task = {}
+    commit_msgs_by_task = {}
     sqlite_db_path = DATA_ROOT / "devcore.db"
     if sqlite_db_path.exists():
         try:
@@ -268,25 +269,42 @@ def main():
                     t_key = t_id.upper()
                     if t_key not in events_by_task:
                         events_by_task[t_key] = []
+                    details_str = (p_data.get("commit_msg") or p_data.get("title") or evt_type) if isinstance(p_data, dict) else str(p_data)
                     events_by_task[t_key].append({
                         "event_type": evt_type,
                         "created_at": ts,
-                        "details": (p_data.get("commit_msg") or p_data.get("title") or evt_type) if isinstance(p_data, dict) else str(p_data)
+                        "details": details_str
                     })
+                    if isinstance(p_data, dict):
+                        if p_data.get("commit_msg"):
+                            commit_msgs_by_task[p_data["commit_msg"].strip().lower()] = t_key
+                        if p_data.get("title"):
+                            commit_msgs_by_task[p_data["title"].strip().lower()] = t_key
             conn.close()
         except Exception as e:
             print(f"[gen_dashboard] Warning fetching bus_events for interactions: {e}", file=sys.stderr)
 
+    task_titles_map = {}
+    for p in projects:
+        for t_item in p.get("tasks", []):
+            if t_item.get("title") and t_item.get("id"):
+                task_titles_map[t_item["title"].strip().lower()] = t_item["id"].upper()
+
     git_files_by_task = {}
     try:
-        git_out = subprocess.check_output(['git', 'log', '-n', '100', '--name-only', '--oneline'], text=True, cwd=str(PLATFORM_ROOT))
+        git_out = subprocess.check_output(['git', 'log', '-n', '100', '--name-only', '--oneline'], text=True, cwd=str(PLATFORM_ROOT.parent))
         cur_t = None
         for line in git_out.splitlines():
             line = line.strip()
             if not line: continue
             if re.match(r'^[0-9a-f]{7,40}\s', line):
-                m = re.search(r'\[?(T-\d+)\]?', line, re.IGNORECASE)
-                cur_t = m.group(1).upper() if m else None
+                parts = line.split(' ', 1)
+                subj = parts[1] if len(parts) > 1 else ''
+                m = re.search(r'\[?(T-\d+)\]?', subj, re.IGNORECASE)
+                if m:
+                    cur_t = m.group(1).upper()
+                else:
+                    cur_t = commit_msgs_by_task.get(subj.strip().lower()) or task_titles_map.get(subj.strip().lower())
             elif cur_t:
                 if cur_t not in git_files_by_task: git_files_by_task[cur_t] = []
                 if line not in git_files_by_task[cur_t]: git_files_by_task[cur_t].append(line)
@@ -387,7 +405,7 @@ def main():
                 if t.get("details"):
                     details_button = f"<button class='btn-action btn-details' onclick='showDetails(\"{esc_attr(p_name)}\", \"{esc_attr(t_id)}\", \"{esc_attr(t_status)}\", this, event)' title='Voir les détails'>Détails</button>"
 
-                interactions_button = f"<button class='btn-action btn-interactions' onclick='showInteractions(\"{esc_attr(p_name)}\", \"{esc_attr(t_id)}\", this, event)' style='background:rgba(56,189,248,0.12); color:#38bdf8; border:1px solid rgba(56,189,248,0.3); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:600; cursor:pointer; margin-left:4px;' title='Voir les interactions et modules touchés par l\\'IDE/Agent'>🔍 Interactions</button>"
+                interactions_button = f"<button class='btn-action btn-interactions' onclick='showInteractions(\"{esc_attr(p_name)}\", \"{esc_attr(t_id)}\", this, event)' style='background:rgba(56,189,248,0.12); color:#38bdf8; border:1px solid rgba(56,189,248,0.3); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:600; cursor:pointer; margin-left:4px;' title='Voir les interactions et modules touchés par l\\'IDE/Agent'>Inter.</button>"
 
                 # Populate task_interactions_map
                 t_tok = float(task_stats.get("tokens", 0)) if task_stats else 0
