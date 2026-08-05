@@ -206,12 +206,13 @@ class TaskService:
         self.conn.execute(
             """
             UPDATE tasks
-            SET steps_done = ?, status = ?, updated_at = datetime('now')
+            SET steps_done = ?, status = ?, completed_at = CASE WHEN ? = 'done' THEN datetime('now') ELSE completed_at END, updated_at = datetime('now')
             WHERE id = ?;
             """,
-            (new_done, new_status, task_id),
+            (new_done, new_status, new_status, task_id),
         )
         self.conn.commit()
+
 
         self.event_bus.publish("TaskStepDone", {"task_id": task_id, "steps_done": new_done, "steps_total": t["steps_total"]}, project=project_id, task_id=task_id)
         return self.get_task(task_id)
