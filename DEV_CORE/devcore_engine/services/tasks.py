@@ -38,11 +38,22 @@ class TaskService:
             tasks_list = []
             for t in board["tasks"]:
                 meta = t.get("metadata", {})
+                steps_list = []
+                details_text = ""
                 if isinstance(meta, str):
                     try:
                         meta = json.loads(meta)
                     except Exception:
                         meta = {}
+                
+                if isinstance(meta, list):
+                    steps_list = meta
+                elif isinstance(meta, dict):
+                    details_text = meta.get("details", "")
+                    steps_list = meta.get("steps", [])
+                else:
+                    details_text = str(meta or "")
+
                 tasks_list.append({
                     "id": t["id"],
                     "title": t["title"],
@@ -52,7 +63,8 @@ class TaskService:
                     "steps_done": t["steps_done"],
                     "depends_on": t.get("depends_on"),
                     "worktree": t.get("worktree", "main"),
-                    "details": meta.get("details", "") if isinstance(meta, dict) else "",
+                    "details": details_text,
+                    "steps": steps_list,
                     "started_at": t.get("started_at") or "",
                     "completed_at": t.get("completed_at") or ""
                 })

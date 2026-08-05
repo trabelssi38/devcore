@@ -308,6 +308,8 @@ def load_projects_and_tasks(data_root: Path = DATA_ROOT, platform_root: Path = P
                     if details_raw and str(details_raw).startswith("["):
                         try:
                             steps_list = json.loads(details_raw)
+                            if steps_list:
+                                details_text = "\n".join(f"- [{'v' if s.get('done') else ' '}] {s.get('title')}" for s in steps_list if isinstance(s, dict))
                         except Exception:
                             details_text = str(details_raw)
                     else:
