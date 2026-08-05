@@ -68,7 +68,7 @@ class EventBus:
             query += " AND project = ?"
             params.append(project)
 
-        query += " ORDER BY created_at DESC LIMIT ?"
+        query += " ORDER BY created_at DESC, rowid DESC LIMIT ?"
         params.append(limit)
 
         rows = cursor.execute(query, params).fetchall()

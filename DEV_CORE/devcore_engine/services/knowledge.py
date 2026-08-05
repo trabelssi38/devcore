@@ -16,8 +16,17 @@ from devcore_engine.db import connect_db, init_db
 
 
 class KnowledgeGraph:
-    def __init__(self, conn: Optional[sqlite3.Connection] = None):
-        self.conn = conn or init_db()
+    def __init__(self, conn: Optional[sqlite3.Connection | Path | str] = None):
+        if isinstance(conn, (Path, str)):
+            p = Path(conn)
+            if p.is_dir():
+                p = p / "devcore.db"
+            self.conn = connect_db(p)
+        elif conn is not None:
+            self.conn = conn
+        else:
+            self.conn = connect_db()
+
 
     def get_stats(self) -> Dict[str, int]:
         cursor = self.conn.cursor()
