@@ -1538,7 +1538,19 @@ function showInteractions(projectName, taskId, btnEl, event) {
 
   const m = data.metrics || {};
   const filesList = data.files || [];
+  const modulesList = data.modules || [];
   const eventsList = data.events || [];
+
+  let modulesHtml = "";
+  if (modulesList.length > 0) {
+    modulesHtml = modulesList.map(mod => {
+      return `<div style="background:rgba(56,189,248,0.1); border:1px solid rgba(56,189,248,0.25); border-radius:6px; padding:4px 9px; font-size:10.5px; font-weight:600; color:#38bdf8; display:inline-flex; align-items:center;">
+        ${mod}
+      </div>`;
+    }).join("");
+  } else {
+    modulesHtml = `<div style="font-size:11px; color:#64748b; font-style:italic;">Aucun sous-système spécifique identifié.</div>`;
+  }
 
   let filesHtml = "";
   if (filesList.length > 0) {
@@ -1589,13 +1601,24 @@ function showInteractions(projectName, taskId, btnEl, event) {
       </div>
     </div>
 
-    <!-- Modules / Files section -->
+    <!-- System Subsystems section -->
     <div>
       <h4 style="margin:0 0 8px 0; font-size:11.5px; color:#38bdf8; font-weight:700; display:flex; align-items:center; gap:6px;">
-        <span>📁 Modules & Fichiers Interagis par l'IDE</span>
-        <span style="background:rgba(56,189,248,0.15); color:#38bdf8; border-radius:10px; padding:1px 7px; font-size:9.5px;">${filesList.length}</span>
+        <span>⚙️ Modules & Sous-systèmes Sollicités</span>
+        <span style="background:rgba(56,189,248,0.15); color:#38bdf8; border-radius:10px; padding:1px 7px; font-size:9.5px;">${modulesList.length}</span>
       </h4>
-      <div style="display:flex; flex-direction:column; gap:6px; max-height:160px; overflow-y:auto; padding-right:4px;">
+      <div style="display:flex; flex-wrap:wrap; gap:6px; max-height:100px; overflow-y:auto;">
+        ${modulesHtml}
+      </div>
+    </div>
+
+    <!-- Modules / Files section -->
+    <div>
+      <h4 style="margin:0 0 8px 0; font-size:11.5px; color:#a78bfa; font-weight:700; display:flex; align-items:center; gap:6px;">
+        <span>📁 Fichiers Modifiés par la Tâche</span>
+        <span style="background:rgba(167,139,250,0.15); color:#a78bfa; border-radius:10px; padding:1px 7px; font-size:9.5px;">${filesList.length}</span>
+      </h4>
+      <div style="display:flex; flex-direction:column; gap:6px; max-height:140px; overflow-y:auto; padding-right:4px;">
         ${filesHtml}
       </div>
     </div>

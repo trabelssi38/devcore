@@ -414,13 +414,42 @@ def main():
                 t_cst = float(task_stats.get("cost_usd", 0)) if task_stats else 0
                 c_pct = round((t_hit / max(1.0, t_tok)) * 100, 1)
 
+                files_list = git_files_by_task.get(t_id.upper(), [])
+                
+                # Deduce system modules & subsystems interacted with
+                modules_set = set()
+                for f in files_list:
+                    f_lower = f.lower()
+                    if "dashboard" in f_lower or "template" in f_lower or "cockpit" in f_lower:
+                        modules_set.add("🎛️ Cockpit & UI Engine")
+                    if "runner" in f_lower or "hermes" in f_lower or "process" in f_lower:
+                        modules_set.add("⚡ AgentRunner Abstraction")
+                    if "memory" in f_lower or "qdrant" in f_lower or "dashboard_api" in f_lower:
+                        modules_set.add("🧠 AsyncIO Memory & Qdrant Search")
+                    if "repowise" in f_lower or "health" in f_lower:
+                        modules_set.add("🔍 Repowise Code Health Radar")
+                    if "docs" in f_lower or "readme" in f_lower or "changelog" in f_lower or "guide" in f_lower:
+                        modules_set.add("📚 Technical Documentation Subsystem")
+                    if "hooks" in f_lower or "commit" in f_lower or "session" in f_lower:
+                        modules_set.add("⚓ Git Hooks & Session Manager")
+                    if "test" in f_lower or "pytest" in f_lower:
+                        modules_set.add("🧪 Native Test Suite")
+
+                if not modules_set:
+                    modules_set.add("🧠 Context & Memory Subsystem")
+                    modules_set.add("🔒 Vault & Configuration System")
+
+                if t_hit > 0:
+                    modules_set.add("🛡️ Headroom LLM Proxy & Prompt Cache")
+
                 task_interactions_map[task_key] = {
                     "task_id": t_id,
                     "project": p_name,
                     "title": t.get("title", ""),
                     "status": t.get("status", ""),
                     "mode": t.get("mode", "coding"),
-                    "files": git_files_by_task.get(t_id.upper(), []),
+                    "files": files_list,
+                    "modules": sorted(list(modules_set)),
                     "metrics": {
                         "tokens": int(t_tok),
                         "cache_hits": int(t_hit),
