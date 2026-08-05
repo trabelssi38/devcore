@@ -9,6 +9,7 @@ import sqlite3
 from pathlib import Path
 from typing import Any, Optional
 
+os.environ["SQLITE_VEC_NO_WARN"] = "1"
 try:
     import sqlite_vec
     HAS_SQLITE_VEC = True
