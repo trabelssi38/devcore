@@ -246,6 +246,55 @@ def main():
   </div>
 """
 
+    # Build task_interactions_map
+    events_by_task = {}
+    sqlite_db_path = DATA_ROOT / "devcore.db"
+    if sqlite_db_path.exists():
+        try:
+            conn = sqlite3.connect(sqlite_db_path)
+            cur = conn.cursor()
+            rows = cur.execute("SELECT id, event_type, project, task_id, payload, created_at FROM bus_events ORDER BY rowid DESC LIMIT 300").fetchall()
+            for r in rows:
+                evt_type, proj, t_id, payload_raw, ts = r[1], r[2], r[3], r[4], r[5]
+                p_data = {}
+                if payload_raw:
+                    try:
+                        p_data = json.loads(payload_raw) if isinstance(payload_raw, str) else payload_raw
+                    except Exception:
+                        pass
+                if not t_id and isinstance(p_data, dict):
+                    t_id = p_data.get("task_id")
+                if t_id:
+                    t_key = t_id.upper()
+                    if t_key not in events_by_task:
+                        events_by_task[t_key] = []
+                    events_by_task[t_key].append({
+                        "event_type": evt_type,
+                        "created_at": ts,
+                        "details": (p_data.get("commit_msg") or p_data.get("title") or evt_type) if isinstance(p_data, dict) else str(p_data)
+                    })
+            conn.close()
+        except Exception as e:
+            print(f"[gen_dashboard] Warning fetching bus_events for interactions: {e}", file=sys.stderr)
+
+    git_files_by_task = {}
+    try:
+        git_out = subprocess.check_output(['git', 'log', '-n', '100', '--name-only', '--oneline'], text=True, cwd=str(PLATFORM_ROOT))
+        cur_t = None
+        for line in git_out.splitlines():
+            line = line.strip()
+            if not line: continue
+            if re.match(r'^[0-9a-f]{7,40}\s', line):
+                m = re.search(r'\[?(T-\d+)\]?', line, re.IGNORECASE)
+                cur_t = m.group(1).upper() if m else None
+            elif cur_t:
+                if cur_t not in git_files_by_task: git_files_by_task[cur_t] = []
+                if line not in git_files_by_task[cur_t]: git_files_by_task[cur_t].append(line)
+    except Exception:
+        pass
+
+    task_interactions_map = {}
+
     # 2. Tasks Pipeline
     tasks_html = ""
     for p in projects:
@@ -338,6 +387,32 @@ def main():
                 if t.get("details"):
                     details_button = f"<button class='btn-action btn-details' onclick='showDetails(\"{esc_attr(p_name)}\", \"{esc_attr(t_id)}\", \"{esc_attr(t_status)}\", this, event)' title='Voir les détails'>Détails</button>"
 
+                interactions_button = f"<button class='btn-action btn-interactions' onclick='showInteractions(\"{esc_attr(p_name)}\", \"{esc_attr(t_id)}\", this, event)' style='background:rgba(56,189,248,0.12); color:#38bdf8; border:1px solid rgba(56,189,248,0.3); padding:2px 8px; border-radius:4px; font-size:10px; font-weight:600; cursor:pointer; margin-left:4px;' title='Voir les interactions et modules touchés par l\\'IDE/Agent'>🔍 Interactions</button>"
+
+                # Populate task_interactions_map
+                t_tok = float(task_stats.get("tokens", 0)) if task_stats else 0
+                t_hit = float(task_stats.get("cache_hits", 0)) if task_stats else 0
+                t_out = float(task_stats.get("output_tokens", 0)) if task_stats else 0
+                t_cst = float(task_stats.get("cost_usd", 0)) if task_stats else 0
+                c_pct = round((t_hit / max(1.0, t_tok)) * 100, 1)
+
+                task_interactions_map[task_key] = {
+                    "task_id": t_id,
+                    "project": p_name,
+                    "title": t.get("title", ""),
+                    "status": t.get("status", ""),
+                    "mode": t.get("mode", "coding"),
+                    "files": git_files_by_task.get(t_id.upper(), []),
+                    "metrics": {
+                        "tokens": int(t_tok),
+                        "cache_hits": int(t_hit),
+                        "output_tokens": int(t_out),
+                        "cost_usd": round(t_cst, 4),
+                        "cache_hit_pct": c_pct
+                    },
+                    "events": events_by_task.get(t_id.upper(), [])
+                }
+
                 steps_detail_html = ""
                 if t.get("steps"):
                     steps_detail_html = "<div class='steps-container'>"
@@ -383,7 +458,7 @@ def main():
                   <div class="mission-title" style="display:flex; justify-content:space-between; align-items:center; width:100%;">
                     <span style="text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="{esc_attr(t_id)}: {esc_attr(t.get('title', ''))}">{esc_html(t_id)}: {esc_html(t.get('title', ''))}</span>
                     <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0;">
-                      <div style="display:flex; align-items:center; gap:2px;">{task_tokens_str}{task_cost_str}{details_button}</div>
+                      <div style="display:flex; align-items:center; gap:2px;">{task_tokens_str}{task_cost_str}{details_button}{interactions_button}</div>
                       <div style="display:flex; align-items:center; gap:2px;">{done_button}{delete_button}</div>
                     </div>
                   </div>
@@ -689,6 +764,7 @@ def main():
             "plugin_status": plugin_status_html
         },
         "task_details": task_details,
+        "task_interactions": task_interactions_map,
         "token_metrics": token_metrics,
         "projects_raw": projects,
         "services_raw": services,
@@ -742,6 +818,7 @@ def main():
             template = template.replace('{{KNOWLEDGE_GRAPH_SUMMARY}}', knowledge_graph_summary_html)
             template = template.replace('{{PLUGIN_STATUS}}', plugin_status_html)
             template = template.replace('{{TASK_DETAILS_MAP}}', json.dumps(task_details))
+            template = template.replace('{{TASK_INTERACTIONS_MAP}}', json.dumps(task_interactions_map))
             template = template.replace('{{TOKEN_METRICS_JSON}}', json.dumps(token_metrics))
             legacy_v9 = "DEV_CORE " + "v9.0"
             template = template.replace(legacy_v9 + ' Cockpit', 'DEV_CORE v10.0 — Cockpit')
@@ -771,6 +848,7 @@ def main():
             tterm = tterm.replace('{{KNOWLEDGE_GRAPH_SUMMARY}}', knowledge_graph_summary_html)
             tterm = tterm.replace('{{PLUGIN_STATUS}}', plugin_status_html)
             tterm = tterm.replace('{{TASK_DETAILS_MAP}}', json.dumps(task_details))
+            tterm = tterm.replace('{{TASK_INTERACTIONS_MAP}}', json.dumps(task_interactions_map))
             tterm = tterm.replace('{{TOKEN_METRICS_JSON}}', json.dumps(token_metrics))
             term_output_file.write_text(tterm, encoding="utf-8")
             print("[gen_dashboard.py] Terminal index_terminal.html generated successfully.")
