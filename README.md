@@ -2,7 +2,7 @@
 
 **SQLite Unifié & Engine Python Natif** — Plateforme d'orchestration IA pour le développement logiciel
 
-Version : 10.1.0
+Version : 10.2.0
 Mode : Single Client (sans Docker)
 
 ---

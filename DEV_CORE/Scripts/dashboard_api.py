@@ -840,7 +840,7 @@ try:
 except ImportError:
     httpx = None
 
-app = FastAPI(title="DEV_CORE Dashboard API Server", version="10.1.0")
+app = FastAPI(title="DEV_CORE Dashboard API Server", version="10.2.0")
 
 # CORS setup matching get_allowed_origins()
 allowed_origins = get_allowed_origins()

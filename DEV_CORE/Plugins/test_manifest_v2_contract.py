@@ -53,11 +53,11 @@ def valid_manifest(**overrides):
 
 
 def test_manifest_v2_accepts_compatible_manifest():
-    normalized = validate_manifest_v2(valid_manifest(), current_version="10.1.0")
+    normalized = validate_manifest_v2(valid_manifest(), current_version="10.2.0")
 
     assert normalized["manifest_version"] == 2
     assert normalized["id"] == "example-plugin"
-    assert is_compatible(normalized, current_version="10.1.0") is True
+    assert is_compatible(normalized, current_version="10.2.0") is True
 
 
 def test_manifest_v2_rejects_legacy_schema_version():
@@ -65,7 +65,7 @@ def test_manifest_v2_rejects_legacy_schema_version():
     legacy.pop("manifest_version")
 
     try:
-        validate_manifest_v2(legacy, current_version="10.1.0")
+        validate_manifest_v2(legacy, current_version="10.2.0")
     except ManifestValidationError as exc:
         assert "manifest_version" in str(exc)
     else:
@@ -76,8 +76,8 @@ def test_manifest_v2_rejects_core_version_outside_supported_range():
     too_new_required = valid_manifest(devcore_min_version="11.0.0")
     too_old_only = valid_manifest(devcore_max_version="9.9.9")
 
-    assert is_compatible(too_new_required, current_version="10.1.0") is False
-    assert is_compatible(too_old_only, current_version="10.1.0") is False
+    assert is_compatible(too_new_required, current_version="10.2.0") is False
+    assert is_compatible(too_old_only, current_version="10.2.0") is False
 
 
 def test_manifest_v2_rejects_missing_required_contract_fields():
@@ -85,7 +85,7 @@ def test_manifest_v2_rejects_missing_required_contract_fields():
     manifest.pop("entrypoint")
 
     try:
-        validate_manifest_v2(manifest, current_version="10.1.0")
+        validate_manifest_v2(manifest, current_version="10.2.0")
     except ManifestValidationError as exc:
         assert "entrypoint" in str(exc)
     else:
@@ -93,7 +93,7 @@ def test_manifest_v2_rejects_missing_required_contract_fields():
 
 
 def test_manifest_v2_accepts_explicit_permission_scopes():
-    normalized = validate_manifest_v2(valid_manifest(), current_version="10.1.0")
+    normalized = validate_manifest_v2(valid_manifest(), current_version="10.2.0")
 
     assert normalized["permissions"]["filesystem"]["read"] == ["workspace"]
     assert normalized["permissions"]["network"]["allow"] == ["api.openai.com:443"]
@@ -106,7 +106,7 @@ def test_manifest_v2_rejects_unknown_permission_scope():
     manifest["permissions"]["admin"] = {"allow": True}
 
     try:
-        validate_manifest_v2(manifest, current_version="10.1.0")
+        validate_manifest_v2(manifest, current_version="10.2.0")
     except ManifestValidationError as exc:
         assert "permissions.admin" in str(exc)
     else:
@@ -118,7 +118,7 @@ def test_manifest_v2_rejects_wildcard_filesystem_scope():
     manifest["permissions"]["filesystem"]["read"] = ["*"]
 
     try:
-        validate_manifest_v2(manifest, current_version="10.1.0")
+        validate_manifest_v2(manifest, current_version="10.2.0")
     except ManifestValidationError as exc:
         assert "filesystem" in str(exc)
     else:
@@ -130,7 +130,7 @@ def test_manifest_v2_rejects_shell_process_permission():
     manifest["permissions"]["process"]["allow_shell"] = True
 
     try:
-        validate_manifest_v2(manifest, current_version="10.1.0")
+        validate_manifest_v2(manifest, current_version="10.2.0")
     except ManifestValidationError as exc:
         assert "allow_shell" in str(exc)
     else:

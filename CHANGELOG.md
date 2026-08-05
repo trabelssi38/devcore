@@ -7,6 +7,18 @@ and this project adheres to Semantic Versioning.
 
 ---
 
+## [10.2.0] - 2026-08-05
+
+### Added
+- **Abstractions AgentRunner & Hermes Process Engine** : Création de la classe de base abstraite `AgentRunner` et des implémentations `HermesRunner` et `LocalProcessRunner` dans `DEV_CORE/devcore_engine/runners/` pour supporter la gestion unifiée d'agents locaux CLI (Hermes / Processus OS).
+- **Pipeline de Recherche Mémoire AsyncIO** : Refactorisation asynchrone non-bloquante avec `httpx.AsyncClient` dans `dashboard_api.py` pour accélérer les requêtes mémoire Qdrant et SQLite-vec sans bloquer la boucle d'événements du serveur Cockpit.
+- **Affichage des Sous-systèmes & Modale de Télémetrie Tâches (`Inter.`)** : Ajout d'un bouton d'action `Inter.` sur chaque carte tâche du Cockpit ouvrant une fenêtre modale moderne. La modale affiche les sous-systèmes sollicités (Repowise, Mémoire/Qdrant, Vault, Headroom, AgentRunner), les métriques d'économie de tokens via le Prompt Cache et la timeline chronologique des événements.
+- **Correspondance Auto des Commits par Titre de Tâche** : Extension de la correspondance Git dans `gen_dashboard.py` pour lier automatiquement les commits aux tâches du système même lorsque les sujets des commits n'incluent pas le tag `[T-XX]`.
+
+### Fixed
+- **Support Complet du Mode Terminal Cockpit** : Alignement de `template_terminal.html` avec ajout des classes CSS `.modal-overlay` glassmorphism et gestion de l'affichage adaptatif en mode Terminal.
+- **Traces de Débogage Console Browser (`[Cockpit Debug]`)** : Ajout de logs explicites d'ouverture/fermeture et de résolution des données JSON dans la console DevTools du navigateur pour fiabiliser le diagnostic du Cockpit.
+
 ## [10.1.0] - 2026-08-05
 
 ### Added
