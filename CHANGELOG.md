@@ -10,11 +10,15 @@ and this project adheres to Semantic Versioning.
 ## [10.3.0] - 2026-08-05
 
 ### Added
+- **Scanner Git Multi-Projets (`multi_project_git_scanner.py`)** : Module autonome parcourant l'ensemble des dépôts configurés dans `projects.json` (ex: `job_tracker`, `devcore`, `dashboard_recette_br`). Extraction et synchronisation automatique des commits récents des 30 derniers jours dans SQLite `devcore.db` avec mise à jour du Cockpit.
+- **Auto-Détection du Projet dans le Hook Post-Commit (`post_commit.py`)** : Résolution dynamique du nom du projet via le dossier Git racine (`git rev-parse --show-toplevel`) pour garantir l'attribution exacte des commits au projet concerné (ex: `job_tracker`) indépendamment du projet actif principal.
 - **Automated System Watchdog & Auto-Healer (`system_watcher.py`)** : Module d'auto-guérison native en Python auditant en continu les services de la plateforme (`Dashboard API`, `Gemini Router`, `Headroom Proxy`, `Anthropic Adapter`, `Repowise Server` et `Scheduler Daemon`). Redémarrage automatique et silencieux en arrière-plan en cas de panne avec émission d'événement `ServiceAutoHealed`.
-- **Intégration Cron Scheduler & Bootstrap** : Ajout du job récurrent `system_watcher` (`* * * * *`) dans `jobs.devcore.json` et auto-surveillance de la présence du daemon `scheduler_tick.py`.
+- **Intégration Cron Scheduler & Bootstrap** : Ajout du job récurrent `system_watcher` (`* * * * *`) sous forme de tâche Python directe dans `jobs.devcore.json` et auto-surveillance de la présence du daemon `scheduler_tick.py`.
 - **Diagnostic CLI Enrichi** : Ajout du contrôle direct de santé du port 8787 (Headroom Proxy) dans `devcore diagnose`.
 
 ### Fixed
+- **Élimination des Popups de Fenêtres Console (Zero Popup)** : Lancement direct des sous-processus `repowise.exe` et `headroom.exe` avec le drapeau `CREATE_NO_WINDOW` (`0x08000000`) exclusif (suppression de `DETACHED_PROCESS` en Win32) pour garantir un fonctionnement 100% invisible en arrière-plan.
+- **Politique du Planificateur (`jobs.devcore.json`)** : Passage de `"policy": "catch_up"` à `"policy": "skip"` pour `daily_launch` et `daily_endday` afin d'éviter le déclenchement intempestif des scripts de démarrage/extinction lors de la relance du planificateur en cours de journée.
 - **Timeout Démarrage Headroom Proxy** : Augmentation du délai d'initialisation à 15 secondes pour autoriser le chargement complet des parsers AST, Tiktoken et LiteLLM avant vérification du port HTTP.
 - **PowerShell Launch Fallback** : Correction de la gestion d'exception pour `-WindowStyle Hidden` sur `headroom_start.ps1` afin de supporter l'exécution croisée sous PowerShell 5.1 et PowerShell Core 7.
 

@@ -16,6 +16,7 @@ Chronologie consolidee des implementations et plans. Source principale : histori
 | T-194 a T-208 | Workspace, integrations, docs operateur/API | Identity, memberships, quota, audit logs, GitHub webhook, schedules, docs API |
 | T-209 a T-222 | Release hardening, CI bornes, routing IA | Load/failure tests, SBOM, release package, runbook, routing profiles, capability registry |
 | T-223 a T-293+ | Modularisation Python v10 & Supervision Headroom | Refactoring modulaire CCN 1.0, grille 330px/1fr/555px, détails Supervision Headroom persistants, badges de session libres (OK/ALERTE), isolation diagnostics de santé |
+| T-344 a T-347 | Watchdog 100% Silencieux & Scanner Git Multi-Projets (v10.3.0) | SystemWatcher native auto-heal, scanner git multi-dépôts (job_tracker, devcore), auto-détection du projet dans hooks git, exécution 100% invisible sans popup de console |
 
 ## Mai 2026 - fondations
 
