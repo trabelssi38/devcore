@@ -302,6 +302,17 @@ def load_projects_and_tasks(data_root: Path = DATA_ROOT, platform_root: Path = P
                 rows = cur.fetchall()
                 tasks = []
                 for r in rows:
+                    details_raw = r[7]
+                    steps_list = []
+                    details_text = ""
+                    if details_raw and str(details_raw).startswith("["):
+                        try:
+                            steps_list = json.loads(details_raw)
+                        except Exception:
+                            details_text = str(details_raw)
+                    else:
+                        details_text = str(details_raw or "")
+
                     tasks.append({
                         "id": r[0],
                         "title": r[1],
@@ -310,7 +321,8 @@ def load_projects_and_tasks(data_root: Path = DATA_ROOT, platform_root: Path = P
                         "steps_total": r[4],
                         "steps_done": r[5],
                         "source": r[6],
-                        "details": r[7],
+                        "details": details_text,
+                        "steps": steps_list,
                         "started_at": r[8],
                         "completed_at": r[9],
                         "created_at": r[10] if len(r) > 10 else "",
