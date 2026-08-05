@@ -669,18 +669,19 @@ def main():
 <details open style="border: 1px solid #2d3148; border-radius: 8px; background: #111420; overflow: hidden; box-shadow: 0 4px 20px rgba(0,0,0,0.4); margin-bottom: 10px;">
 <summary style="cursor: pointer; padding: 10px 14px; background: #1a1d27; border-bottom: 1px solid #2d3148; display: flex; justify-content: space-between; align-items: center; user-select: none; font-size: 12px;">
   <span style="font-weight: 700; color: #f8fafc; font-size: 12px;">Supervision Headroom &middot; Rapport de Consommation &amp; Activit&eacute; Agent</span>
+  <span id="token-report-header-cost" style="font-size: 10px; color: #fbbf24; font-family: monospace; font-weight:600;">Coût total : ${tot_cost:.2f} USD</span>
   <span class="headroom-toggle-text" style="font-size: 10px; color: #64748b;"></span>
 </summary>
 <div id="token-activity-inner" style="padding: 12px 14px;">
   <div style="display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:10px; margin-bottom:14px; text-align:center;">
     <div style="background:rgba(30,41,59,0.5); border:1px solid #334155; border-radius:8px; padding:10px 6px;">
       <div style="font-size:9.5px; color:#94a3b8; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Tokens</div>
-      <div style="font-size:20px; font-weight:800; color:#cbd5e1; margin:3px 0;">{tot_tokens_str}</div>
-      <div style="font-size:9.5px; color:#64748b;">{tot_cache_pct}% cache hit</div>
+      <div id="token-report-total-tokens" style="font-size:20px; font-weight:800; color:#cbd5e1; margin:3px 0;">{tot_tokens_str}</div>
+      <div id="token-report-cache-hits" style="font-size:9.5px; color:#64748b;">{tot_cache_pct}% cache hit</div>
     </div>
     <div style="background:rgba(30,41,59,0.5); border:1px solid #334155; border-radius:8px; padding:10px 6px;">
       <div style="font-size:9.5px; color:#94a3b8; font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">Co&ucirc;t Estim&eacute;</div>
-      <div style="font-size:20px; font-weight:800; color:#fbbf24; margin:3px 0;">${tot_cost:.2f}</div>
+      <div id="token-report-total-cost" style="font-size:20px; font-weight:800; color:#fbbf24; margin:3px 0;">${tot_cost:.2f}</div>
       <div style="font-size:9.5px; color:#64748b;">USD</div>
     </div>
     <div style="background:rgba(30,41,59,0.5); border:1px solid #334155; border-radius:8px; padding:10px 6px;">
@@ -690,10 +691,12 @@ def main():
     </div>
   </div>
   
-  {project_alloc_html}
+  <div id="token-report-alloc-container">
+    {project_alloc_html}
+  </div>
   
-  <h3 style="font-size:11px; color:#94a3b8; margin: 12px 0 8px;">R&eacute;partition des Co&ucirc;ts par Mod&egrave;le</h3>
-  <div style="margin-bottom:16px;">{model_cost_html}</div>
+  <h3 id="model-cost-title" style="font-size:11px; color:#94a3b8; margin: 12px 0 8px;">R&eacute;partition des Co&ucirc;ts par Mod&egrave;le</h3>
+  <div id="token-report-model-costs" style="margin-bottom:16px;">{model_cost_html}</div>
   
   <h3 style="font-size:11px; color:#94a3b8; margin: 12px 0 8px;">Sessions R&eacute;centes</h3>
   <div style="max-height:280px; overflow-y:auto; padding-right:4px;">
