@@ -16,10 +16,15 @@ from devcore_engine.services.events import EventBus
 
 
 class TaskService:
-    def __init__(self, data_root: Optional[Path] = None):
-        self.data_root = data_root or get_data_root()
-        self.conn = connect_db(self.data_root / "devcore.db")
-        self.event_bus = EventBus(self.data_root)
+    def __init__(self, data_root: Optional[Path | sqlite3.Connection] = None):
+        if isinstance(data_root, sqlite3.Connection):
+            self.conn = data_root
+            self.data_root = get_data_root()
+        else:
+            self.data_root = data_root or get_data_root()
+            self.conn = connect_db(self.data_root / "devcore.db")
+        self.event_bus = EventBus(self.conn)
+
 
 
     def _sync_to_legacy_json(self, project_id: str = "devcore") -> None:
