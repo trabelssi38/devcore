@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "devcore-engine"
+version = "10.1.0"
+description = "DEV_CORE Native Unified AI Development Engine"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "sqlite-vec>=0.1.0"
+]
+
+[project.scripts]
+dc = "devcore_engine.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["devcore_engine*"]
