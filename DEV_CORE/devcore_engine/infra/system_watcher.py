@@ -187,8 +187,13 @@ class SystemWatcher:
         report["anthropic_adapter"] = self.check_and_heal_service("Anthropic Adapter", "127.0.0.1", 8788, anthropic_cmd, wait_timeout=5.0)
 
         # 5. Repowise Server (7337)
-        repowise_cmd = [sys.executable, str(DEV_CORE_ROOT / "Scripts" / "start_repowise_server.py")]
-        report["repowise_server"] = self.check_and_heal_service("Repowise Server", "127.0.0.1", 7337, repowise_cmd, wait_timeout=10.0)
+        import shutil
+        repowise_exe = shutil.which("repowise") or r"C:\Program Files\Python313\Scripts\repowise.exe"
+        if Path(repowise_exe).exists():
+            repowise_cmd = [repowise_exe, "serve", "--host", "127.0.0.1", "--port", "7337", "--no-ui"]
+        else:
+            repowise_cmd = [sys.executable, str(DEV_CORE_ROOT / "Scripts" / "start_repowise_server.py")]
+        report["repowise_server"] = self.check_and_heal_service("Repowise Server", "127.0.0.1", 7337, repowise_cmd, wait_timeout=5.0)
 
         # 6. Docker Audit
         docker_status = self.check_docker_status()

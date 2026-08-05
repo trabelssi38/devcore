@@ -17,8 +17,8 @@ if gemini_key:
 log_out = open("C:/Users/trb_m/repowise_serve_out.log", "wb")
 log_err = open("C:/Users/trb_m/repowise_serve_err.log", "wb")
 
-# Use CREATE_NO_WINDOW (0x08000000) and DETACHED_PROCESS (0x00000008)
-flags = 0x08000000 | 0x00000008
+# Use CREATE_NO_WINDOW (0x08000000) only to prevent any console window popup
+flags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
 try:
     p = subprocess.Popen(
         [r"C:\Program Files\Python313\Scripts\repowise.exe", "serve", "--host", "127.0.0.1", "--port", "7337", "--no-ui"],
