@@ -324,7 +324,7 @@ def load_projects_and_tasks(data_root: Path = DATA_ROOT, platform_root: Path = P
                 done = sum(1 for t in tasks if t["status"] == "done")
                 pct = int((done / total) * 100) if total > 0 else 0
                 
-                active_task = next((t for t in tasks if t["status"] in ["todo", "active", "paused"]), None)
+                active_task = next((t for t in tasks if t["status"] in ["todo", "active", "paused", "in_progress"]), None)
                 if not active_task and tasks:
                     active_task = tasks[-1]
                     
@@ -332,7 +332,7 @@ def load_projects_and_tasks(data_root: Path = DATA_ROOT, platform_root: Path = P
                 active_mode = active_task["mode"] if active_task else "N/A"
                 active_steps = f"{active_task['steps_done']}/{active_task['steps_total']}" if active_task else ""
                 
-                active_tasks = [t for t in tasks if t["status"] in ["todo", "active", "paused"]]
+                active_tasks = [t for t in tasks if t["status"] in ["todo", "active", "paused", "in_progress"]]
                 completed_tasks = [t for t in tasks if t["status"] in ["done", "skipped", "failed"]]
                 completed_tasks.sort(key=lambda t: (get_task_id_number(t), get_task_datetime(t)))
                 limited_tasks = completed_tasks[-20:] + active_tasks
@@ -382,7 +382,7 @@ def load_projects_and_tasks(data_root: Path = DATA_ROOT, platform_root: Path = P
                     done = sum(1 for t in tasks if t.get("status") == "done")
                     pct = int((done / total) * 100) if total > 0 else 0
                     
-                    active_task = next((t for t in tasks if t.get("id") == board.get("current_task") and t.get("status") in ["todo", "active", "paused"]), None)
+                    active_task = next((t for t in tasks if t.get("id") == board.get("current_task") and t.get("status") in ["todo", "active", "paused", "in_progress"]), None)
                     if not active_task and tasks:
                         active_task = tasks[-1]
 
@@ -390,7 +390,7 @@ def load_projects_and_tasks(data_root: Path = DATA_ROOT, platform_root: Path = P
                     active_mode = active_task.get("mode") if active_task else "N/A"
                     active_steps = f"{active_task.get('steps_done', 0)}/{active_task.get('steps_total', 1)}" if active_task else ""
                     
-                    active_tasks = [t for t in tasks if t.get("status") in ["todo", "active", "paused"] or t.get("id") == board.get("current_task")]
+                    active_tasks = [t for t in tasks if t.get("status") in ["todo", "active", "paused", "in_progress"] or t.get("id") == board.get("current_task")]
                     completed_tasks = [t for t in tasks if t.get("status") in ["done", "skipped", "failed"] and t.get("id") != board.get("current_task")]
                     completed_tasks.sort(key=lambda t: (get_task_datetime(t), get_task_id_number(t)))
                     limited_tasks = completed_tasks[-20:] + active_tasks

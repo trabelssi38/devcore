@@ -48,7 +48,7 @@ def main() -> int:
             print("  Aucun tasks.json.")
         return 0
 
-    visible = [task for task in tasks if task.status in {"todo", "active", "paused"}]
+    visible = [task for task in tasks if task.status in {"todo", "active", "paused", "in_progress"}]
     if args.json:
         print(
             json.dumps(

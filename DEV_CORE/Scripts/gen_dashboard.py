@@ -335,8 +335,8 @@ def main():
         worktree_groups = defaultdict(list)
         
         project_tasks = p["tasks"]
-        active_t = [t for t in project_tasks if t.get("status") == "active"]
-        completed_t = [t for t in project_tasks if t.get("status") != "active"]
+        active_t = [t for t in project_tasks if t.get("status") in ["active", "in_progress", "todo", "paused"]]
+        completed_t = [t for t in project_tasks if t.get("status") not in ["active", "in_progress", "todo", "paused"]]
         completed_t.sort(key=lambda t: (get_task_id_number(t), get_task_datetime(t)), reverse=True)
         bounded_tasks = active_t + completed_t[:20]
         
