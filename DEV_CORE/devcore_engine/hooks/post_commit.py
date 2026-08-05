@@ -74,25 +74,31 @@ def run_post_commit_hook() -> None:
                 task_id=tag_id,
             )
     else:
-        # No tag: Adopt active generic session task or complete active task
+        # No tag: Adopt active generic session task or complete active task or auto-create new task
         print("  [DEV_CORE] Aucun tag detecte. Traitement autonome du commit...")
         active = task_service.next_task(project_id)
+        clean_msg = msg.splitlines()[0].strip()
         if active:
             target_id = active["id"]
-            clean_msg = msg.splitlines()[0].strip()
             if "Session de travail auto" in active["title"]:
                 task_service.edit_task(target_id, title=clean_msg, project_id=project_id)
                 print(f"  [DEV_CORE] Tache active {target_id} renommee en : {clean_msg}")
             
             task_service.complete_task(target_id, project_id=project_id)
             print(f"  [DEV_CORE] Tache active {target_id} marquee done")
+        else:
+            new_task = task_service.add_task(clean_msg, mode="coding", steps=1, project_id=project_id)
+            target_id = new_task["id"]
+            task_service.complete_task(target_id, project_id=project_id)
+            print(f"  [DEV_CORE] Nouvelle tache {target_id} creee et marquee done pour le commit : {clean_msg}")
 
-            event_bus.publish(
-                "GitCommitAutoAdopted",
-                {"task_id": target_id, "commit_msg": msg},
-                project=project_id,
-                task_id=target_id,
-            )
+        event_bus.publish(
+            "GitCommitAutoAdopted",
+            {"task_id": target_id, "commit_msg": msg},
+            project=project_id,
+            task_id=target_id,
+        )
+
 
 
 if __name__ == "__main__":

@@ -243,6 +243,29 @@ class TaskService:
         self.conn.commit()
 
         self.event_bus.publish("TaskStepDone", {"task_id": task_id, "steps_done": new_done, "steps_total": t["steps_total"]}, project=project_id, task_id=task_id)
+    def edit_task(
+        self,
+        task_id: str,
+        title: Optional[str] = None,
+        mode: Optional[str] = None,
+        steps_total: Optional[int] = None,
+        project_id: str = "devcore",
+    ) -> Optional[Dict[str, Any]]:
+        t = self.get_task(task_id)
+        if not t:
+            return None
+        new_title = title if title is not None else t["title"]
+        new_mode = mode if mode is not None else t["mode"]
+        new_steps = steps_total if steps_total is not None else t["steps_total"]
+        self.conn.execute(
+            """
+            UPDATE tasks
+            SET title = ?, mode = ?, steps_total = ?, updated_at = datetime('now')
+            WHERE id = ?;
+            """,
+            (new_title, new_mode, new_steps, task_id),
+        )
+        self.conn.commit()
         self._sync_to_legacy_json(project_id)
         return self.get_task(task_id)
 
