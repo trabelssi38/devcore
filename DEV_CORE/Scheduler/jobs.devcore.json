@@ -21,7 +21,7 @@
       "last_error": null,
       "completed": 0
     },
-    "policy": "catch_up",
+    "policy": "skip",
     "timezone": "Europe/Paris"
   },
   {
