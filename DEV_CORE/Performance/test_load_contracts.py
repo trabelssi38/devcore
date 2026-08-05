@@ -7,7 +7,7 @@ DEV_CORE_ROOT = PERFORMANCE_ROOT.parent
 for path in [
     DEV_CORE_ROOT / "Performance",
     DEV_CORE_ROOT / "API",
-    DEV_CORE_ROOT / "Database",
+    DEV_CORE_ROOT / "_archive" / "Database",
     DEV_CORE_ROOT / "Scripts",
 ]:
     if str(path) not in sys.path:

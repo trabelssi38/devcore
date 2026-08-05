@@ -1,12 +1,13 @@
 import os, subprocess, sys
 from pathlib import Path
 
-# Resolve GEMINI_API_KEY from text file
-devcore_root = Path("C:/devcore/DEV_CORE")
-key_file = devcore_root / "Config" / "gemini_api_key.txt"
-gemini_key = ""
-if key_file.exists():
-    gemini_key = key_file.read_text(encoding="utf-8").strip()
+# Resolve GEMINI_API_KEY
+gemini_key = os.environ.get("GEMINI_API_KEY")
+if not gemini_key:
+    devcore_root = Path("C:/devcore/DEV_CORE")
+    key_file = devcore_root / "Config" / "gemini_api_key.txt"
+    if key_file.exists():
+        gemini_key = key_file.read_text(encoding="utf-8").strip()
 
 env = os.environ.copy()
 if gemini_key:

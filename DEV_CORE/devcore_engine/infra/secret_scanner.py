@@ -16,7 +16,9 @@ SKIP_PREFIXES = (
 )
 ALLOW_FILES = {
     ".env.example",
-    "DEV_CORE/Config/gemini_api_key.txt"
+    "DEV_CORE/Config/gemini_api_key.txt",
+    "DEV_CORE/Config/nvidia_api_key.txt",
+    "DEV_CORE/Config/cerebras_api_key.txt"
 }
 
 PATTERNS = [

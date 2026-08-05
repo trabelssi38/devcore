@@ -98,6 +98,20 @@ C:\devcore\
 └── README.md                   # Ce fichier
 ```
 
+## 🔗 Ports & Services
+
+Voici la cartographie des ports réseau utilisés par les différents services de la plateforme DevCore :
+
+| Port | Service | Description | Statut |
+|------|---------|-------------|--------|
+| **7337** | Repowise API | Indexation intelligente, graphe de connaissances et dead-code | ✅ Actif |
+| **8787** | Headroom Proxy | Proxy local pour la journalisation et le contrôle des coûts | ✅ Actif |
+| **8788** | Anthropic Adapter | Adaptateur de protocole Anthropic -> Headroom -> OpenAI | ✅ Actif |
+| **20129** | Dashboard/Cockpit API | API et serveur web du Cockpit (FastAPI) | ✅ Actif |
+| **20130** | Gemini Router | Proxy intelligent d'inférence avec rate-limiting et modes cognitifs | ✅ Actif |
+| **20131** | API Principale | API backend de DevCore (FastAPI) | ✅ Actif |
+| **30000** | Web Frontend | Interface web Next.js / React (accessible via Docker) | ✅ Actif |
+
 ---
 
 ## 🔧 Commandes principales

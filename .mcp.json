@@ -1,10 +1,10 @@
-﻿{
+{
     "mcpServers":  {
                        "repowise":  {
-                                        "command":  "C:\\Program Files\\Python313\\Scripts\\repowise.exe",
+                                        "command":  "repowise",
                                         "args":  [
                                                      "mcp",
-                                                     "C:/devcore",
+                                                     ".",
                                                      "--transport",
                                                      "stdio"
                                                  ],

@@ -172,21 +172,23 @@ if (-not (Test-Path $RepoRoot)) {
 $resolvedRepo = (Resolve-Path $RepoRoot).Path
 $resolvedRepowise = Resolve-Repowise -RequestedPath $RepowisePath
 $serverConfig = New-RepowiseMcpServer -CommandPath $resolvedRepowise -Root $resolvedRepo
+$localServerConfig = New-RepowiseMcpServer -CommandPath "repowise" -Root "."
 
-$jsonTargets = @(
-    (Join-Path $resolvedRepo ".mcp.json"),
+Set-JsonMcpServer -Path (Join-Path $resolvedRepo ".mcp.json") -ServerConfig $localServerConfig
+
+$globalJsonTargets = @(
     (Join-Path $HomeDir ".claude\settings.json"),
     (Join-Path $HomeDir ".gemini\settings.json"),
     (Join-Path $HomeDir ".gemini\antigravity\settings.json"),
     (Join-Path $HomeDir ".gemini\antigravity\mcp_config.json")
 )
 
-foreach ($target in $jsonTargets) {
+foreach ($target in $globalJsonTargets) {
     Set-JsonMcpServer -Path $target -ServerConfig $serverConfig
 }
 
 Set-CodexTomlMcpServer -Path (Join-Path $HomeDir ".codex\config.toml") -CommandPath $resolvedRepowise -Root $resolvedRepo
-Set-CodexTomlMcpServer -Path (Join-Path $resolvedRepo ".codex\config.toml") -CommandPath $resolvedRepowise -Root $resolvedRepo
+Set-CodexTomlMcpServer -Path (Join-Path $resolvedRepo ".codex\config.toml") -CommandPath "repowise" -Root "."
 Set-OpenCodeMcpServer -Path (Join-Path $HomeDir ".config\opencode\opencode.json") -CommandPath $resolvedRepowise -Root $resolvedRepo
 
 if (-not (Test-Path $resolvedRepowise) -and $resolvedRepowise -eq "repowise") {

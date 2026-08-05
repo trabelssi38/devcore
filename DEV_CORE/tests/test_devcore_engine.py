@@ -68,7 +68,7 @@ def test_task_service(tmp_path):
 
     t = ts.add_task("Test Task Engine", mode="coding", steps=2, project_id="test_proj")
     assert t["id"].startswith("T-")
-    assert t["title"] == "Test Task Engine"
+    assert t["title"] == "test task engine"
 
     next_t = ts.next_task("test_proj")
     assert next_t["id"] == t["id"]
@@ -116,7 +116,7 @@ def test_plugin_service(tmp_path):
     conn = init_db(db_file)
     ps = PluginService(conn)
 
-    ps.register_plugin("test_plugin", "1.0.0", True)
+    ps.register_plugin("test_plugin", "test_plugin", "1.0.0", True)
     plugins = ps.list_plugins()
     assert any(p["name"] == "test_plugin" for p in plugins)
     

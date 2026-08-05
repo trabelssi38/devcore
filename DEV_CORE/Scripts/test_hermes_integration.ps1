@@ -83,9 +83,9 @@ function Test-MCP {
     Test-Item "devcore-scripts server" $devcoreOk $devcoreServer
 
     # qdrant server
-    $qdrantServer = "$mcpPath\qdrant-storage\server.py"
+    $qdrantServer = "$DEVCORE_ROOT\_archive\MCP\qdrant-storage\server.py"
     $qdrantOk = Test-Path $qdrantServer
-    Test-Item "qdrant-storage server" $qdrantOk $qdrantServer
+    Test-Item "qdrant-storage server (archived)" $qdrantOk $qdrantServer
 
     # obsidian server
     $obsidianServer = "$mcpPath\obsidian-vault\server.py"

@@ -25,6 +25,13 @@ class InMemoryMetricsRegistry:
     def render_prometheus(self) -> str:
         # Dynamically load and count workflows from storage before rendering
         try:
+            import sys
+            from pathlib import Path
+            api_dir = Path(__file__).resolve().parent
+            tools_dir = api_dir.parents[1] / "Tools"
+            if str(tools_dir) not in sys.path:
+                sys.path.insert(0, str(tools_dir))
+
             import json
             from devcore.paths import get_paths
             paths = get_paths()

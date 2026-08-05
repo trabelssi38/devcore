@@ -33,38 +33,38 @@ jobs:
 
       - name: Lint PowerShell and Python
         timeout-minutes: 3
-        shell: pwsh
-        run: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File DEV_CORE\Scripts\ci_lint.ps1
+        shell: powershell
+        run: .\DEV_CORE\Scripts\ci_lint.ps1
 
       - name: Run Python core tests
         timeout-minutes: 8
-        shell: pwsh
-        run: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File DEV_CORE\Scripts\ci_python_tests.ps1 -Exclude DEV_CORE/Scripts/test_dashboard_api.py
+        shell: powershell
+        run: .\DEV_CORE\Scripts\ci_python_tests.ps1 -Exclude DEV_CORE/Scripts/test_dashboard_api.py
 
       - name: Run Python dashboard API tests
         timeout-minutes: 25
-        shell: pwsh
-        run: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File DEV_CORE\Scripts\ci_python_tests.ps1 -Include DEV_CORE/Scripts/test_dashboard_api.py
+        shell: powershell
+        run: .\DEV_CORE\Scripts\ci_python_tests.ps1 -Include DEV_CORE/Scripts/test_dashboard_api.py
 
       - name: Run PowerShell tests
         timeout-minutes: 10
-        shell: pwsh
-        run: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File DEV_CORE\Scripts\ci_powershell_tests.ps1
+        shell: powershell
+        run: .\DEV_CORE\Scripts\ci_powershell_tests.ps1
 
       - name: Secret scan
         timeout-minutes: 3
-        shell: pwsh
-        run: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File DEV_CORE\Scripts\secret_scan.ps1 -Path .
+        shell: powershell
+        run: .\DEV_CORE\Scripts\secret_scan.ps1 -Path .
 
       - name: Contract checks
         timeout-minutes: 4
-        shell: pwsh
-        run: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File DEV_CORE\Scripts\ci_contract_tests.ps1
+        shell: powershell
+        run: .\DEV_CORE\Scripts\ci_contract_tests.ps1
 
       - name: Reference benchmarks
         timeout-minutes: 4
-        shell: pwsh
-        run: powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File DEV_CORE\Scripts\benchmark_reference.ps1 -Json
+        shell: powershell
+        run: .\DEV_CORE\Scripts\benchmark_reference.ps1 -Json
 
       - name: Upload benchmark artifacts
         timeout-minutes: 2
