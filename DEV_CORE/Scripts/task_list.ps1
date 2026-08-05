@@ -1,19 +1,12 @@
-# task_list.ps1 -- compatibility adapter to Python API ports
+# task_list.ps1 -- Thin wrapper for devcore_engine task board
 param(
-    [string]$Project = "",
-    [switch]$Json
+    [string]$Project = "devcore"
 )
 
-$ErrorActionPreference = "Stop"
-$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { $PSScriptRoot }
-$adapter = Join-Path $DEV_CORE "API\compat_task_list.py"
-
-if ([string]::IsNullOrWhiteSpace($Project)) {
-    $Project = & (Join-Path $PSScriptRoot "Get-ActiveProject.ps1")
+$DEV_CORE_ROOT = Split-Path -Parent $PSScriptRoot
+if (-not $env:PYTHONPATH -or $env:PYTHONPATH -notlike "*$DEV_CORE_ROOT*") {
+    $env:PYTHONPATH = "$DEV_CORE_ROOT;$env:PYTHONPATH"
 }
 
-$arguments = @($adapter, "--project", $Project)
-if ($Json) { $arguments += "--json" }
-
-& python @arguments
+& "C:\Program Files\Python313\python.exe" -m devcore_engine task board --project $Project
 exit $LASTEXITCODE

@@ -1,127 +1,14 @@
-# task_sync.ps1 -- DEV_CORE -- Synchronise les suggestions via Task Service
-param([int]$MaxPerSource = 30)
+# task_sync.ps1 -- Thin wrapper for gen_dashboard
+param(
+    [switch]$SkipTokenRefresh,
+    [switch]$Json
+)
 
-$DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { $PSScriptRoot }
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { (Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE_DATA") }
-$TODAY         = Get-Date -Format "yyyy-MM-dd"
-$LOG           = "$DEV_CORE_DATA\Logs\scripts\task_sync_$TODAY.log"
-. "$DEV_CORE\Scripts\platform_version.ps1"
-$PLATFORM = Get-DevCorePlatformInfo
-
-function Log { param($msg,$color="Gray")
-    $l = "[$(Get-Date -f HH:mm:ss)] $msg"
-    Add-Content $LOG $l -ErrorAction SilentlyContinue
-    Write-Host "    $l" -ForegroundColor $color
+$DEV_CORE_ROOT = Split-Path -Parent $PSScriptRoot
+if (-not $env:PYTHONPATH -or $env:PYTHONPATH -notlike "*$DEV_CORE_ROOT*") {
+    $env:PYTHONPATH = "$DEV_CORE_ROOT;$env:PYTHONPATH"
 }
 
-function Get-ContentWithRetry {
-    param(
-        [string]$Path,
-        [switch]$Raw,
-        [int]$MaxAttempts = 5,
-        [int]$DelayMs = 100
-    )
-    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
-        try {
-            if ($Raw) {
-                return Get-Content $Path -Raw -Encoding UTF8 -ErrorAction Stop
-            } else {
-                return @(Get-Content $Path -Encoding UTF8 -ErrorAction Stop)
-            }
-        } catch {
-            Log "Read attempt $attempt/$MaxAttempts failed for ${Path}: $_" "Yellow"
-            if ($attempt -lt $MaxAttempts) {
-                Start-Sleep -Milliseconds $DelayMs
-            } else {
-                throw
-            }
-        }
-    }
-}
-
-Write-Host ""
-Write-Host "  $($PLATFORM.title) -- TASK SYNC" -ForegroundColor Cyan
-Write-Host "  ========================================" -ForegroundColor DarkGray
-Write-Host ""
-
-# Lire les queues (isolees par projet)
-$projName = & "$PSScriptRoot\Get-ActiveProject.ps1"
-$projMem = "$DEV_CORE_DATA\Memory\$projName"
-$queues = @{
-    git = "$projMem\task_git_queue.jsonl"
-    spec = "$projMem\task_spec_queue.jsonl"
-    prompt = "$projMem\task_prompt_queue.jsonl"
-}
-
-$suggestions = @()
-foreach ($src in $queues.Keys) {
-    $path = $queues[$src]
-    if (Test-Path $path) {
-        $lines = Get-ContentWithRetry -Path $path
-        $selectedLines = $lines | Select-Object -First $MaxPerSource
-        foreach ($line in $selectedLines) {
-            try {
-                $item = $line | ConvertFrom-Json
-                $suggestions += $item
-            } catch {}
-        }
-        Log "$($selectedLines.Count) suggestions (sur $($lines.Count)) depuis $src" "Cyan"
-    } else {
-        Log "0 suggestions depuis $src" "Gray"
-    }
-}
-
-if ($suggestions.Count -eq 0) {
-    Write-Host ""
-    Write-Host "  [INFO] Aucune nouvelle suggestion" -ForegroundColor Yellow
-    Write-Host ""
-    Start-Process powershell -ArgumentList "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$PSScriptRoot\gen_dashboard.ps1`"" -WindowStyle Hidden
-    return
-}
-
-Write-Host ""
-Write-Host "  Suggestions trouvees ($($suggestions.Count)) :" -ForegroundColor Green
-Write-Host ""
-
-# Limiter le nombre de taches ajoutees par sync
-$MAX_ADD = 10
-if ($suggestions.Count -gt $MAX_ADD) {
-    Write-Host "  [INFO] Limite a $MAX_ADD suggestions par sync" -ForegroundColor Yellow
-    $suggestions = $suggestions | Select-Object -First $MAX_ADD
-}
-
-
-$syncInput = Join-Path ([System.IO.Path]::GetTempPath()) ("devcore-task-sync-" + [guid]::NewGuid().ToString("N") + ".json")
-try {
-    $suggestions | ConvertTo-Json -Depth 10 | Set-Content $syncInput -Encoding UTF8
-    $resultJson = & "$PSScriptRoot\task_service.ps1" -Action Sync -InputPath $syncInput -Json | Out-String
-    if ($LASTEXITCODE -ne 0) {
-        throw "Task Service sync failed with exit code $LASTEXITCODE"
-    }
-    $result = $resultJson | ConvertFrom-Json
-} finally {
-    Remove-Item -LiteralPath $syncInput -Force -ErrorAction SilentlyContinue
-}
-
-foreach ($task in @($result.tasks)) {
-    Write-Host "    + $($task.id) [$($task.mode)] $($task.title)" -ForegroundColor Green
-}
-
-# Nettoyer les queues
-foreach ($path in $queues.Values) {
-    if (Test-Path $path) { Remove-Item $path -Force }
-}
-
-Write-Host ""
-Write-Host "  ========================================" -ForegroundColor Green
-Write-Host "  $($result.added) taches ajoutees a tasks.json" -ForegroundColor Green
-Write-Host ""
-
-
-try {
-    python "$DEV_CORE\Scripts\migrate_json_to_sqlite.py" 2>&1 | Out-Null
-} catch {}
-
-if ($env:DEVCORE_SKIP_DASHBOARD -ne "1") {
-    Start-Process powershell -ArgumentList "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$PSScriptRoot\gen_dashboard.ps1`"" -WindowStyle Hidden
-}
+$genScript = Join-Path $PSScriptRoot "gen_dashboard.ps1"
+& $genScript @PSBoundParameters
+exit $LASTEXITCODE

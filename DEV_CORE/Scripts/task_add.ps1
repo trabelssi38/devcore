@@ -1,10 +1,17 @@
-# task_add.ps1 -- DEV_CORE v10 Task Service adapter
+# task_add.ps1 -- Thin wrapper for devcore_engine task add
 param(
-    [Parameter(Mandatory=$true)][string]$Title,
-    [ValidateSet("reasoning","coding","bulk")][string]$Mode = "coding",
-    [string]$DependsOn = ""
+    [Parameter(Mandatory=$true)]
+    [string]$Title,
+    [ValidateSet("coding", "reasoning", "bulk")]
+    [string]$Mode = "coding",
+    [int]$Steps = 1,
+    [string]$Project = "devcore"
 )
 
-& "$PSScriptRoot\task_service.ps1" -Action Add -Title $Title -Mode $Mode -DependsOn $DependsOn
+$DEV_CORE_ROOT = Split-Path -Parent $PSScriptRoot
+if (-not $env:PYTHONPATH -or $env:PYTHONPATH -notlike "*$DEV_CORE_ROOT*") {
+    $env:PYTHONPATH = "$DEV_CORE_ROOT;$env:PYTHONPATH"
+}
 
-Start-Process powershell -ArgumentList "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$PSScriptRoot\gen_dashboard.ps1`"" -WindowStyle Hidden
+& "C:\Program Files\Python313\python.exe" -m devcore_engine task add "$Title" --mode $Mode --steps $Steps --project $Project
+exit $LASTEXITCODE

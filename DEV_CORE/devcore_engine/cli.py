@@ -40,10 +40,22 @@ def main() -> None:
     plug_p = subparsers.add_parser("plugins", help="Plugin operations")
     plug_sub = plug_p.add_subparsers(dest="plug_action")
     plug_sub.add_parser("list", help="List registered plugins")
+    plug_sub.add_parser("health", help="Check plugins health")
+    
+    p_inst = plug_sub.add_parser("install", help="Install plugin manifest")
+    p_inst.add_argument("manifest_path", help="Path to plugin.json")
+
+    p_diag = plug_sub.add_parser("diagnose", help="Diagnose plugin")
+    p_diag.add_argument("plugin_id", help="Plugin ID")
+
+    p_chk = plug_sub.add_parser("check", help="Check plugin health")
+    p_chk.add_argument("plugin_id", help="Plugin ID")
+
+    p_dis = plug_sub.add_parser("disable", help="Disable plugin")
+    p_dis.add_argument("plugin_id", help="Plugin ID")
 
     # Migrate
     migrate_p = subparsers.add_parser("migrate", help="Run idempotent database migration")
-
 
     # Launch
     launch_p = subparsers.add_parser("launch", help="Launch platform services and session")
@@ -64,7 +76,6 @@ def main() -> None:
 
     # Task
     task_p = subparsers.add_parser("task", help="Task board operations")
-
     task_sub = task_p.add_subparsers(dest="task_action")
 
     board_p = task_sub.add_parser("board", help="Display task board")
@@ -131,11 +142,19 @@ def main() -> None:
         from devcore_engine.services.plugins import PluginService
         ps = PluginService()
         if args.plug_action == "list":
-            plugins = ps.list_plugins()
-            print(json.dumps(plugins, indent=2))
+            print(json.dumps(ps.get_plugin_list_json(), indent=2))
+        elif args.plug_action == "health":
+            print(json.dumps(ps.health(), indent=2))
+        elif args.plug_action == "install":
+            print(json.dumps(ps.install(args.manifest_path), indent=2))
+        elif args.plug_action == "diagnose":
+            print(json.dumps(ps.diagnose(args.plugin_id), indent=2))
+        elif args.plug_action == "check":
+            print(json.dumps(ps.check(args.plugin_id), indent=2))
+        elif args.plug_action == "disable":
+            print(json.dumps(ps.disable(args.plugin_id), indent=2))
 
     elif args.command == "migrate":
-
         migrator = DevCoreMigrator()
         res = migrator.run_all()
         print(json.dumps(res, indent=2))
@@ -162,7 +181,6 @@ def main() -> None:
         print(json.dumps(res, indent=2))
 
     elif args.command == "task":
-
         ts = TaskService()
         if args.task_action == "board":
             board = ts.get_board(args.project)

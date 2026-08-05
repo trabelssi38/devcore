@@ -1,6 +1,6 @@
 """
 tasks.py -- DEV_CORE Task Service (Python Native)
-Replaces task_service.ps1 by executing task CRUD and state transitions directly in devcore.db.
+Provides task creation, next task selection, stepping, and completion.
 """
 
 from __future__ import annotations
@@ -9,73 +9,91 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.resolve()))
 
 import json
-import sqlite3
-import uuid
 from typing import Any, Dict, List, Optional
 
-from devcore_engine.db import connect_db, init_db
+from devcore_engine.db import connect_db, get_data_root
 from devcore_engine.services.events import EventBus
 
 
 class TaskService:
-    def __init__(self, conn: Optional[sqlite3.Connection] = None):
-        self.conn = conn or init_db()
-        self.event_bus = EventBus(self.conn)
+    def __init__(self, data_root: Optional[Path] = None):
+        self.data_root = data_root or get_data_root()
+        self.conn = connect_db(self.data_root / "devcore.db")
+        self.event_bus = EventBus(self.data_root)
+
+
+    def _sync_to_legacy_json(self, project_id: str = "devcore") -> None:
+        try:
+            mem_dir = self.data_root / "Memory" / project_id
+            mem_dir.mkdir(parents=True, exist_ok=True)
+            json_path = mem_dir / "tasks.json"
+            board = self.get_board(project_id)
+            tasks_list = []
+            for t in board["tasks"]:
+                meta = t.get("metadata", {})
+                if isinstance(meta, str):
+                    try:
+                        meta = json.loads(meta)
+                    except Exception:
+                        meta = {}
+                tasks_list.append({
+                    "id": t["id"],
+                    "title": t["title"],
+                    "mode": t["mode"],
+                    "status": t["status"],
+                    "steps_total": t["steps_total"],
+                    "steps_done": t["steps_done"],
+                    "depends_on": t.get("depends_on"),
+                    "worktree": t.get("worktree", "main"),
+                    "details": meta.get("details", "") if isinstance(meta, dict) else "",
+                    "started_at": t.get("started_at") or "",
+                    "completed_at": t.get("completed_at") or ""
+                })
+            obj = {
+                "project": project_id,
+                "current_task": board["current_task"],
+                "tasks": tasks_list
+            }
+            json_path.write_text(json.dumps(obj, indent=2, ensure_ascii=False), encoding="utf-8")
+        except Exception:
+            pass
 
     def get_board(self, project_id: str = "devcore") -> Dict[str, Any]:
         cursor = self.conn.cursor()
         rows = cursor.execute(
-            """
-            SELECT * FROM tasks
-            WHERE project_id = ?
-            ORDER BY created_at ASC;
-            """,
+            "SELECT * FROM tasks WHERE project_id = ? ORDER BY created_at ASC;",
             (project_id,),
         ).fetchall()
 
-        tasks = []
-        current_task_id = None
-        for r in rows:
-            t = dict(r)
-            try:
-                t["metadata"] = json.loads(t["metadata"])
-            except Exception:
-                pass
-            if t["status"] == "in_progress" and not current_task_id:
-                current_task_id = t["id"]
-            tasks.append(t)
+        tasks = [dict(r) for r in rows]
+        active = next((t for t in tasks if t["status"] == "in_progress"), None)
 
         return {
             "project": project_id,
-            "current_task": current_task_id,
+            "current_task": active["id"] if active else None,
             "tasks": tasks,
         }
 
     def get_task(self, task_id: str) -> Optional[Dict[str, Any]]:
         cursor = self.conn.cursor()
         row = cursor.execute("SELECT * FROM tasks WHERE id = ?;", (task_id,)).fetchone()
-        if not row:
-            return None
-        t = dict(row)
-        try:
-            t["metadata"] = json.loads(t["metadata"])
-        except Exception:
-            pass
-        return t
+        return dict(row) if row else None
 
     def add_task(
         self,
         title: str,
         mode: str = "coding",
-        depends_on: Optional[str] = None,
         steps: int = 1,
         project_id: str = "devcore",
+        depends_on: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        # Generate next task ID (e.g. T-15, T-16 or UUID)
         cursor = self.conn.cursor()
+        title_clean = title.strip().lower()
+
+        # Compute next task ID (e.g. T-01, T-02)
         max_t = cursor.execute(
-            "SELECT id FROM tasks WHERE project_id = ? AND id LIKE 'T-%' ORDER BY ROWID DESC LIMIT 1;",
+            "SELECT id FROM tasks WHERE project_id = ? AND id LIKE 'T-%' ORDER BY CAST(SUBSTR(id, 3) AS INTEGER) DESC LIMIT 1;",
             (project_id,),
         ).fetchone()
 
@@ -105,18 +123,19 @@ class TaskService:
             INSERT INTO tasks (id, project_id, title, mode, status, steps_done, steps_total, depends_on, metadata)
             VALUES (?, ?, ?, ?, 'todo', 0, ?, ?, ?);
             """,
-            (task_id, project_id, title, mode, steps_total, depends_on, meta_json),
+            (task_id, project_id, title_clean, mode, steps_total, depends_on, meta_json),
         )
 
         self.conn.commit()
 
         self.event_bus.publish(
             "TaskAdded",
-            {"task_id": task_id, "title": title, "mode": mode, "steps_total": steps_total},
+            {"task_id": task_id, "title": title_clean, "mode": mode, "steps_total": steps_total},
             project=project_id,
             task_id=task_id,
         )
 
+        self._sync_to_legacy_json(project_id)
         return self.get_task(task_id)  # type: ignore
 
     def next_task(self, project_id: str = "devcore") -> Optional[Dict[str, Any]]:
@@ -139,14 +158,15 @@ class TaskService:
 
         next_t = None
         for cand in candidates:
-            dep_id = cand["depends_on"]
+            cand_dict = dict(cand)
+            dep_id = cand_dict.get("depends_on")
             if not dep_id:
-                next_t = cand
+                next_t = cand_dict
                 break
-            # Verify dependency is done
-            dep = cursor.execute("SELECT status FROM tasks WHERE id = ?;", (dep_id,)).fetchone()
-            if dep and dep["status"] == "done":
-                next_t = cand
+            
+            dep = self.get_task(dep_id)
+            if dep and dep.get("status") == "done":
+                next_t = cand_dict
                 break
 
         if not next_t:
@@ -164,6 +184,7 @@ class TaskService:
         self.conn.commit()
 
         self.event_bus.publish("TaskNext", {"task_id": t_id, "title": next_t["title"]}, project=project_id, task_id=t_id)
+        self._sync_to_legacy_json(project_id)
         return self.get_task(t_id)
 
     def complete_task(self, task_id: Optional[str] = None, project_id: str = "devcore") -> Optional[Dict[str, Any]]:
@@ -186,6 +207,7 @@ class TaskService:
         completed = self.get_task(task_id)
         if completed:
             self.event_bus.publish("TaskCompleted", {"task_id": task_id, "title": completed["title"]}, project=project_id, task_id=task_id)
+        self._sync_to_legacy_json(project_id)
         return completed
 
     def step_task(self, task_id: Optional[str] = None, step_number: Optional[int] = None, project_id: str = "devcore") -> Optional[Dict[str, Any]]:
@@ -213,8 +235,8 @@ class TaskService:
         )
         self.conn.commit()
 
-
         self.event_bus.publish("TaskStepDone", {"task_id": task_id, "steps_done": new_done, "steps_total": t["steps_total"]}, project=project_id, task_id=task_id)
+        self._sync_to_legacy_json(project_id)
         return self.get_task(task_id)
 
 
