@@ -112,7 +112,10 @@ C:\devcore\
 - `dc launch` — Démarrage de la journée et des démons.
 - `dc check` — Diagnostic complet via le moteur de diag unifié.
 - `dc check --gate` — Diagnostic release gate avec code de sortie.
-- `python -m pytest DEV_CORE/tests` — Suite de tests unitaires de non-régression.
+- **Tests Unitaires (Cross-platform)** :
+  - Sur Windows/Linux : `python -m unittest discover -s devcore_engine/tests`
+  - Sur Ubuntu : `python3 -m unittest discover -s devcore_engine/tests`
+
 
 ---
 

@@ -15,6 +15,17 @@ and this project adheres to Semantic Versioning.
 - **Auto-démarrage silencieux des démons** : Intégration dans le cycle de vie de la plateforme (`launch.py`) pour démarrer de manière robuste et silencieuse `dashboard_api.py` (Port 20129) et `gemini_router.py` (Port 20130) en arrière-plan sous Windows.
 - **Entrée de package directe (`__main__.py`)** : Ajout du fichier pour supporter l'appel standard `python -m devcore_engine launch` ou `dc launch` depuis n'importe quel dossier.
 - **Vérifications de non-régression (11/11 OK)** : Mise à jour de la suite d'intégration globale (`verify.ps1`, `test_secret_scan.ps1`, `test_diagnose_gate.ps1`, `test_qdrant_vector_contract.ps1`) pour valider la plateforme sans dépendances Docker.
+- **Migration 100% Python de la Suite de Tests** : Remplacement de l'ensemble des 13 scripts de tests PowerShell (`.ps1`) par des modules unitaires Python `unittest` autonomes sous `devcore_engine/tests/` (100% de compatibilité croisée Windows et Ubuntu / Linux).
+- **Auto-création de Tâche Pre-Prompt** : Injection d'une routine dans `SessionManager.start_session()` pour auto-créer une tâche de session active si aucun travail n'est démarré lors du premier prompt de l'agent.
+
+### Changed
+- **Nettoyage PowerShell (Monolithes)** : Remplacement de 18 anciens scripts PowerShell monolithes (comme `task_service.ps1`, `memory_hierarchy.ps1`, `qdrant_sync.ps1`, etc.) représentant plus de 5 000 lignes de code par des delegators minces appelant `devcore_engine.cli`, faisant de Python l'unique source de vérité.
+
+### Fixed
+- **Tri Chronologique du Flux d'Événements** : Normalisation et conversion des timestamps ISO (contenant 'T') dans la table SQLite `bus_events` pour fiabiliser le tri décroissant sur le Cockpit.
+- **Tri ID-First des Cartes Projets** : Tri numérique des identifiants (`T-XX`) dans `data_loader.py` pour afficher la dernière tâche réelle sur les cartes projets du Cockpit au lieu d'anciens restes alphabétiques.
+- **Casse des Hooks de Session** : Correction de la casse pour la détection de `"session de travail auto"` dans `post_commit.py` pour garantir le renommage automatique de la tâche de session active sur commit Git.
+
 
 ## [10.0.2] - 2026-08-04
 
