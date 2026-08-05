@@ -297,8 +297,7 @@ def load_projects_and_tasks(data_root: Path = DATA_ROOT, platform_root: Path = P
                 cur.execute(f"""
                     SELECT id, title, status, mode, steps_total, steps_done, metadata, metadata, started_at, completed_at, created_at, updated_at 
                     FROM tasks WHERE {proj_col} = ? 
-                    ORDER BY id ASC
-                """, (name,))
+                    """, (name,))
 
                 rows = cur.fetchall()
                 tasks = []
@@ -318,7 +317,10 @@ def load_projects_and_tasks(data_root: Path = DATA_ROOT, platform_root: Path = P
                         "updated_at": r[11] if len(r) > 11 else ""
                     })
 
+                tasks.sort(key=lambda t: (get_task_id_number(t), get_task_datetime(t)))
+
                 total = len(tasks)
+
                 done = sum(1 for t in tasks if t["status"] == "done")
                 pct = int((done / total) * 100) if total > 0 else 0
                 

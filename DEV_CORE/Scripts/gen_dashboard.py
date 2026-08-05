@@ -2,7 +2,9 @@
 import os
 import sys
 import json
+import sqlite3
 import time
+
 import argparse
 import subprocess
 import hashlib
@@ -136,12 +138,44 @@ def main():
         "repowise": check_port("repowise", 7337)
     }
 
-    # Gather recent events from Event Bus JSONL files
+    # Gather recent events from SQLite bus_events table or fallback JSONL files
     events = []
+    db_path = DATA_ROOT / "devcore.db"
+    if db_path.exists():
+        try:
+            conn = sqlite3.connect(db_path)
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT id, source, event_type, project, task_id, correlation_id, payload, created_at
+                FROM bus_events
+                ORDER BY created_at DESC, rowid DESC
+                LIMIT 20;
+            """)
+            rows = cur.fetchall()
+            for r in rows:
+                try:
+                    payload = json.loads(r[6]) if isinstance(r[6], str) else r[6]
+                except Exception:
+                    payload = r[6]
+                events.append({
+                    "id": r[0],
+                    "source": r[1],
+                    "event_type": r[2],
+                    "project": r[3],
+                    "task_id": r[4],
+                    "correlation_id": r[5],
+                    "payload": payload,
+                    "timestamp": r[7]
+                })
+            conn.close()
+        except Exception as e:
+            print(f"[gen_dashboard] Warning reading bus_events from SQLite: {e}", file=sys.stderr)
+
     events_dir = DATA_ROOT / "Bus" / "events"
     events_jsonl = DATA_ROOT / "Bus" / "events.jsonl"
 
-    if events_jsonl.exists():
+    if not events and events_jsonl.exists():
+
         try:
             with open(events_jsonl, "r", encoding="utf-8") as f:
                 lines = f.readlines()
