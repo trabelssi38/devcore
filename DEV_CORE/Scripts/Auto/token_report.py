@@ -510,7 +510,7 @@ def detect_project(text, valid_projects, fallback="devcore"):
 
 def discover_sources(userprofile):
     import time
-    cutoff = time.time() - 10 * 86400
+    cutoff = time.time() - 180 * 86400
     home = Path(userprofile)
     sources = []
 
@@ -751,6 +751,38 @@ def parse_source(source, valid_projects, task_to_project, pricing_registry=None)
     }
 
 
+def recalculate_session_pricing(session, registry):
+    registry = registry or default_model_pricing()
+    default_profile_id = normalize_model_name(registry.get("default_model") or "default-current")
+    
+    total_cost = 0.0
+    new_model_usage = {}
+    
+    model_usage = session.get("model_usage", {})
+    for model_name, usage in model_usage.items():
+        pricing_profile_id, pricing_profile = resolve_model_pricing(model_name, registry)
+        normalized_name = normalize_model_name(model_name)
+        is_fallback = bool(model_name and pricing_profile_id == default_profile_id and normalized_name != default_profile_id)
+        
+        cost = calculate_cost(
+            int(usage.get("tokens", 0)),
+            int(usage.get("cache_hits", 0)),
+            int(usage.get("output_tokens", 0)),
+            pricing_profile
+        )
+        
+        usage_copy = dict(usage)
+        usage_copy["pricing_profile"] = pricing_profile_id
+        usage_copy["pricing_fallback"] = is_fallback
+        usage_copy["cost_usd"] = round(cost, 4)
+        
+        new_model_usage[model_name] = usage_copy
+        total_cost += cost
+        
+    session["model_usage"] = new_model_usage
+    session["cost_usd"] = round(total_cost, 4)
+
+
 def aggregate_sessions(sessions):
     totals = {
         "tokens": 0,
@@ -794,7 +826,7 @@ def aggregate_sessions(sessions):
         clients_data[client]["cost_usd"] += session["cost_usd"]
         merge_model_usage(clients_data[client]["model_usage"], session.get("model_usage", {}))
 
-        for tid, usage in session["_task_tokens"].items():
+        for tid, usage in session.get("_task_tokens", {}).items():
             proj = usage.get("project", project)
             task_key = f"{proj}_{tid}"
             if task_key not in tasks_data:
@@ -927,6 +959,26 @@ def main():
         session = parse_source(source, valid_projects, task_to_project, pricing_registry)
         if session:
             sessions.append(session)
+
+    # Load and merge historical archived sessions to preserve old models/costs (e.g. gemini-3.1-flash, codex)
+    archive_dir = reports_dir / "archive"
+    archived_sessions = []
+    if archive_dir.exists():
+        for archive_file in archive_dir.glob("*.json"):
+            try:
+                loaded = json.loads(archive_file.read_text(encoding="utf-8"))
+                if isinstance(loaded, list):
+                    archived_sessions.extend(loaded)
+            except Exception as e:
+                print(f"[WARNING] Error reading archive {archive_file.name}: {e}")
+
+    active_ids = {s["id"] for s in sessions}
+    for s in archived_sessions:
+        if s.get("id") not in active_ids:
+            sessions.append(s)
+
+    for session in sessions:
+        recalculate_session_pricing(session, pricing_registry)
 
     result_summary = aggregate_sessions(sessions)
     

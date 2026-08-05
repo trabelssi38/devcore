@@ -60,6 +60,62 @@
         "cached_input": 0.03,
         "output": 2.5
       }
+    },
+    "gpt-5.6-sol": {
+      "provider": "openai",
+      "pricing_per_million_usd": {
+        "input": 1.75,
+        "cached_input": 0.175,
+        "output": 14.0
+      }
+    },
+    "gemini-3.6-flash": {
+      "provider": "google",
+      "pricing_per_million_usd": {
+        "input": 0.3,
+        "cached_input": 0.03,
+        "output": 2.5
+      }
+    },
+    "gemini-3.5-flash": {
+      "provider": "google",
+      "pricing_per_million_usd": {
+        "input": 0.3,
+        "cached_input": 0.03,
+        "output": 2.5
+      }
+    },
+    "gemini-3.1-flash": {
+      "provider": "google",
+      "pricing_per_million_usd": {
+        "input": 0.3,
+        "cached_input": 0.03,
+        "output": 2.5
+      }
+    },
+    "gemini-3.1-pro": {
+      "provider": "google",
+      "pricing_per_million_usd": {
+        "input": 1.25,
+        "cached_input": 0.125,
+        "output": 10.0
+      }
+    },
+    "claude-sonnet-4.6": {
+      "provider": "anthropic",
+      "pricing_per_million_usd": {
+        "input": 3.0,
+        "cached_input": 0.3,
+        "output": 15.0
+      }
+    },
+    "claude-opus-4.6": {
+      "provider": "anthropic",
+      "pricing_per_million_usd": {
+        "input": 15.0,
+        "cached_input": 1.5,
+        "output": 75.0
+      }
     }
   },
   "aliases": {
@@ -69,7 +125,28 @@
     "models/gemini-2.5-pro": "gemini-2.5-pro",
     "models/gemini-2.5-flash": "gemini-2.5-flash",
     "claude-haiku": "claude-haiku-4-5",
-    "claude-opus": "claude-opus-4-8"
+    "claude-opus": "claude-opus-4-8",
+    "gemini-3.6-flash-high": "gemini-3.6-flash",
+    "gemini-3.6-flash-medium": "gemini-3.6-flash",
+    "gemini-3.6-flash-low": "gemini-3.6-flash",
+    "gemini-3.5-flash-high": "gemini-3.5-flash",
+    "gemini-3.5-flash-medium": "gemini-3.5-flash",
+    "gemini-3.5-flash-low": "gemini-3.5-flash",
+    "gemini-3.1-flash-high": "gemini-3.1-flash",
+    "gemini-3.1-flash-medium": "gemini-3.1-flash",
+    "gemini-3.1-flash-low": "gemini-3.1-flash",
+    "gemini-3.1-pro-high": "gemini-3.1-pro",
+    "gemini-3.1-pro-low": "gemini-3.1-pro",
+    "claude-sonnet-4.6-thinking": "claude-sonnet-4.6",
+    "claude-opus-4.6-thinking": "claude-opus-4.6",
+    "gemini-3-flash": "gemini-3.5-flash",
+    "gemini-3-flash-high": "gemini-3.5-flash",
+    "gemini-3-flash-medium": "gemini-3.5-flash",
+    "gemini-3-flash-low": "gemini-3.5-flash",
+    "gemini-3-pro": "gemini-3.1-pro",
+    "gemini-3-pro-high": "gemini-3.1-pro",
+    "gemini-3-pro-low": "gemini-3.1-pro",
+    "claude-sonnet-4-6": "claude-sonnet-4.6"
   },
   "client_defaults": {
     "codex": "gpt-5.5",
