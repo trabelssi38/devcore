@@ -337,7 +337,7 @@ def main():
         project_tasks = p["tasks"]
         active_t = [t for t in project_tasks if t.get("status") in ["active", "in_progress", "todo", "paused"]]
         completed_t = [t for t in project_tasks if t.get("status") not in ["active", "in_progress", "todo", "paused"]]
-        completed_t.sort(key=lambda t: (get_task_id_number(t), get_task_datetime(t)), reverse=True)
+        completed_t.sort(key=lambda t: (get_task_datetime(t), get_task_id_number(t)), reverse=True)
         bounded_tasks = active_t + completed_t[:20]
         
         for t in bounded_tasks:
@@ -345,11 +345,11 @@ def main():
             worktree_groups[wt].append(t)
             
         for wt in worktree_groups:
-            worktree_groups[wt].sort(key=lambda t: (get_task_id_number(t), get_task_datetime(t)), reverse=True)
+            worktree_groups[wt].sort(key=lambda t: (get_task_datetime(t), get_task_id_number(t)), reverse=True)
             
         sorted_worktrees = sorted(
             worktree_groups.keys(),
-            key=lambda wt: max((get_task_id_number(t), get_task_datetime(t)) for t in worktree_groups[wt]),
+            key=lambda wt: max((get_task_datetime(t), get_task_id_number(t)) for t in worktree_groups[wt]),
             reverse=True
         )
 

@@ -155,6 +155,8 @@ def get_task_datetime(t) -> datetime:
 def get_task_id_number(t) -> int:
     tid = t.get("id", "")
     if tid:
+        if tid.startswith("T-GIT-"):
+            return 0
         nums = re.findall(r"\d+", tid)
         if nums:
             try:
