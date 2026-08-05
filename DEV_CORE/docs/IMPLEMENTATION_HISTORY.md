@@ -189,3 +189,18 @@ Chronologie consolidee des implementations et plans. Source principale : histori
 | T-308 | **Diagnostic Radar Repowise non actualisé** : identifié que `task_sync.ps1` régénère le cockpit avant la fin du scan Repowise asynchrone (`Start-Process`) — `TimelineRenderer.ts`, `api.ts`, `server.js` affichaient des scores périmés | Cause racine identifiée et documentée |
 | T-309 | **Lock fichier cross-platform** (`DashboardLock` dans `gen_dashboard.py`) + **régénération post-Repowise** (`repowise_update.py`) : `os.open(O_CREAT\|O_EXCL)` garantit l'unicité, attente 30 s, nettoyage périmé 120 s. `gen_dashboard.py --skip-token-refresh` appelé après chaque scan Repowise réussi | Cockpit toujours à jour avec les derniers scores de santé, zéro conflit de génération concurrente |
 | T-310 | **Rebuild `devcore.db`** : suppression des fichiers corrompus (WAL/SHM), réexécution `migrate_json_to_sqlite.py` (401 tâches, 34 token metrics) | Base SQLite saine, dashboard API fonctionnel sans warnings |
+
+## Maintenance, Robustesse & Tests Python (Août 2026 — Session Actuelle)
+
+| Task | Implémentation | Impact |
+|---|---|---|
+| T-319 | **Auto-création post-commit** : Création autonome de tâche pour commit non taggué en l'absence de tâche active | Plus de commits perdus hors du Graphe de Tâches DEV_CORE |
+| T-320 | **Tri de tâches ID-first** : Tri numérique des IDs de tâches (`T-X`) et persistance des timestamps `completed_at` | Les cartes projets du Cockpit affichent la dernière tâche chronologique réelle (ex: `T-322`) |
+| T-321 | **Event Bus SQLite** : Raccordement de l'affichage du flux du cockpit aux événements SQLite `bus_events` | Les événements récents s'affichent instantanément et fidèlement dans le cockpit |
+| T-322 | **Normalisation Datetime** : Uniformisation des formats ISO ('T') et Espace dans la table `bus_events` | Tri chronologique exact des événements système et applicatifs du cockpit |
+| T-323 | **Migration 100% Python des Tests** : Remplacement de 13 suites PowerShell par des modules Python `unittest` | Tests 100% portables et compatibles Ubuntu / Linux / Windows / macOS |
+| T-324 | **Nettoyage PowerShell (Monolithes)** : Remplacement de 18 scripts `.ps1` par des wrappers Python minces | Suppression de 5 000+ lignes de code PowerShell dupliqué, single source of truth Python |
+| T-325 | **Auto-création Pre-Prompt** : Lancement automatique d'une tâche de session si aucune n'est active à l'init | Sessions d'agents 100% couvertes par des tâches dès le premier prompt |
+| T-326 | **Casse des Hooks de Session** : Détection insensible à la casse de la tâche de session générique (`post_commit.py`) | Renommage automatique post-commit garanti quel que soit le format du titre |
+| T-327 | **Cockpit Sync T-325** : Synchronisation et régénération du Cockpit pour le titre résolu de T-325 | Cohérence parfaite des affichages du Cockpit Dashboard |
+

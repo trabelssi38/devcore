@@ -83,15 +83,18 @@ Toutes les données persistantes sont unifiées dans :
 Commandes rapides :
 
 ```powershell
-# Exécuter les tests unitaires de l'engine Python unifié
-python -m pytest c:\devcore\DEV_CORE\tests\test_devcore_engine.py
+# Exécuter les tests unitaires de l'engine Python
+python -m unittest discover -s devcore_engine/tests
 
-# Exécuter la suite d'intégration globale de non-régression
+# Exécuter la suite d'intégration globale (Windows)
 powershell -ExecutionPolicy Bypass -File c:\devcore\DEV_CORE\Scripts\verify.ps1
+
+# Exécuter la suite d'intégration globale (Ubuntu / Linux)
+python3 -m unittest discover -s devcore_engine/tests
 ```
 
 ## 8. Limites connues
 
-- La suite de tests PowerShell (`test_*.ps1`) est conservée temporairement pour la validation de non-régression et sera migrée en pytest dans les vagues futures.
 - Les fichiers Git post-commit Windows peuvent être sensibles aux ACL locaux. Toujours vérifier `git status --short --branch` après commit.
+
 
