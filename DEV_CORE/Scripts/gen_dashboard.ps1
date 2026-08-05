@@ -558,9 +558,9 @@ foreach ($p in $projects) {
             }
 
             $doneButton = if ($t.status -ne "done") {
-                '<button class="btn-action btn-done" title="Cl&ocirc;turer" onclick="completeTask(''{0}'', ''{1}'')">&#10004;</button>' -f $p.Name, $t.id
+                '<button class="btn-action btn-done" title="Cl&ocirc;turer" onclick="completeTask(''{0}'', ''{1}'', event)">&#10004;</button>' -f $p.Name, $t.id
             } else { "" }
-            $deleteButton = '<button class="btn-action btn-delete" title="Supprimer" onclick="deleteTask(''{0}'', ''{1}'')">&#128465;</button>' -f $p.Name, $t.id
+            $deleteButton = '<button class="btn-action btn-delete" title="Supprimer" onclick="deleteTask(''{0}'', ''{1}'', event)">&#128465;</button>' -f $p.Name, $t.id
 
             $tasksHtml += @"
 <div class="mission $activeClass $($t.status)" data-date="$taskDate">

@@ -633,3 +633,70 @@ def test_gen_dashboard_html_generation_writes_api_payload_cache(tmp_path):
     assert "Composition du Contexte" in payload["sections"]["context_composition"]
     assert payload["sections"]["metrics_service_summary"]
     assert payload["sections"]["event_bus_recent"]
+
+
+def test_complete_task_active_task_updates_status_case_insensitively(tmp_path):
+    dashboard_api = load_dashboard_api()
+    dashboard_api.DATA_ROOT = str(tmp_path)
+
+    memory_root = tmp_path / "Memory" / "devcore"
+    memory_root.mkdir(parents=True)
+    tasks_json = memory_root / "tasks.json"
+    tasks_json.write_text(
+        json.dumps({
+            "project": "devcore",
+            "current_task": "T-301",
+            "tasks": [
+                {
+                    "id": "T-301",
+                    "title": "Active Task Test",
+                    "status": "active",
+                    "steps_done": 0,
+                    "steps_total": 2
+                }
+            ]
+        }),
+        encoding="utf-8"
+    )
+
+    success, msg = dashboard_api.complete_task("devcore", "t-301")
+    assert success is True
+
+    updated_board = json.loads(tasks_json.read_text(encoding="utf-8"))
+    task = updated_board["tasks"][0]
+    assert task["status"] == "done"
+    assert task["steps_done"] == 2
+    assert "completed_at" in task
+
+
+def test_delete_task_case_insensitive_matching(tmp_path):
+    dashboard_api = load_dashboard_api()
+    dashboard_api.DATA_ROOT = str(tmp_path)
+
+    memory_root = tmp_path / "Memory" / "devcore"
+    memory_root.mkdir(parents=True)
+    tasks_json = memory_root / "tasks.json"
+    tasks_json.write_text(
+        json.dumps({
+            "project": "devcore",
+            "current_task": "T-302",
+            "tasks": [
+                {
+                    "id": "T-302",
+                    "title": "Task To Delete",
+                    "status": "todo",
+                    "steps_done": 0,
+                    "steps_total": 1
+                }
+            ]
+        }),
+        encoding="utf-8"
+    )
+
+    success, msg = dashboard_api.delete_task("DEVCORE", "t-302")
+    assert success is True
+
+    updated_board = json.loads(tasks_json.read_text(encoding="utf-8"))
+    assert len(updated_board["tasks"]) == 0
+    assert updated_board["current_task"] is None
+

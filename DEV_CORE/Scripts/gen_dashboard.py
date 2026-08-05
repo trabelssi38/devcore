@@ -337,8 +337,8 @@ def main():
 
                 done_button = ""
                 if t_status != "done":
-                    done_button = f"<button class='btn-action btn-done' title='Clôturer' onclick='completeTask(\"{esc_attr(p_name)}\", \"{esc_attr(t_id)}\")'>&#10004;</button>"
-                delete_button = f"<button class='btn-action btn-delete' title='Supprimer' onclick='deleteTask(\"{esc_attr(p_name)}\", \"{esc_attr(t_id)}\")'>&#128465;</button>"
+                    done_button = f"<button class='btn-action btn-done' title='Clôturer' onclick='completeTask(\"{esc_attr(p_name)}\", \"{esc_attr(t_id)}\", event)'>&#10004;</button>"
+                delete_button = f"<button class='btn-action btn-delete' title='Supprimer' onclick='deleteTask(\"{esc_attr(p_name)}\", \"{esc_attr(t_id)}\", event)'>&#128465;</button>"
 
                 tasks_html += f"""
             <div class="mission {active_class} {badge_class}" data-date="{task_date}">

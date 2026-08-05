@@ -178,26 +178,18 @@ if (Test-Path $tFile) {
 if (Test-Path "$(Get-Location)\CLAUDE.md") { Check "CLAUDE.md projet present" "OK" }
 else { Check "CLAUDE.md projet absent" "WARN" "dc new project [nom]" }
 
-# 7. Qdrant
-try {
-    $q = Invoke-RestMethod "http://localhost:6333/collections" -TimeoutSec 3
-    Check "Qdrant OK ($($q.result.collections.Count) collections)" "OK"
-} catch {
-    Check "Qdrant non disponible" "WARN" "dc launch qdrant"
-    AutoFix "Demarrer Qdrant" {
-        if (Test-Path "$DEV_CORE\Scripts\qdrant_server.py") {
-            $logOut = "$DEV_CORE_DATA\Logs\scripts\qdrant_server.log"
-            $logErr = "$DEV_CORE_DATA\Logs\scripts\qdrant_server_err.log"
-            Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{
-                CommandLine = "cmd.exe /c C:\PROGRA~1\Python313\python.exe -u $DEV_CORE\Scripts\qdrant_server.py > $logOut 2>&1"
-                CurrentDirectory = "C:\devcore"
-            } | Out-Null
-        } else {
-            Start-Process "docker" -ArgumentList "start qdrant" -WindowStyle Hidden -ErrorAction SilentlyContinue
-        }
-        Start-Sleep 3
+# 7. Vector Database (sqlite-vec / Qdrant)
+if (Test-Path "$DEV_CORE_DATA\devcore.db") {
+    Check "Vector Database OK (sqlite-vec / devcore.db unifie)" "OK"
+} else {
+    try {
+        $q = Invoke-RestMethod "http://localhost:6333/collections" -TimeoutSec 3
+        Check "Qdrant OK ($($q.result.collections.Count) collections)" "OK"
+    } catch {
+        Check "Vector Database non disponible" "WARN" "dc migrate"
     }
 }
+
 
 # 7.2 Gemini Router (Port 20130) - Primary
 try {

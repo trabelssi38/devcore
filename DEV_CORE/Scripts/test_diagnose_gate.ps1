@@ -7,22 +7,18 @@ $dcScript = Join-Path $PSScriptRoot "dc.ps1"
 function Assert-ExitCode {
     param(
         [int]$Expected,
-        [scriptblock]$Action,
+        [string]$FileName,
+        [string]$Arguments,
         [string]$Message
     )
-    & $Action | Out-Null
-    if ($LASTEXITCODE -ne $Expected) {
-        throw "$Message (expected $Expected, got $LASTEXITCODE)"
+    $p = Start-Process -FilePath $FileName -ArgumentList $Arguments -NoNewWindow -PassThru -Wait
+    if ($p.ExitCode -ne $Expected) {
+        throw "$Message (expected $Expected, got $($p.ExitCode))"
     }
 }
 
-Assert-ExitCode 0 {
-    powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $diagnoseScript -Gate
-} "diagnose -Gate should pass in current DEV_CORE environment"
-
-Assert-ExitCode 0 {
-    powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $dcScript "check --gate"
-} "dc check --gate should dispatch diagnose gate"
+Assert-ExitCode 0 "powershell" "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$diagnoseScript`" -Gate" "diagnose -Gate should pass in current DEV_CORE environment"
+Assert-ExitCode 0 "powershell" "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$dcScript`" check --gate" "dc check --gate should dispatch diagnose gate"
 
 $oldPlatformRoot = $env:DEVCORE_PLATFORM_ROOT
 $oldDataRoot = $env:DEVCORE_DATA_ROOT
@@ -31,9 +27,7 @@ $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("devcore-diagnose-gate-
 try {
     $env:DEVCORE_PLATFORM_ROOT = Join-Path $tempRoot "missing-platform"
     $env:DEVCORE_DATA_ROOT = Join-Path $tempRoot "missing-data"
-    Assert-ExitCode 1 {
-        powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $diagnoseScript -Gate
-    } "diagnose -Gate should fail when critical paths/scripts are missing"
+    Assert-ExitCode 1 "powershell" "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$diagnoseScript`" -Gate" "diagnose -Gate should fail when critical paths/scripts are missing"
 
     $gatewayPlatformRoot = Join-Path $tempRoot "gateway-platform"
     $gatewayScripts = Join-Path $gatewayPlatformRoot "Scripts"
@@ -41,9 +35,7 @@ try {
     "Write-Output 'fixture diagnose failure'; exit 7" | Set-Content -LiteralPath (Join-Path $gatewayScripts "diagnose.ps1") -Encoding UTF8
     $env:DEVCORE_PLATFORM_ROOT = $gatewayPlatformRoot
 
-    Assert-ExitCode 7 {
-        powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $dcScript "check --gate"
-    } "dc check --gate should preserve the diagnose child exit code"
+    Assert-ExitCode 7 "powershell" "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$dcScript`" check --gate" "dc check --gate should preserve the diagnose child exit code"
 } finally {
     if ($null -eq $oldPlatformRoot) {
         Remove-Item Env:\DEVCORE_PLATFORM_ROOT -ErrorAction SilentlyContinue
@@ -56,6 +48,7 @@ try {
     } else {
         $env:DEVCORE_DATA_ROOT = $oldDataRoot
     }
+    Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
 
 Write-Host "[OK] diagnose gate smoke tests passed" -ForegroundColor Green

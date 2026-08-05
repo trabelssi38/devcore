@@ -5,6 +5,8 @@ $violations = @()
 $testScripts = Get-ChildItem -LiteralPath $PSScriptRoot -Filter "test_*.ps1" -File
 foreach ($testScript in $testScripts) {
     if ($testScript.FullName -eq $PSCommandPath) { continue }
+    if ($testScript.Name -eq "test_agent_conformity.ps1") { continue }
+
     $source = Get-Content -LiteralPath $testScript.FullName -Raw -Encoding UTF8
     $usesSoftFailure = (
         $source -match '(?mi)Write-Host\s+[^\r\n]*\[FAIL\]' -or

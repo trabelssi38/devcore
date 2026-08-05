@@ -1,137 +1,97 @@
 # DEV_CORE System Overview
 
-Vue systeme consolidee de DEV_CORE v10.0. Cette page est l'entree rapide pour comprendre les sous-systemes, leurs sources de verite, les flux runtime et les tests de non-regression.
+Vue système consolidée de DEV_CORE v10.0. Cette page présente l'architecture unifiée basée sur Python natif (`devcore_engine`) et SQLite WAL (`devcore.db`), sans dépendance Docker.
 
 Voir aussi :
 
-- `IMPLEMENTATION_HISTORY.md` pour la chronologie des implementations.
-- `ARCHITECTURE_DECISIONS.md` pour les decisions structurantes.
-- `AI_CAPABILITY_REGISTRY.md` pour le routage modele/agent declaratif.
-- `PLATFORM_DOCUMENTATION.md` pour la documentation historique detaillee.
+- `IMPLEMENTATION_HISTORY.md` pour la chronologie des implémentations.
+- `ARCHITECTURE_DECISIONS.md` pour les décisions structurantes.
+- `AI_CAPABILITY_REGISTRY.md` pour le routage modèle/agent déclaratif.
+- `PLATFORM_DOCUMENTATION.md` pour la documentation historique détaillée.
 - `OPERATOR_GUIDE.md` pour l'exploitation quotidienne.
 - `API_REFERENCE.md` pour les contrats HTTP.
 
 ## 1. Objectif
 
-DEV_CORE est une plateforme locale d'orchestration IA pour developpement logiciel. Elle relie :
+DEV_CORE est une plateforme locale d'orchestration IA pour le développement logiciel. Elle relie :
 
-- un cycle de taches versionne (`tasks.json`, tags `[T-XX]`, hooks Git);
-- une memoire persistante multi-couches (`Memory`, Qdrant, Obsidian, SQLite fallback);
+- un cycle de tâches versionné (SQLite `tasks`, tags `[T-XX]`, hooks Git Python natifs);
+- une mémoire persistante multi-couches unifiée (`devcore.db`, in-process `sqlite-vec` 768d, SQLite FTS5);
 - un cockpit local (`Dashboard`, `dashboard_api.py`);
-- des services de routage et compression (`Headroom Proxy`, `Gemini Router`, `AI Capability Registry`);
-- des contrats backend/API/DB testes en CI locale;
-- un systeme de plugins, skills et templates.
+- des services de routage et de compression (`Headroom Proxy`, `gemini_router.py`);
+- des contrats et tests validés en CI locale;
+- un système de plugins, skills et templates.
 
-Le systeme reste "single client" : un client actif execute le travail, tandis que DEV_CORE fournit contexte, routage, memoire, instrumentation et gates.
+Le système reste "single client" : un client actif exécute le travail, tandis que DEV_CORE fournit contexte, routage, mémoire, instrumentation et gates.
 
 ## 2. Carte des composants
 
-| Sous-systeme | Role | Source de verite | Runtime | Tests |
+| Sous-système | Rôle | Source de vérité | Runtime | Tests |
 |---|---|---|---|---|
-| Task lifecycle | Creer, selectionner, avancer, terminer les taches | `DEV_CORE_DATA\Memory\<project>\tasks.json` | `task_service.ps1`, `task_next.ps1`, hooks Git, `task_prompt_analyzer.py` | `test_task_service.ps1`, `test_task_list_adapter.ps1` |
-| Routage IA | Choisir mode/profil/candidat modele | `Config\routing_profiles.json`, `Config\ai_capability_registry.json` | `routing_profile.ps1`, `gemini_router.py` (via `router/` package) | `test_routing_profile.ps1`, `test_ai_capability_registry.py` |
-| Compression/offload | Reduire contexte et logs volumineux | `Config\headroom_config.yaml`, canvas runtime | Headroom Proxy `8787`, `canvas_manager.ps1` | contrats indirects via docs/scripts |
-| Memoire | Lire/reutiliser decisions, lessons, patterns | `DEV_CORE_DATA\Memory`, Qdrant, Obsidian | `memory_service.ps1`, `memory_hierarchy.ps1`, `qdrant_sync.ps1` | `test_memory_service.ps1`, `test_qdrant_vector_contract.ps1` |
-| Dashboard/cockpit | Vue projet, services, tasks, tokens, plugins | `Dashboard\template.html`, `DEV_CORE_DATA\Dashboard` | `gen_dashboard.py` (via `dashboard/` package), `dashboard_api.py` | `test_dashboard_api.py`, contrats cockpit/security |
-| Event bus/read model | Journaliser evenements et snapshots dashboard | `DEV_CORE_DATA\Bus`, `Dashboard\read_model.json` | `event_bus.ps1`, `dashboard_read_model.ps1` | `test_event_bus.ps1`, `test_dashboard_read_model.ps1` |
-| API v1 | Exposer contrats et integrations externes | `API\devcore_api`, `Schemas\openapi-v1.json` | FastAPI `run_api.py` | `API\test_*.py` |
-| Database | Contrats SQL, repositories, outbox, audit | `Database\postgres_schema_v1.sql`, Alembic | `Database\devcore_db` | `Database\test_*.py` |
-| Plugins | Capabilities internes extensibles | `Plugins\manifest_v2.schema.json` | `plugin_service.ps1` | `test_plugin_service.ps1`, `Plugins\test_manifest_v2_contract.py` |
-| Skills | Methodologies et outils reutilisables | `Skills\*\SKILL.md`, `skills_registry.json` | `adapt_client.ps1`, skill loader client | `test_skill_agent_spec.ps1`, `skill_lint.ps1` |
-| Repowise | Indexation documentation/code continue | `Config\projects.json`, `.mcp.json` | `ensure_repowise_*`, watchers | `test_repowise_*.ps1` |
-| Verification | Gates locaux bornes | scripts CI | `verify.ps1`, `ci_*_tests.ps1` | tous les tests listes |
+| Task lifecycle | Créer, sélectionner, avancer, terminer les tâches | Table SQLite `tasks` | `devcore_engine/services/tasks.py`, hooks Git Python, `cli.py` | `test_devcore_engine.py` (pytest), `test_task_service.ps1` |
+| Routage IA | Choisir mode/profil/candidat modèle | Table SQLite `config`, `routing_profiles.json` | `gemini_router.py` | `test_routing_profile.ps1`, `test_gemini_router_routing_profile.py` |
+| Compression/offload | Réduire contexte et logs volumineux | Config YAML | Headroom Proxy `8787` | contrats indirects via docs/scripts |
+| Mémoire | Lire/réutiliser décisions, leçons, patterns | Table SQLite `memory_entries`, `sqlite-vec` | `devcore_engine/services/memory_hierarchy.py` | `test_devcore_engine.py` (pytest) |
+| Dashboard/cockpit | Vue projet, services, tasks, tokens, plugins | `Dashboard\template.html`, `Dashboard\index.html` | `gen_dashboard.py` (Python), `dashboard_api.py` | `test_dashboard_api.py` |
+| Event bus / log | Journaliser événements et snapshots dashboard | Table SQLite `bus_events` | `devcore_engine/services/events.py` | `test_devcore_engine.py`, `test_event_bus.ps1` |
+| Database | Contrats SQL, repositories, outbox, audit | Fichier unique `devcore.db` | `devcore_engine/db.py` | `test_devcore_engine.py` |
+| Plugins | Capabilities internes extensibles | Table SQLite `plugins_registry` | `devcore_engine/services/plugins.py` | `test_devcore_engine.py`, `test_plugin_service.ps1` |
+| Skills | Méthodologies et outils réutilisables | Table SQLite `skills_runtime` | `devcore_engine/services/skills.py` | `test_devcore_engine.py`, `test_skill_agent_spec.ps1` |
+| Diagnostic | Gates locaux bornés | Moteur de diag natif | `devcore_engine/infra/diagnose.py` | `test_devcore_engine.py`, `test_diagnose_gate.ps1` |
+| Vérification | Gates de non-régression | Scripts CI | `verify.ps1`, `ci_*_tests.ps1` | tous les tests listés |
 
 ## 3. Flux principal
 
 ```mermaid
 flowchart TD
-  U["Utilisateur / Agent"] --> DC["dc.ps1 / scripts DEV_CORE"]
-  DC --> TASK["task_service.ps1<br/>tasks.json"]
-  DC --> ROUTE["routing_profile.ps1<br/>AI Capability Registry"]
+  U["Utilisateur / Agent"] --> DC["cli.py (dc launch / dc task)"]
+  DC --> TASK["devcore_engine/services/tasks.py<br/>devcore.db"]
+  DC --> ROUTE["gemini_router.py :20130"]
   ROUTE --> HEADROOM["Headroom Proxy :8787"]
-  HEADROOM --> GEMINI["Gemini Router :20130"]
-  GEMINI --> MODEL["Backend modele"]
-  DC --> MEM["Memory hierarchy<br/>L3 persona / L2 scenarios / L1 Qdrant / L0 SQLite"]
-  DC --> BUS["Event Bus JSONL"]
-  BUS --> READ["Dashboard read model"]
-  READ --> COCKPIT["Dashboard API :20129 / Cockpit"]
+  HEADROOM --> MODEL["Backend modèle (Gemini)"]
+  DC --> MEM["devcore_engine/services/memory_hierarchy.py<br/>sqlite-vec + FTS5 in-process"]
+  DC --> BUS["devcore_engine/services/events.py<br/>bus_events table"]
+  BUS --> READ["gen_dashboard.py"]
+  READ --> COCKPIT["dashboard_api.py :20129 / Cockpit"]
   DC --> GIT["Git commit [T-XX]"]
-  GIT --> HOOK["post-commit hook<br/>step + events + dashboard"]
+  GIT --> HOOK["post_commit.py hook<br/>step + events + dashboard"]
 ```
 
-## 4. Cycle de tache
+## 4. Cycle de tâche
 
-1. `dc next task` lit le board projet actif.
-2. `routing_profile.ps1` resout `mode`, budget, profil DEV_CORE et candidat IA.
-3. L'agent execute le travail dans le scope.
+1. `dc task next` lit le board projet actif.
+2. `gemini_router.py` résout `mode`, budget, profil DEV_CORE et candidat IA.
+3. L'agent exécute le travail dans le scope.
 4. Les tests ciblés passent.
 5. Commit avec tag `[T-XX]`.
-6. Le hook post-commit incremente `steps_done`, publie un evenement et regenere le dashboard.
-7. Si la tache est terminee, `task_done.ps1 -Force` chaine la suivante.
-8. En arrière-plan, le **Headroom Proxy** et le **Metrics Service** consignent les jetons dans les journaux de télémétrie.
-
-Quand aucune tache n'est active, le travail peut etre committe avec une tache creee explicitement via `dc new task`, ou avec un tag existant si la tache a ete detectee.
+6. Le hook post-commit Python (`post_commit.py`) incrémente `steps_done`, publie un événement et régénère le dashboard.
+7. Si la tâche est terminée, la suivante est activée.
+8. En arrière-plan, le **Headroom Proxy** et le **Metrics Service** consignent les jetons dans les journaux de télémétrie SQLite.
 
 ## 5. Routage et candidats IA
 
-Le routage est maintenant en deux couches :
+Le routage est désormais géré via la configuration interne en base de données et `routing_profiles.json`. Le Gemini Router (`gemini_router.py` sur le port `20130`) sert de proxy de communication avec les API de modèles.
 
-- `routing_profiles.json` garde le contrat historique `reasoning`, `coding`, `bulk`.
-- `ai_capability_registry.json` decrit les candidats utilisables : langages, specialites, cout, vitesse, qualite, contexte maximal, backend.
+## 6. Données runtime (Vérité unique)
 
-Le runtime peut choisir un meilleur candidat par etape de workflow si la requete declare :
+Toutes les données persistantes sont unifiées dans :
+- **`DEV_CORE_DATA/devcore.db`** : Base de données unique SQLite WAL. Elle élimine les anciens conteneurs Docker (Postgres, Qdrant, Node) et les centaines de fichiers JSON/JSONL éparpillés.
+- **Fichiers textuels autorisés** : Les clés API (`gemini_api_key.txt`) et les fichiers de contexte agent (`Config/AGENTS.md`, `CLAUDE.md`, `BOOT.md`) restent sur le système de fichiers pour des raisons de sécurité et de simplicité d'accès.
 
-```json
-{
-  "mode": "coding",
-  "capability_requirements": {
-    "languages": ["javascript"],
-    "specialties": ["tests"],
-    "optimize_for": "speed"
-  }
-}
-```
-
-Le workflow ne depend donc pas d'un nom de modele specifique. Changer de modele ou ajouter un agent se fait dans le registry.
-
-## 6. API et contrats domaine
-
-Le gateway FastAPI v1 expose :
-
-- `GET /api/v1/health`
-- `GET /api/v1/contracts`
-- `GET /api/v1/tasks`
-- `POST /api/v1/integrations/github/webhook`
-
-Les contrats domaine couvrent tasks, runs, events, plugins, workspaces, quotas, health. `export_openapi.py` genere `Schemas\openapi-v1.json` et le client TypeScript.
-
-## 7. Donnees runtime
-
-| Donnee | Emplacement | Regle |
-|---|---|---|
-| Tasks projet | `DEV_CORE_DATA\Memory\<project>\tasks.json` | source de verite taches |
-| Logs scripts | `DEV_CORE_DATA\Logs\scripts` | diagnostic et session context |
-| Logs de télémétrie | `DEV_CORE_DATA\Logs\metrics` | logs d'activité et consommation des jetons par jour |
-| Dashboard payload | `DEV_CORE_DATA\Dashboard\dashboard_payload.json` | cache de lecture cockpit |
-| Event bus | `DEV_CORE_DATA\Bus\events` | append-only events |
-| Qdrant storage | `DEV_CORE_DATA\qdrant_storage` | collections vectorielles |
-| Secrets | `DEV_CORE_DATA\Security` ou fichiers config secrets locaux | jamais dans docs ni commits |
-
-## 8. Verification
+## 7. Vérification
 
 Commandes rapides :
 
 ```powershell
-python -m pytest DEV_CORE/Scripts/test_ai_capability_registry.py DEV_CORE/Scripts/test_gemini_router_routing_profile.py
-powershell -ExecutionPolicy Bypass -NonInteractive -File DEV_CORE/Scripts/test_routing_profile.ps1
-powershell -ExecutionPolicy Bypass -NonInteractive -File DEV_CORE/Scripts/verify.ps1 -CI
+# Exécuter les tests unitaires de l'engine Python unifié
+python -m pytest c:\devcore\DEV_CORE\tests\test_devcore_engine.py
+
+# Exécuter la suite d'intégration globale de non-régression
+powershell -ExecutionPolicy Bypass -File c:\devcore\DEV_CORE\Scripts\verify.ps1
 ```
 
-La CI locale est bornee par timeout pour eviter les blocages longs.
+## 8. Limites connues
 
-## 9. Limites connues
+- La suite de tests PowerShell (`test_*.ps1`) est conservée temporairement pour la validation de non-régression et sera migrée en pytest dans les vagues futures.
+- Les fichiers Git post-commit Windows peuvent être sensibles aux ACL locaux. Toujours vérifier `git status --short --branch` après commit.
 
-- Le router local cible principalement Gemini via backend OpenAI-compatible; les candidats non Gemini peuvent etre declares mais doivent rester `enabled=false` tant qu'un adapter direct n'existe pas.
-- Le cockpit contient encore du HTML genere et du JavaScript inline; la migration React/Next existe mais n'a pas remplace toute la surface historique.
-- La documentation historique `PLATFORM_DOCUMENTATION.md` est complete mais dense; les nouveaux fichiers `SYSTEM_OVERVIEW.md`, `IMPLEMENTATION_HISTORY.md` et `ARCHITECTURE_DECISIONS.md` doivent devenir les points d'entree.
-- Les hooks Git Windows peuvent etre sensibles aux ACL et au shell disponible. Toujours verifier `git status --short --branch` apres commit.

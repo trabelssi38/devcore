@@ -208,13 +208,15 @@ def render_repowise_health_card(project_name: str, health_data: dict, target_rep
 """
 
 def get_services_html(projects: list, token_metrics: dict) -> str:
-    # 1. Qdrant
-    qdrant_ok = check_port("qdrant", 6333)
-    qdrant_points = get_qdrant_points_count() if qdrant_ok else 0
-    qdrant_desc = f"Port 6333 | {qdrant_points} vectors" if qdrant_ok else "Port 6333"
-    q_perf = "Rapide (1ms)" if qdrant_ok else "HS"
-    q_solic = f"{qdrant_points} vecteurs" if qdrant_ok else "Aucune"
-    q_impact = "Recherche"
+    # 1. Vector Database (sqlite-vec / devcore.db)
+    db_file = Path("C:/devcore/DEV_CORE_DATA/devcore.db")
+    qdrant_ok = db_file.exists()
+    db_size_mb = round(db_file.stat().st_size / (1024 * 1024), 1) if qdrant_ok else 0
+    qdrant_desc = f"devcore.db unifié ({db_size_mb} MB) | sqlite-vec active" if qdrant_ok else "devcore.db"
+    q_perf = "In-Process (0.1ms)" if qdrant_ok else "HS"
+    q_solic = "768d KNN + FTS5"
+    q_impact = "Recherche Mémoire"
+
     
     # 2. Gemini Router
     gemini_ok = check_port("gemini_router", 20130)
@@ -449,7 +451,8 @@ def get_services_html(projects: list, token_metrics: dict) -> str:
     infra_html += get_status_html("Dashboard API Server", api_desc, api_ok, api_perf, api_solic, api_impact)
     infra_html += get_status_html("Headroom Proxy", headroom_desc, headroom_ok, h_perf, h_solic, h_impact)
     infra_html += get_status_html("DEV_CORE Scheduler / Hermes", hermes_desc, hermes_status, hermes_perf, hermes_solic, hermes_impact)
-    infra_html += get_status_html("Qdrant Vector DB", qdrant_desc, qdrant_ok, q_perf, q_solic, q_impact)
+    infra_html += get_status_html("SQLite Vector DB (sqlite-vec)", qdrant_desc, qdrant_ok, q_perf, q_solic, q_impact)
+
     infra_html += get_status_html("Repowise Engine (MCP)", repowise_desc, repowise_ok, rep_perf, rep_solic, rep_impact)
     
     infra_html += '<h2 style="margin-top:28px; padding-top:14px; border-top:1px solid #1e293b;">Hermes Background Jobs</h2>\n'

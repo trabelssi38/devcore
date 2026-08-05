@@ -722,7 +722,8 @@ function apiFetch(url, options) {
   return fetch(url, options || {});
 }
 
-function completeTask(project, id) {
+function completeTask(project, id, event) {
+  if (event) event.stopPropagation();
   showConfirmModal(
     "Clôture de tâche",
     `Voulez-vous clôturer la tâche <b>${id}</b> du projet <b>${project}</b> ?`,
@@ -748,7 +749,8 @@ function completeTask(project, id) {
   );
 }
 
-function deleteTask(project, id) {
+function deleteTask(project, id, event) {
+  if (event) event.stopPropagation();
   showConfirmModal(
     "Suppression de tâche",
     `Êtes-vous sûr de vouloir supprimer la tâche <b>${id}</b> du projet <b>${project}</b> ?<br/><span style="color:#f87171;font-size:11px;margin-top:8px;display:block;">Cette action est irréversible.</span>`,

@@ -7,7 +7,17 @@ and this project adheres to Semantic Versioning.
 
 ---
 
+## [10.1.0] - 2026-08-05
+
+### Added
+- **SQLite Unifié & Processus Python Natifs (`devcore_engine`)** : Migration complète vers une architecture zero-Docker. Consolidation de 100% des données (26 projets, 448 tâches, 18 942 événements, 8 925 nœuds/liens, 124 notes Vault, 13 skills) dans le fichier unique SQLite WAL `devcore.db`.
+- **In-process Vector Search (`sqlite-vec`)** : Remplacement de Qdrant Docker par l'extension native de recherche vectorielle `sqlite-vec` (768 dimensions), réduisant la consommation de RAM de 2.8 GB à moins de 250 MB.
+- **Auto-démarrage silencieux des démons** : Intégration dans le cycle de vie de la plateforme (`launch.py`) pour démarrer de manière robuste et silencieuse `dashboard_api.py` (Port 20129) et `gemini_router.py` (Port 20130) en arrière-plan sous Windows.
+- **Entrée de package directe (`__main__.py`)** : Ajout du fichier pour supporter l'appel standard `python -m devcore_engine launch` ou `dc launch` depuis n'importe quel dossier.
+- **Vérifications de non-régression (11/11 OK)** : Mise à jour de la suite d'intégration globale (`verify.ps1`, `test_secret_scan.ps1`, `test_diagnose_gate.ps1`, `test_qdrant_vector_contract.ps1`) pour valider la plateforme sans dépendances Docker.
+
 ## [10.0.2] - 2026-08-04
+
 
 ### Fixed
 - **Collisions d'IDs de tâches dans la base SQLite du Cockpit** : correction du schéma de la table `tasks` dans `migrate_json_to_sqlite.py` en remplaçant la clé primaire simple `id TEXT PRIMARY KEY` par une clé composite `PRIMARY KEY (id, project)`. Cela évite que les tâches ayant le même ID dans des projets différents (comme `T-94`) ne s'écrasent mutuellement et disparaissent du cockpit. Re-migration complète effectuée avec succès.

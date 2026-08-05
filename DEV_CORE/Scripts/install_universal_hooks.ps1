@@ -1,20 +1,18 @@
-# install_universal_hooks.ps1 -- DEV_CORE
-# Installe les hooks pour tous les clients IA et tous les IDE (via PowerShell Profile)
-# Chaque client IA a ses propres noms d'evenements -- ce script les gere correctement.
+# install_universal_hooks.ps1 -- DEV_CORE v10
+# Installe les hooks Python natifs pour tous les clients IA (Claude, Gemini, Codex, Antigravity)
 
 $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { $PSScriptRoot }
-$sessionStartScript = "$DEV_CORE\Scripts\session_start.ps1"
-$postToolScript     = "$DEV_CORE\Scripts\post_tool_hook.ps1"
-$sessionEndScript   = "$DEV_CORE\Scripts\session_end.ps1"
+$PYTHON_EXE = "C:\Program Files\Python313\python.exe"
+$CLI_SCRIPT = "$DEV_CORE\devcore_engine\cli.py"
+$POST_TOOL  = "$DEV_CORE\devcore_engine\hooks\post_tool.py"
+
 . "$DEV_CORE\Scripts\platform_version.ps1"
 $PLATFORM = Get-DevCorePlatformInfo
 
-Write-Host "  $($PLATFORM.title) -- Integration Universelle" -ForegroundColor Cyan
-Write-Host "  ========================================" -ForegroundColor DarkGray
+Write-Host "  $($PLATFORM.title) -- Integration Hooks Universelle Python" -ForegroundColor Cyan
+Write-Host "  ========================================================" -ForegroundColor DarkGray
 
 # Mapping des noms d'evenements par client
-# Claude Code / Codex / Qwen / Antigravity : noms Claude
-# Gemini CLI : noms propres (BeforeAgent, AfterTool, SessionEnd)
 $hookSchemas = @{
     claude      = @{ start = "UserPromptSubmit"; tool = "PostToolUse"; toolMatcher = "Bash"; end = "Stop" }
     codex       = @{ start = "UserPromptSubmit"; tool = "PostToolUse"; toolMatcher = "Bash"; end = "Stop" }
@@ -40,22 +38,25 @@ foreach ($client in $clients) {
         try { Get-Content $settingsFile -Raw | ConvertFrom-Json } catch { [PSCustomObject]@{} }
     } else { [PSCustomObject]@{} }
 
-    # Choisir le bon schema d'evenements pour ce client
     $clientKey = $client.TrimStart(".")
     $schema    = if ($hookSchemas.ContainsKey($clientKey)) { $hookSchemas[$clientKey] } else { $hookSchemas["claude"] }
 
-    # Construire les hooks avec les bons noms d'evenements
+    # Commandes Python directes
+    $cmdStart = "`"$PYTHON_EXE`" `"$CLI_SCRIPT`" session start"
+    $cmdTool  = "`"$PYTHON_EXE`" `"$POST_TOOL`""
+    $cmdEnd   = "`"$PYTHON_EXE`" `"$CLI_SCRIPT`" session end"
+
     $hookStart = [PSCustomObject]@{
         matcher = ""
-        hooks   = @( [PSCustomObject]@{ type = "command"; command = "powershell -ExecutionPolicy Bypass -NonInteractive -WindowStyle Hidden -File `"$sessionStartScript`"" } )
+        hooks   = @( [PSCustomObject]@{ type = "command"; command = $cmdStart } )
     }
     $hookTool = [PSCustomObject]@{
         matcher = $schema.toolMatcher
-        hooks   = @( [PSCustomObject]@{ type = "command"; command = "powershell -ExecutionPolicy Bypass -NonInteractive -WindowStyle Hidden -File `"$postToolScript`"" } )
+        hooks   = @( [PSCustomObject]@{ type = "command"; command = $cmdTool } )
     }
     $hookEnd = [PSCustomObject]@{
         matcher = ""
-        hooks   = @( [PSCustomObject]@{ type = "command"; command = "powershell -ExecutionPolicy Bypass -NonInteractive -WindowStyle Hidden -File `"$sessionEndScript`"" } )
+        hooks   = @( [PSCustomObject]@{ type = "command"; command = $cmdEnd } )
     }
 
     $hooks = [PSCustomObject]@{}
@@ -65,40 +66,8 @@ foreach ($client in $clients) {
 
     $settings | Add-Member -NotePropertyName "hooks" -NotePropertyValue $hooks -Force
     $settings | ConvertTo-Json -Depth 10 | Set-Content $settingsFile -Encoding UTF8
-    Write-Host "  [OK] $client  ($($schema.start) / $($schema.tool) / $($schema.end))" -ForegroundColor Green
-}
-
-
-# 2. Integration IDE Universelle (via PowerShell Profile)
-$profilePath = $PROFILE
-if (-not (Test-Path (Split-Path $profilePath -Parent))) {
-    New-Item -ItemType Directory -Path (Split-Path $profilePath -Parent) -Force | Out-Null
-}
-if (-not (Test-Path $profilePath)) {
-    New-Item -ItemType File -Path $profilePath -Force | Out-Null
-}
-
-$profileContent = Get-Content $profilePath -Raw -ErrorAction SilentlyContinue
-$hookBlock = @"
-
-# --- DEV_CORE AUTO-INIT HOOK ---
-# S'execute au demarrage d'un terminal (VS Code, Cursor, etc.)
-if (Test-Path "`.git") {
-    `$devcore_session = "$sessionStartScript"
-    if (Test-Path `$devcore_session) {
-        powershell -ExecutionPolicy Bypass -NonInteractive -WindowStyle Hidden -File `$devcore_session
-    }
-}
-# -------------------------------
-"@
-
-if ($profileContent -notmatch "DEV_CORE AUTO-INIT HOOK") {
-    Add-Content -Path $profilePath -Value $hookBlock -Encoding UTF8
-    Write-Host "  [OK] Hook d'IDE installe dans le profil PowerShell ($profilePath)" -ForegroundColor Green
-} else {
-    Write-Host "  [SKIP] Hook d'IDE deja present dans le profil PowerShell" -ForegroundColor DarkGray
+    Write-Host "  [OK] $client  ($($schema.start) / $($schema.tool) / $($schema.end)) -> Python Native" -ForegroundColor Green
 }
 
 Write-Host ""
-Write-Host "  L'integration est terminee ! N'importe quel projet ouvert dans un IDE" -ForegroundColor Yellow
-Write-Host "  ou un client IA sera automatiquement initialise par DEV_CORE." -ForegroundColor Yellow
+Write-Host "  [OK] Universal Python Hooks Installed!" -ForegroundColor Green

@@ -276,15 +276,18 @@ def load_projects_and_tasks(data_root: Path = DATA_ROOT, platform_root: Path = P
             conn = sqlite3.connect(db_path)
             sync_tasks_from_memory(conn, data_root)
             cur = conn.cursor()
-            cur.execute("SELECT DISTINCT project FROM tasks WHERE project != 'scripts'")
-            proj_names = [row[0] for row in cur.fetchall()]
+            cols = [col[1] for col in cur.execute("PRAGMA table_info(tasks)").fetchall()]
+            proj_col = "project_id" if "project_id" in cols else "project"
+            cur.execute(f"SELECT DISTINCT {proj_col} FROM tasks WHERE {proj_col} != 'scripts'")
+            proj_names = [row[0] for row in cur.fetchall() if row[0]]
             
             for name in proj_names:
-                cur.execute("""
-                    SELECT id, title, status, mode, steps_total, steps_done, source, details, started_at, completed_at 
-                    FROM tasks WHERE project = ? 
-                    ORDER BY CAST(SUBSTR(id, 3) AS INTEGER) ASC
+                cur.execute(f"""
+                    SELECT id, title, status, mode, steps_total, steps_done, metadata, metadata, started_at, completed_at 
+                    FROM tasks WHERE {proj_col} = ? 
+                    ORDER BY id ASC
                 """, (name,))
+
                 rows = cur.fetchall()
                 tasks = []
                 for r in rows:

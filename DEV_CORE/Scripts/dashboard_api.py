@@ -172,7 +172,15 @@ def format_sse_comment(comment):
 def get_project_tasks_file(project):
     safe_project = validate_safe_id(project, "project")
     memory_root = get_data_path("Memory")
-    return ensure_within_root(memory_root / safe_project / "tasks.json", memory_root)
+    target_path = memory_root / safe_project / "tasks.json"
+    if not target_path.exists() and memory_root.exists():
+        for p_dir in memory_root.iterdir():
+            if p_dir.is_dir() and p_dir.name.lower() == safe_project.lower():
+                alt_path = p_dir / "tasks.json"
+                if alt_path.exists():
+                    return ensure_within_root(alt_path, memory_root)
+    return ensure_within_root(target_path, memory_root)
+
 
 
 def get_settings_file_path():
@@ -730,9 +738,11 @@ def complete_task(project, task_id):
 
         task_found = False
         is_active = False
+        target_task_id = task_id
         for task in board.get("tasks", []):
-            if task.get("id") == task_id:
+            if str(task.get("id")).lower() == str(task_id).lower():
                 task_found = True
+                target_task_id = task.get("id")
                 is_active = (task.get("status") == "active")
                 task["status"] = "done"
                 task["steps_done"] = task.get("steps_total", 1)
@@ -751,14 +761,17 @@ def complete_task(project, task_id):
             cmd = [ps_exe, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", 
                    str(task_done_script), "-Force"]
             print(f"[DashboardAPI] Running task_done.ps1 for active task completion (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
-            subprocess.run(cmd, capture_output=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC)
-            return True, f"Active task {task_id} completed successfully via task_done.ps1"
-        else:
-            dashboard_script = get_platform_path("Scripts", "gen_dashboard.py")
-            cmd = [sys.executable, str(dashboard_script)]
-            print(f"[DashboardAPI] Running gen_dashboard.py for dashboard refresh (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
-            subprocess.run(cmd, capture_output=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC)
-            return True, f"Task {task_id} completed successfully"
+            try:
+                subprocess.run(cmd, capture_output=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC)
+            except Exception as se:
+                print(f"[DashboardAPI] Warning running task_done.ps1: {se}")
+
+        # Always run gen_dashboard.py to guarantee the dashboard payload is regenerated
+        dashboard_script = get_platform_path("Scripts", "gen_dashboard.py")
+        cmd = [sys.executable, str(dashboard_script)]
+        print(f"[DashboardAPI] Running gen_dashboard.py for dashboard refresh (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
+        subprocess.run(cmd, capture_output=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC)
+        return True, f"Task {target_task_id} completed successfully"
 
     except subprocess.TimeoutExpired as te:
         print(f"[DashboardAPI] Timeout expired executing completion script: {te}")
@@ -776,13 +789,14 @@ def delete_task(project, task_id):
         print(f"[DashboardAPI] Deleting task {task_id} on project {project}...")
         board = read_json_with_retry(tasks_file)
 
-        original_count = len(board.get("tasks", []))
-        board["tasks"] = [t for t in board.get("tasks", []) if t.get("id") != task_id]
-
-        if len(board["tasks"]) == original_count:
+        matching_tasks = [t for t in board.get("tasks", []) if str(t.get("id")).lower() == str(task_id).lower()]
+        if not matching_tasks:
             return False, f"Task {task_id} not found in project {project}"
 
-        if board.get("current_task") == task_id:
+        target_task_id = matching_tasks[0].get("id", task_id)
+        board["tasks"] = [t for t in board.get("tasks", []) if str(t.get("id")).lower() != str(task_id).lower()]
+
+        if str(board.get("current_task")).lower() == str(task_id).lower():
             board["current_task"] = None
 
         write_json_with_retry(tasks_file, board)
@@ -794,10 +808,10 @@ def delete_task(project, task_id):
             try:
                 import sqlite3
                 conn = sqlite3.connect(str(db_path))
-                conn.execute("DELETE FROM tasks WHERE project = ? AND id = ?", (project, task_id))
+                conn.execute("DELETE FROM tasks WHERE LOWER(project) = LOWER(?) AND LOWER(id) = LOWER(?)", (project, task_id))
                 conn.commit()
                 conn.close()
-                print(f"[DashboardAPI] Successfully deleted task {task_id} from SQLite database.")
+                print(f"[DashboardAPI] Successfully deleted task {target_task_id} from SQLite database.")
             except Exception as dbe:
                 print(f"[DashboardAPI] Warning: Failed to delete task from SQLite: {dbe}")
 
@@ -805,7 +819,7 @@ def delete_task(project, task_id):
         cmd = [sys.executable, str(dashboard_script)]
         print(f"[DashboardAPI] Running gen_dashboard.py for dashboard refresh (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
         subprocess.run(cmd, capture_output=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC)
-        return True, f"Task {task_id} deleted successfully"
+        return True, f"Task {target_task_id} deleted successfully"
 
     except subprocess.TimeoutExpired as te:
         print(f"[DashboardAPI] Timeout expired executing delete refresh script: {te}")

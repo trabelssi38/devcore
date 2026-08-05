@@ -11,13 +11,11 @@ function Assert-True {
 
 $apiSource = Get-Content -LiteralPath $dashboardApiPath -Raw -Encoding UTF8
 $templateSource = Get-Content -LiteralPath $templatePath -Raw -Encoding UTF8
-$getHandlerSource = ($apiSource -split '    def do_POST')[0]
-
-Assert-True ($apiSource -match 'def do_DELETE') "dashboard_api.py should implement DELETE handlers"
-Assert-True ($apiSource -match 'if path == "/api/done"') "dashboard_api.py should keep /api/done route"
-Assert-True ($apiSource -match 'if path == "/api/delete"') "dashboard_api.py should keep /api/delete route"
-Assert-True ($getHandlerSource -notmatch 'complete_task') "/api/done must not mutate from GET"
-Assert-True ($getHandlerSource -notmatch 'delete_task') "/api/delete must not mutate from GET"
+Assert-True ($apiSource -match '@app\.delete\("/api/delete"\)') "dashboard_api.py should implement DELETE handlers"
+Assert-True ($apiSource -match '@app\.post\("/api/done"\)') "dashboard_api.py should keep /api/done route"
+Assert-True ($apiSource -match '@app\.delete\("/api/delete"\)') "dashboard_api.py should keep /api/delete route"
+Assert-True ($apiSource -notmatch '@app\.get\("/api/done"\)') "/api/done must not mutate from GET"
+Assert-True ($apiSource -notmatch '@app\.get\("/api/delete"\)') "/api/delete must not mutate from GET"
 
 Assert-True ($templateSource -match 'apiFetch') "template should use apiFetch wrapper"
 Assert-True ($templateSource -match 'apiFetch\(`\$\{API_BASE\}/api/done') "completeTask should call /api/done"
