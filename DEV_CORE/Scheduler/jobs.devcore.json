@@ -185,8 +185,8 @@
       "expr": "* * * * *"
     },
     "command": {
-      "type": "powershell",
-      "path": "DEV_CORE/Scripts/system_watcher.ps1",
+      "type": "python",
+      "path": "DEV_CORE/devcore_engine/infra/system_watcher.py",
       "args": []
     },
     "state": {

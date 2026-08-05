@@ -162,8 +162,24 @@ class SystemWatcher:
         report["dashboard_api"] = self.check_and_heal_service("Dashboard API", "127.0.0.1", 20129, dash_cmd, wait_timeout=5.0)
 
         # 3. Headroom Proxy (8787) - needs 15s start timeout
-        ps_exe = "powershell.exe" if os.name == "nt" else "pwsh"
-        headroom_cmd = [ps_exe, "-ExecutionPolicy", "Bypass", "-File", str(DEV_CORE_ROOT / "Scripts" / "headroom_start.ps1")]
+        headroom_exe = None
+        custom_paths = [
+            Path(os.path.expanduser(r"~\AppData\Roaming\Python\Python313\Scripts\headroom.exe")),
+            Path(r"C:\Users\trb_m\AppData\Roaming\Python\Python313\Scripts\headroom.exe"),
+            Path(os.path.expanduser(r"~\AppData\Roaming\Python\Scripts\headroom.exe")),
+            Path(r"C:\Program Files\Python313\Scripts\headroom.exe"),
+        ]
+        for p in custom_paths:
+            if p.exists():
+                headroom_exe = str(p)
+                break
+
+        if headroom_exe:
+            headroom_cmd = [headroom_exe, "proxy", "--port", "8787", "--openai-api-url", "http://127.0.0.1:20130/v1"]
+        else:
+            ps_exe = "powershell.exe" if os.name == "nt" else "pwsh"
+            headroom_cmd = [ps_exe, "-ExecutionPolicy", "Bypass", "-WindowStyle", "Hidden", "-NonInteractive", "-NoProfile", "-File", str(DEV_CORE_ROOT / "Scripts" / "headroom_start.ps1")]
+
         report["headroom_proxy"] = self.check_and_heal_service("Headroom Proxy", "127.0.0.1", 8787, headroom_cmd, wait_timeout=15.0)
 
         # 4. Anthropic Adapter (8788)
