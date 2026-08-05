@@ -700,3 +700,18 @@ def test_delete_task_case_insensitive_matching(tmp_path):
     assert len(updated_board["tasks"]) == 0
     assert updated_board["current_task"] is None
 
+
+def test_async_memory_pipeline_structure():
+    import asyncio
+    dashboard_api = load_dashboard_api()
+
+    async def run_test():
+        res = await dashboard_api.search_memory_pipeline_async("test query", collections=["decisions", "lessons"])
+        assert res["query"] == "test query"
+        assert "collections" in res
+        assert "decisions" in res["collections"]
+        assert "lessons" in res["collections"]
+
+    asyncio.run(run_test())
+
+

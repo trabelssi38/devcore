@@ -33,7 +33,7 @@ Le système reste "single client" : un client actif exécute le travail, tandis 
 | Compression/offload | Réduire contexte et logs volumineux | Config YAML | Headroom Proxy `8787` | contrats indirects via docs/scripts |
 | Mémoire | Lire/réutiliser décisions, leçons, patterns | Table SQLite `memory_entries`, `sqlite-vec` | `devcore_engine/services/memory_hierarchy.py` | `test_devcore_engine.py` (pytest) |
 | Dashboard/cockpit | Vue projet, services, tasks, tokens, plugins | `Dashboard\template.html`, `Dashboard\index.html` | `gen_dashboard.py` (Python), `dashboard_api.py` | `test_dashboard_api.py` |
-| Event bus / log | Journaliser événements et snapshots dashboard | Table SQLite `bus_events` | `devcore_engine/services/events.py` | `test_devcore_engine.py`, `test_event_bus.ps1` |
+| Event bus/read model | Journaliser événements et snapshots dashboard | Table SQLite `bus_events` | `devcore_engine/services/events.py` | `test_devcore_engine.py`, `test_event_bus.ps1` |
 | Database | Contrats SQL, repositories, outbox, audit | Fichier unique `devcore.db` | `devcore_engine/db.py` | `test_devcore_engine.py` |
 | Plugins | Capabilities internes extensibles | Table SQLite `plugins_registry` | `devcore_engine/services/plugins.py` | `test_devcore_engine.py`, `test_plugin_service.ps1` |
 | Skills | Méthodologies et outils réutilisables | Table SQLite `skills_runtime` | `devcore_engine/services/skills.py` | `test_devcore_engine.py`, `test_skill_agent_spec.ps1` |

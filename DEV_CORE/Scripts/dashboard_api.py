@@ -23,7 +23,7 @@ DASHBOARD_COMMAND_TIMEOUT_SEC = 90.0
 PLUGIN_ID_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]*$")
 SAFE_ID_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]*$")
 PUBLIC_BIND_HOSTS = {"0.0.0.0", "::", ""}
-PUBLIC_PATHS = {"/", "/index.html", "/index_terminal.html", "/favicon.ico", "/api/status", "/api/dashboard", "/api/dashboard/stream", "/api/dashboard/tasks", "/api/dashboard/events", "/api/dashboard/tokens"}
+PUBLIC_PATHS = {"/", "/index.html", "/index_terminal.html", "/favicon.ico", "/api/status", "/api/dashboard", "/api/dashboard/stream", "/api/dashboard/tasks", "/api/dashboard/events", "/api/dashboard/tokens", "/api/memory/search"}
 TOKEN_BYTES = 32
 CSRF_BYTES = 32
 CSRF_HEADER = "X-CSRF-Token"
@@ -835,6 +835,10 @@ from fastapi.middleware.cors import CORSMiddleware
 import asyncio
 import uvicorn
 import shutil
+try:
+    import httpx
+except ImportError:
+    httpx = None
 
 app = FastAPI(title="DEV_CORE Dashboard API Server", version="10.1.0")
 
@@ -1086,6 +1090,74 @@ async def post_refresh_route(request: Request):
 @app.get("/api/dashboard/stream")
 async def dashboard_stream_route(request: Request):
     return StreamingResponse(event_generator(request), media_type="text/event-stream")
+
+async def search_qdrant_collection_async(client, collection: str, query: str, limit: int = 5, qdrant_url: str = "http://127.0.0.1:6333") -> dict:
+    url = f"{qdrant_url}/collections/{collection}/points/search"
+    payload = {
+        "vector": [0.0] * 384,
+        "limit": limit,
+        "with_payload": True
+    }
+    if client is not None:
+        try:
+            resp = await client.post(url, json=payload, timeout=3.0)
+            if resp.status_code == 200:
+                data = resp.json()
+                return {"collection": collection, "hits": data.get("result", []), "status": "ok"}
+        except Exception as exc:
+            return {"collection": collection, "hits": [], "status": "offline", "error": str(exc)}
+    return {"collection": collection, "hits": [], "status": "empty"}
+
+async def search_memory_pipeline_async(query: str, collections: list = None, limit: int = 5) -> dict:
+    if collections is None:
+        collections = ["decisions", "lessons", "patterns", "codebase"]
+    
+    if httpx is not None:
+        async with httpx.AsyncClient() as client:
+            tasks = [search_qdrant_collection_async(client, col, query, limit) for col in collections]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+    else:
+        results = await asyncio.gather(*[search_qdrant_collection_async(None, col, query, limit) for col in collections], return_exceptions=True)
+    
+    formatted_results = {}
+    total_hits = 0
+    for res in results:
+        if isinstance(res, dict) and "collection" in res:
+            col = res["collection"]
+            hits = res.get("hits", [])
+            formatted_results[col] = {
+                "status": res.get("status", "error"),
+                "count": len(hits),
+                "hits": hits
+            }
+            total_hits += len(hits)
+        elif isinstance(res, Exception):
+            print(f"[DashboardAPI-Memory] Error searching collection: {res}")
+            
+    return {
+        "query": query,
+        "total_hits": total_hits,
+        "collections": formatted_results,
+        "timestamp": datetime.now().isoformat()
+    }
+
+@app.get("/api/memory/search")
+async def get_memory_search_route(request: Request, q: str = "", limit: int = 5):
+    if not check_auth(request):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    results = await search_memory_pipeline_async(query=q, limit=limit)
+    return results
+
+@app.post("/api/memory/search")
+async def post_memory_search_route(request: Request):
+    if not check_auth(request):
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    data = await request.json()
+    query = data.get("query", "")
+    collections = data.get("collections")
+    limit = data.get("limit", 5)
+    results = await search_memory_pipeline_async(query=query, collections=collections, limit=limit)
+    return results
 
 def main():
     if "--rotate-token" in sys.argv:

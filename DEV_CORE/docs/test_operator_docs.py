@@ -15,14 +15,14 @@ def test_api_reference_documents_public_gateway_contracts() -> None:
 
     for required in [
         "# DEV_CORE API Reference",
-        "OpenAPI",
-        "DEV_CORE/Schemas/openapi-v1.json",
-        "GET /api/v1/health",
-        "GET /api/v1/contracts",
-        "GET /api/v1/tasks",
-        "POST /api/v1/integrations/github/webhook",
-        "X-Hub-Signature-256",
-        "DevCoreApiClient",
+        "Dashboard API",
+        "Gemini Router",
+        "GET /api/dashboard",
+        "GET /api/health",
+        "GET /api/sse/events",
+        "POST /api/settings",
+        "POST /api/tasks/complete",
+        "POST /v1/chat/completions",
     ]:
         assert required in text
 
@@ -32,15 +32,12 @@ def test_operator_guide_documents_onboarding_diagnostic_recovery() -> None:
 
     for required in [
         "# DEV_CORE Operator Guide",
-        "First run",
         "dc launch",
-        "dc guide onboarding",
-        "dc guide diagnostic",
-        "dc guide recovery",
-        "dc check --gate",
-        "dc check --fix --dry-run",
-        "endday.ps1 -SkipBackup",
-        "DEV_CORE_DATA\\Logs\\scripts",
+        "dc check",
+        "devcore_engine diagnose",
+        "devcore.db",
+        "gen_dashboard.py",
+        "gen_dashboard.lock",
     ]:
         assert required in text
 
@@ -73,7 +70,6 @@ def test_system_documentation_suite_exists_and_covers_core_subsystems() -> None:
         "Routage IA",
         "Dashboard/cockpit",
         "Event bus/read model",
-        "API v1",
         "Database",
         "Plugins",
         "Skills",

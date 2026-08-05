@@ -8,6 +8,7 @@ Voir aussi :
 - `SYSTEM_OVERVIEW.md` pour la carte système.
 - `IMPLEMENTATION_HISTORY.md` pour la chronologie des versions.
 - `ARCHITECTURE_DECISIONS.md` pour les ADR.
+- `AI_CAPABILITY_REGISTRY.md` pour le routage modèle/agent.
 
 ---
 

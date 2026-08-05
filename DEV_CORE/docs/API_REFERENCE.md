@@ -2,6 +2,14 @@
 
 Référence publique du gateway API DEV_CORE v1. Le contrat de données historique et les endpoints Cockpit ont été unifiés dans le moteur Python natif (`devcore_engine`) utilisant la base SQLite `devcore.db`.
 
+Voir aussi :
+- `OPERATOR_GUIDE.md` pour l'exploitation quotidienne.
+- `PLATFORM_DOCUMENTATION.md` pour l'architecture complète.
+- `SYSTEM_OVERVIEW.md` pour la carte système.
+- `IMPLEMENTATION_HISTORY.md` pour la chronologie des versions.
+- `ARCHITECTURE_DECISIONS.md` pour les ADR.
+- `AI_CAPABILITY_REGISTRY.md` pour le routage modèle/agent.
+
 ---
 
 ## Convention Générale
