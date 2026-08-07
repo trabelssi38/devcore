@@ -331,7 +331,7 @@ def load_projects_and_tasks(data_root: Path = DATA_ROOT, platform_root: Path = P
                         "updated_at": r[11] if len(r) > 11 else ""
                     })
 
-                tasks.sort(key=lambda t: (get_task_id_number(t), get_task_datetime(t)))
+                tasks.sort(key=lambda t: (get_task_datetime(t), get_task_id_number(t)))
 
                 total = len(tasks)
 
@@ -348,7 +348,7 @@ def load_projects_and_tasks(data_root: Path = DATA_ROOT, platform_root: Path = P
                 
                 active_tasks = [t for t in tasks if t["status"] in ["todo", "active", "paused", "in_progress"]]
                 completed_tasks = [t for t in tasks if t["status"] in ["done", "skipped", "failed"]]
-                completed_tasks.sort(key=lambda t: (get_task_id_number(t), get_task_datetime(t)))
+                completed_tasks.sort(key=lambda t: (get_task_datetime(t), get_task_id_number(t)))
                 limited_tasks = completed_tasks[-20:] + active_tasks
 
                 

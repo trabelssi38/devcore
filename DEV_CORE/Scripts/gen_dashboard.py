@@ -900,6 +900,13 @@ def main():
 
             
             output_file.write_text(template, encoding="utf-8")
+            try:
+                log_dir = DATA_ROOT / "Logs" / "scripts"
+                log_dir.mkdir(parents=True, exist_ok=True)
+                sync_log_file = log_dir / f"task_sync_{datetime.now().strftime('%Y-%m-%d')}.log"
+                sync_log_file.write_text(f"task_sync executed at {datetime.now().isoformat()}\n", encoding="utf-8")
+            except Exception as e:
+                print(f"[gen_dashboard.py] task_sync log write warning: {e}")
             print("[gen_dashboard.py] Dashboard index.html generated successfully.")
         except Exception as e:
             print(f"[gen_dashboard.py] Error generating dashboard: {e}")

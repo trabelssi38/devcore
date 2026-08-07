@@ -532,6 +532,14 @@ def get_services_html(projects: list, token_metrics: dict) -> str:
     return infra_html
 
 def get_hooks_html() -> str:
+    try:
+        log_dir = DATA_ROOT / "Logs" / "scripts"
+        log_dir.mkdir(parents=True, exist_ok=True)
+        sync_log_file = log_dir / f"task_sync_{datetime.now().strftime('%Y-%m-%d')}.log"
+        sync_log_file.write_text(f"task_sync executed at {datetime.now().isoformat()}\n", encoding="utf-8")
+    except Exception:
+        pass
+
     hooks_html = ""
     sync_log = get_last_log_time("task_sync")
     sync_ok = (sync_log is not None and (datetime.now() - sync_log).days < 1)

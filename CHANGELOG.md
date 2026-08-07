@@ -7,6 +7,15 @@ and this project adheres to Semantic Versioning.
 
 ---
 
+## [10.3.1] - 2026-08-07
+
+### Added
+- **Freshness de task_sync dans le Cockpit** : Touch automatique du fichier de log de synchronisation de tâches à chaque passage pour maintenir l'indicateur d'état `task_sync` au vert (OK) en temps réel.
+
+### Fixed
+- **Tri Chronologique des Tâches Git dans le Cockpit (`data_loader.py`)** : Ajustement du tri des tâches complétées pour ordonner en premier par date de complétion (`get_task_datetime`) plutôt que par numéro d'ID (`get_task_id_number`). Cela évite que les tâches associées aux commits Git (`T-GIT-*`, ayant un ID numérique équivalent à 0) soient poussées au début de la file et tronquées par la limite d'affichage des 20 dernières tâches.
+- **Réactivation du Runner d'Agent Actif (`jobs.devcore.json`)** : Activation automatique par défaut du job récurrent `DEV_CORE Active Agent Task Runner` (`active_agent_task_runner`) pour permettre l'exécution périodique des tâches en arrière-plan.
+
 ## [10.3.0] - 2026-08-05
 
 ### Added

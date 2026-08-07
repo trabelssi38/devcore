@@ -204,4 +204,7 @@ Chronologie consolidee des implementations et plans. Source principale : histori
 | T-325 | **Auto-création Pre-Prompt** : Lancement automatique d'une tâche de session si aucune n'est active à l'init | Sessions d'agents 100% couvertes par des tâches dès le premier prompt |
 | T-326 | **Casse des Hooks de Session** : Détection insensible à la casse de la tâche de session générique (`post_commit.py`) | Renommage automatique post-commit garanti quel que soit le format du titre |
 | T-327 | **Cockpit Sync T-325** : Synchronisation et régénération du Cockpit pour le titre résolu de T-325 | Cohérence parfaite des affichages du Cockpit Dashboard |
+| T-355 | **Correctif du Tri des Tâches Git Cockpit** : Tri chronologique des tâches complétées par datetime avant l'ID | Réintégration des tâches `T-GIT-*` issues de commits récents et non taggués, évitant leur disparition due à la troncature. |
+| T-356 | **Activation par défaut du Task Runner Hermes** : Passage de `enabled` à `true` pour `active_agent_task_runner` | Permet aux tâches en arrière-plan et aux agents actifs de s'exécuter périodiquement de manière stable. |
+| T-357 | **Freshness de task_sync dans le Cockpit** : Touch automatique du fichier de log de synchronisation de tâches à chaque passage | Maintien de l'indicateur d'état `task_sync` au vert (OK) en temps réel. |
 
