@@ -149,6 +149,10 @@
     "claude-sonnet-4-6": "claude-sonnet-4.6"
   },
   "client_defaults": {
+    "antigravity": "gemini-3.6-flash",
+    "gemini": "gemini-3.6-flash",
+    "claude": "claude-sonnet-4.6",
+    "claude-code": "claude-sonnet-4.6",
     "codex": "gpt-5.5",
     "codex desktop": "gpt-5.5"
   },

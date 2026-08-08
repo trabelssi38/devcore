@@ -1119,7 +1119,7 @@ function updateModelCostBreakdown(metrics, projectName) {
     .filter(([, value]) => value > 0)
     .sort((a, b) => b[1] - a[1]);
   const selected = new Map();
-  costEntries.slice(0, 12).forEach(([model, value]) => selected.set(model, value));
+  costEntries.forEach(([model, value]) => selected.set(model, value));
   costEntries.filter(([model]) => unregistered.has(model)).forEach(([model, value]) => selected.set(model, value));
   const entries = Array.from(selected.entries()).sort((a, b) => b[1] - a[1]);
 

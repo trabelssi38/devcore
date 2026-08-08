@@ -441,8 +441,15 @@ def empty_stats_bucket(include_sessions=False):
     return bucket
 
 
+SYSTEM_DIR_NAMES = {
+    "trb_m", "users", "documents", "desktop", "downloads", "onedrive",
+    "system32", "windows", "temp", "appdata", "local", "archive",
+    "patterns", "scenarios", "scores", "default", "scripts", "_archive"
+}
+
+
 def discover_projects(memory_path):
-    valid_projects = ["devcore", "cea_dashboard", "job_tracker", "default"]
+    valid_projects = ["devcore", "cea_dashboard", "job_tracker", "dashboard_recette_br", "oracle_plsq_dependency_analyzer"]
     task_to_project = {}
 
     # 1. Read tasks from devcore.db
@@ -454,13 +461,14 @@ def discover_projects(memory_path):
             cur = conn.cursor()
             cur.execute("SELECT id, project FROM tasks")
             for tid, proj in cur.fetchall():
-                if proj and proj.lower() not in valid_projects:
-                    valid_projects.append(proj.lower())
+                p_lower = proj.lower() if proj else ""
+                if p_lower and p_lower not in SYSTEM_DIR_NAMES and p_lower not in valid_projects:
+                    valid_projects.append(p_lower)
                 tid_upper = tid.upper()
                 if tid_upper not in task_to_project:
                     task_to_project[tid_upper] = []
-                if proj.lower() not in task_to_project[tid_upper]:
-                    task_to_project[tid_upper].append(proj.lower())
+                if p_lower and p_lower not in SYSTEM_DIR_NAMES and p_lower not in task_to_project[tid_upper]:
+                    task_to_project[tid_upper].append(p_lower)
             conn.close()
         except Exception:
             pass
@@ -472,7 +480,7 @@ def discover_projects(memory_path):
             if not project_dir.is_dir():
                 continue
             name = project_dir.name.lower()
-            if name not in ["archive", "patterns", "scores", "default", "scripts"] and name not in valid_projects:
+            if name not in SYSTEM_DIR_NAMES and name not in valid_projects:
                 valid_projects.append(name)
 
             tasks_file = project_dir / "tasks.json"
@@ -486,7 +494,7 @@ def discover_projects(memory_path):
                         tid_upper = tid.upper()
                         if tid_upper not in task_to_project:
                             task_to_project[tid_upper] = []
-                        if name not in task_to_project[tid_upper]:
+                        if name not in SYSTEM_DIR_NAMES and name not in task_to_project[tid_upper]:
                             task_to_project[tid_upper].append(name)
             except Exception:
                 continue
@@ -496,12 +504,18 @@ def discover_projects(memory_path):
 
 def detect_project(text, valid_projects, fallback="devcore"):
     normalized = (text or "").replace("\\\\", "/").replace("\\", "/").lower()
+    # Strip user profile path prefix like c:/users/trb_m/ to prevent username matching as project
+    normalized_clean = re.sub(r'c:/users/[^/]+/', '/', normalized)
+    normalized_clean = re.sub(r'/users/[^/]+/', '/', normalized_clean)
+
     best_project = fallback
     best_idx = -1
     for project in valid_projects:
         project_lower = project.lower()
-        if f"/{project_lower}/" in normalized or normalized.endswith(f"/{project_lower}") or project_lower in normalized:
-            idx = normalized.rfind(project_lower)
+        if project_lower in SYSTEM_DIR_NAMES:
+            continue
+        if f"/{project_lower}/" in normalized_clean or normalized_clean.endswith(f"/{project_lower}") or f"_{project_lower}" in normalized_clean:
+            idx = normalized_clean.rfind(project_lower)
             if idx > best_idx:
                 best_idx = idx
                 best_project = project_lower
@@ -568,6 +582,52 @@ def discover_sources(userprofile):
     return sources
 
 
+_active_task_cache = {}
+
+
+def get_active_task_for_project(project, is_recent=True):
+    if not project or project in SYSTEM_DIR_NAMES or not is_recent:
+        return None
+    proj_key = str(project).lower()
+    if proj_key in _active_task_cache:
+        return _active_task_cache[proj_key]
+    
+    devcore_data = Path(os.environ.get("DEVCORE_DATA_ROOT", Path(__file__).resolve().parents[2] / "DEV_CORE_DATA"))
+    task_id = None
+    tasks_file = devcore_data / "Memory" / project / "tasks.json"
+    if tasks_file.exists():
+        try:
+            board = json.loads(tasks_file.read_text(encoding="utf-8-sig"))
+            if isinstance(board, dict):
+                curr = board.get("current_task")
+                if curr:
+                    task_id = curr
+                else:
+                    for t in board.get("tasks", []):
+                        if t.get("status") in ("active", "todo"):
+                            task_id = t.get("id")
+                            break
+        except Exception:
+            pass
+
+    if not task_id:
+        db_path = devcore_data / "devcore.db"
+        if db_path.exists():
+            try:
+                conn = sqlite3.connect(db_path)
+                cur = conn.cursor()
+                cur.execute("SELECT id FROM tasks WHERE (LOWER(project_id)=? OR LOWER(project)=?) AND status IN ('active', 'todo') ORDER BY created_at DESC LIMIT 1", (proj_key, proj_key))
+                row = cur.fetchone()
+                if row and row[0]:
+                    task_id = row[0]
+                conn.close()
+            except Exception:
+                pass
+
+    _active_task_cache[proj_key] = task_id
+    return task_id
+
+
 def parse_source(source, valid_projects, task_to_project, pricing_registry=None):
     client = source["client"]
     session_id = source["session_id"]
@@ -576,8 +636,8 @@ def parse_source(source, valid_projects, task_to_project, pricing_registry=None)
     user_turns = 0
     model_turns = 0
     session_tasks = set()
-    current_task = "Sans tache"
     detected_project = "devcore"
+    current_task = "Sans tache"
     task_tokens = {}
     cwd_hint = ""
     session_models = set()
@@ -633,6 +693,11 @@ def parse_source(source, valid_projects, task_to_project, pricing_registry=None)
                         pass
                     else:
                         detected_project = proj_list[0]
+        elif current_task == "Sans tache":
+            active_tid = get_active_task_for_project(detected_project)
+            if active_tid:
+                current_task = active_tid
+                session_tasks.add(active_tid)
 
         role = payload.get("role") or payload.get("source") or payload.get("type") or row.get("type")
         role_text = str(role).lower()

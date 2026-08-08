@@ -614,7 +614,7 @@ def main():
                     fallback_model_names = [str(m) for m in totals["unregistered_models"]]
                     
                 sorted_models = sorted(global_cost_by_model.items(), key=lambda x: float(x[1]), reverse=True)
-                for model_name, model_cost_val in sorted_models[:12]:
+                for model_name, model_cost_val in sorted_models:
                     model_cost_formatted = f"{float(model_cost_val):.2f}"
                     fallback_badge = ""
                     if model_name in fallback_model_names:
@@ -641,6 +641,7 @@ def main():
                     tasks = s.get("tasks", [])
                     tasks_joined = ", ".join(tasks) if tasks else "Sans tâche (Session Libre)"
                     is_free_session = not tasks or tasks_joined == "Sans tâche" or "Sans tâche" in tasks_joined
+                    s_model_str = s.get("model") or (", ".join(s.get("models", [])) if s.get("models") else "N/A")
                     
                     if is_free_session and (s_tokens > 500000 or s_cost > 0.50):
                         status_badge = '<span style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); font-size: 9px; padding: 1px 6px; border-radius: 4px; font-weight: 700; margin-left: 6px;">ALERTE (Hors Tâche)</span>'
@@ -661,7 +662,7 @@ def main():
             Tâches: {esc_html(tasks_joined)}
           </div>
           <div style="font-size: 9px; color: #475569; margin-top: 3px; font-family: 'JetBrains Mono', monospace;">
-            Modèle: {esc_html(s.get('model', ''))}
+            Modèle: {esc_html(s_model_str)}
           </div>
         </div>
         <div style="text-align: right; flex-shrink: 0; font-family: 'JetBrains Mono', monospace;">
@@ -702,7 +703,7 @@ def main():
   </div>
   
   <h3 id="model-cost-title" style="font-size:11px; color:#94a3b8; margin: 12px 0 8px;">R&eacute;partition des Co&ucirc;ts par Mod&egrave;le</h3>
-  <div id="token-report-model-costs" style="margin-bottom:16px;">{model_cost_html}</div>
+  <div id="token-report-model-costs" style="max-height:220px; overflow-y:auto; padding-right:6px; margin-bottom:16px; border:1px solid rgba(255,255,255,0.05); border-radius:6px; background:rgba(15,23,42,0.3); padding-left:8px;">{model_cost_html}</div>
   
   <h3 style="font-size:11px; color:#94a3b8; margin: 12px 0 8px;">Sessions R&eacute;centes</h3>
   <div style="max-height:280px; overflow-y:auto; padding-right:4px;">

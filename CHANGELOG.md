@@ -7,6 +7,16 @@ and this project adheres to Semantic Versioning.
 
 ---
 
+## [10.3.2] - 2026-08-08
+
+### Added
+- **Scrollbar & Affichage Répartition Modèles (`gen_dashboard.py`, `template.html`)** : Ajout d'un conteneur à défilement vertical (`max-height: 220px; overflow-y: auto`) dans le bloc de coût par modèle du Cockpit pour afficher l'ensemble des modèles de toutes les sessions sans tronquage.
+- **Support Modèles Antigravity & Pricing Registry (`model_pricing.json`)** : Définition des règles par défaut pour le client `antigravity` (`gemini-3.6-flash`, `claude-sonnet-4.6`) et prise en compte de la clé `models` dans l'afficheur HTML.
+
+### Fixed
+- **Exclusion des Dossiers Utilisateur OS (`token_report.py`)** : Ajout d'un système d'exclusion stricte (`SYSTEM_DIR_NAMES`) retirant `trb_m`, `users`, `documents`, `desktop`, `downloads` de la détection de projets pour éliminer les fausses attributions de projet.
+- **Rattachement Précis des Tâches et Modèles de Sessions (`token_report.py`)** : Conservation de l'historique et des modèles réels des sessions archivées (`gpt-5.5`, `claude-opus-4.6`, etc.) et limitation du fallback dynamique de tâche active uniquement aux sessions du jour, évitant l'attribution erronée de `T-357` aux sessions passées.
+
 ## [10.3.1] - 2026-08-07
 
 ### Added
