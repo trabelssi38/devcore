@@ -122,20 +122,20 @@ class TaskService:
         cursor = self.conn.cursor()
         title_clean = title.strip().lower()
 
-        # Compute next task ID (e.g. T-01, T-02)
-        max_t = cursor.execute(
-            "SELECT id FROM tasks WHERE project_id = ? AND id LIKE 'T-%' ORDER BY CAST(SUBSTR(id, 3) AS INTEGER) DESC LIMIT 1;",
-            (project_id,),
-        ).fetchone()
-
-        next_num = 1
-        if max_t:
-            try:
-                next_num = int(max_t["id"].split("-")[1]) + 1
-            except Exception:
-                next_num = 1
-
-        task_id = f"T-{next_num:02d}"
+        # Compute next task ID (e.g. T-01, T-357) avoiding collisions
+        rows = cursor.execute("SELECT id FROM tasks WHERE id LIKE 'T-%'").fetchall()
+        max_num = 0
+        for r in rows:
+            tid = r[0]
+            if tid and tid.startswith("T-") and not tid.startswith("T-GIT-"):
+                try:
+                    num = int(tid.split("-")[1])
+                    if num > max_num:
+                        max_num = num
+                except Exception:
+                    pass
+        next_num = max_num + 1
+        task_id = f"T-{next_num:02d}" if next_num < 100 else f"T-{next_num}"
         steps_total = max(1, steps)
         meta_json = json.dumps(metadata or {})
 
