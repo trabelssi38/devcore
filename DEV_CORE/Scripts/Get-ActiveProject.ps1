@@ -73,7 +73,7 @@ try {
     $worktreeName = $worktreeName -replace '[\\/:*?"<>|]', '_'
     
     # Exclure les répertoires système et personnels courants du mécanisme de secours
-    $systemDirs = @("Documents", "Desktop", "Downloads", "OneDrive", "System32", "Users", "Windows", "Temp", "AppData", "Local")
+    $systemDirs = @("Documents", "Desktop", "Downloads", "OneDrive", "System32", "Users", "Windows", "Temp", "AppData", "Local", "trb_m", "home")
     if ($systemDirs -contains $projectName) {
         $projectName = "devcore"
     }

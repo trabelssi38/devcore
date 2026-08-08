@@ -107,6 +107,18 @@ class TaskService:
         depends_on: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
+        # Auto detect active project before task assignment
+        system_dirs = {"trb_m", "users", "documents", "desktop", "downloads", "onedrive", "temp", "appdata"}
+        if not project_id or project_id.lower() in system_dirs:
+            try:
+                import subprocess, os
+                git_dir = subprocess.check_output(["git", "rev-parse", "--show-toplevel"], stderr=subprocess.DEVNULL, text=True).strip()
+                p_name = os.path.basename(git_dir).lower()
+                if p_name not in system_dirs:
+                    project_id = p_name
+            except Exception:
+                project_id = "devcore"
+
         cursor = self.conn.cursor()
         title_clean = title.strip().lower()
 

@@ -45,33 +45,48 @@ def print_color(text, color="gray"):
 def get_active_project():
     # Cache lookup
     current_pwd = os.getcwd()
+    system_dirs = {"documents", "desktop", "downloads", "onedrive", "system32", "users", "windows", "temp", "appdata", "local", "trb_m", "home"}
     if os.environ.get("DEVCORE_ACTIVE_PROJECT_PWD") == current_pwd:
         cached_name = os.environ.get("DEVCORE_ACTIVE_PROJECT_NAME")
-        if cached_name:
+        if cached_name and cached_name.lower() not in system_dirs:
             return cached_name
 
     project_name = None
     try:
-        # Get git root parent name
-        git_dir = subprocess.check_output(
-            ["git", "rev-parse", "--git-common-dir"],
-            stderr=subprocess.DEVNULL,
-            text=True
-        ).strip()
-        abs_git = os.path.abspath(git_dir)
-        if abs_git.endswith(".git"):
-            project_name = os.path.basename(os.path.dirname(abs_git))
-        else:
-            project_name = os.path.basename(abs_git)
+        # Check .devcore/project.json in current directory or parents
+        dir_path = Path(current_pwd)
+        while dir_path and dir_path != dir_path.parent:
+            pjson = dir_path / ".devcore" / "project.json"
+            if pjson.exists():
+                try:
+                    data = json.loads(pjson.read_text(encoding="utf-8-sig"))
+                    if data and data.get("name"):
+                        project_name = data["name"]
+                        break
+                except Exception:
+                    pass
+            dir_path = dir_path.parent
     except Exception:
         pass
+
+    if not project_name:
+        try:
+            # Get git root parent name
+            git_dir = subprocess.check_output(
+                ["git", "rev-parse", "--show-toplevel"],
+                stderr=subprocess.DEVNULL,
+                text=True
+            ).strip()
+            abs_git = os.path.abspath(git_dir)
+            project_name = os.path.basename(abs_git)
+        except Exception:
+            pass
 
     if not project_name:
         project_name = os.path.basename(current_pwd)
 
     # Exclude system folders
-    system_dirs = {"Documents", "Desktop", "Downloads", "OneDrive", "System32", "Users", "Windows", "Temp", "AppData", "Local"}
-    if project_name in system_dirs:
+    if project_name.lower() in system_dirs:
         project_name = "devcore"
 
     # Replace bad characters
