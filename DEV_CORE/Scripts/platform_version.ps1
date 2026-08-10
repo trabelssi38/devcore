@@ -4,6 +4,26 @@ param(
     [switch]$Title
 )
 
+# --- Portable DEVCORE_DATA_ROOT Auto-Detection ---
+if (-not $env:DEVCORE_DATA_ROOT) {
+    $appData = $env:APPDATA
+    if ($appData) {
+        $dbJsonPath = Join-Path $appData "Dropbox\info.json"
+        if (Test-Path -LiteralPath $dbJsonPath) {
+            try {
+                $dbJson = Get-Content -LiteralPath $dbJsonPath -Raw -ErrorAction SilentlyContinue | ConvertFrom-Json
+                $dbPath = $dbJson.personal.path
+                if ($dbPath) {
+                    $candidateData = Join-Path $dbPath "DEV_CORE_DATA"
+                    if (Test-Path -LiteralPath $candidateData) {
+                        $env:DEVCORE_DATA_ROOT = $candidateData
+                    }
+                }
+            } catch {}
+        }
+    }
+}
+
 $ScriptPlatformRoot = Split-Path -Parent $PSScriptRoot
 $EnvPlatformRoot = $env:DEVCORE_PLATFORM_ROOT
 $PlatformRoot = if ($EnvPlatformRoot -and (Test-Path -LiteralPath (Join-Path $EnvPlatformRoot "Config\platform.json"))) {

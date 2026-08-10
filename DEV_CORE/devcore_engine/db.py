@@ -21,7 +21,28 @@ def get_data_root() -> Path:
     env_root = os.getenv("DEVCORE_DATA_ROOT")
     if env_root:
         return Path(env_root)
-    # Default: parent of DEV_CORE directory / DEV_CORE_DATA
+
+    # Auto-detect Dropbox folder on Windows
+    if os.name == "nt":
+        app_data = os.getenv("APPDATA")
+        if app_data:
+            db_json = Path(app_data) / "Dropbox" / "info.json"
+            if db_json.exists():
+                try:
+                    import json
+                    with open(db_json, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                    db_path = data.get("personal", {}).get("path")
+                    if db_path:
+                        g_path = Path(db_path) / "DEV_CORE_DATA"
+                        if g_path.exists():
+                            # Export it to env var so child processes inherit it
+                            os.environ["DEVCORE_DATA_ROOT"] = str(g_path)
+                            return g_path
+                except Exception:
+                    pass
+
+    # Default fallback: parent of DEV_CORE directory / DEV_CORE_DATA
     platform_root = os.getenv("DEVCORE_PLATFORM_ROOT", "C:/devcore/DEV_CORE")
     return Path(platform_root).parent / "DEV_CORE_DATA"
 
