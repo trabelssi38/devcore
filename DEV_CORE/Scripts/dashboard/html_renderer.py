@@ -16,7 +16,7 @@ from .utils import (
     check_port,
     DATA_ROOT,
     PLATFORM_ROOT,
-    get_gdrive_sync_status
+    get_dropbox_sync_status
 )
 
 from .data_loader import (
@@ -458,9 +458,9 @@ def get_services_html(projects: list, token_metrics: dict) -> str:
 
     infra_html += get_status_html("Repowise Engine (MCP)", repowise_desc, repowise_ok, rep_perf, rep_solic, rep_impact)
     
-    # Google Drive Sync
-    gdrive_desc, gdrive_status, gd_perf, gd_solic, gd_impact = get_gdrive_sync_status()
-    infra_html += get_status_html("Google Drive Sync", gdrive_desc, gdrive_status, gd_perf, gd_solic, gd_impact)
+    # Dropbox Sync
+    dropbox_desc, dropbox_status, db_perf, db_solic, db_impact = get_dropbox_sync_status()
+    infra_html += get_status_html("Dropbox Sync", dropbox_desc, dropbox_status, db_perf, db_solic, db_impact)
     
     infra_html += '<h2 style="margin-top:28px; padding-top:14px; border-top:1px solid #1e293b;">Hermes Background Jobs</h2>\n'
     if jobs_file.exists():
