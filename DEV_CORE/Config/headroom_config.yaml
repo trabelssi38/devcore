@@ -13,8 +13,8 @@ cache_aligner:
   
 ccr:
   enabled: true       # Reversible compression
-  cache_dir: "C:/devcore/DEV_CORE_DATA/Cache/headroom"
+  cache_dir: "C:/Users/Administrateur/Dropbox/DEV_CORE_DATA/Cache/headroom"
 
 stats:
   enabled: true
-  output: "C:/devcore/DEV_CORE_DATA/Metrics/headroom_stats.json"
+  output: "C:/Users/Administrateur/Dropbox/DEV_CORE_DATA/Metrics/headroom_stats.json"

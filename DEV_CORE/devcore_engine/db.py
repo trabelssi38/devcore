@@ -110,20 +110,21 @@ CREATE TABLE IF NOT EXISTS projects (
 
 -- Tasks
 CREATE TABLE IF NOT EXISTS tasks (
-    id TEXT PRIMARY KEY,
+    id TEXT NOT NULL,
     project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     mode TEXT NOT NULL DEFAULT 'coding',
     status TEXT NOT NULL DEFAULT 'todo',
     steps_done INTEGER NOT NULL DEFAULT 0,
     steps_total INTEGER NOT NULL DEFAULT 1,
-    depends_on TEXT REFERENCES tasks(id),
+    depends_on TEXT,
     worktree TEXT,
     metadata TEXT NOT NULL DEFAULT '{}',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     started_at TEXT,
     completed_at TEXT,
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (id, project_id),
     CHECK (steps_done >= 0 AND steps_total >= 1),
     CHECK (steps_done <= steps_total)
 );

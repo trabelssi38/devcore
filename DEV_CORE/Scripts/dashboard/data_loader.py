@@ -50,7 +50,7 @@ def sync_tasks_from_memory(conn, data_root: Path = DATA_ROOT):
                     INSERT INTO tasks 
                     (id, project_id, title, status, mode, steps_total, steps_done, metadata, started_at, completed_at, created_at, updated_at)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-                    ON CONFLICT(id) DO UPDATE SET
+                    ON CONFLICT(id, project_id) DO UPDATE SET
                         project_id=excluded.project_id,
                         title=excluded.title,
                         status=excluded.status,

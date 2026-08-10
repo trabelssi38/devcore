@@ -83,3 +83,12 @@ hermes/
 
 # repowise API keys (local)
 .repowise/.env
+
+# SQLite local databases
+DEV_CORE/devcore.db
+DEV_CORE/devcore.db-wal
+DEV_CORE/devcore.db-shm
+*.db
+*.db-wal
+*.db-shm
+

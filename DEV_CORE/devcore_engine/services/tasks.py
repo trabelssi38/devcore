@@ -122,8 +122,8 @@ class TaskService:
         cursor = self.conn.cursor()
         title_clean = title.strip().lower()
 
-        # Compute next task ID (e.g. T-01, T-357) avoiding collisions
-        rows = cursor.execute("SELECT id FROM tasks WHERE id LIKE 'T-%'").fetchall()
+        # Compute next task ID (e.g. T-01, T-02) avoiding collisions within the project
+        rows = cursor.execute("SELECT id FROM tasks WHERE project_id = ? AND id LIKE 'T-%'", (project_id,)).fetchall()
         max_num = 0
         for r in rows:
             tid = r[0]

@@ -10,7 +10,7 @@ $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path -Path (Join-Path $env
 if ($DEV_CORE -match '\\Scripts\\?$') {
     $DEV_CORE = Split-Path -Parent $DEV_CORE
 }
-$PYTHON_EXE = "C:\Program Files\Python313\python.exe"
+$PYTHON_EXE = "python"
 $CLI_SCRIPT = "$DEV_CORE\devcore_engine\cli.py"
 $POST_TOOL  = "$DEV_CORE\devcore_engine\hooks\post_tool.py"
 

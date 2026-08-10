@@ -5,7 +5,14 @@ All notable changes to the **DEV_CORE** platform will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Semantic Versioning.
 
----
+## [10.3.3] - 2026-08-10
+
+### Fixed
+- **Isolation des Identifiants de Tâches par Projet (`tasks.py`)** : Restriction du calcul de l'ID de tâche incrémental au projet concerné (`WHERE project_id = ?`), évitant que les nouveaux projets n'héritent de la numérotation globale (`T-371` etc.).
+- **Clé Primaire Composite dans la Base de Données (`db.py`, `data_loader.py`)** : Remplacement de la clé primaire simple sur l'ID de tâche par une clé composite `PRIMARY KEY (id, project_id)` dans SQLite et alignement du `ON CONFLICT` dans le chargeur de données du Cockpit pour éliminer les collisions inter-projets.
+- **Référencement du Projet Oracle (`projects.json`)** : Inscription du projet `oracle_legacy_intelligence_platform` et de son chemin local `E:/src_web/oracle_legacy_intelligence_platform` pour rétablir son affichage et ses métriques dans le Cockpit.
+- **Nettoyage du Projet Fantôme (`test_proj`)** : Suppression du répertoire de mémoire et de toutes les tâches d'intégration de test dans SQLite.
+- **Portabilité des Chemins Python (`settings.json`, `install_universal_hooks.ps1`)** : Remplacement des chemins d'accès absolus locaux vers `python.exe` par la commande portable `python` dans tous les fichiers `settings.json` des clients IA et scripts d'installation.
 
 ## [10.3.2] - 2026-08-08
 
