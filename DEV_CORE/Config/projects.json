@@ -1,22 +1,6 @@
 {
   "projects": [
     {
-      "name": "addmefast",
-      "path": "E:/src_web/addmefast"
-    },
-    {
-      "name": "addmefast-bot",
-      "path": "E:/src_web/addmefast-bot"
-    },
-    {
-      "name": "autop",
-      "path": "E:/src_python/autop"
-    },
-    {
-      "name": "cnss",
-      "path": "E:/src_python/cnss"
-    },
-    {
       "name": "conso_api_madania",
       "path": "E:/src_python/conso_api_madania"
     },
@@ -25,20 +9,8 @@
       "path": "E:/src_python/devcore"
     },
     {
-      "name": "downedit",
-      "path": "E:/src_python/DownEdit"
-    },
-    {
       "name": "migration_to_12c",
       "path": "E:/src_python/migration_to_12c"
-    },
-    {
-      "name": "tiktok-api",
-      "path": "E:/src_python/TikTok-Api"
-    },
-    {
-      "name": "tiktokscraperscripts",
-      "path": "E:/src_python/TikTokScraperScripts"
     },
     {
       "name": "oracle_legacy_intelligence_platform",
