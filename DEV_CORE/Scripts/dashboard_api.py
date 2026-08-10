@@ -792,39 +792,54 @@ def complete_task(project, task_id):
         return False, str(e)
 
 def delete_task(project, task_id):
-    tasks_file = get_project_tasks_file(project)
-    if not tasks_file.exists():
-        return False, f"Project board not found: {tasks_file}"
-
     try:
-        print(f"[DashboardAPI] Deleting task {task_id} on project {project}...")
-        board = read_json_with_retry(tasks_file)
+        tasks_file = get_project_tasks_file(project)
+        deleted_from_json = False
+        target_task_id = task_id
 
-        matching_tasks = [t for t in board.get("tasks", []) if str(t.get("id")).lower() == str(task_id).lower()]
-        if not matching_tasks:
-            return False, f"Task {task_id} not found in project {project}"
+        if tasks_file.exists():
+            try:
+                print(f"[DashboardAPI] Deleting task {task_id} on project {project} in tasks.json...")
+                board = read_json_with_retry(tasks_file)
 
-        target_task_id = matching_tasks[0].get("id", task_id)
-        board["tasks"] = [t for t in board.get("tasks", []) if str(t.get("id")).lower() != str(task_id).lower()]
+                matching_tasks = [t for t in board.get("tasks", []) if str(t.get("id")).lower() == str(task_id).lower()]
+                if matching_tasks:
+                    target_task_id = matching_tasks[0].get("id", task_id)
+                    board["tasks"] = [t for t in board.get("tasks", []) if str(t.get("id")).lower() != str(task_id).lower()]
 
-        if str(board.get("current_task")).lower() == str(task_id).lower():
-            board["current_task"] = None
+                    if str(board.get("current_task")).lower() == str(task_id).lower():
+                        board["current_task"] = None
 
-        write_json_with_retry(tasks_file, board)
-        print(f"[DashboardAPI] Successfully saved deleted task in tasks.json.")
+                    write_json_with_retry(tasks_file, board)
+                    print(f"[DashboardAPI] Successfully saved deleted task in tasks.json.")
+                    deleted_from_json = True
+            except Exception as je:
+                print(f"[DashboardAPI] Warning: Failed to delete from tasks.json: {je}")
 
-        # Delete from SQLite database
+        deleted_from_db = False
         db_path = get_local_path("devcore.db")
         if db_path.exists():
             try:
                 import sqlite3
                 conn = sqlite3.connect(str(db_path))
-                conn.execute("DELETE FROM tasks WHERE LOWER(project) = LOWER(?) AND LOWER(id) = LOWER(?)", (project, task_id))
-                conn.commit()
+                cur = conn.cursor()
+                cols = [col[1] for col in cur.execute("PRAGMA table_info(tasks)").fetchall()]
+                proj_col = "project_id" if "project_id" in cols else "project"
+                
+                # Check if task exists in SQLite
+                cur.execute(f"SELECT COUNT(*) FROM tasks WHERE LOWER({proj_col}) = LOWER(?) AND LOWER(id) = LOWER(?)", (project, task_id))
+                count = cur.fetchone()[0]
+                if count > 0:
+                    conn.execute(f"DELETE FROM tasks WHERE LOWER({proj_col}) = LOWER(?) AND LOWER(id) = LOWER(?)", (project, task_id))
+                    conn.commit()
+                    print(f"[DashboardAPI] Successfully deleted task {target_task_id} from SQLite database.")
+                    deleted_from_db = True
                 conn.close()
-                print(f"[DashboardAPI] Successfully deleted task {target_task_id} from SQLite database.")
             except Exception as dbe:
                 print(f"[DashboardAPI] Warning: Failed to delete task from SQLite: {dbe}")
+
+        if not deleted_from_json and not deleted_from_db:
+            return False, f"Task {task_id} not found in project {project} tasks.json or SQLite database"
 
         dashboard_script = get_platform_path("Scripts", "gen_dashboard.py")
         cmd = [sys.executable, str(dashboard_script)]

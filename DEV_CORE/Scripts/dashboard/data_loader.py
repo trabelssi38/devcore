@@ -289,103 +289,103 @@ def load_projects_and_tasks(data_root: Path = DATA_ROOT, platform_root: Path = P
     if not db_path.exists():
         db_path = data_root / "devcore.db"
 
-        try:
-            conn = sqlite3.connect(db_path)
-            sync_tasks_from_memory(conn, data_root)
-            cur = conn.cursor()
-            cols = [col[1] for col in cur.execute("PRAGMA table_info(tasks)").fetchall()]
-            proj_col = "project_id" if "project_id" in cols else "project"
-            cur.execute(f"SELECT DISTINCT {proj_col} FROM tasks WHERE {proj_col} != 'scripts'")
-            proj_names = [row[0] for row in cur.fetchall() if row[0]]
-            
-            for name in proj_names:
-                cur.execute(f"""
-                    SELECT id, title, status, mode, steps_total, steps_done, metadata, metadata, started_at, completed_at, created_at, updated_at 
-                    FROM tasks WHERE {proj_col} = ? 
-                    """, (name,))
+    try:
+        conn = sqlite3.connect(db_path)
+        sync_tasks_from_memory(conn, data_root)
+        cur = conn.cursor()
+        cols = [col[1] for col in cur.execute("PRAGMA table_info(tasks)").fetchall()]
+        proj_col = "project_id" if "project_id" in cols else "project"
+        cur.execute(f"SELECT DISTINCT {proj_col} FROM tasks WHERE {proj_col} != 'scripts'")
+        proj_names = [row[0] for row in cur.fetchall() if row[0]]
+        
+        for name in proj_names:
+            cur.execute(f"""
+                SELECT id, title, status, mode, steps_total, steps_done, metadata, metadata, started_at, completed_at, created_at, updated_at 
+                FROM tasks WHERE {proj_col} = ? 
+                """, (name,))
 
-                rows = cur.fetchall()
-                tasks = []
-                for r in rows:
-                    details_raw = r[7]
-                    steps_list = []
-                    details_text = ""
-                    if details_raw and str(details_raw).startswith("["):
-                        try:
-                            steps_list = json.loads(details_raw)
-                            if steps_list:
-                                details_text = "\n".join(f"- [{'v' if s.get('done') else ' '}] {s.get('title')}" for s in steps_list if isinstance(s, dict))
-                        except Exception:
-                            details_text = str(details_raw)
-                    else:
-                        details_text = str(details_raw or "")
+            rows = cur.fetchall()
+            tasks = []
+            for r in rows:
+                details_raw = r[7]
+                steps_list = []
+                details_text = ""
+                if details_raw and str(details_raw).startswith("["):
+                    try:
+                        steps_list = json.loads(details_raw)
+                        if steps_list:
+                            details_text = "\n".join(f"- [{'v' if s.get('done') else ' '}] {s.get('title')}" for s in steps_list if isinstance(s, dict))
+                    except Exception:
+                        details_text = str(details_raw)
+                else:
+                    details_text = str(details_raw or "")
 
-                    tasks.append({
-                        "id": r[0],
-                        "title": r[1],
-                        "status": r[2],
-                        "mode": r[3],
-                        "steps_total": r[4],
-                        "steps_done": r[5],
-                        "source": r[6],
-                        "details": details_text,
-                        "steps": steps_list,
-                        "started_at": r[8],
-                        "completed_at": r[9],
-                        "created_at": r[10] if len(r) > 10 else "",
-                        "updated_at": r[11] if len(r) > 11 else ""
-                    })
-
-                tasks.sort(key=lambda t: (get_task_datetime(t), get_task_id_number(t)))
-
-                total = len(tasks)
-
-                done = sum(1 for t in tasks if t["status"] == "done")
-                pct = int((done / total) * 100) if total > 0 else 0
-                
-                active_task = next((t for t in tasks if t["status"] in ["todo", "active", "paused", "in_progress"]), None)
-                if not active_task and tasks:
-                    active_task = tasks[-1]
-                    
-                active_id = active_task["id"] if active_task else "Aucune"
-                active_mode = active_task["mode"] if active_task else "N/A"
-                active_steps = f"{active_task['steps_done']}/{active_task['steps_total']}" if active_task else ""
-                
-                active_tasks = [t for t in tasks if t["status"] in ["todo", "active", "paused", "in_progress"]]
-                completed_tasks = [t for t in tasks if t["status"] in ["done", "skipped", "failed"]]
-                completed_tasks.sort(key=lambda t: (get_task_datetime(t), get_task_id_number(t)))
-                limited_tasks = completed_tasks[-20:] + active_tasks
-
-                
-                for t in limited_tasks:
-                    if t.get("details"):
-                        task_details[f"{name}_{t['id']}"] = t["details"]
-                        
-                proj_tokens_str = ""
-                if token_metrics and "projects" in token_metrics:
-                    proj_stats = token_metrics["projects"].get(name)
-                    if proj_stats:
-                        try:
-                            p_tokens = float(proj_stats.get("tokens", 0))
-                            p_cost = float(proj_stats.get("cost_usd", 0))
-                            proj_tokens_str = f"{format_tokens(p_tokens)} tokens | ${p_cost:.2f}"
-                        except Exception:
-                            pass
-                            
-                projects.append({
-                    "name": name,
-                    "active_task": active_id,
-                    "mode": active_mode,
-                    "progress": pct,
-                    "steps": active_steps,
-                    "tasks": limited_tasks,
-                    "tokens": proj_tokens_str
+                tasks.append({
+                    "id": r[0],
+                    "title": r[1],
+                    "status": r[2],
+                    "mode": r[3],
+                    "steps_total": r[4],
+                    "steps_done": r[5],
+                    "source": r[6],
+                    "details": details_text,
+                    "steps": steps_list,
+                    "started_at": r[8],
+                    "completed_at": r[9],
+                    "created_at": r[10] if len(r) > 10 else "",
+                    "updated_at": r[11] if len(r) > 11 else ""
                 })
-            conn.close()
-        except Exception as e:
-            print(f"[gen_dashboard] SQLite read warning: {e}", file=sys.stderr)
-            projects = []
-            task_details = {}
+
+            tasks.sort(key=lambda t: (get_task_datetime(t), get_task_id_number(t)))
+
+            total = len(tasks)
+
+            done = sum(1 for t in tasks if t["status"] == "done")
+            pct = int((done / total) * 100) if total > 0 else 0
+            
+            active_task = next((t for t in tasks if t["status"] in ["todo", "active", "paused", "in_progress"]), None)
+            if not active_task and tasks:
+                active_task = tasks[-1]
+                
+            active_id = active_task["id"] if active_task else "Aucune"
+            active_mode = active_task["mode"] if active_task else "N/A"
+            active_steps = f"{active_task['steps_done']}/{active_task['steps_total']}" if active_task else ""
+            
+            active_tasks = [t for t in tasks if t["status"] in ["todo", "active", "paused", "in_progress"]]
+            completed_tasks = [t for t in tasks if t["status"] in ["done", "skipped", "failed"]]
+            completed_tasks.sort(key=lambda t: (get_task_datetime(t), get_task_id_number(t)))
+            limited_tasks = completed_tasks[-20:] + active_tasks
+
+            
+            for t in limited_tasks:
+                if t.get("details"):
+                    task_details[f"{name}_{t['id']}"] = t["details"]
+                    
+            proj_tokens_str = ""
+            if token_metrics and "projects" in token_metrics:
+                proj_stats = token_metrics["projects"].get(name)
+                if proj_stats:
+                    try:
+                        p_tokens = float(proj_stats.get("tokens", 0))
+                        p_cost = float(proj_stats.get("cost_usd", 0))
+                        proj_tokens_str = f"{format_tokens(p_tokens)} tokens | ${p_cost:.2f}"
+                    except Exception:
+                        pass
+                        
+            projects.append({
+                "name": name,
+                "active_task": active_id,
+                "mode": active_mode,
+                "progress": pct,
+                "steps": active_steps,
+                "tasks": limited_tasks,
+                "tokens": proj_tokens_str
+            })
+        conn.close()
+    except Exception as e:
+        print(f"[gen_dashboard] SQLite read warning: {e}", file=sys.stderr)
+        projects = []
+        task_details = {}
 
     memory_dir = data_root / "Memory"
     if not projects and memory_dir.exists():

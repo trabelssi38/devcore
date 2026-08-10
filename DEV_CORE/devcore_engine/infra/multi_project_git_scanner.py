@@ -83,23 +83,20 @@ class MultiProjectGitScanner:
             commit_hash = parts[0].strip()
             msg = parts[1].strip()
             date_str = parts[2].strip() if len(parts) > 2 else time.strftime("%Y-%m-%d %H:%M:%S")
+            short_hash = commit_hash[:7]
 
-            if not msg or len(msg) < 3 or msg.startswith("Merge "):
-                continue
-
-            # Check if tag [T-XX] or (T-XX) is present in commit message
-            match = re.search(r"[\(\[](T-\d+)[\)\]]", msg, re.IGNORECASE)
+            # Check if tag [T-XX], (T-XX) or (Tag T-XX) is present in commit message
+            match = re.search(r"(?:[\(\[]|Tag\s+)?(T-\d+)[\)\]]?", msg, re.IGNORECASE)
             if match:
                 task_id = match.group(1).upper()
-                clean_title = re.sub(r"[\(\[]T-\d+[\)\]]", "", msg, flags=re.IGNORECASE).strip()
+                clean_title = re.sub(r"[\(\[]?\s*(?:Tag\s+)?T-\d+\s*[\)\]]?", "", msg, flags=re.IGNORECASE).strip()
             else:
                 # Deterministic ID for non-tagged commits: T-GIT-<short_hash>
-                short_hash = commit_hash[:7]
                 task_id = f"T-GIT-{short_hash.upper()}"
                 clean_title = msg.splitlines()[0].strip()
 
             # Format details metadata
-            details = f"**Actions détectées dans le commit Git ({short_hash if 'short_hash' in locals() else commit_hash[:7]}) :**\n- {clean_title}"
+            details = f"**Actions détectées dans le commit Git ({short_hash}) :**\n- {clean_title}"
 
             if task_id in existing_ids:
                 # Update existing task if missing metadata or status not done
