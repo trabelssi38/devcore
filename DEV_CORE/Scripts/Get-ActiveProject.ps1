@@ -86,8 +86,8 @@ try {
     $env:DEVCORE_ACTIVE_WORKTREE_NAME = $worktreeName
 
     # Enregistrer dans un fichier persistant pour les daemons Python
-    $devCoreData = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE_DATA" }
-    $runtimeDir = "$devCoreData\Runtime"
+    $devCoreLocal = if ($env:DEVCORE_LOCAL_ROOT) { $env:DEVCORE_LOCAL_ROOT } elseif ($env:LOCALAPPDATA) { "$env:LOCALAPPDATA\DEV_CORE_LOCAL" } else { Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE_DATA" }
+    $runtimeDir = "$devCoreLocal\Runtime"
     if (-not (Test-Path $runtimeDir)) {
         New-Item -ItemType Directory -Path $runtimeDir -Force | Out-Null
     }

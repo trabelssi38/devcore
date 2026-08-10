@@ -13,6 +13,7 @@ from .utils import (
     get_task_datetime,
     get_task_id_number,
     DATA_ROOT,
+    LOCAL_ROOT,
     PLATFORM_ROOT
 )
 
@@ -260,8 +261,11 @@ def get_deterministic_fallback_health(project_name: str, project_path: str, defa
         }
     }
 
-def load_token_metrics(data_root: Path = DATA_ROOT) -> dict:
-    token_json = data_root / "Logs" / "token_reports" / "token_metrics_summary.json"
+def load_token_metrics(data_root: Path = None) -> dict:
+    root = data_root or LOCAL_ROOT
+    token_json = root / "Logs" / "token_reports" / "token_metrics_summary.json"
+    if not token_json.exists():
+        token_json = DATA_ROOT / "Logs" / "token_reports" / "token_metrics_summary.json"
     if token_json.exists():
         try:
             return json.loads(token_json.read_text(encoding="utf-8-sig"))

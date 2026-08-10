@@ -18,7 +18,7 @@ from devcore.paths import get_paths
 def get_db_path() -> Path:
     """Get the path to the SQLite scheduler database."""
     paths = get_paths()
-    db_dir = paths.data_root / "Scheduler"
+    db_dir = paths.local_root / "Scheduler"
     db_dir.mkdir(parents=True, exist_ok=True)
     return db_dir / "scheduler.db"
 

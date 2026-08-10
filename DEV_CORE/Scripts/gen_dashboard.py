@@ -24,8 +24,14 @@ class DashboardLock:
     STALE_TIMEOUT = 120  # secondes après lesquelles un lock est considéré périmé
 
     def __init__(self):
-        lock_dir = Path(os.environ.get("DEVCORE_DATA_ROOT",
-                        str(Path(__file__).resolve().parents[2] / "DEV_CORE_DATA"))) / "Runtime"
+        lock_root = os.environ.get("DEVCORE_LOCAL_ROOT")
+        if lock_root:
+            lock_dir = Path(lock_root) / "Runtime"
+        elif os.name == "nt" and os.getenv("LOCALAPPDATA"):
+            lock_dir = Path(os.getenv("LOCALAPPDATA")) / "DEV_CORE_LOCAL" / "Runtime"
+        else:
+            lock_dir = Path(os.environ.get("DEVCORE_DATA_ROOT",
+                            str(Path(__file__).resolve().parents[2] / "DEV_CORE_DATA"))) / "Runtime"
         lock_dir.mkdir(parents=True, exist_ok=True)
         self.lock_path = lock_dir / self.LOCK_FILENAME
 
@@ -71,6 +77,7 @@ from dashboard.utils import (
     load_project_paths,
     check_port,
     DATA_ROOT,
+    LOCAL_ROOT,
     PLATFORM_ROOT
 )
 
@@ -155,7 +162,7 @@ def main():
 
     # Gather recent events from SQLite bus_events table or fallback JSONL files
     events = []
-    db_path = DATA_ROOT / "devcore.db"
+    db_path = LOCAL_ROOT / "devcore.db"
     if db_path.exists():
         try:
             conn = sqlite3.connect(db_path)
@@ -186,8 +193,8 @@ def main():
         except Exception as e:
             print(f"[gen_dashboard] Warning reading bus_events from SQLite: {e}", file=sys.stderr)
 
-    events_dir = DATA_ROOT / "Bus" / "events"
-    events_jsonl = DATA_ROOT / "Bus" / "events.jsonl"
+    events_dir = LOCAL_ROOT / "Bus" / "events"
+    events_jsonl = LOCAL_ROOT / "Bus" / "events.jsonl"
 
     if not events and events_jsonl.exists():
 
@@ -264,7 +271,7 @@ def main():
     # Build task_interactions_map
     events_by_task = {}
     commit_msgs_by_task = {}
-    sqlite_db_path = DATA_ROOT / "devcore.db"
+    sqlite_db_path = LOCAL_ROOT / "devcore.db"
     if sqlite_db_path.exists():
         try:
             conn = sqlite3.connect(sqlite_db_path)
@@ -719,7 +726,7 @@ def main():
 
     # Load recent alerts from alerts.log
     alerts_html = "<h2>Alerte de Consommation &amp; &Eacute;v&eacute;nements</h2>"
-    alerts_path = DATA_ROOT / "Logs" / "scripts" / "alerts.log"
+    alerts_path = LOCAL_ROOT / "Logs" / "scripts" / "alerts.log"
     alerts_list = []
     if alerts_path.exists():
         try:
@@ -742,8 +749,8 @@ def main():
 
     # Protocol Compliance section
     protocol_html = "<h2>Conformit&eacute; Protocole Agent</h2>"
-    ephemeral_path = DATA_ROOT / "Runtime" / "ephemeral_session.json"
-    violations_path = DATA_ROOT / "Logs" / "scripts" / "protocol_violations.log"
+    ephemeral_path = LOCAL_ROOT / "Runtime" / "ephemeral_session.json"
+    violations_path = LOCAL_ROOT / "Logs" / "scripts" / "protocol_violations.log"
     
     status_color = "#22c55e"
     status_label = "🟢 CONFORME"
@@ -846,7 +853,7 @@ def main():
     }
 
     # Save JSON payload cache
-    cache_path = DATA_ROOT / "Dashboard" / "dashboard_payload.json"
+    cache_path = LOCAL_ROOT / "Dashboard" / "dashboard_payload.json"
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     payload_str = json.dumps(payload, indent=2, ensure_ascii=False)
     try:
@@ -866,7 +873,7 @@ def main():
             print(f"[gen_dashboard.py] Cache payload write warning: {e_cache}")
 
     # Save payload hash
-    hash_path = DATA_ROOT / "Dashboard" / "payload_hash.txt"
+    hash_path = LOCAL_ROOT / "Dashboard" / "payload_hash.txt"
     payload_hash = hashlib.sha256(payload_str.encode("utf-8")).hexdigest()
     try:
         hash_path.write_text(payload_hash, encoding="utf-8")

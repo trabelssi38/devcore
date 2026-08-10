@@ -8,10 +8,13 @@ from pathlib import Path
 
 DEVCORE_ROOT = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", "C:/devcore/DEV_CORE"))
 try:
-    from devcore_engine.db import get_data_root
+    from devcore_engine.db import get_data_root, get_local_data_root
     DEVCORE_DATA = get_data_root()
+    DEVCORE_LOCAL = get_local_data_root()
 except Exception:
     DEVCORE_DATA = Path(os.environ.get("DEVCORE_DATA_ROOT", "C:/devcore/DEV_CORE_DATA"))
+    env_loc = os.environ.get("DEVCORE_LOCAL_ROOT")
+    DEVCORE_LOCAL = Path(env_loc) if env_loc else DEVCORE_DATA
 DEVCORE_SCRIPTS = DEVCORE_ROOT / "Scripts"
 
 def apply_rtk(text: str) -> str:

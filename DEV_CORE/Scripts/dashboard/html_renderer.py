@@ -15,6 +15,7 @@ from .utils import (
     load_project_paths,
     check_port,
     DATA_ROOT,
+    LOCAL_ROOT,
     PLATFORM_ROOT,
     get_dropbox_sync_status
 )
@@ -25,7 +26,7 @@ from .data_loader import (
 )
 
 def get_qdrant_points_count() -> int:
-    cache_file = DATA_ROOT / "Runtime" / "qdrant_points_cache.json"
+    cache_file = LOCAL_ROOT / "Runtime" / "qdrant_points_cache.json"
     if cache_file.exists():
         try:
             mtime = cache_file.stat().st_mtime
@@ -210,7 +211,7 @@ def render_repowise_health_card(project_name: str, health_data: dict, target_rep
 
 def get_services_html(projects: list, token_metrics: dict) -> str:
     # 1. Vector Database (sqlite-vec / devcore.db)
-    db_file = DATA_ROOT / "devcore.db"
+    db_file = LOCAL_ROOT / "devcore.db"
     qdrant_ok = db_file.exists()
     db_size_mb = round(db_file.stat().st_size / (1024 * 1024), 1) if qdrant_ok else 0
     qdrant_desc = f"devcore.db unifié ({db_size_mb} MB) | sqlite-vec active" if qdrant_ok else "devcore.db"
@@ -242,8 +243,8 @@ def get_services_html(projects: list, token_metrics: dict) -> str:
     
     # 5. Scheduler (Hermes)
     is_hermes_alive = False
-    jobs_file = DATA_ROOT / "Scheduler" / "jobs.json"
-    last_tick_file = DATA_ROOT / "Scheduler" / "last_tick.txt"
+    jobs_file = LOCAL_ROOT / "Scheduler" / "jobs.json"
+    last_tick_file = LOCAL_ROOT / "Scheduler" / "last_tick.txt"
     last_tick_sec = 9999
     if last_tick_file.exists():
         try:
@@ -313,7 +314,7 @@ def get_services_html(projects: list, token_metrics: dict) -> str:
     active_health_score = 8.0
     active_alert_files = 1
 
-    cache_path = DATA_ROOT / "Runtime" / "repowise_health_cache.json"
+    cache_path = LOCAL_ROOT / "Runtime" / "repowise_health_cache.json"
     health_cache = {}
     if cache_path.exists():
         try:
@@ -540,7 +541,7 @@ def get_services_html(projects: list, token_metrics: dict) -> str:
 
 def get_hooks_html() -> str:
     try:
-        log_dir = DATA_ROOT / "Logs" / "scripts"
+        log_dir = LOCAL_ROOT / "Logs" / "scripts"
         log_dir.mkdir(parents=True, exist_ok=True)
         sync_log_file = log_dir / f"task_sync_{datetime.now().strftime('%Y-%m-%d')}.log"
         sync_log_file.write_text(f"task_sync executed at {datetime.now().isoformat()}\n", encoding="utf-8")
@@ -749,7 +750,7 @@ def get_context_composition_html(projects: list) -> str:
 def get_metrics_service_status() -> dict:
     import datetime as _datetime
     try:
-        metrics_dir = DATA_ROOT / "Logs" / "metrics"
+        metrics_dir = LOCAL_ROOT / "Logs" / "metrics"
         if not metrics_dir.exists():
             metrics_dir = DATA_ROOT / "Metrics"
         today_str = _datetime.date.today().strftime("%Y-%m-%d")

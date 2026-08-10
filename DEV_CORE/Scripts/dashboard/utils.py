@@ -11,6 +11,13 @@ from pathlib import Path
 # Load environment or default paths
 PLATFORM_ROOT = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", str(Path(__file__).resolve().parents[3] / "DEV_CORE")))
 DATA_ROOT = Path(os.environ.get("DEVCORE_DATA_ROOT", str(Path(__file__).resolve().parents[3] / "DEV_CORE_DATA")))
+env_local = os.environ.get("DEVCORE_LOCAL_ROOT")
+if env_local:
+    LOCAL_ROOT = Path(env_local)
+elif os.name == "nt" and os.getenv("LOCALAPPDATA"):
+    LOCAL_ROOT = Path(os.getenv("LOCALAPPDATA")) / "DEV_CORE_LOCAL"
+else:
+    LOCAL_ROOT = DATA_ROOT.parent / "DEV_CORE_DATA_local"
 IS_IN_DOCKER = Path("/.dockerenv").exists() or os.getenv("DEVCORE_PLATFORM_ROOT") == "/app/DEV_CORE"
 
 SERVICE_HOSTS = {
@@ -60,10 +67,13 @@ def format_tokens(tokens) -> str:
         return f"{round(tokens_val/1000, 1)}K"
     return "0"
 
-def get_last_log_time(prefix: str, data_root: Path = DATA_ROOT) -> datetime:
-    log_dir = data_root / "Logs" / "scripts"
+def get_last_log_time(prefix: str, data_root: Path = None) -> datetime:
+    root = data_root or LOCAL_ROOT
+    log_dir = root / "Logs" / "scripts"
     if not log_dir.exists():
-        return None
+        log_dir = DATA_ROOT / "Logs" / "scripts"
+        if not log_dir.exists():
+            return None
     try:
         files = list(log_dir.glob(f"{prefix}*.log"))
         if not files:
@@ -172,7 +182,9 @@ def get_active_project(data_root: Path = DATA_ROOT) -> str:
         return cached
     # Read active_project.txt if present
     try:
-        txt_file = data_root / "Runtime" / "active_project.txt"
+        txt_file = LOCAL_ROOT / "Runtime" / "active_project.txt"
+        if not txt_file.exists():
+            txt_file = DATA_ROOT / "Runtime" / "active_project.txt"
         if txt_file.exists():
             return txt_file.read_text(encoding="utf-8-sig").strip()
     except Exception:

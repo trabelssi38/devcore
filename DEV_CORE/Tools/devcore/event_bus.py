@@ -28,9 +28,12 @@ class EventBus:
         if self.data_root:
             return self.data_root
         try:
-            return get_paths().data_root
+            return get_paths().local_root
         except Exception:
             # Fallback path if platform environment is not configured
+            local_app = os.getenv("LOCALAPPDATA")
+            if local_app:
+                return Path(local_app) / "DEV_CORE_LOCAL"
             return Path("C:/devcore/DEV_CORE_DATA")
 
     def subscribe(self, event_type: str, callback: Callable[[Dict[str, Any]], None]) -> None:

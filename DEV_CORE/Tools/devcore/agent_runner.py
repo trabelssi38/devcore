@@ -136,7 +136,11 @@ class CodexManualAgentRunner(AgentRunner):
 
     def run(self, task: dict, timeout: int = 300) -> dict:
         task_id = task.get("id", "unknown")
-        session_dir = self.data_root / "Sessions" / task_id
+        try:
+            from devcore.paths import get_paths
+            session_dir = get_paths().session_root / task_id
+        except Exception:
+            session_dir = self.data_root / "Sessions" / task_id
         session_dir.mkdir(parents=True, exist_ok=True)
         
         prompt_file = session_dir / "manual-instruction.md"

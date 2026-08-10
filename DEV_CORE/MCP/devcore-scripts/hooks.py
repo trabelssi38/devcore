@@ -11,10 +11,13 @@ from typing import Dict, Any, List, Callable
 
 DEVCORE_ROOT = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", "C:/devcore/DEV_CORE"))
 try:
-    from devcore_engine.db import get_data_root
+    from devcore_engine.db import get_data_root, get_local_data_root
     DEVCORE_DATA = get_data_root()
+    DEVCORE_LOCAL = get_local_data_root()
 except Exception:
     DEVCORE_DATA = Path(os.environ.get("DEVCORE_DATA_ROOT", "C:/devcore/DEV_CORE_DATA"))
+    env_loc = os.environ.get("DEVCORE_LOCAL_ROOT")
+    DEVCORE_LOCAL = Path(env_loc) if env_loc else DEVCORE_DATA
 CONFIG_PATH = DEVCORE_ROOT / "Config" / "mcp_hooks.json"
 
 class CircuitBreakerOpenError(Exception):
@@ -93,7 +96,7 @@ def pre_circuit_breaker(tool_name: str, arguments: dict, context: dict):
     circuit_breaker_instance.check(tool_name)
 
 def pre_token_budget_check(tool_name: str, arguments: dict, context: dict):
-    alerts_file = DEVCORE_DATA / "Logs" / "scripts" / "alerts.log"
+    alerts_file = DEVCORE_LOCAL / "Logs" / "scripts" / "alerts.log"
     if alerts_file.exists():
         try:
             lines = alerts_file.read_text(encoding="utf-8").strip().splitlines()
@@ -104,7 +107,7 @@ def pre_token_budget_check(tool_name: str, arguments: dict, context: dict):
 
 def pre_audit_log_entry(tool_name: str, arguments: dict, context: dict):
     try:
-        bus_dir = DEVCORE_DATA / "Bus" / "events"
+        bus_dir = DEVCORE_LOCAL / "Bus" / "events"
         bus_dir.mkdir(parents=True, exist_ok=True)
         ts_str = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:19]
         evt_file = bus_dir / f"{ts_str}_mcp_pre_{tool_name}.json"
@@ -137,7 +140,7 @@ def post_rtk_compress(tool_name: str, arguments: dict, result: dict, context: di
 
 def post_token_usage_log(tool_name: str, arguments: dict, result: dict, context: dict) -> dict:
     try:
-        metrics_dir = DEVCORE_DATA / "Logs" / "metrics"
+        metrics_dir = DEVCORE_LOCAL / "Logs" / "metrics"
         metrics_dir.mkdir(parents=True, exist_ok=True)
         usage_log = metrics_dir / "mcp_token_usage.log"
         
@@ -160,7 +163,7 @@ def post_quality_score_update(tool_name: str, arguments: dict, result: dict, con
 
 def post_audit_log_exit(tool_name: str, arguments: dict, result: dict, context: dict) -> dict:
     try:
-        bus_dir = DEVCORE_DATA / "Bus" / "events"
+        bus_dir = DEVCORE_LOCAL / "Bus" / "events"
         bus_dir.mkdir(parents=True, exist_ok=True)
         ts_str = datetime.now().strftime("%Y%m%d_%H%M%S_%f")[:19]
         evt_file = bus_dir / f"{ts_str}_mcp_post_{tool_name}.json"

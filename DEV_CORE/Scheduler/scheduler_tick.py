@@ -273,10 +273,10 @@ def main_loop(db_path: Path, jobs_json_path: Path, lock_path: Path) -> None:
 
 if __name__ == "__main__":
     paths = get_paths()
-    db_path = paths.data_root / "Scheduler" / "scheduler.db"
-    jobs_json_path = paths.data_root / "Scheduler" / "jobs.json"
-    lock_path = paths.data_root / "Scheduler" / "scheduler.lock"
-    log_dir = paths.data_root / "Logs" / "scheduler"
+    db_path = paths.local_root / "Scheduler" / "scheduler.db"
+    jobs_json_path = paths.local_root / "Scheduler" / "jobs.json"
+    lock_path = paths.local_root / "Scheduler" / "scheduler.lock"
+    log_dir = paths.local_root / "Logs" / "scheduler"
     
     # Init logging
     scheduler_logs.setup_scheduler_logging(log_dir)
@@ -284,7 +284,7 @@ if __name__ == "__main__":
     # Initial Sync/Bootstrap from jobs.devcore.json
     try:
         import scheduler_sync
-        scheduler_sync.sync_registry(platform_root, paths.data_root)
+        scheduler_sync.sync_registry(platform_root, paths.local_root)
     except Exception as e:
         logger.error(f"Failed to synchronize jobs registry on startup: {e}")
         # Fallback to bootstrap if sync_registry fails

@@ -9,6 +9,7 @@ from pathlib import Path
 class DevCorePaths:
     platform_root: Path
     data_root: Path
+    local_root: Path
     bus_root: Path
     session_root: Path
     vault_root: Path
@@ -36,12 +37,20 @@ def get_paths() -> DevCorePaths:
         os.environ.get("DEVCORE_DATA_ROOT", str(repo_root / "DEV_CORE_DATA"))
     )
 
-    bus_root = platform_root / "Bus"
-    session_root = data_root / "Sessions"
+    env_local = os.environ.get("DEVCORE_LOCAL_ROOT")
+    if env_local:
+        local_root = _canonicalize_root(env_local)
+    elif os.name == "nt" and os.getenv("LOCALAPPDATA"):
+        local_root = Path(os.getenv("LOCALAPPDATA")) / "DEV_CORE_LOCAL"
+    else:
+        local_root = data_root.parent / "DEV_CORE_DATA_local"
+
+    bus_root = local_root / "Bus"
+    session_root = local_root / "Sessions"
+    logs_root = local_root / "Logs"
     vault_root = data_root / "Vault"
     memory_root = data_root / "Memory"
     schema_root = platform_root / "Schemas"
-    logs_root = data_root / "Logs"
     router_log_root = logs_root / "router"
     scoring_log_root = logs_root / "scoring"
     qdrant_refresh_queue = memory_root / "qdrant-refresh.jsonl"
@@ -72,6 +81,7 @@ def get_paths() -> DevCorePaths:
     return DevCorePaths(
         platform_root=platform_root,
         data_root=data_root,
+        local_root=local_root,
         bus_root=bus_root,
         session_root=session_root,
         vault_root=vault_root,

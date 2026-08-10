@@ -36,8 +36,9 @@ class SystemWatcher:
     def __init__(self, conn: Optional[sqlite3.Connection] = None):
         self.conn = conn or init_db()
         self.data_root = get_data_root()
+        self.local_root = get_local_data_root()
         self.event_bus = EventBus(self.conn)
-        self.log_dir = self.data_root / "Logs" / "scripts"
+        self.log_dir = self.local_root / "Logs" / "scripts"
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self.log_file = self.log_dir / f"system_watcher_{time.strftime('%Y-%m-%d')}.log"
 
@@ -166,9 +167,9 @@ class SystemWatcher:
         headroom_cfg = DEV_CORE_ROOT / "Config" / "headroom_config.yaml"
         if headroom_cfg.exists():
             try:
-                cache_p = (self.data_root / "Cache" / "headroom").as_posix()
+                cache_p = (self.local_root / "Cache" / "headroom").as_posix()
                 stats_p = (self.data_root / "Metrics" / "headroom_stats.json").as_posix()
-                (self.data_root / "Cache" / "headroom").mkdir(parents=True, exist_ok=True)
+                (self.local_root / "Cache" / "headroom").mkdir(parents=True, exist_ok=True)
                 (self.data_root / "Metrics").mkdir(parents=True, exist_ok=True)
                 cfg_content = headroom_cfg.read_text(encoding="utf-8")
                 lines = []

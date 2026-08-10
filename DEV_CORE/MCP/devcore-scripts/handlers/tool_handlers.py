@@ -8,6 +8,7 @@ from pathlib import Path
 from services.task_service import (
     DEVCORE_ROOT,
     DEVCORE_DATA,
+    DEVCORE_LOCAL,
     DEVCORE_SCRIPTS,
     run_python_script,
     get_active_project,
@@ -64,7 +65,7 @@ def run_powershell_script(script_path: Path, args: list = None) -> dict:
 
 def emit_event(event_type: str, payload: dict) -> dict:
     try:
-        bus_dir = DEVCORE_DATA / "Bus" / "events"
+        bus_dir = DEVCORE_LOCAL / "Bus" / "events"
         bus_dir.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         evt_file = bus_dir / f"{timestamp}_{event_type}.json"
@@ -86,7 +87,7 @@ def emit_event(event_type: str, payload: dict) -> dict:
 # Handlers registry pattern to reduce CCN from 23 to 1
 def handle_launch(arguments: dict) -> dict:
     (DEVCORE_DATA / "Memory").mkdir(parents=True, exist_ok=True)
-    (DEVCORE_DATA / "Logs" / "scripts").mkdir(parents=True, exist_ok=True)
+    (DEVCORE_LOCAL / "Logs" / "scripts").mkdir(parents=True, exist_ok=True)
     run_python_script(DEVCORE_SCRIPTS / "Auto" / "token_report.py")
     return {"success": True, "stdout": "Daily launch sequence completed natively in Python."}
 

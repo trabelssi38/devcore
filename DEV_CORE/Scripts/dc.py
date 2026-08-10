@@ -100,6 +100,14 @@ def get_active_project():
 def get_data_root():
     return Path(os.environ.get("DEVCORE_DATA_ROOT", str(Path(__file__).resolve().parents[2] / "DEV_CORE_DATA")))
 
+def get_local_root():
+    env_local = os.environ.get("DEVCORE_LOCAL_ROOT")
+    if env_local:
+        return Path(env_local)
+    if os.name == "nt" and os.getenv("LOCALAPPDATA"):
+        return Path(os.getenv("LOCALAPPDATA")) / "DEV_CORE_LOCAL"
+    return get_data_root().parent / "DEV_CORE_DATA_local"
+
 def get_platform_title():
     try:
         plat_json = DEV_CORE / "Config" / "platform.json"
@@ -248,7 +256,7 @@ def cmd_next_task(args):
 
         # Write empty session context
         proj_dir.mkdir(parents=True, exist_ok=True)
-        logs_dir = data_root / "Logs" / "scripts"
+        logs_dir = get_local_root() / "Logs" / "scripts"
         logs_dir.mkdir(parents=True, exist_ok=True)
         
         ctx_txt = f"[DEV_CORE] Aucune tache active\n[DEV_CORE] Toutes les taches accomplies : {done_count}/{total_count}\n[DEV_CORE] Commencer par: dc new task 'description' -mode reasoning|coding|bulk"
@@ -306,7 +314,7 @@ def cmd_next_task(args):
         f"[DEV_CORE] Steps  : {steps_str}\n"
         f"[DEV_CORE] Tag git: [{current['id']}]"
     )
-    logs_dir = data_root / "Logs" / "scripts"
+    logs_dir = get_local_root() / "Logs" / "scripts"
     logs_dir.mkdir(parents=True, exist_ok=True)
     proj_dir.mkdir(parents=True, exist_ok=True)
 
@@ -391,11 +399,12 @@ def cmd_doctor(args):
 
     # 2. Critical Dirs
     data_path = get_data_root()
+    local_path = get_local_root()
     dirs = {
         "Memory": data_path / "Memory",
-        "Logs/scripts": data_path / "Logs" / "scripts",
-        "Backups/auto": data_path / "Backups" / "auto",
-        "Sessions": data_path / "Sessions"
+        "Logs/scripts": local_path / "Logs" / "scripts",
+        "Backups/auto": local_path / "Backups" / "auto",
+        "Sessions": local_path / "Sessions"
     }
     for name, p in dirs.items():
         check(f"Dossier {name} present", "OK" if p.exists() else "WARN", f"mkdir {p}")
@@ -596,8 +605,8 @@ def cmd_profile(args):
     print("")
 
 def cmd_scheduler_status(args):
-    data_root = get_data_root()
-    jobs_file = data_root / "Scheduler" / "jobs.json"
+    local_root = get_local_root()
+    jobs_file = local_root / "Scheduler" / "jobs.json"
     
     print("")
     print_color("  DEV_CORE Scheduler Status", "cyan")
