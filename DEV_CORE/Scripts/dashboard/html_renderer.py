@@ -209,7 +209,7 @@ def render_repowise_health_card(project_name: str, health_data: dict, target_rep
 
 def get_services_html(projects: list, token_metrics: dict) -> str:
     # 1. Vector Database (sqlite-vec / devcore.db)
-    db_file = Path("C:/devcore/DEV_CORE_DATA/devcore.db")
+    db_file = DATA_ROOT / "devcore.db"
     qdrant_ok = db_file.exists()
     db_size_mb = round(db_file.stat().st_size / (1024 * 1024), 1) if qdrant_ok else 0
     qdrant_desc = f"devcore.db unifié ({db_size_mb} MB) | sqlite-vec active" if qdrant_ok else "devcore.db"
@@ -292,6 +292,8 @@ def get_services_html(projects: list, token_metrics: dict) -> str:
     
     files_count = 0
     repowise_kg_file = PLATFORM_ROOT.parent / ".repowise" / "knowledge-graph.json"
+    if not repowise_kg_file.exists():
+        repowise_kg_file = DATA_ROOT / ".repowise" / "knowledge-graph.json"
     if not repowise_kg_file.exists():
         repowise_kg_file = Path("C:/devcore/.repowise/knowledge-graph.json")
     if repowise_kg_file.exists():

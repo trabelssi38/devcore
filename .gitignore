@@ -80,3 +80,6 @@ qc
 
 # Virtual Environment
 hermes/
+
+# repowise API keys (local)
+.repowise/.env

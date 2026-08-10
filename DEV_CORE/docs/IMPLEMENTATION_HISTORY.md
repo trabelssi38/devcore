@@ -208,4 +208,5 @@ Chronologie consolidee des implementations et plans. Source principale : histori
 | T-355 | **Correctif du Tri des Tâches Git Cockpit** : Tri chronologique des tâches complétées par datetime avant l'ID | Réintégration des tâches `T-GIT-*` issues de commits récents et non taggués, évitant leur disparition due à la troncature. |
 | T-356 | **Activation par défaut du Task Runner Hermes** : Passage de `enabled` à `true` pour `active_agent_task_runner` | Permet aux tâches en arrière-plan et aux agents actifs de s'exécuter périodiquement de manière stable. |
 | T-357 | **Freshness de task_sync dans le Cockpit** : Touch automatique du fichier de log de synchronisation de tâches à chaque passage | Maintien de l'indicateur d'état `task_sync` au vert (OK) en temps réel. |
+| T-358 | **Résolution Dynamique des Chemins & Fix Native Services (v10.4)** | Remplacement des chemins `C:/devcore` en dur dans `html_renderer.py`, `headroom_start.ps1` et `system_watcher.py` par `DATA_ROOT`, `shutil.which` et `sys.prefix`. Restauration au vert (OK) de SQLite Vector DB et Headroom Proxy. |
 

@@ -1453,6 +1453,12 @@ Le score combine pertinence, fraicheur et autorite de source. `memory_hierarchy.
 
 ## Changelog v9
 
+### 2026-08-10 — v10.4 Native Service Dynamic Path Resolution & Headroom Proxy Fix
+
+- ✅ **Résolution dynamique de `devcore.db` (`sqlite-vec`)** : Remplacement du chemin codé en dur `C:/devcore/DEV_CORE_DATA/devcore.db` dans `html_renderer.py` par la constante dynamique `DATA_ROOT / "devcore.db"` (`DEVCORE_DATA_ROOT`), éliminant l'affichage erroné du statut "HS" (rouge) sur les volumes non-C:.
+- ✅ **Lancement dynamique de Headroom Proxy** : Correction du paramètre `-WorkingDirectory "C:\devcore"` dans `headroom_start.ps1` pour utiliser le répertoire du projet `$DEV_CORE` de manière totalement portable.
+- ✅ **Détection multi-environnement Python** : Amélioration de la détection de `headroom.exe` dans `system_watcher.py` et `headroom_start.ps1` via `shutil.which` et `sys.prefix`, assurant le repérage immédiat avec les installations Python récentes (Python 3.14+).
+
 ### 2026-07-13 — v10.0 Repowise Dashboard Windows Loopback Fix
 
 - ✅ **Dashboard Repowise non vide** : correction du cas Windows où l'UI Repowise se charge mais affiche `0 repositories registered` parce que `localhost:7337` est résolu vers IPv6 (`::1`) alors que l'API écoute en IPv4 (`127.0.0.1`).

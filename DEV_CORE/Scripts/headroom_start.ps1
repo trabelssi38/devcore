@@ -48,26 +48,44 @@ Log "  Dossiers de cache et metriques configures." "Gray"
 
 # Trouver l'executable headroom.exe
 $headroomPath = "headroom"
-$customPaths = @(
-    "$env:USERPROFILE\AppData\Roaming\Python\Python313\Scripts\headroom.exe",
-    "C:\Users\trb_m\AppData\Roaming\Python\Python313\Scripts\headroom.exe",
-    "$env:USERPROFILE\AppData\Roaming\Python\Scripts\headroom.exe"
-)
-foreach ($p in $customPaths) {
-    if (Test-Path $p) {
-        $headroomPath = $p
-        break
+$cmd = Get-Command "headroom" -ErrorAction SilentlyContinue
+if ($cmd) {
+    $headroomPath = $cmd.Source
+} else {
+    $pyCmd = Get-Command "python" -ErrorAction SilentlyContinue
+    if ($pyCmd) {
+        $pyDir = Split-Path $pyCmd.Source
+        $pyScriptsHeadroom = Join-Path $pyDir "Scripts\headroom.exe"
+        if (Test-Path $pyScriptsHeadroom) {
+            $headroomPath = $pyScriptsHeadroom
+        }
     }
 }
+if ($headroomPath -eq "headroom") {
+    $customPaths = @(
+        "$env:USERPROFILE\AppData\Roaming\Python\Python313\Scripts\headroom.exe",
+        "$env:USERPROFILE\AppData\Roaming\Python\Python314\Scripts\headroom.exe",
+        "C:\Users\trb_m\AppData\Roaming\Python\Python313\Scripts\headroom.exe",
+        "$env:USERPROFILE\AppData\Roaming\Python\Scripts\headroom.exe"
+    )
+    foreach ($p in $customPaths) {
+        if (Test-Path $p) {
+            $headroomPath = $p
+            break
+        }
+    }
+}
+
+$workDir = if (Test-Path $DEV_CORE) { Split-Path -Parent $DEV_CORE } else { $PSScriptRoot }
 
 # Lancement
 try {
     Log "  Lancement du processus Headroom Proxy via $headroomPath..." "Gray"
     
     try {
-        $proc = Start-Process -FilePath $headroomPath -ArgumentList "proxy", "--port", "8787", "--openai-api-url", "http://127.0.0.1:20130/v1" -WorkingDirectory "C:\devcore" -WindowStyle Hidden -PassThru -ErrorAction Stop
+        $proc = Start-Process -FilePath $headroomPath -ArgumentList "proxy", "--port", "8787", "--openai-api-url", "http://127.0.0.1:20130/v1" -WorkingDirectory $workDir -WindowStyle Hidden -PassThru -ErrorAction Stop
     } catch {
-        $proc = Start-Process -FilePath $headroomPath -ArgumentList "proxy", "--port", "8787", "--openai-api-url", "http://127.0.0.1:20130/v1" -WorkingDirectory "C:\devcore" -PassThru
+        $proc = Start-Process -FilePath $headroomPath -ArgumentList "proxy", "--port", "8787", "--openai-api-url", "http://127.0.0.1:20130/v1" -WorkingDirectory $workDir -PassThru
     }
 
     # Attendre que le port soit ouvert (timeout 15s)

@@ -162,17 +162,24 @@ class SystemWatcher:
         report["dashboard_api"] = self.check_and_heal_service("Dashboard API", "127.0.0.1", 20129, dash_cmd, wait_timeout=5.0)
 
         # 3. Headroom Proxy (8787) - needs 15s start timeout
-        headroom_exe = None
-        custom_paths = [
-            Path(os.path.expanduser(r"~\AppData\Roaming\Python\Python313\Scripts\headroom.exe")),
-            Path(r"C:\Users\trb_m\AppData\Roaming\Python\Python313\Scripts\headroom.exe"),
-            Path(os.path.expanduser(r"~\AppData\Roaming\Python\Scripts\headroom.exe")),
-            Path(r"C:\Program Files\Python313\Scripts\headroom.exe"),
-        ]
-        for p in custom_paths:
-            if p.exists():
-                headroom_exe = str(p)
-                break
+        import shutil
+        headroom_exe = shutil.which("headroom")
+        if not headroom_exe:
+            py_scripts_headroom = Path(sys.prefix) / "Scripts" / "headroom.exe"
+            if py_scripts_headroom.exists():
+                headroom_exe = str(py_scripts_headroom)
+        if not headroom_exe:
+            custom_paths = [
+                Path(os.path.expanduser(r"~\AppData\Roaming\Python\Python313\Scripts\headroom.exe")),
+                Path(os.path.expanduser(r"~\AppData\Roaming\Python\Python314\Scripts\headroom.exe")),
+                Path(r"C:\Users\trb_m\AppData\Roaming\Python\Python313\Scripts\headroom.exe"),
+                Path(os.path.expanduser(r"~\AppData\Roaming\Python\Scripts\headroom.exe")),
+                Path(r"C:\Program Files\Python313\Scripts\headroom.exe"),
+            ]
+            for p in custom_paths:
+                if p.exists():
+                    headroom_exe = str(p)
+                    break
 
         if headroom_exe:
             headroom_cmd = [headroom_exe, "proxy", "--port", "8787", "--openai-api-url", "http://127.0.0.1:20130/v1"]
