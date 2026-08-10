@@ -454,7 +454,11 @@ def discover_projects(memory_path):
 
     # 1. Read tasks from devcore.db
     devcore_data = Path(memory_path).parent
-    db_path = devcore_data / "devcore.db"
+    env_local = os.getenv("DEVCORE_LOCAL_ROOT")
+    local_dir = Path(env_local) if env_local else (Path(os.getenv("LOCALAPPDATA", "")) / "DEV_CORE_LOCAL" if os.getenv("LOCALAPPDATA") else devcore_data)
+    db_path = local_dir / "devcore.db"
+    if not db_path.exists():
+        db_path = devcore_data / "devcore.db"
     if db_path.exists():
         try:
             conn = sqlite3.connect(db_path)
@@ -611,7 +615,11 @@ def get_active_task_for_project(project, is_recent=True):
             pass
 
     if not task_id:
-        db_path = devcore_data / "devcore.db"
+        env_local = os.getenv("DEVCORE_LOCAL_ROOT")
+        local_dir = Path(env_local) if env_local else (Path(os.getenv("LOCALAPPDATA", "")) / "DEV_CORE_LOCAL" if os.getenv("LOCALAPPDATA") else devcore_data)
+        db_path = local_dir / "devcore.db"
+        if not db_path.exists():
+            db_path = devcore_data / "devcore.db"
         if db_path.exists():
             try:
                 conn = sqlite3.connect(db_path)

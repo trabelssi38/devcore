@@ -285,9 +285,10 @@ def load_plugins_registry(data_root: Path = DATA_ROOT) -> dict:
 def load_projects_and_tasks(data_root: Path = DATA_ROOT, platform_root: Path = PLATFORM_ROOT, token_metrics: dict = None) -> tuple:
     projects = []
     task_details = {}
-    db_path = data_root / "devcore.db"
-    
-    if db_path.exists():
+    db_path = LOCAL_ROOT / "devcore.db"
+    if not db_path.exists():
+        db_path = data_root / "devcore.db"
+
         try:
             conn = sqlite3.connect(db_path)
             sync_tasks_from_memory(conn, data_root)

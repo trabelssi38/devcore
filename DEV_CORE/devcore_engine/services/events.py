@@ -13,7 +13,7 @@ import sqlite3
 import uuid
 from typing import Any, Dict, List, Optional
 
-from devcore_engine.db import connect_db, init_db
+from devcore_engine.db import connect_db, init_db, get_db_path
 
 
 class EventBus:
@@ -21,7 +21,7 @@ class EventBus:
         if isinstance(conn, (Path, str)):
             p = Path(conn)
             if p.is_dir():
-                p = p / "devcore.db"
+                p = get_db_path()
             self.conn = connect_db(p)
         elif conn is not None:
             self.conn = conn

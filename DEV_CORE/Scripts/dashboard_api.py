@@ -66,6 +66,19 @@ def ensure_within_root(path, root):
     return resolved_path
 
 
+env_local = os.getenv("DEVCORE_LOCAL_ROOT")
+if env_local:
+    LOCAL_ROOT = Path(env_local)
+elif os.name == "nt" and os.getenv("LOCALAPPDATA"):
+    LOCAL_ROOT = Path(os.getenv("LOCALAPPDATA")) / "DEV_CORE_LOCAL"
+else:
+    LOCAL_ROOT = Path(DATA_ROOT).parent / "DEV_CORE_DATA_local"
+
+
+def get_local_path(*parts):
+    return Path(LOCAL_ROOT).joinpath(*parts)
+
+
 def get_platform_path(*parts):
     return ensure_within_root(Path(PLATFORM_ROOT).joinpath(*parts), PLATFORM_ROOT)
 
@@ -190,7 +203,7 @@ def get_settings_secrets_path():
 
 
 def get_active_client_runtime_path():
-    return get_data_path("Runtime", "active_client.txt")
+    return get_local_path("Runtime", "active_client.txt")
 
 
 def sanitize_public_settings(data):
@@ -544,11 +557,11 @@ def run_plugin_check(plugin_id):
 
 
 def get_dashboard_read_model_path():
-    return get_data_path("Dashboard", "read_model.json")
+    return get_local_path("Dashboard", "read_model.json")
 
 
 def get_cached_dashboard_payload_path():
-    return get_data_path("Dashboard", "dashboard_payload.json")
+    return get_local_path("Dashboard", "dashboard_payload.json")
 
 
 def load_dashboard_read_model():
@@ -801,7 +814,7 @@ def delete_task(project, task_id):
         print(f"[DashboardAPI] Successfully saved deleted task in tasks.json.")
 
         # Delete from SQLite database
-        db_path = Path(DATA_ROOT) / "devcore.db"
+        db_path = get_local_path("devcore.db")
         if db_path.exists():
             try:
                 import sqlite3
@@ -886,8 +899,8 @@ def get_last_modified_timestamp():
     
     files_to_watch = [
         get_data_path("Memory", projName, "tasks.json"),
-        get_data_path("devcore.db"),
-        get_data_path("Bus", "events.jsonl")
+        get_local_path("devcore.db"),
+        get_local_path("Bus", "events.jsonl")
     ]
     
     mtimes = []
@@ -1007,7 +1020,7 @@ async def get_dashboard_tasks_route(request: Request, project: str = "", limit: 
         raise HTTPException(status_code=401, detail="Unauthorized")
     
     try:
-        db_path = get_data_path("devcore.db")
+        db_path = get_local_path("devcore.db")
         import sqlite3
         conn = sqlite3.connect(db_path)
         cur = conn.cursor()

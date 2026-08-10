@@ -12,7 +12,7 @@ import json
 import sqlite3
 from typing import Any, Dict, List, Optional, Set
 
-from devcore_engine.db import connect_db, init_db
+from devcore_engine.db import connect_db, init_db, get_db_path
 
 
 class KnowledgeGraph:
@@ -20,7 +20,7 @@ class KnowledgeGraph:
         if isinstance(conn, (Path, str)):
             p = Path(conn)
             if p.is_dir():
-                p = p / "devcore.db"
+                p = get_db_path()
             self.conn = connect_db(p)
         elif conn is not None:
             self.conn = conn

@@ -62,6 +62,13 @@ class MultiProjectGitScanner:
         new_count = 0
         cur = self.conn.cursor()
 
+        # Ensure project exists in projects table for FK constraint
+        cur.execute("""
+            INSERT INTO projects (id, name, root_path, status, created_at, updated_at)
+            VALUES (?, ?, ?, 'active', datetime('now'), datetime('now'))
+            ON CONFLICT(id) DO UPDATE SET root_path=excluded.root_path, updated_at=datetime('now')
+        """, (name, name, str(repo_path)))
+
         # Get existing task titles & commit hashes for this project
         cur.execute("SELECT id, title, metadata FROM tasks WHERE project_id=?", (name,))
         existing_rows = cur.fetchall()
@@ -80,11 +87,11 @@ class MultiProjectGitScanner:
             if not msg or len(msg) < 3 or msg.startswith("Merge "):
                 continue
 
-            # Check if tag [T-XX] is present in commit message
-            match = re.search(r"\[(T-\d+)\]", msg, re.IGNORECASE)
+            # Check if tag [T-XX] or (T-XX) is present in commit message
+            match = re.search(r"[\(\[](T-\d+)[\)\]]", msg, re.IGNORECASE)
             if match:
                 task_id = match.group(1).upper()
-                clean_title = re.sub(r"\[T-\d+\]", "", msg, flags=re.IGNORECASE).strip()
+                clean_title = re.sub(r"[\(\[]T-\d+[\)\]]", "", msg, flags=re.IGNORECASE).strip()
             else:
                 # Deterministic ID for non-tagged commits: T-GIT-<short_hash>
                 short_hash = commit_hash[:7]
@@ -109,7 +116,7 @@ class MultiProjectGitScanner:
                 cur.execute("""
                     INSERT INTO tasks (id, project_id, title, status, mode, steps_total, steps_done, metadata, started_at, completed_at, created_at, updated_at)
                     VALUES (?, ?, ?, 'done', 'git', 1, 1, ?, ?, ?, ?, datetime('now'))
-                    ON CONFLICT(id) DO UPDATE SET
+                    ON CONFLICT(id, project_id) DO UPDATE SET
                         project_id=excluded.project_id,
                         title=excluded.title,
                         status='done',
@@ -142,6 +149,16 @@ class MultiProjectGitScanner:
                 total_new += added
 
         # Also sync tasks.json for backward compatibility
+        try:
+            from devcore_engine.services.tasks import TaskService
+            ts = TaskService(self.conn)
+            for p in projects:
+                p_name = p.get("name")
+                if p_name:
+                    ts._sync_to_legacy_json(p_name)
+        except Exception:
+            pass
+
         try:
             from devcore_engine.infra.system_watcher import SystemWatcher
             # Trigger gen_dashboard.py if commits were added

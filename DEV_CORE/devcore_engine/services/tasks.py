@@ -24,7 +24,7 @@ class TaskService:
             self.data_root = get_data_root()
         else:
             self.data_root = data_root or get_data_root()
-            self.conn = connect_db(self.data_root / "devcore.db")
+            self.conn = connect_db()
         self.event_bus = EventBus(self.conn)
 
 
