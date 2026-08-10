@@ -18,13 +18,14 @@ except ImportError:
 
 
 def get_data_root() -> Path:
+    """Returns DEVCORE_DATA_ROOT — the shared Dropbox folder (Memory, Plugins, Vault…)."""
     env_root = os.getenv("DEVCORE_DATA_ROOT")
-    
+
     is_default_or_missing = (
-        not env_root or 
-        "C:\\devcore\\DEV_CORE_DATA" in env_root or 
-        "\\DEV_CORE\\DEV_CORE_DATA" in env_root or 
-        not Path(env_root).exists()
+        not env_root
+        or "C:\\devcore\\DEV_CORE_DATA" in env_root
+        or "\\DEV_CORE\\DEV_CORE_DATA" in env_root
+        or not Path(env_root).exists()
     )
 
     if not is_default_or_missing:
@@ -57,15 +58,47 @@ def get_data_root() -> Path:
     if env_root:
         return Path(env_root)
 
-    # Default fallback: parent of DEV_CORE directory / DEV_CORE_DATA
+    # Default fallback
     platform_root = os.getenv("DEVCORE_PLATFORM_ROOT", "C:/devcore/DEV_CORE")
     return Path(platform_root).parent / "DEV_CORE_DATA"
 
 
+def get_local_data_root() -> Path:
+    """Returns DEVCORE_LOCAL_ROOT — a local (non-Dropbox) directory for machine-specific
+    files such as devcore.db, Logs, Cache, Scheduler, Bus, etc.
+
+    Priority:
+    1. Env var DEVCORE_LOCAL_ROOT
+    2. <shared_root>_local/  sibling of the Dropbox DEV_CORE_DATA folder
+    3. %LOCALAPPDATA%/DEV_CORE_LOCAL on Windows
+    """
+    env_local = os.getenv("DEVCORE_LOCAL_ROOT")
+    if env_local and Path(env_local).parent.exists():
+        local = Path(env_local)
+        local.mkdir(parents=True, exist_ok=True)
+        return local
+
+    # Derive from the shared data root: replace Dropbox folder with LOCALAPPDATA sibling
+    if os.name == "nt":
+        local_app = os.getenv("LOCALAPPDATA")
+        if local_app:
+            local = Path(local_app) / "DEV_CORE_LOCAL"
+            local.mkdir(parents=True, exist_ok=True)
+            os.environ["DEVCORE_LOCAL_ROOT"] = str(local)
+            return local
+
+    # Generic fallback: sibling of shared root
+    shared = get_data_root()
+    local = shared.parent / "DEV_CORE_DATA_local"
+    local.mkdir(parents=True, exist_ok=True)
+    os.environ["DEVCORE_LOCAL_ROOT"] = str(local)
+    return local
+
+
 def get_db_path() -> Path:
-    data_root = get_data_root()
-    data_root.mkdir(parents=True, exist_ok=True)
-    return data_root / "devcore.db"
+    """devcore.db lives in the LOCAL root (never in Dropbox) to avoid sync conflicts."""
+    local_root = get_local_data_root()
+    return local_root / "devcore.db"
 
 
 def connect_db(db_path: Optional[Path] = None) -> sqlite3.Connection:

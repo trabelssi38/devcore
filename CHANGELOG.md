@@ -5,6 +5,18 @@ All notable changes to the **DEV_CORE** platform will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Semantic Versioning.
 
+## [10.3.4] - 2026-08-10
+
+### Added
+- **Architecture Deux Racines pour DEV_CORE_DATA (`db.py`)** : Introduction de `get_local_data_root()` qui retourne `%LOCALAPPDATA%\DEV_CORE_LOCAL` pour tous les fichiers machine-spécifiques. `get_db_path()` pointe désormais vers cette racine locale, séparant `devcore.db` et les fichiers runtime (Logs, Cache, Scheduler, Bus…) du dossier Dropbox partagé.
+- **Fichier `.dropboxignore`** : Création de `DEV_CORE_DATA/.dropboxignore` excluant `devcore.db`, `*.db-wal`, `*.db-shm`, `Logs/`, `Cache/`, `Runtime/`, `Scheduler/`, `Bus/`, `Sessions/`, `Backups/`, `Dashboard/`, `qdrant_storage/`, `Temp/` et `scratch/` de la synchronisation Dropbox (~97% de réduction).
+- **Documentation Architecture (`PATHS.md`)** : Refonte avec la distinction claire entre `DEVCORE_DATA_ROOT` (Dropbox, partagé) et `DEVCORE_LOCAL_ROOT` (local machine).
+
+### Fixed
+- **Suppression des Copies en Conflit SQLite** : Suppression des 3 fichiers `devcore (Copie en conflit de DESKTOP-*).db` (~72 MB) générés par Dropbox lors d'écritures WAL concurrentes.
+- **Migration de `devcore.db`** : Déplacement de `Dropbox/DEV_CORE_DATA/devcore.db` vers `%LOCALAPPDATA%\DEV_CORE_LOCAL\devcore.db` pour éliminer définitivement le risque de corruption SQLite-WAL via Dropbox.
+- **Portabilité de `headroom_config.yaml`** : Remplacement des chemins absolus Dropbox pour `cache_dir` et `stats.output` par des variables d'environnement portables `${LOCALAPPDATA}/DEV_CORE_LOCAL/…`.
+
 ## [10.3.3] - 2026-08-10
 
 ### Fixed
