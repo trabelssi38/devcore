@@ -18,7 +18,7 @@ DEV_CORE_ROOT = Path(__file__).parent.parent.parent.resolve()
 if str(DEV_CORE_ROOT) not in sys.path:
     sys.path.insert(0, str(DEV_CORE_ROOT))
 
-from devcore_engine.db import init_db, get_data_root
+from devcore_engine.db import init_db, get_data_root, get_local_data_root
 from devcore_engine.services.events import EventBus
 
 DETACHED_FLAG = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
