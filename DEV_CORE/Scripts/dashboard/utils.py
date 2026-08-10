@@ -263,3 +263,62 @@ def get_status_html(title, desc, is_ok, perf=None, solic=None, impact=None) -> s
   {metrics_html}
 </div>
 """
+
+
+def get_gdrive_sync_status() -> tuple[str, bool | str, str | None, str | None, str | None]:
+    """
+    Checks the status of Google Drive synchronization.
+    Returns a tuple of: (desc, is_ok_status, perf, solic, impact)
+    is_ok_status can be True (healthy), 'degraded' (warning/syncing), or False (offline/error).
+    """
+    import time
+    gdrive_running = False
+    if os.name == "nt":
+        try:
+            flags = 0x08000000
+            output = subprocess.check_output(
+                'tasklist /FI "IMAGENAME eq GoogleDriveFS.exe" /NH',
+                shell=True,
+                creationflags=flags,
+                text=True
+            )
+            gdrive_running = "GoogleDriveFS.exe" in output
+        except Exception:
+            gdrive_running = False
+
+    data_root = os.getenv("DEVCORE_DATA_ROOT", "")
+    if not data_root:
+        data_root = str(DATA_ROOT)
+    
+    normalized_path = data_root.lower()
+    is_in_gdrive = (
+        "google drive" in normalized_path or 
+        "my drive" in normalized_path or 
+        "mon drive" in normalized_path or 
+        "googledrive" in normalized_path or
+        data_root.startswith("G:") or 
+        data_root.startswith("g:")
+    )
+
+    if not is_in_gdrive:
+        return "Non configuré (DEVCORE_DATA_ROOT hors Google Drive)", False, "Inactif", "Aucune", "Données Locales"
+
+    if not gdrive_running:
+        return "Google Drive déconnecté (processus non détecté)", "degraded", "Non synchronisé", "En attente", "Risque désynchronisation"
+
+    db_file = Path(data_root) / "devcore.db"
+    last_update_str = "Jamais"
+    if db_file.exists():
+        try:
+            mtime = db_file.stat().st_mtime
+            elapsed = time.time() - mtime
+            if elapsed < 60:
+                last_update_str = "A l'instant"
+            elif elapsed < 3600:
+                last_update_str = f"Il y a {int(elapsed // 60)}m"
+            else:
+                last_update_str = f"Il y a {int(elapsed // 3600)}h"
+        except Exception:
+            pass
+
+    return "Google Drive actif & synchronisé", True, "Sync en ligne", f"MàJ base: {last_update_str}", "Sauvegarde Cloud"

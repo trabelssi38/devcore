@@ -15,7 +15,8 @@ from .utils import (
     load_project_paths,
     check_port,
     DATA_ROOT,
-    PLATFORM_ROOT
+    PLATFORM_ROOT,
+    get_gdrive_sync_status
 )
 
 from .data_loader import (
@@ -456,6 +457,10 @@ def get_services_html(projects: list, token_metrics: dict) -> str:
     infra_html += get_status_html("SQLite Vector DB (sqlite-vec)", qdrant_desc, qdrant_ok, q_perf, q_solic, q_impact)
 
     infra_html += get_status_html("Repowise Engine (MCP)", repowise_desc, repowise_ok, rep_perf, rep_solic, rep_impact)
+    
+    # Google Drive Sync
+    gdrive_desc, gdrive_status, gd_perf, gd_solic, gd_impact = get_gdrive_sync_status()
+    infra_html += get_status_html("Google Drive Sync", gdrive_desc, gdrive_status, gd_perf, gd_solic, gd_impact)
     
     infra_html += '<h2 style="margin-top:28px; padding-top:14px; border-top:1px solid #1e293b;">Hermes Background Jobs</h2>\n'
     if jobs_file.exists():
