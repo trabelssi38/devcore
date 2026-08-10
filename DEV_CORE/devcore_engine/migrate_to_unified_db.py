@@ -15,14 +15,14 @@ import re
 import sqlite3
 from typing import Any, Dict, List, Optional
 
-from devcore_engine.db import connect_db, get_data_root, init_db
+from devcore_engine.db import connect_db, get_data_root, get_db_path, init_db
 
 
 
 class DevCoreMigrator:
     def __init__(self, data_root: Optional[Path] = None):
         self.data_root = data_root or get_data_root()
-        self.db_path = self.data_root / "devcore.db"
+        self.db_path = get_db_path()  # always local (hors Dropbox)
         self.conn = connect_db(self.db_path)
         # Disable foreign keys temporarily for initial bulk import
         self.conn.execute("PRAGMA foreign_keys = OFF;")
@@ -111,7 +111,7 @@ class DevCoreMigrator:
                             steps_done, steps_total, depends_on, worktree, metadata,
                             started_at, completed_at
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        ON CONFLICT(id) DO UPDATE SET
+                        ON CONFLICT(id, project_id) DO UPDATE SET
                             title=excluded.title,
                             mode=excluded.mode,
                             status=excluded.status,
