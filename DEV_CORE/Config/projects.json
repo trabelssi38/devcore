@@ -1,104 +1,48 @@
 {
   "projects": [
     {
-      "name": "9router",
-      "path": "C:/src/9router"
+      "name": "addmefast",
+      "path": "E:/src_web/addmefast"
     },
     {
-      "name": "awesome-claude-skills",
-      "path": "C:/src/awesome-claude-skills"
+      "name": "addmefast-bot",
+      "path": "E:/src_web/addmefast-bot"
     },
     {
-      "name": "cea_dashboard",
-      "path": "C:/src/cea_dashboard"
+      "name": "autop",
+      "path": "E:/src_python/autop"
     },
     {
-      "name": "cea_pwa",
-      "path": "C:/src/cea_pwa"
+      "name": "cnss",
+      "path": "E:/src_python/cnss"
     },
     {
-      "name": "claude-howto",
-      "path": "C:/src/claude-howto"
-    },
-    {
-      "name": "cybotz_contract",
-      "path": "C:/src/cybotz contract"
-    },
-    {
-      "name": "dashboard_recette_br",
-      "path": "C:/src/dashboard_recette_br"
+      "name": "conso_api_madania",
+      "path": "E:/src_python/conso_api_madania"
     },
     {
       "name": "devcore",
-      "path": "C:/devcore"
+      "path": "E:/src_python/devcore"
     },
     {
-      "name": "everything-claude-code",
-      "path": "C:/src/everything-claude-code"
+      "name": "downedit",
+      "path": "E:/src_python/DownEdit"
     },
     {
-      "name": "forms",
-      "path": "C:/src/forms"
+      "name": "migration_to_12c",
+      "path": "E:/src_python/migration_to_12c"
     },
     {
-      "name": "forms2spring-angular-generator",
-      "path": "C:/src/forms2spring-angular-generator"
+      "name": "tiktok-api",
+      "path": "E:/src_python/TikTok-Api"
     },
     {
-      "name": "free-claude-code",
-      "path": "C:/src/free-claude-code"
+      "name": "tiktokscraperscripts",
+      "path": "E:/src_python/TikTokScraperScripts"
     },
     {
-      "name": "iptv",
-      "path": "C:/src/iptv"
-    },
-    {
-      "name": "jar",
-      "path": "C:/src/jar"
-    },
-    {
-      "name": "job_tracker",
-      "path": "C:/src/job_tracker"
-    },
-    {
-      "name": "migration",
-      "path": "C:/src/migration"
-    },
-    {
-      "name": "oracle_legacy_intelligence_platform",
-      "path": "C:/src/oracle_legacy_intelligence_platform"
-    },
-    {
-      "name": "oracle_plsq_dependency_analyzer",
-      "path": "C:/src/oracle_legacy_intelligence_platform"
-    },
-    {
-      "name": "pramax_prefs_patch",
-      "path": "C:/src/pramax_prefs_patch"
-    },
-    {
-      "name": "promax_hook",
-      "path": "C:/src/promax_hook"
-    },
-    {
-      "name": "promax_jadx",
-      "path": "C:/src/promax_jadx"
-    },
-    {
-      "name": "rtk",
-      "path": "C:/src/rtk"
-    },
-    {
-      "name": "smartiptvmanager",
-      "path": "C:/src/SmartIPTVManager"
-    },
-    {
-      "name": "sneaker_feed",
-      "path": "C:/src/sneaker_feed"
-    },
-    {
-      "name": "xposed_promax",
-      "path": "C:/src/xposed_promax"
+      "name": "tweepy-bots",
+      "path": "E:/src_python/tweepy-bots"
     }
   ]
 }

@@ -119,8 +119,8 @@ def sync_workspace():
             if rel_path == ".":
                 continue
                 
-    # 2b. Discover physical project directories on disk (e.g. C:\src)
-    search_dirs = [Path(r"C:\src")]
+    # 2b. Discover physical project directories on disk (e.g. E:\src_python, E:\src_web, C:\src)
+    search_dirs = [Path(r"E:\src_python"), Path(r"E:\src_web"), Path(r"C:\src")]
     for sdir in search_dirs:
         if sdir.exists():
             for child in sdir.iterdir():
