@@ -11,14 +11,15 @@ if ($DEV_CORE -match '\\Scripts\\?$') {
     $DEV_CORE = Split-Path -Parent $DEV_CORE
 }
 
+. "$DEV_CORE\Scripts\platform_version.ps1"
+$PLATFORM = Get-DevCorePlatformInfo
+
 $defaultData = Join-Path (Split-Path -Parent $DEV_CORE) "DEV_CORE_DATA"
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT -and ($env:DEVCORE_DATA_ROOT -notmatch '\\DEV_CORE\\DEV_CORE_DATA\\?$')) {
+$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) {
     $env:DEVCORE_DATA_ROOT
 } else {
     $defaultData
 }
-. "$DEV_CORE\Scripts\platform_version.ps1"
-$PLATFORM = Get-DevCorePlatformInfo
 
 Write-Host ""
 Write-Host "  $($PLATFORM.title) -- Setup initial" -ForegroundColor Cyan

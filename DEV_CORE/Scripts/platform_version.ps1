@@ -5,7 +5,12 @@ param(
 )
 
 # --- Portable DEVCORE_DATA_ROOT Auto-Detection ---
-if (-not $env:DEVCORE_DATA_ROOT) {
+$isDefaultOrMissing = (-not $env:DEVCORE_DATA_ROOT) -or 
+                      ($env:DEVCORE_DATA_ROOT -like "*C:\devcore\DEV_CORE_DATA*") -or 
+                      ($env:DEVCORE_DATA_ROOT -like "*\DEV_CORE\DEV_CORE_DATA*") -or 
+                      (-not (Test-Path -LiteralPath $env:DEVCORE_DATA_ROOT))
+
+if ($isDefaultOrMissing) {
     $appData = $env:APPDATA
     if ($appData) {
         $dbJsonPath = Join-Path $appData "Dropbox\info.json"
@@ -13,11 +18,10 @@ if (-not $env:DEVCORE_DATA_ROOT) {
             try {
                 $dbJson = Get-Content -LiteralPath $dbJsonPath -Raw -ErrorAction SilentlyContinue | ConvertFrom-Json
                 $dbPath = $dbJson.personal.path
-                if ($dbPath) {
-                    $candidateData = Join-Path $dbPath "DEV_CORE_DATA"
-                    if (Test-Path -LiteralPath $candidateData) {
-                        $env:DEVCORE_DATA_ROOT = $candidateData
-                    }
+                if ($dbPath -and (Test-Path -LiteralPath $dbPath)) {
+                    $dropboxData = Join-Path $dbPath "DEV_CORE_DATA"
+                    $env:DEVCORE_DATA_ROOT = $dropboxData
+                    [System.Environment]::SetEnvironmentVariable("DEVCORE_DATA_ROOT", $dropboxData, "Process")
                 }
             } catch {}
         }
