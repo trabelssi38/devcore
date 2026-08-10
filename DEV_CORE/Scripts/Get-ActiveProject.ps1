@@ -3,6 +3,8 @@
 # Basé sur le répertoire racine Git, ou à défaut le répertoire courant.
 # Utilise un cache en mémoire pour la session PowerShell courante.
 
+. (Join-Path $PSScriptRoot "platform_version.ps1")
+
 $currentPwd = (Get-Location).Path
 
 # Retourner le cache si le dossier courant n'a pas changé

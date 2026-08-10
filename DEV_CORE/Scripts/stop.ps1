@@ -5,9 +5,9 @@ $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else 
 if ($DEV_CORE -match '\\Scripts\\?$') {
     $DEV_CORE = Split-Path -Parent $DEV_CORE
 }
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { (Join-Path $DEV_CORE "DEV_CORE_DATA") }
-
 . "$DEV_CORE\Scripts\platform_version.ps1"
+
+$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { (Join-Path $DEV_CORE "DEV_CORE_DATA") }
 $PLATFORM = Get-DevCorePlatformInfo
 
 Write-Host ""
