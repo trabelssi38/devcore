@@ -64,7 +64,7 @@ try {
 
 # 4. Python packages
 Write-Host "  4/5 Python packages..." -ForegroundColor Cyan
-$packages = @("qdrant-client", "jsonschema")
+$packages = @("qdrant-client", "jsonschema", "repowise", "sqlite-vec", "headroom-ai[proxy]")
 foreach ($pkg in $packages) {
     try {
         pip install $pkg --quiet 2>$null
