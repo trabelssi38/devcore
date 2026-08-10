@@ -5,23 +5,27 @@ param(
 )
 
 # --- Portable DEVCORE_DATA_ROOT Auto-Detection ---
-$isDefaultOrMissing = (-not $env:DEVCORE_DATA_ROOT) -or 
-                      ($env:DEVCORE_DATA_ROOT -like "*C:\devcore\DEV_CORE_DATA*") -or 
-                      ($env:DEVCORE_DATA_ROOT -like "*\DEV_CORE\DEV_CORE_DATA*") -or 
-                      (-not (Test-Path -LiteralPath $env:DEVCORE_DATA_ROOT))
+$_isDefaultOrMissing = (-not $env:DEVCORE_DATA_ROOT) -or
+                       ($env:DEVCORE_DATA_ROOT -like "*C:\devcore\DEV_CORE_DATA*") -or
+                       ($env:DEVCORE_DATA_ROOT -like "*\DEV_CORE\DEV_CORE_DATA*") -or
+                       (-not (Test-Path -LiteralPath $env:DEVCORE_DATA_ROOT))
 
-if ($isDefaultOrMissing) {
-    $appData = $env:APPDATA
-    if ($appData) {
-        $dbJsonPath = Join-Path $appData "Dropbox\info.json"
-        if (Test-Path -LiteralPath $dbJsonPath) {
+if ($_isDefaultOrMissing) {
+    # Dropbox stores info.json in LOCALAPPDATA on modern installs, fallback to APPDATA
+    $_dbJsonCandidates = @(
+        (Join-Path $env:LOCALAPPDATA "Dropbox\info.json"),
+        (Join-Path $env:APPDATA "Dropbox\info.json")
+    )
+    foreach ($_dbJsonPath in $_dbJsonCandidates) {
+        if (Test-Path -LiteralPath $_dbJsonPath) {
             try {
-                $dbJson = Get-Content -LiteralPath $dbJsonPath -Raw -ErrorAction SilentlyContinue | ConvertFrom-Json
-                $dbPath = $dbJson.personal.path
-                if ($dbPath -and (Test-Path -LiteralPath $dbPath)) {
-                    $dropboxData = Join-Path $dbPath "DEV_CORE_DATA"
-                    $env:DEVCORE_DATA_ROOT = $dropboxData
-                    [System.Environment]::SetEnvironmentVariable("DEVCORE_DATA_ROOT", $dropboxData, "Process")
+                $_dbJson = Get-Content -LiteralPath $_dbJsonPath -Raw -ErrorAction SilentlyContinue | ConvertFrom-Json
+                $_dbPath = $_dbJson.personal.path
+                if ($_dbPath -and (Test-Path -LiteralPath $_dbPath)) {
+                    $_dropboxData = Join-Path $_dbPath "DEV_CORE_DATA"
+                    $env:DEVCORE_DATA_ROOT = $_dropboxData
+                    [System.Environment]::SetEnvironmentVariable("DEVCORE_DATA_ROOT", $_dropboxData, "User")
+                    break
                 }
             } catch {}
         }

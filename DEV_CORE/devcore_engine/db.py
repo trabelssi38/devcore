@@ -32,8 +32,14 @@ def get_data_root() -> Path:
 
     # Auto-detect Dropbox folder on Windows
     if os.name == "nt":
-        app_data = os.getenv("APPDATA")
-        if app_data:
+        # Dropbox stores info.json in LOCALAPPDATA on modern installs, fallback to APPDATA
+        candidates = [
+            os.getenv("LOCALAPPDATA", ""),
+            os.getenv("APPDATA", ""),
+        ]
+        for app_data in candidates:
+            if not app_data:
+                continue
             db_json = Path(app_data) / "Dropbox" / "info.json"
             if db_json.exists():
                 try:
