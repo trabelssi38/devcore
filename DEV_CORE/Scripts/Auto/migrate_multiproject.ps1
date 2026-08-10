@@ -1,7 +1,10 @@
 # migrate_multiproject.ps1
 # Ce script migre l'état global (tasks.json) vers le sous-dossier du projet correspondant.
 
-$DATA_ROOT = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\devcore\DEV_CORE_DATA" }
+$DEV_CORE = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+. "$DEV_CORE\Scripts\platform_version.ps1"
+
+$DATA_ROOT = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { Join-Path $DEV_CORE "DEV_CORE_DATA" }
 $MEM_DIR = "$DATA_ROOT\Memory"
 
 Write-Host "Recherche de tâches globales à migrer..." -ForegroundColor Cyan

@@ -162,6 +162,27 @@ class SystemWatcher:
         report["dashboard_api"] = self.check_and_heal_service("Dashboard API", "127.0.0.1", 20129, dash_cmd, wait_timeout=5.0)
 
         # 3. Headroom Proxy (8787) - needs 15s start timeout
+        # Align headroom_config.yaml paths with dynamic self.data_root
+        headroom_cfg = DEV_CORE_ROOT / "Config" / "headroom_config.yaml"
+        if headroom_cfg.exists():
+            try:
+                cache_p = (self.data_root / "Cache" / "headroom").as_posix()
+                stats_p = (self.data_root / "Metrics" / "headroom_stats.json").as_posix()
+                (self.data_root / "Cache" / "headroom").mkdir(parents=True, exist_ok=True)
+                (self.data_root / "Metrics").mkdir(parents=True, exist_ok=True)
+                cfg_content = headroom_cfg.read_text(encoding="utf-8")
+                lines = []
+                for line in cfg_content.splitlines():
+                    if "cache_dir:" in line:
+                        lines.append(f'  cache_dir: "{cache_p}"')
+                    elif "output:" in line and "headroom_stats.json" in line:
+                        lines.append(f'  output: "{stats_p}"')
+                    else:
+                        lines.append(line)
+                headroom_cfg.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            except Exception:
+                pass
+
         import shutil
         headroom_exe = shutil.which("headroom")
         if not headroom_exe:

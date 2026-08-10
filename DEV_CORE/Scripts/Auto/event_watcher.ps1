@@ -1,6 +1,7 @@
 # event_watcher.ps1 -- DEV_CORE Hermes Event Bus Consumer
-$DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { (Split-Path -Parent $PSScriptRoot) }
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) "DEV_CORE_DATA") }
+$DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) }
+. "$DEV_CORE\Scripts\platform_version.ps1"
+$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { (Join-Path $DEV_CORE "DEV_CORE_DATA") }
 $EVENTS_DIR    = "$DEV_CORE_DATA\Bus\events"
 $PROCESSED_DIR = "$DEV_CORE_DATA\Bus\processed"
 $LOG           = "$DEV_CORE_DATA\Logs\scripts\event_watcher_$(Get-Date -f 'yyyy-MM-dd').log"

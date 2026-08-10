@@ -7,7 +7,11 @@ from datetime import datetime
 from pathlib import Path
 
 DEVCORE_ROOT = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", "C:/devcore/DEV_CORE"))
-DEVCORE_DATA = Path(os.environ.get("DEVCORE_DATA_ROOT", "C:/devcore/DEV_CORE_DATA"))
+try:
+    from devcore_engine.db import get_data_root
+    DEVCORE_DATA = get_data_root()
+except Exception:
+    DEVCORE_DATA = Path(os.environ.get("DEVCORE_DATA_ROOT", "C:/devcore/DEV_CORE_DATA"))
 DEVCORE_SCRIPTS = DEVCORE_ROOT / "Scripts"
 
 def apply_rtk(text: str) -> str:

@@ -5,8 +5,15 @@ import json
 from pathlib import Path
 from datetime import datetime
 
+import os
+try:
+    from devcore_engine.db import get_data_root
+    DATA_ROOT = get_data_root()
+except Exception:
+    DATA_ROOT = Path(os.environ.get("DEVCORE_DATA_ROOT", "C:/devcore/DEV_CORE_DATA"))
+
 # Obsidian vault paths
-VAULT_PATH = Path("C:/devcore/DEV_CORE_DATA/Vault")
+VAULT_PATH = DATA_ROOT / "Vault"
 DAILY_NOTES = VAULT_PATH / "Daily Notes"
 DECISIONS_PATH = VAULT_PATH / "Decisions"
 LESSONS_PATH = VAULT_PATH / "Lessons"
