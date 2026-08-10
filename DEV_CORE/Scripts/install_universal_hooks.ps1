@@ -1,7 +1,15 @@
 # install_universal_hooks.ps1 -- DEV_CORE v10
 # Installe les hooks Python natifs pour tous les clients IA (Claude, Gemini, Codex, Antigravity)
 
-$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { $PSScriptRoot }
+$defaultDevCore = Split-Path -Parent $PSScriptRoot
+$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path -Path (Join-Path $env:DEVCORE_PLATFORM_ROOT "Config\platform.json"))) {
+    $env:DEVCORE_PLATFORM_ROOT
+} else {
+    $defaultDevCore
+}
+if ($DEV_CORE -match '\\Scripts\\?$') {
+    $DEV_CORE = Split-Path -Parent $DEV_CORE
+}
 $PYTHON_EXE = "C:\Program Files\Python313\python.exe"
 $CLI_SCRIPT = "$DEV_CORE\devcore_engine\cli.py"
 $POST_TOOL  = "$DEV_CORE\devcore_engine\hooks\post_tool.py"

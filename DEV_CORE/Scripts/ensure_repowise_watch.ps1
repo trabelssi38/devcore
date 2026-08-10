@@ -8,8 +8,22 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { $PSScriptRoot }
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { (Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE_DATA") }
+$defaultDevCore = Split-Path -Parent $PSScriptRoot
+$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path -Path (Join-Path $env:DEVCORE_PLATFORM_ROOT "Config\platform.json"))) {
+    $env:DEVCORE_PLATFORM_ROOT
+} else {
+    $defaultDevCore
+}
+if ($DEV_CORE -match '\\Scripts\\?$') {
+    $DEV_CORE = Split-Path -Parent $DEV_CORE
+}
+
+$defaultData = Join-Path (Split-Path -Parent $DEV_CORE) "DEV_CORE_DATA"
+$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT -and ($env:DEVCORE_DATA_ROOT -notmatch '\\DEV_CORE\\DEV_CORE_DATA\\?$')) {
+    $env:DEVCORE_DATA_ROOT
+} else {
+    $defaultData
+}
 $HomeDir = [Environment]::GetFolderPath("UserProfile")
 $MemoryDir = Join-Path $DEV_CORE_DATA "Memory"
 $LogDir = Join-Path $env:LOCALAPPDATA "devcore\Logs\repowise_watch"

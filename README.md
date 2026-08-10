@@ -11,9 +11,31 @@ Mode : Single Client (sans Docker)
 
 La plateforme s'exécute entièrement de manière native sur l'hôte à l'aide d'un moteur Python unifié (`devcore_engine`) et d'une base de données unique SQLite WAL (`devcore.db`). **Aucun conteneur Docker n'est requis.**
 
-### Prérequis
+### Prérequis & Modules Externes
 - **Python 3.13+**
-- Une clé API Google Gemini et/ou Anthropic (définie dans le fichier `C:\devcore\DEV_CORE_DATA\Security\gemini_api_key.txt` ou via l'interface du Cockpit)
+- **Node.js >= 20.0.0**
+- **Clés API** : Google Gemini et/ou Anthropic (définie dans `DEV_CORE_DATA\Security\gemini_api_key.txt` ou via le Cockpit)
+
+#### 1. Dépendances Python
+Pour installer les modules requis pour le fonctionnement du moteur et des API :
+```powershell
+pip install -r DEV_CORE\requirements-ci.txt
+pip install -e DEV_CORE\
+```
+
+#### 2. Installation de Repowise
+Repowise fournit l'intelligence de codebase et le serveur MCP local. Il doit être installé via pip :
+```powershell
+pip install "repowise[all]"
+```
+
+#### 3. Dépendances Node.js
+Pour installer les outils de formatage et dépendances de développement web :
+```powershell
+cd DEV_CORE
+npm install
+cd ..
+```
 
 ### Étape 1 : Configurer la CLI locale (Hôte Windows)
 Pour utiliser le raccourci `dc` directement depuis votre console hôte Windows PowerShell :

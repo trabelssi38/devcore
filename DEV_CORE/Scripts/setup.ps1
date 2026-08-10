@@ -1,8 +1,22 @@
 # setup.ps1 -- DEV_CORE -- Installation initiale (lancer UNE fois en admin)
 # Usage : powershell -ExecutionPolicy Bypass -File C:\devcore\DEV_CORE\Scripts\setup.ps1
 
-$DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { $PSScriptRoot }
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { (Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE_DATA") }
+$defaultDevCore = Split-Path -Parent $PSScriptRoot
+$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path -Path (Join-Path $env:DEVCORE_PLATFORM_ROOT "Config\platform.json"))) {
+    $env:DEVCORE_PLATFORM_ROOT
+} else {
+    $defaultDevCore
+}
+if ($DEV_CORE -match '\\Scripts\\?$') {
+    $DEV_CORE = Split-Path -Parent $DEV_CORE
+}
+
+$defaultData = Join-Path (Split-Path -Parent $DEV_CORE) "DEV_CORE_DATA"
+$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT -and ($env:DEVCORE_DATA_ROOT -notmatch '\\DEV_CORE\\DEV_CORE_DATA\\?$')) {
+    $env:DEVCORE_DATA_ROOT
+} else {
+    $defaultData
+}
 . "$DEV_CORE\Scripts\platform_version.ps1"
 $PLATFORM = Get-DevCorePlatformInfo
 

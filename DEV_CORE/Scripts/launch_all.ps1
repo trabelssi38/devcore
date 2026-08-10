@@ -9,7 +9,15 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
-$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { $PSScriptRoot }
+$defaultDevCore = Split-Path -Parent $PSScriptRoot
+$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path -Path (Join-Path $env:DEVCORE_PLATFORM_ROOT "Config\platform.json"))) {
+    $env:DEVCORE_PLATFORM_ROOT
+} else {
+    $defaultDevCore
+}
+if ($DEV_CORE -match '\\Scripts\\?$') {
+    $DEV_CORE = Split-Path -Parent $DEV_CORE
+}
 . "$DEV_CORE\Scripts\platform_version.ps1"
 $PLATFORM = Get-DevCorePlatformInfo
 
