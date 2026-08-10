@@ -72,14 +72,22 @@ def format_duration(seconds):
 
 
 def clean_task_id(text):
-    match = re.search(r"\bT-(\d+)\b", text or "", re.IGNORECASE)
-    if match:
-        return f"T-{int(match.group(1)):02d}"
+    if not text:
+        return None
+    match_git = re.search(r"\b(T-GIT-[0-9A-F]+)\b", text, re.IGNORECASE)
+    if match_git:
+        return match_git.group(1).upper()
+    match_num = re.search(r"\bT-(\d+)\b", text, re.IGNORECASE)
+    if match_num:
+        return f"T-{int(match_num.group(1)):02d}"
     return None
 
 
 def task_ids_from_text(text):
-    return sorted({clean_task_id(match) for match in re.findall(r"\bT-\d+\b", text or "", re.IGNORECASE) if clean_task_id(match)})
+    if not text:
+        return []
+    matches = re.findall(r"\b(?:T-GIT-[0-9A-F]+|T-\d+)\b", text, re.IGNORECASE)
+    return sorted({clean_task_id(m) for m in matches if clean_task_id(m)})
 
 
 def parse_created_at(created_at_str):
@@ -463,7 +471,9 @@ def discover_projects(memory_path):
         try:
             conn = sqlite3.connect(db_path)
             cur = conn.cursor()
-            cur.execute("SELECT id, project FROM tasks")
+            cols = [c[1] for c in cur.execute("PRAGMA table_info(tasks)").fetchall()]
+            p_col = "project_id" if "project_id" in cols else "project"
+            cur.execute(f"SELECT id, {p_col} FROM tasks")
             for tid, proj in cur.fetchall():
                 p_lower = proj.lower() if proj else ""
                 if p_lower and p_lower not in SYSTEM_DIR_NAMES and p_lower not in valid_projects:
@@ -474,7 +484,7 @@ def discover_projects(memory_path):
                 if p_lower and p_lower not in SYSTEM_DIR_NAMES and p_lower not in task_to_project[tid_upper]:
                     task_to_project[tid_upper].append(p_lower)
             conn.close()
-        except Exception:
+        except Exception as e:
             pass
 
     # 2. Read tasks from Memory directory
@@ -1020,8 +1030,17 @@ def main():
     tdate = args.date or datetime.now().strftime("%Y-%m-%d")
     userprofile = os.environ.get("USERPROFILE") or str(Path.home())
     devcore_data = os.environ.get("DEVCORE_DATA_ROOT", str(Path(__file__).resolve().parents[4] / "DEV_CORE_DATA"))
-    reports_dir = Path(devcore_data) / "Logs" / "token_reports"
+    env_local = os.environ.get("DEVCORE_LOCAL_ROOT")
+    local_dir = Path(env_local) if env_local else (Path(os.getenv("LOCALAPPDATA", "")) / "DEV_CORE_LOCAL" if os.getenv("LOCALAPPDATA") else Path(devcore_data))
+    reports_dir = local_dir / "Logs" / "token_reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Also ensure secondary copy directory exists in shared data_root if different
+    shared_reports_dir = Path(devcore_data) / "Logs" / "token_reports"
+    try:
+        shared_reports_dir.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass
     memory_path = Path(devcore_data) / "Memory"
 
     valid_projects, task_to_project = discover_projects(memory_path)
@@ -1122,8 +1141,14 @@ def main():
         }
 
     summary_path = reports_dir / "token_metrics_summary.json"
-    summary_path.write_text(json.dumps(result_summary, indent=2, ensure_ascii=False), encoding="utf-8")
+    json_str = json.dumps(result_summary, indent=2, ensure_ascii=False)
+    summary_path.write_text(json_str, encoding="utf-8")
     print(f"[SUCCESS] Resume consolide ecrit dans {summary_path}")
+    if shared_reports_dir != reports_dir:
+        try:
+            (shared_reports_dir / "token_metrics_summary.json").write_text(json_str, encoding="utf-8")
+        except Exception:
+            pass
 
     write_html_report(result_summary, reports_dir, tdate)
     totals = result_summary.get("totals", {})
