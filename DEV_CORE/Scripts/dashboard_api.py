@@ -543,12 +543,14 @@ def run_plugin_check(plugin_id):
     ]
     env = os.environ.copy()
     env["DEVCORE_DATA_ROOT"] = DATA_ROOT
+    creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) if os.name == "nt" else 0
     result = subprocess.run(
         cmd,
         capture_output=True,
         encoding="utf-8",
         timeout=DASHBOARD_COMMAND_TIMEOUT_SEC,
         env=env,
+        creationflags=creationflags,
     )
     if result.returncode != 0:
         details = (result.stderr or result.stdout or "plugin check failed").strip()
@@ -691,7 +693,8 @@ def refresh_dashboard_payload_cache():
         "-SkipTokenRefresh",
     ]
     print(f"[DashboardAPI] Running gen_dashboard.py -Json (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
-    result = subprocess.run(cmd, capture_output=True, encoding="utf-8", timeout=DASHBOARD_COMMAND_TIMEOUT_SEC)
+    creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) if os.name == "nt" else 0
+    result = subprocess.run(cmd, capture_output=True, encoding="utf-8", timeout=DASHBOARD_COMMAND_TIMEOUT_SEC, creationflags=creationflags)
     if result.returncode != 0:
         raise RuntimeError((result.stderr or result.stdout or "Dashboard generator failed").strip())
 
@@ -772,8 +775,9 @@ def complete_task(project, task_id):
             cmd = [ps_exe, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", 
                    str(task_done_script), "-Force"]
             print(f"[DashboardAPI] Running task_done.ps1 for active task completion (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
+            creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) if os.name == "nt" else 0
             try:
-                subprocess.run(cmd, capture_output=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC)
+                subprocess.run(cmd, capture_output=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC, creationflags=creationflags)
             except Exception as se:
                 print(f"[DashboardAPI] Warning running task_done.ps1: {se}")
 
@@ -781,7 +785,7 @@ def complete_task(project, task_id):
         dashboard_script = get_platform_path("Scripts", "gen_dashboard.py")
         cmd = [sys.executable, str(dashboard_script)]
         print(f"[DashboardAPI] Running gen_dashboard.py for dashboard refresh (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
-        subprocess.run(cmd, capture_output=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC)
+        subprocess.run(cmd, capture_output=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC, creationflags=creationflags)
         return True, f"Task {target_task_id} completed successfully"
 
     except subprocess.TimeoutExpired as te:
@@ -844,7 +848,8 @@ def delete_task(project, task_id):
         dashboard_script = get_platform_path("Scripts", "gen_dashboard.py")
         cmd = [sys.executable, str(dashboard_script)]
         print(f"[DashboardAPI] Running gen_dashboard.py for dashboard refresh (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
-        subprocess.run(cmd, capture_output=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC)
+        creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) if os.name == "nt" else 0
+        subprocess.run(cmd, capture_output=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC, creationflags=creationflags)
         return True, f"Task {target_task_id} deleted successfully"
 
     except subprocess.TimeoutExpired as te:
@@ -906,7 +911,8 @@ def get_last_modified_timestamp():
         proj_script = get_platform_path("Scripts", "Get-ActiveProject.ps1")
         if proj_script.exists():
             ps_exe = shutil.which("powershell.exe") or shutil.which("powershell") or shutil.which("pwsh") or r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
-            res = subprocess.run([ps_exe, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(proj_script)], capture_output=True, text=True, timeout=2)
+            creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) if os.name == "nt" else 0
+            res = subprocess.run([ps_exe, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(proj_script)], capture_output=True, text=True, timeout=2, creationflags=creationflags)
             if res.returncode == 0 and res.stdout.strip():
                 projName = res.stdout.strip()
     except Exception:

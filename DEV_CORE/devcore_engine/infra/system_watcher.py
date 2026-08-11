@@ -100,7 +100,8 @@ class SystemWatcher:
                 ["wmic", "process", "where", "name='python.exe'", "get", "commandline"],
                 capture_output=True,
                 text=True,
-                timeout=3
+                timeout=3,
+                creationflags=DETACHED_FLAG
             )
             if "scheduler_tick" in proc.stdout:
                 return True
@@ -130,7 +131,8 @@ class SystemWatcher:
                 ["docker", "ps", "--format", "{{.Names}}|{{.Status}}|{{.Ports}}"],
                 capture_output=True,
                 text=True,
-                timeout=3
+                timeout=3,
+                creationflags=DETACHED_FLAG
             )
             if proc.returncode == 0:
                 result["available"] = True

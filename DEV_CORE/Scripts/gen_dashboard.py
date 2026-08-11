@@ -139,7 +139,8 @@ def main():
             script_dir = Path(__file__).resolve().parent
             token_script = script_dir / "Auto" / "token_report.py"
             if token_script.exists():
-                res = subprocess.run([sys.executable, str(token_script)], capture_output=True, text=True, timeout=60)
+                creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) if os.name == "nt" else 0
+                res = subprocess.run([sys.executable, str(token_script)], capture_output=True, text=True, timeout=60, creationflags=creationflags)
                 if res.returncode != 0:
                     print(f"[WARNING] token_report.py returned code {res.returncode}: {res.stderr}")
         except Exception as err:

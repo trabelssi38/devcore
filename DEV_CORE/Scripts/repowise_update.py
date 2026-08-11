@@ -115,6 +115,7 @@ def main():
     env = os.environ.copy()
     env["REPOWISE_EMBEDDER"] = "mock"
     
+    creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) if os.name == "nt" else 0
     try:
         # Run with a 120s timeout to prevent locking up
         result = subprocess.run(
@@ -123,7 +124,8 @@ def main():
             env=env,
             capture_output=True,
             text=True,
-            timeout=120
+            timeout=120,
+            creationflags=creationflags
         )
         print(result.stdout)
         if result.returncode != 0:
@@ -150,7 +152,8 @@ def main():
                 subprocess.run(
                     [sys.executable, str(gen_dash), "--skip-token-refresh"],
                     cwd=str(proj_path),
-                    timeout=60
+                    timeout=60,
+                    creationflags=creationflags
                 )
                 print("[RepowiseUpdate] Dashboard regenerated successfully.")
             except subprocess.TimeoutExpired:

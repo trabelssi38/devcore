@@ -5,6 +5,11 @@ All notable changes to the **DEV_CORE** platform will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Semantic Versioning.
 
+## [10.3.8] - 2026-08-11
+
+### Fixed
+- **Suppression Totale des Fenêtres Pop-up Consoles (`CREATE_NO_WINDOW`)** : Passage universel du drapeau `creationflags=CREATE_NO_WINDOW` (`0x08000000`) sur l'ensemble des sous-processus `subprocess.run` (`dashboard_api.py`, `scheduler_tick.py`, `run_job.py`, `system_watcher.py`, `multi_project_git_scanner.py`, `gen_dashboard.py`, `repowise_update.py`, `utils.py`). Cela élimine définitivement les ouvertures et fermetures intempestives de fenêtres de console PowerShell/cmd lors du suivi du Cockpit (notamment le poll `/api/timestamp` toutes les 2 secondes).
+
 ## [10.3.7] - 2026-08-11
 
 ### Changed

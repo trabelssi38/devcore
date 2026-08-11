@@ -48,12 +48,14 @@ def main() -> None:
 
     # Execute
     print(f"Executing: {' '.join(cmd)}")
+    creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) if os.name == "nt" else 0
     try:
         proc = subprocess.run(
             cmd,
             stdout=sys.stdout,
             stderr=sys.stderr,
-            text=True
+            text=True,
+            creationflags=creationflags
         )
         sys.exit(proc.returncode)
     except Exception as e:

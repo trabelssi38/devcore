@@ -42,6 +42,7 @@ class MultiProjectGitScanner:
         if not repo_path.exists() or not repo_path.is_dir():
             return 0
 
+        creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) if os.name == "nt" else 0
         # Run git log
         try:
             res = subprocess.run(
@@ -50,7 +51,8 @@ class MultiProjectGitScanner:
                 capture_output=True,
                 text=True,
                 encoding="utf-8-sig",
-                errors="replace"
+                errors="replace",
+                creationflags=creationflags
             )
             if res.returncode != 0 or not res.stdout.strip():
                 return 0
@@ -161,7 +163,8 @@ class MultiProjectGitScanner:
             # Trigger gen_dashboard.py if commits were added
             if total_new > 0:
                 gen_dash_script = DEV_CORE_ROOT / "Scripts" / "gen_dashboard.py"
-                subprocess.run([sys.executable, str(gen_dash_script)], capture_output=True)
+                creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) if os.name == "nt" else 0
+                subprocess.run([sys.executable, str(gen_dash_script)], capture_output=True, creationflags=creationflags)
         except Exception:
             pass
 

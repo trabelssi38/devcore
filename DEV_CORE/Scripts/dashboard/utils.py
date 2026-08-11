@@ -87,7 +87,8 @@ def is_process_running(script_name: str) -> bool:
     try:
         if sys.platform == "win32":
             cmd = ["wmic", "process", "where", "name='python.exe' or name='pythonw.exe'", "get", "commandline"]
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+            creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) if os.name == "nt" else 0
+            res = subprocess.run(cmd, capture_output=True, text=True, timeout=5, creationflags=creationflags)
             if res.returncode == 0:
                 for line in res.stdout.splitlines():
                     if script_name in line:

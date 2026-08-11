@@ -133,12 +133,14 @@ def execute_job_command(command: SchedulerJobCommand, timeout: int = 300) -> Tup
     run_job_script = scheduler_dir / "run_job.py"
     cmd_args = [sys.executable, str(run_job_script), command.type, command.path] + command.args
 
+    creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) if os.name == "nt" else 0
     try:
         proc = subprocess.run(
             cmd_args,
             capture_output=True,
             text=True,
-            timeout=timeout
+            timeout=timeout,
+            creationflags=creationflags
         )
         return proc.returncode, proc.stdout, proc.stderr
     except subprocess.TimeoutExpired as te:
