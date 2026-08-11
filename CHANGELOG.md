@@ -8,10 +8,11 @@ and this project adheres to Semantic Versioning.
 ## [10.3.6] - 2026-08-11
 
 ### Fixed
+- **Restauration et Durcissement d'Hermes** : Clonage du dépôt officiel `hermes-agent` manquant sous `hermes/`, résolution de l'erreur d'import de `Path` et `RotatingFileHandler` dans `hermes_cron_tick.py`, et installation automatique de la dépendance `croniter` via pip.
 - **Regex de Détection de Tâches Git (`multi_project_git_scanner.py`)** : Assouplissement de la regex pour supporter les variantes de tags comme `(Tag T-10)` et `(Tag T-11)` en plus de `[T-10]` et `(T-10)`.
 - **Indentation de la Lecture SQLite (`data_loader.py`)** : Correction d'une indentation critique déconnectant la lecture de la base SQLite `devcore.db` lorsque celle-ci réside dans le répertoire local `LOCAL_ROOT`.
-- **Robustesse des Wrappers PowerShell (`Scripts/*.ps1`)** : Sécurisation de la résolution du chemin `$DEV_CORE` et du `$env:PYTHONPATH` dans `dc.ps1`, `endday.ps1`, `launch.ps1`, `stop.ps1`, `diagnose.ps1`, `task_done.ps1`, `task_next.ps1` et `task_service.ps1` via un test dynamique `Test-Path` sur le dossier `devcore_engine` pour éviter l'erreur `ModuleNotFoundError` lorsque `$env:DEVCORE_PLATFORM_ROOT` est mal configuré.
-- **Suppression de Tâches Orphelines (`dashboard_api.py`)** : Résolution du bug de suppression de tâches (ex: `T-371`) en remplaçant la colonne incorrecte `project` par `project_id` et en découplant la suppression du fichier `tasks.json` de celle dans SQLite pour autoriser la suppression des tâches présentes uniquement en base de données.
+- **Robustesse des Wrappers PowerShell (`Scripts/*.ps1` et `Scripts/Auto/*.ps1`)** : Sécurisation de la résolution du chemin `$DEV_CORE` et du `$env:PYTHONPATH` dans `dc.ps1`, `endday.ps1`, `launch.ps1`, `stop.ps1`, `diagnose.ps1`, `task_done.ps1`, `task_next.ps1`, `task_service.ps1`, `integrity_check.ps1` et l'ensemble des 11 scripts récurrents en arrière-plan sous `Scripts/Auto/` via un test dynamique `Test-Path` sur le dossier `devcore_engine` pour éviter l'erreur `ModuleNotFoundError` lorsque `$env:DEVCORE_PLATFORM_ROOT` est mal configuré.
+- **Suppression de Tâches Orphelines (`dashboard_api.py`)** : Résolution du bug de suppression de tâches (ex: `T-371` et `T-03`) en remplaçant la colonne incorrecte `project` par `project_id` et en découplant la suppression du fichier `tasks.json` de celle dans SQLite pour autoriser la suppression des tâches présentes uniquement en base de données.
 
 ## [10.3.5] - 2026-08-10
 

@@ -1,10 +1,10 @@
-# memory_rotate.ps1 -- DEV_CORE v9.0 Auto layer
+﻿# memory_rotate.ps1 -- DEV_CORE v9.0 Auto layer
 param(
     [int]$MaxLines = 300,
     [int]$KeepLines = 200
 )
 
-$DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) }
+$DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path (Join-Path $env:DEVCORE_PLATFORM_ROOT "devcore_engine"))) { $env:DEVCORE_PLATFORM_ROOT } else { (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) }
 . "$DEV_CORE\Scripts\platform_version.ps1"
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { (Join-Path $DEV_CORE "DEV_CORE_DATA") }
 $DEV_CORE_LOCAL = if ($env:DEVCORE_LOCAL_ROOT) { $env:DEVCORE_LOCAL_ROOT } elseif ($env:LOCALAPPDATA) { "$env:LOCALAPPDATA\DEV_CORE_LOCAL" } else { $DEV_CORE_DATA }

@@ -13,7 +13,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $HERMES_HOME  = if ($env:HERMES_HOME) { $env:HERMES_HOME } else { "$env:LOCALAPPDATA\hermes" }
-$DEVCORE_ROOT = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { Split-Path -Parent $PSScriptRoot }
+$DEVCORE_ROOT = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path (Join-Path $env:DEVCORE_PLATFORM_ROOT "devcore_engine"))) { $env:DEVCORE_PLATFORM_ROOT } else { Split-Path -Parent $PSScriptRoot }
 $DEVCORE_LOCAL = if ($env:DEVCORE_LOCAL_ROOT) { $env:DEVCORE_LOCAL_ROOT } elseif ($env:LOCALAPPDATA) { "$env:LOCALAPPDATA\DEV_CORE_LOCAL" } else { "$DEVCORE_ROOT\..\DEV_CORE_DATA" }
 $LOG_DIR      = "$DEVCORE_LOCAL\Logs\hermes"
 $LOG_FILE     = "$LOG_DIR\daemon_$(Get-Date -Format 'yyyy-MM-dd').log"
@@ -66,8 +66,11 @@ function Resolve-HermesPython {
     if ($env:HERMES_PYTHON) { $candidates += $env:HERMES_PYTHON }
     if ($env:DEVCORE_PYTHON) { $candidates += $env:DEVCORE_PYTHON }
 
-    $hermesPython = "C:\devcore\hermes\.venv\Scripts\python.exe"
+    $hermesPython = Join-Path (Split-Path -Parent $DEVCORE_ROOT) "hermes\.venv\Scripts\python.exe"
     if (Test-Path $hermesPython) { $candidates += $hermesPython }
+
+    $legacyHermesPython = "C:\devcore\hermes\.venv\Scripts\python.exe"
+    if (Test-Path $legacyHermesPython) { $candidates += $legacyHermesPython }
 
     $pathPython = Get-Command python -ErrorAction SilentlyContinue | Select-Object -First 1
     if ($pathPython -and $pathPython.Source) { $candidates += $pathPython.Source }
@@ -175,9 +178,20 @@ function Do-Start {
         return
     }
 
-    # Configurer les variables d'environnement
-    $env:DEVCORE_PLATFORM_ROOT = "C:\devcore\DEV_CORE"
-    $env:DEVCORE_DATA_ROOT = "C:\devcore\DEV_CORE_DATA"
+    # Configurer les variables d'environnement de manière dynamique
+    $env:DEVCORE_PLATFORM_ROOT = $DEVCORE_ROOT
+    
+    $isPoisoned = $env:DEVCORE_DATA_ROOT -and ($env:DEVCORE_DATA_ROOT -like "*C:\devcore*") -and ($DEVCORE_ROOT -notlike "*C:\devcore*")
+    if (-not $env:DEVCORE_DATA_ROOT -or $isPoisoned) {
+        $dropboxPath = "C:\Users\Administrateur\Dropbox\DEV_CORE_DATA"
+        if (Test-Path $dropboxPath) {
+            $env:DEVCORE_DATA_ROOT = $dropboxPath
+        } else {
+            $parentDir = Split-Path -Parent $DEVCORE_ROOT
+            $fallbackData = Join-Path $parentDir "DEV_CORE_DATA"
+            $env:DEVCORE_DATA_ROOT = $fallbackData
+        }
+    }
 
     # Reparer/resynchroniser jobs.json avant de lancer le tick loop.
     try {
