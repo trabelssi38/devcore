@@ -26,19 +26,37 @@ Write-Host "  $($PLATFORM.title) -- LAUNCH ALL SYSTEMS" -ForegroundColor Cyan
 Write-Host "  ========================================" -ForegroundColor DarkGray
 Write-Host ""
 
-# 1. Boot standard platform services
-Write-Host "[1/2] Lancement des services DEV_CORE (launch.ps1)..." -ForegroundColor White
-$launchParams = @{}
-if ($PSBoundParameters.ContainsKey('QuickStart')) { $launchParams['QuickStart'] = $true }
-if ($PSBoundParameters.ContainsKey('Project')) { $launchParams['Project'] = $Project }
-if ($PSBoundParameters.ContainsKey('Client')) { $launchParams['Client'] = $Client }
-& "$DEV_CORE\Scripts\launch.ps1" @launchParams
+# 1. Boot standard platform services in background (WMI)
+Write-Host "[1/1] Lancement des services DEV_CORE (launch.ps1) en arriere-plan..." -ForegroundColor White
+$launchScript = Join-Path $DEV_CORE "Scripts\launch.ps1"
+$launchArgs = ""
+if ($QuickStart) { $launchArgs += " -QuickStart" }
+if ($Project) { $launchArgs += " -Project `"$Project`"" }
+if ($Client) { $launchArgs += " -Client `"$Client`"" }
 
-# 2. Boot Hermes standalone tick daemon
-Write-Host "[2/2] Lancement du daemon HERMES..." -ForegroundColor White
-& "$DEV_CORE\Scripts\hermes-daemon.ps1" -Start
+$commandLine = "powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$launchScript`"$launchArgs"
+Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = $commandLine } | Out-Null
 
+# Wait up to 30s for the API and Router to come online
+Write-Host "Attente du demarrage des services..." -NoNewline
+$success = $false
+for ($i = 0; $i -lt 60; $i++) {
+    Start-Sleep -Milliseconds 500
+    Write-Host "." -NoNewline
+    $conn1 = Get-NetTCPConnection -LocalPort 20129 -ErrorAction SilentlyContinue
+    $conn2 = Get-NetTCPConnection -LocalPort 20130 -ErrorAction SilentlyContinue
+    if ($conn1 -and $conn2) {
+        $success = $true
+        break
+    }
+}
 Write-Host ""
-Write-Host "  Systemes DEV_CORE et HERMES initialises avec succes !" -ForegroundColor Green
-Write-Host "  Consultez le Cockpit a : http://127.0.0.1:20129/" -ForegroundColor Green
-Write-Host ""
+
+if ($success) {
+    Write-Host ""
+    Write-Host "  Systemes DEV_CORE initialises avec succes !" -ForegroundColor Green
+    Write-Host "  Consultez le Cockpit a : http://127.0.0.1:20129/" -ForegroundColor Green
+    Write-Host ""
+} else {
+    Write-Host "  Avertissement: Les services ont mis trop de temps a demarrer." -ForegroundColor Yellow
+}

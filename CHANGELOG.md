@@ -5,6 +5,12 @@ All notable changes to the **DEV_CORE** platform will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Semantic Versioning.
 
+## [10.3.7] - 2026-08-11
+
+### Changed
+- **Transition vers le Scheduler Natif (Abandon d'Hermes)** : Désactivation complète du démarrage automatique du démon Hermes dans `launch_all.ps1`.
+- **Persistance des Services d'Arrière-Plan** : Intégration de `DETACHED_PROCESS` (`0x00000008`) dans `system_watcher.py` et lancement de `launch.ps1` via WMI (`Invoke-CimMethod`) dans `launch_all.ps1` pour isoler les services de fond de la console d'exécution et garantir leur persistance après la fermeture du terminal.
+
 ## [10.3.6] - 2026-08-11
 
 ### Fixed
