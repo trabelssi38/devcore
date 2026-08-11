@@ -21,7 +21,7 @@ if str(DEV_CORE_ROOT) not in sys.path:
 from devcore_engine.db import init_db, get_data_root, get_local_data_root
 from devcore_engine.services.events import EventBus
 
-DETACHED_FLAG = 0x00000008 | getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)  # DETACHED_PROCESS | CREATE_NO_WINDOW
+DETACHED_FLAG = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
 
 
 def check_port(host: str, port: int, timeout: float = 0.5) -> bool:

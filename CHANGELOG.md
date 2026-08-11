@@ -5,6 +5,11 @@ All notable changes to the **DEV_CORE** platform will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Semantic Versioning.
 
+## [10.3.9] - 2026-08-11
+
+### Fixed
+- **Masquage des Éxécutables Repowise et Headroom** : Correction de `DETACHED_FLAG` dans `system_watcher.py` pour utiliser exclusivement `CREATE_NO_WINDOW` (`0x08000000`) sans `DETACHED_PROCESS` (`0x00000008`). Cela garantit que les binaires `.exe` comme `headroom.exe` et `repowise.exe` s'exécutent en arrière-plan 100% silencieux sans ouvrir de fenêtres de console visibles.
+
 ## [10.3.8] - 2026-08-11
 
 ### Fixed
