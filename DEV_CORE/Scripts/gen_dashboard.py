@@ -409,10 +409,6 @@ def main():
                             except ValueError:
                                 pass
 
-                    if not task_stats:
-                        fallback_key = f"{p_name}_sans tache".lower()
-                        if fallback_key in lower_dict:
-                            task_stats = lower_dict[fallback_key]
                 
                 if task_stats:
                     try:
