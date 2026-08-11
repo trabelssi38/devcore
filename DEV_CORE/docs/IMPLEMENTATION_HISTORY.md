@@ -18,6 +18,7 @@ Chronologie consolidee des implementations et plans. Source principale : histori
 | T-223 a T-293+ | Modularisation Python v10 & Supervision Headroom | Refactoring modulaire CCN 1.0, grille 330px/1fr/555px, détails Supervision Headroom persistants, badges de session libres (OK/ALERTE), isolation diagnostics de santé |
 | T-344 a T-347 | Watchdog 100% Silencieux & Scanner Git Multi-Projets (v10.3.0) | SystemWatcher native auto-heal, scanner git multi-dépôts (job_tracker, devcore), auto-détection du projet dans hooks git, exécution 100% invisible sans popup de console |
 | T-356 | Correctifs Cockpit Modèles & Isolement Projets/Tâches (v10.3.2) | Correction détection projets sans trb_m/dossiers OS, scrollbar répartition modèles, fidélité historique tâches/modèles de sessions |
+| 2026-08-11 | Correctifs MCP Repowise & Tokens Dashboard | Watchdog MCP Repowise corrigé (surveillance dernier ancêtre + `NO_WATCHDOG`), fallback « Sans tâche » supprimé (badges tokens exacts par tâche) |
 
 ## Mai 2026 - fondations
 

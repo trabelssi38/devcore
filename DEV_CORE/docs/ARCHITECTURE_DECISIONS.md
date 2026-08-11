@@ -298,3 +298,30 @@ Le lock ADR-017 garantit que ces deux générations ne se chevauchent jamais.
 - La carte Radar du cockpit reflète toujours les scores du dernier commit après la fin du scan.
 - L'opérateur peut recharger le cockpit 1-3 min après un commit pour avoir les données Repowise fraîches.
 - `DEVCORE_SKIP_DASHBOARD=1` permet de désactiver la régénération automatique si nécessaire.
+
+## ADR-019 - Surveillance MCP Repowise par Dernier Ancêtre (Client Réel)
+
+**Statut** : accepté (Août 2026)
+
+Le serveur MCP Repowise intègre un watchdog (`_watchdog.py`) censé s'éteindre quand le client disparaît. Sous Antigravity, le processus client est encapsulé dans une chaîne de wrappers (shim → shim-chain → processus Python). Le watchdog surveillait **le premier ancêtre** remonté via `psutil`, qui pouvait être un shim temporaire et non le vrai client.
+
+**Décision** : Le watchdog est modifié pour remonter toute la chaîne d'ancêtres et surveiller uniquement le **dernier ancêtre** (le plus éloigné dans l'arbre de processus) comme approximation du processus client réel. En complément, `REPOWISE_MCP_NO_WATCHDOG=1` est ajouté dans `~/.gemini/config/mcp_config.json` pour désactiver le watchdog si l'heuristique échoue dans un environnement futur.
+
+**Conséquences**
+- Le serveur MCP Repowise reste actif sur toute la durée d'une session Antigravity (plus de déconnexion silencieuse après ~5 s).
+- La variable d'env `REPOWISE_MCP_NO_WATCHDOG=1` sert de garde-fou configurable.
+- Si le processus Antigravity se ferme normalement, le watchdog détecte correctement la mort du vrai client et s'éteint.
+
+## ADR-020 - Métriques Tokens par Tâche : Absence de Fallback « Sans Tâche »
+
+**Statut** : accepté (Août 2026)
+
+Dans `gen_dashboard.py`, quand une tâche n'avait pas d'entrée dans `token_metrics_summary.json`, le code utilisait un fallback sur le bucket `{projet}_Sans tache` (sessions sans tâche assignée). Ce bucket peut être très volumineux (ex: 500 M tokens pour `devcore`) et sa valeur était incorrectement appliquée à chaque tâche sans métriques propres, affichant un coût trompeur sur toutes les cartes du cockpit.
+
+**Décision** : Suppression totale du fallback. Une tâche sans métriques propres dans `token_metrics_summary.json` n'affiche aucun badge token/coût. Le bucket « Sans tâche » reste présent dans les données pour la facturation globale du projet, mais n'est plus attribué à des tâches individuelles.
+
+**Conséquences**
+- Badges token/coût des cartes de tâches fidèles à la réalité.
+- Les sessions hors tâche (travail non taggué) restent comptabilisées dans les totaux globaux du projet via `totals.tokens` et `totals.cost_usd`.
+- Pour afficher les métriques d'une tâche, celle-ci doit avoir ses propres entrées dans `token_metrics_summary.json` (sessions déclenchées avec une tâche active).
+
