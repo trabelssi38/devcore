@@ -43,7 +43,7 @@ class TaskService:
                 meta = t.get("metadata", {})
                 steps_list = []
                 details_text = ""
-                if isinstance(meta, str):
+                if isinstance(meta, str) and (meta.strip().startswith("[") or meta.strip().startswith("{")):
                     try:
                         meta = json.loads(meta)
                     except Exception:
