@@ -40,6 +40,7 @@ $PlatformRoot = if ($EnvPlatformRoot -and (Test-Path -LiteralPath (Join-Path $En
     $ScriptPlatformRoot
 }
 $PlatformConfigPath = Join-Path $PlatformRoot "Config\platform.json"
+$env:DEVCORE_PLATFORM_ROOT = $PlatformRoot
 
 function Get-DevCorePlatformInfo {
     if (-not (Test-Path -LiteralPath $PlatformConfigPath)) {
