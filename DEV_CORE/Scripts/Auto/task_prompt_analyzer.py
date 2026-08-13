@@ -500,7 +500,7 @@ def main():
     except Exception as e:
         log(f"Error reading tasks.json to deduplicate: {e}", "WARNING")
 
-    brain_dir = r"C:\Users\trb_m\.gemini\antigravity\brain"
+    brain_dir = os.environ.get("ANTIGRAVITY_BRAIN_DIR") or os.path.expanduser(r"~/.gemini/antigravity/brain")
     if not os.path.exists(brain_dir):
         log(f"Brain folder not found: {brain_dir}", "WARNING")
         return

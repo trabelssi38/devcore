@@ -5,7 +5,7 @@
 # 3. Genere metrics
 
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { $PSScriptRoot }
-if ($DEV_CORE -match '\\Scripts\\?$') {
+if ($DEV_CORE -match '[/\\]Scripts[/\\]?$') {
     $DEV_CORE = Split-Path -Parent $DEV_CORE
 }
 . "$DEV_CORE\Scripts\platform_version.ps1"
@@ -46,7 +46,7 @@ Log "[5/6] Task sync + Dashboard..." "Cyan"
 & "$DEV_CORE\Scripts\task_sync.ps1" 2>&1 | Tee-Object -FilePath $LOG -Append
 
 Log "[6/6] Endday check..." "Cyan"
-& "$DEV_CORE\Scripts\endday_check.ps1" 2>$null | Tee-Object -FilePath $LOG -Append
+& "$DEV_CORE\Scripts\endday_check.ps1" 2>&1 | Tee-Object -FilePath $LOG -Append
 
 Write-Host ""
 Log "========================================" "Green"

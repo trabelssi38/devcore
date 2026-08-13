@@ -5,6 +5,16 @@ All notable changes to the **DEV_CORE** platform will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Semantic Versioning.
 
+## [10.3.10] - 2026-08-13
+
+### Fixed
+- **Portabilité Universelle de `session_end.ps1` et de l'Ensemble des Scripts PowerShell/Python** :
+  - **Résolution Python Centralisée** : Ajout de la fonction canonique `Get-DevCorePython` dans `platform_version.ps1` et export de `$env:DEVCORE_PYTHON`, éliminant les chemins absolus locaux `C:\Program Files\Python313\python.exe` et supportant dynamiquement Python 3.12, 3.13, 3.14 et les virtualenvs.
+  - **Correction des Redirections de Flux** : Remplacement universel de `2>$null` (qui créait un fichier `$null` sur disque sous PowerShell 5.1) par les syntaxes portables `2>&1 | Out-Null` et `2>&1`.
+  - **Normalisation des Séparateurs de Chemins** : Remplacement des regex rigides `-match '\\Scripts\\?$'` par `-match '[/\\]Scripts[/\\]?$'` pour supporter les slashes `/` et backslashes `\`.
+  - **Suppression des Chemins Utilisateur et Racines Absolus** : Remplacement des occurrences en dur de `trb_m` et `C:\devcore` par `Path.home()`, `$env:USERPROFILE` et l'inclusion dynamique du nom d'utilisateur dans les filtres d'exclusion système.
+  - **Supervision & Contrats de Test** : Alignement de `test_task_service.py` et `test_qdrant_vector_contract.py` sur les chemins locaux `get_db_path()` de `devcore.db`.
+
 ## [10.3.9] - 2026-08-11
 
 ### Fixed

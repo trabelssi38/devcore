@@ -1,7 +1,10 @@
 # gen_session_context.ps1 -- DEV_CORE v9.0
 # Genere le fichier session_context.txt
 
-$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { $PSScriptRoot }
+$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { Split-Path -Parent $PSScriptRoot }
+if ($DEV_CORE -match '[/\\]Scripts[/\\]?$') {
+    $DEV_CORE = Split-Path -Parent $DEV_CORE
+}
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { (Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE_DATA") }
 $CONTEXT_FILE = "$DEV_CORE_DATA\Logs\scripts\session_context.txt"
 $CONTEXT_BLOCK_MAX_CHARS = if ($env:DEVCORE_CONTEXT_BLOCK_MAX_CHARS) { [int]$env:DEVCORE_CONTEXT_BLOCK_MAX_CHARS } else { 10000 }

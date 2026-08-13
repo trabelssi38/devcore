@@ -1,7 +1,10 @@
 # routing_profile.ps1 -- DEV_CORE mode/profile resolver
 $ErrorActionPreference = "Stop"
 
-$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { $PSScriptRoot }
+$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { Split-Path -Parent $PSScriptRoot }
+if ($DEV_CORE -match '[/\\]Scripts[/\\]?$') {
+    $DEV_CORE = Split-Path -Parent $DEV_CORE
+}
 $ROUTING_PROFILE_PATH = Join-Path $DEV_CORE "Config\routing_profiles.json"
 $AI_CAPABILITY_REGISTRY_PATH = Join-Path $DEV_CORE "Config\ai_capability_registry.json"
 

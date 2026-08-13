@@ -9,7 +9,10 @@ $ErrorActionPreference = "Stop"
 $root = (Resolve-Path -LiteralPath $Path).Path
 $gitRoot = $null
 try {
-    $gitRoot = (& git -C $root rev-parse --show-toplevel 2>$null).Trim()
+    $res = (& git -C $root rev-parse --show-toplevel 2>&1)
+    if ($LASTEXITCODE -eq 0 -and $res -and $res -notmatch "fatal:") {
+        $gitRoot = $res.Trim()
+    }
 } catch {}
 
 if ($gitRoot) {

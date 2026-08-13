@@ -47,7 +47,7 @@ if ($board) {
 $workspaceRoot = Split-Path -Parent $DEV_CORE
 Push-Location $workspaceRoot
 try {
-    $commits = git log --since="30 days ago" --format="%H|%s|%ai" 2>$null
+    $commits = git log --since="30 days ago" --format="%H|%s|%ai" 2>&1
     $gitTags = @{}
     if ($commits) {
         foreach ($line in $commits) {

@@ -12,9 +12,12 @@ if (-not $env:PYTHONPATH -or $env:PYTHONPATH -notlike "*$DEV_CORE_ROOT*") {
     $env:PYTHONPATH = "$DEV_CORE_ROOT;$env:PYTHONPATH"
 }
 
+. (Join-Path $PSScriptRoot "platform_version.ps1")
+$pythonExe = Get-DevCorePython
+
 if ($Action -eq "Publish") {
-    & "C:\Program Files\Python313\python.exe" -m devcore_engine events publish "$Type" "$Payload"
+    & $pythonExe -m devcore_engine events publish "$Type" "$Payload"
 } else {
-    & "C:\Program Files\Python313\python.exe" -m devcore_engine events tail --limit $Limit
+    & $pythonExe -m devcore_engine events tail --limit $Limit
 }
 exit $LASTEXITCODE

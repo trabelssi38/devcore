@@ -3,7 +3,7 @@
 # Ne relance pas si deja execute aujourd'hui
 
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { $PSScriptRoot }
-if ($DEV_CORE -match '\\Scripts\\?$') {
+if ($DEV_CORE -match '[/\\]Scripts[/\\]?$') {
     $DEV_CORE = Split-Path -Parent $DEV_CORE
 }
 . "$DEV_CORE\Scripts\platform_version.ps1"
@@ -97,8 +97,8 @@ if (Test-Path $tFile) {
 Log "Auto-scan background"
 $scanBlock = {
     param($dc)
-    & "$dc\Scripts\task_scan.ps1" 2>$null
-    & "$dc\Scripts\task_sync.ps1" 2>$null
+    & "$dc\Scripts\task_scan.ps1" 2>&1 | Out-Null
+    & "$dc\Scripts\task_sync.ps1" 2>&1 | Out-Null
 }
 Start-Job -ScriptBlock $scanBlock -ArgumentList $DEV_CORE | Out-Null
 
@@ -106,10 +106,10 @@ Log "session_start.ps1 termine"
 
 # 9. Endday check
 Write-Host "  9/9 Endday verification" -ForegroundColor Cyan
-& "$DEV_CORE\Scripts\endday_check.ps1" 2>$null
+& "$DEV_CORE\Scripts\endday_check.ps1" 2>&1 | Out-Null
 
 # 10. Gen session context
 Write-Host "  10/10 Session context" -ForegroundColor Cyan
-& "$DEV_CORE\Scripts\gen_session_context.ps1" 2>$null
+& "$DEV_CORE\Scripts\gen_session_context.ps1" 2>&1 | Out-Null
 
 

@@ -167,7 +167,7 @@ for ext, tag in required.items():
 print('Repowise web languages OK')
 "@
     if ($Quiet) {
-        & $Python -c $verify 2>$null | Out-Null
+        & $Python -c $verify 2>&1 | Out-Null
     } else {
         & $Python -c $verify
     }

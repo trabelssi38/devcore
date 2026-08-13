@@ -8,5 +8,8 @@ if (-not $env:PYTHONPATH -or $env:PYTHONPATH -notlike "*$DEV_CORE_ROOT*") {
     $env:PYTHONPATH = "$DEV_CORE_ROOT;$env:PYTHONPATH"
 }
 
-& "C:\Program Files\Python313\python.exe" -m devcore_engine skills list
+. (Join-Path $PSScriptRoot "platform_version.ps1")
+$pythonExe = Get-DevCorePython
+
+& $pythonExe -m devcore_engine skills list
 exit $LASTEXITCODE

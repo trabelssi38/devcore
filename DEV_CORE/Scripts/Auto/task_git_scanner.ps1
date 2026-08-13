@@ -1,4 +1,4 @@
-﻿# task_git_scanner.ps1 -- DEV_CORE v9.0 Auto layer
+# task_git_scanner.ps1 -- DEV_CORE v9.0 Auto layer
 # Scan git commits pour detecter les tags [T-XX] manquants
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -31,12 +31,13 @@ function Set-TaskProperty {
 
 Log "task_git_scanner -- analyse commits" "Cyan"
 
-# Résoudre le dépôt du projet actif (pas forcément C:\devcore)
-$gitRoot = git rev-parse --show-toplevel 2>$null
+# Résoudre le dépôt du projet actif
+$gitRootRes = git rev-parse --show-toplevel 2>&1
+$gitRoot = if ($LASTEXITCODE -eq 0 -and $gitRootRes -and $gitRootRes -notmatch "fatal:") { $gitRootRes.Trim() } else { $null }
 if ($gitRoot) { Push-Location $gitRoot } else { Push-Location (Split-Path -Parent $DEV_CORE) }
 try {
     # 1. Lire les commits des 30 derniers jours
-    $commits = git log --since="30 days ago" --format="%H|%s|%ai" 2>$null
+    $commits = git log --since="30 days ago" --format="%H|%s|%ai" 2>&1
     if (-not $commits) {
         Log "Aucun commit recent trouve" "Yellow"
         return

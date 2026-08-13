@@ -14,8 +14,8 @@ import time
 import random
 
 PORT = 20129
-PLATFORM_ROOT = os.getenv("DEVCORE_PLATFORM_ROOT", "C:/devcore/DEV_CORE")
-DATA_ROOT = os.getenv("DEVCORE_DATA_ROOT", "C:/devcore/DEV_CORE_DATA")
+PLATFORM_ROOT = os.getenv("DEVCORE_PLATFORM_ROOT", str(Path(__file__).resolve().parent.parent))
+DATA_ROOT = os.getenv("DEVCORE_DATA_ROOT", str(Path(PLATFORM_ROOT).parent / "DEV_CORE_DATA"))
 API_SCHEMA_VERSION = 1
 DASHBOARD_COMMAND_TIMEOUT_SEC = 90.0
 PLUGIN_ID_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]*$")

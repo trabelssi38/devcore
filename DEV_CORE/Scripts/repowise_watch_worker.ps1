@@ -8,7 +8,10 @@ param(
 
 $ErrorActionPreference = "Continue"
 $env:PYTHONIOENCODING = if ($env:PYTHONIOENCODING) { $env:PYTHONIOENCODING } else { "utf-8" }
-$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { $PSScriptRoot }
+$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { Split-Path -Parent $PSScriptRoot }
+if ($DEV_CORE -match '[/\\]Scripts[/\\]?$') {
+    $DEV_CORE = Split-Path -Parent $DEV_CORE
+}
 
 New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
 $safeName = $ProjectName -replace '[\\/:*?"<>| ]', '_'
@@ -37,8 +40,8 @@ function Read-JsonSafe {
 function Get-RepoHead {
     param([string]$Path)
     try {
-        $head = (& git -C $Path rev-parse HEAD 2>$null | Select-Object -First 1)
-        if ($head) { return $head.Trim() }
+        $head = (& git -C $Path rev-parse HEAD 2>&1 | Select-Object -First 1)
+        if ($head -and $head -notmatch "fatal:") { return $head.Trim() }
     } catch {}
     return $null
 }

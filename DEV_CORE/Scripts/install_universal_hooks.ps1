@@ -7,7 +7,7 @@ $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path -Path (Join-Path $env
 } else {
     $defaultDevCore
 }
-if ($DEV_CORE -match '\\Scripts\\?$') {
+if ($DEV_CORE -match '[/\\]Scripts[/\\]?$') {
     $DEV_CORE = Split-Path -Parent $DEV_CORE
 }
 $PYTHON_EXE = "python"

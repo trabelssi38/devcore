@@ -25,17 +25,20 @@ function Resolve-Repowise {
     $candidates = @()
     if ($RequestedPath) { $candidates += $RequestedPath }
     if ($env:REPOWISE_EXE) { $candidates += $env:REPOWISE_EXE }
+    $cmd = Get-Command "repowise" -ErrorAction SilentlyContinue
+    if ($cmd) { $candidates += $cmd.Source }
+    $candidates += Join-Path $HomeDir "AppData\Roaming\Python\Python314\Scripts\repowise.exe"
     $candidates += Join-Path $HomeDir "AppData\Roaming\Python\Python313\Scripts\repowise.exe"
     $candidates += Join-Path $HomeDir "AppData\Roaming\Python\Python312\Scripts\repowise.exe"
+    $candidates += Join-Path $HomeDir "AppData\Roaming\Python\Scripts\repowise.exe"
+    $candidates += "C:\Python314\Scripts\repowise.exe"
+    $candidates += "C:\Python313\Scripts\repowise.exe"
 
     foreach ($candidate in $candidates) {
         if ($candidate -and (Test-Path $candidate)) {
             return (Resolve-Path $candidate).Path
         }
     }
-
-    $cmd = Get-Command "repowise" -ErrorAction SilentlyContinue
-    if ($cmd) { return $cmd.Source }
 
     return "repowise"
 }

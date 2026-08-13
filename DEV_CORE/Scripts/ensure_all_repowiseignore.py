@@ -7,9 +7,9 @@ import shutil
 from pathlib import Path
 
 # Paths
-PLATFORM_ROOT = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", r"C:\devcore\DEV_CORE"))
+PLATFORM_ROOT = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", Path(__file__).resolve().parent.parent))
 PROJECTS_JSON = PLATFORM_ROOT / "Config" / "projects.json"
-TEMPLATE_IGNORE = Path(r"C:\devcore\.repowiseignore")
+TEMPLATE_IGNORE = PLATFORM_ROOT.parent / ".repowiseignore"
 
 DEFAULT_IGNORE_CONTENT = """node_modules/
 .git/objects/

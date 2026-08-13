@@ -2,7 +2,7 @@
 # Stops the active work session and terminates all background services cleanly.
 
 $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path (Join-Path $env:DEVCORE_PLATFORM_ROOT "devcore_engine"))) { $env:DEVCORE_PLATFORM_ROOT } else { Split-Path -Parent $PSScriptRoot }
-if ($DEV_CORE -match '\\Scripts\\?$') {
+if ($DEV_CORE -match '[/\\]Scripts[/\\]?$') {
     $DEV_CORE = Split-Path -Parent $DEV_CORE
 }
 if (-not $env:PYTHONPATH -or $env:PYTHONPATH -notlike "*$DEV_CORE*") {
@@ -20,7 +20,7 @@ Write-Host ""
 
 # 1. End the active session in DB
 Write-Host "[1/3] Cloture de la session en base..." -ForegroundColor White
-$pythonExe = if (Get-Command "python" -ErrorAction SilentlyContinue) { "python" } else { "C:\Program Files\Python313\python.exe" }
+$pythonExe = Get-DevCorePython
 $env:PYTHONPATH = $DEV_CORE
 & $pythonExe -m devcore_engine.cli session end --project "devcore"
 

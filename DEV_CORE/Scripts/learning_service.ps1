@@ -1,6 +1,7 @@
 # Delegator wrapper for Python devcore_engine learning service
 $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { Split-Path -Parent $PSScriptRoot }
 $env:PYTHONPATH = $DEV_CORE
-$pythonExe = if (Get-Command "python" -ErrorAction SilentlyContinue) { "python" } else { "C:\Program Files\Python313\python.exe" }
+. (Join-Path $PSScriptRoot "platform_version.ps1")
+$pythonExe = Get-DevCorePython
 & $pythonExe -m devcore_engine.cli skills $args
 exit $LASTEXITCODE

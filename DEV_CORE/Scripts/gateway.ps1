@@ -5,7 +5,10 @@ param(
     [switch]$Json
 )
 
-$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { $PSScriptRoot }
+$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { Split-Path -Parent $PSScriptRoot }
+if ($DEV_CORE -match '[/\\]Scripts[/\\]?$') {
+    $DEV_CORE = Split-Path -Parent $DEV_CORE
+}
 $SCRIPTS = Join-Path $DEV_CORE "Scripts"
 
 $commandMap = [ordered]@{

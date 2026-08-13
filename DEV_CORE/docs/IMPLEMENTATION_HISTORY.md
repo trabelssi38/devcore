@@ -19,6 +19,7 @@ Chronologie consolidee des implementations et plans. Source principale : histori
 | T-344 a T-347 | Watchdog 100% Silencieux & Scanner Git Multi-Projets (v10.3.0) | SystemWatcher native auto-heal, scanner git multi-dépôts (job_tracker, devcore), auto-détection du projet dans hooks git, exécution 100% invisible sans popup de console |
 | T-356 | Correctifs Cockpit Modèles & Isolement Projets/Tâches (v10.3.2) | Correction détection projets sans trb_m/dossiers OS, scrollbar répartition modèles, fidélité historique tâches/modèles de sessions |
 | 2026-08-11 | Correctifs MCP Repowise & Tokens Dashboard | Watchdog MCP Repowise corrigé (surveillance dernier ancêtre + `NO_WATCHDOG`), fallback « Sans tâche » supprimé (badges tokens exacts par tâche) |
+| T-372 (2026-08-13) | Portabilité Universelle Scripts & session_end (v10.3.10) | Résolution Python dynamique `Get-DevCorePython`, correction redirections `2>$null` -> `2>&1`, regex chemins universelles `[/\\]Scripts[/\\]?$`, élimination chemins absolus/utilisateurs codés en dur |
 
 ## Mai 2026 - fondations
 

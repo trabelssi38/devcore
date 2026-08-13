@@ -3,9 +3,10 @@
 # C'est CE fichier qui rend les actions autonomes -- CLAUDE.md seul ne suffit pas
 # Usage : powershell -ExecutionPolicy Bypass -File C:\devcore\DEV_CORE\Scripts\install_hooks.ps1
 
-$DEV_CORE   = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { $PSScriptRoot }
-$CLAUDE_DIR = "$env:USERPROFILE\.claude"
-$SETTINGS   = "$CLAUDE_DIR\settings.json"
+$DEV_CORE   = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { Split-Path -Parent $PSScriptRoot }
+if ($DEV_CORE -match '[/\\]Scripts[/\\]?$') {
+    $DEV_CORE = Split-Path -Parent $DEV_CORE
+}
 . "$DEV_CORE\Scripts\platform_version.ps1"
 $PLATFORM = Get-DevCorePlatformInfo
 

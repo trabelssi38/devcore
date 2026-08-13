@@ -14,5 +14,8 @@ $argsList = @()
 if ($SkipTokenRefresh) { $argsList += "--skip-token-refresh" }
 if ($Json) { $argsList += "--json" }
 
-& "C:\Program Files\Python313\python.exe" $pyScript @argsList
+. (Join-Path $PSScriptRoot "platform_version.ps1")
+$pythonExe = Get-DevCorePython
+
+& $pythonExe $pyScript @argsList
 exit $LASTEXITCODE

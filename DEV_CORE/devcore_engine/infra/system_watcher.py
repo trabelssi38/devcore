@@ -194,10 +194,11 @@ class SystemWatcher:
                 headroom_exe = str(py_scripts_headroom)
         if not headroom_exe:
             custom_paths = [
-                Path(os.path.expanduser(r"~\AppData\Roaming\Python\Python313\Scripts\headroom.exe")),
                 Path(os.path.expanduser(r"~\AppData\Roaming\Python\Python314\Scripts\headroom.exe")),
-                Path(r"C:\Users\trb_m\AppData\Roaming\Python\Python313\Scripts\headroom.exe"),
+                Path(os.path.expanduser(r"~\AppData\Roaming\Python\Python313\Scripts\headroom.exe")),
                 Path(os.path.expanduser(r"~\AppData\Roaming\Python\Scripts\headroom.exe")),
+                Path(r"C:\Python314\Scripts\headroom.exe"),
+                Path(r"C:\Python313\Scripts\headroom.exe"),
                 Path(r"C:\Program Files\Python313\Scripts\headroom.exe"),
             ]
             for p in custom_paths:

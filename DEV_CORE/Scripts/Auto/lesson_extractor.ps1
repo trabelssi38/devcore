@@ -1,4 +1,4 @@
-﻿# lesson_extractor.ps1 -- DEV_CORE Auto layer
+# lesson_extractor.ps1 -- DEV_CORE Auto layer
 # Extrait les lecons depuis : git log, tasks done, MEMORY.md
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path (Join-Path $env:DEVCORE_PLATFORM_ROOT "devcore_engine"))) { $env:DEVCORE_PLATFORM_ROOT } else { (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) }
 . "$DEV_CORE\Scripts\platform_version.ps1"
@@ -56,7 +56,7 @@ if (Test-Path $tFile) {
 # 3. Extraire depuis le git log (patterns de commits)
 try {
     Push-Location (Split-Path -Parent $DEV_CORE)
-    $recentCommits = git log --since="7 days ago" --format="%s" 2>$null
+    $recentCommits = git log --since="7 days ago" --format="%s" 2>&1
     if ($recentCommits) {
         $fixCount = ($recentCommits | Where-Object { $_ -match "^fix:" }).Count
         $featCount = ($recentCommits | Where-Object { $_ -match "^feat:" }).Count

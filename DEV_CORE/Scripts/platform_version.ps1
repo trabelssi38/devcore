@@ -67,6 +67,39 @@ function Get-DevCorePlatformTitle {
     (Get-DevCorePlatformInfo).title
 }
 
+function Get-DevCorePython {
+    if ($env:DEVCORE_PYTHON -and (Test-Path -LiteralPath $env:DEVCORE_PYTHON)) {
+        return $env:DEVCORE_PYTHON
+    }
+    $cmd = Get-Command "python" -ErrorAction SilentlyContinue
+    if ($cmd -and $cmd.Source) {
+        return $cmd.Source
+    }
+    $cmdPy = Get-Command "py" -ErrorAction SilentlyContinue
+    if ($cmdPy) {
+        return "py"
+    }
+    $cmd3 = Get-Command "python3" -ErrorAction SilentlyContinue
+    if ($cmd3 -and $cmd3.Source) {
+        return $cmd3.Source
+    }
+    $candidates = @(
+        (Get-ChildItem -Path "C:\Python*" -Filter "python.exe" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName),
+        (Get-ChildItem -Path "$env:LOCALAPPDATA\Programs\Python\Python*\python.exe" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName),
+        (Get-ChildItem -Path "C:\Program Files\Python*\python.exe" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName)
+    )
+    foreach ($cand in $candidates) {
+        if ($cand -and (Test-Path -LiteralPath $cand)) {
+            return $cand
+        }
+    }
+    return "python"
+}
+
+if (-not $env:DEVCORE_PYTHON) {
+    $env:DEVCORE_PYTHON = Get-DevCorePython
+}
+
 $info = Get-DevCorePlatformInfo
 if ($Raw) {
     Write-Output $info.version

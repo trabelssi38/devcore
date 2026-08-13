@@ -45,7 +45,7 @@ def print_color(text, color="gray"):
 def get_active_project():
     # Cache lookup
     current_pwd = os.getcwd()
-    system_dirs = {"documents", "desktop", "downloads", "onedrive", "system32", "users", "windows", "temp", "appdata", "local", "trb_m", "home"}
+    system_dirs = {"documents", "desktop", "downloads", "onedrive", "system32", "users", "windows", "temp", "appdata", "local", "trb_m", "home", Path.home().name.lower()}
     if os.environ.get("DEVCORE_ACTIVE_PROJECT_PWD") == current_pwd:
         cached_name = os.environ.get("DEVCORE_ACTIVE_PROJECT_NAME")
         if cached_name and cached_name.lower() not in system_dirs:

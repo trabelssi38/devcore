@@ -3,7 +3,7 @@
 # Usage : & "headroom_start.ps1"
 
 $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { $PSScriptRoot }
-if ($DEV_CORE -match '\\Scripts\\?$') {
+if ($DEV_CORE -match '[/\\]Scripts[/\\]?$') {
     $DEV_CORE = Split-Path -Parent $DEV_CORE
 }
 . "$DEV_CORE\Scripts\platform_version.ps1"
@@ -68,9 +68,8 @@ if ($cmd) {
 }
 if ($headroomPath -eq "headroom") {
     $customPaths = @(
-        "$env:USERPROFILE\AppData\Roaming\Python\Python313\Scripts\headroom.exe",
         "$env:USERPROFILE\AppData\Roaming\Python\Python314\Scripts\headroom.exe",
-        "C:\Users\trb_m\AppData\Roaming\Python\Python313\Scripts\headroom.exe",
+        "$env:USERPROFILE\AppData\Roaming\Python\Python313\Scripts\headroom.exe",
         "$env:USERPROFILE\AppData\Roaming\Python\Scripts\headroom.exe"
     )
     foreach ($p in $customPaths) {

@@ -3,6 +3,7 @@ $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path (Join-Path $env:DEVCO
 if (-not $env:PYTHONPATH -or $env:PYTHONPATH -notlike "*$DEV_CORE*") {
     $env:PYTHONPATH = if ($env:PYTHONPATH) { "$DEV_CORE;$env:PYTHONPATH" } else { $DEV_CORE }
 }
-$pythonExe = if (Get-Command "python" -ErrorAction SilentlyContinue) { "python" } else { "C:\Program Files\Python313\python.exe" }
+. (Join-Path $PSScriptRoot "platform_version.ps1")
+$pythonExe = Get-DevCorePython
 & $pythonExe -m devcore_engine.cli task next $args
 exit $LASTEXITCODE

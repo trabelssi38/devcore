@@ -452,7 +452,8 @@ def empty_stats_bucket(include_sessions=False):
 SYSTEM_DIR_NAMES = {
     "trb_m", "users", "documents", "desktop", "downloads", "onedrive",
     "system32", "windows", "temp", "appdata", "local", "archive",
-    "patterns", "scenarios", "scores", "default", "scripts", "_archive"
+    "patterns", "scenarios", "scores", "default", "scripts", "_archive",
+    Path.home().name.lower()
 }
 
 

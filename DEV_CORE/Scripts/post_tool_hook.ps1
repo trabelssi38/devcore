@@ -4,7 +4,10 @@
 # 2. Detecte les commits [T-XX] pour auto-incrementer steps
 # 3. Integrity check steps_done vs steps reellement done
 
-$DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { $PSScriptRoot }
+$DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { Split-Path -Parent $PSScriptRoot }
+if ($DEV_CORE -match '[/\\]Scripts[/\\]?$') {
+    $DEV_CORE = Split-Path -Parent $DEV_CORE
+}
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { (Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE_DATA") }
 $tFile         = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
 
@@ -25,7 +28,7 @@ if ($active.steps -and $active.steps.Count -gt 0) {
 
 # --- Git commit detection (3.2) ---
 try {
-    $lastMsg = git log -1 --pretty=%B 2>$null
+    $lastMsg = git log -1 --pretty=%B 2>&1
     if ($lastMsg -match '\[T-(\d+)\]') {
         $tagId = "T-{0:D2}" -f [int]$Matches[1]
         if ($tagId -eq $active.id) {

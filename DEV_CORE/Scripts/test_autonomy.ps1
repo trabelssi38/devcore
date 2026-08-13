@@ -2,7 +2,10 @@
 # Simule un cycle complet : projet -> tache -> steps -> done -> chainage
 # Usage : powershell -File test_autonomy.ps1
 
-$DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { $PSScriptRoot }
+$DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { Split-Path -Parent $PSScriptRoot }
+if ($DEV_CORE -match '[/\\]Scripts[/\\]?$') {
+    $DEV_CORE = Split-Path -Parent $DEV_CORE
+}
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { (Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE_DATA") }
 . "$DEV_CORE\Scripts\platform_version.ps1"
 $PLATFORM = Get-DevCorePlatformInfo
@@ -67,7 +70,7 @@ try {
 
     # 2. Test task_next active la premiere tache
     Write-Host "  --- Test task_next ---" -ForegroundColor DarkGray
-    & "$DEV_CORE\Scripts\task_next.ps1" 2>$null | Out-Null
+    & "$DEV_CORE\Scripts\task_next.ps1" 2>&1 | Out-Null
     $board = Get-Content $tFile -Raw | ConvertFrom-Json
     $t1 = $board.tasks | Where-Object { $_.id -eq "T-TEST-01" }
     Assert "task_next active T-TEST-01" ($t1.status -eq "active")
@@ -75,7 +78,7 @@ try {
 
     # 3. Test step done
     Write-Host "  --- Test step done ---" -ForegroundColor DarkGray
-    & "$DEV_CORE\Scripts\task_step_done.ps1" -StepNumber 1 2>$null | Out-Null
+    & "$DEV_CORE\Scripts\task_step_done.ps1" -StepNumber 1 2>&1 | Out-Null
     $board = Get-Content $tFile -Raw | ConvertFrom-Json
     $t1 = $board.tasks | Where-Object { $_.id -eq "T-TEST-01" }
     Assert "Step 1 marquee done" ($t1.steps[0].done -eq $true)
@@ -84,7 +87,7 @@ try {
 
     # 4. Test step done 2 -> auto-complete
     Write-Host "  --- Test auto-complete ---" -ForegroundColor DarkGray
-    & "$DEV_CORE\Scripts\task_step_done.ps1" -StepNumber 2 2>$null | Out-Null
+    & "$DEV_CORE\Scripts\task_step_done.ps1" -StepNumber 2 2>&1 | Out-Null
     $board = Get-Content $tFile -Raw | ConvertFrom-Json
     $t1 = $board.tasks | Where-Object { $_.id -eq "T-TEST-01" }
     Assert "T-TEST-01 auto-done" ($t1.status -eq "done")
@@ -99,7 +102,7 @@ try {
     # Corrompre volontairement
     $t2.steps_done = 99
     $board | ConvertTo-Json -Depth 10 | Set-Content $tFile -Encoding UTF8
-    & "$DEV_CORE\Scripts\diagnose.ps1" -Fix 2>$null | Out-Null
+    & "$DEV_CORE\Scripts\diagnose.ps1" -Fix 2>&1 | Out-Null
     $board = Get-Content $tFile -Raw | ConvertFrom-Json
     $t2 = $board.tasks | Where-Object { $_.id -eq "T-TEST-02" }
     Assert "Integrity fix : steps_done corrige" ($t2.steps_done -le $t2.steps_total)

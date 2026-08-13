@@ -1,4 +1,4 @@
 @echo off
-cd /d C:\src\dashboard_recette_br
-if "%GEMINI_API_KEY%"=="" set /p GEMINI_API_KEY=<"C:\devcore\DEV_CORE\Config\gemini_api_key.txt"
-echo. | "C:\Program Files\Python313\Scripts\repowise.exe" serve --host 127.0.0.1 --port 7337 --no-ui > "C:\Users\trb_m\repowise_serve.log" 2>&1
+if "%DEVCORE_PLATFORM_ROOT%"=="" set "DEVCORE_PLATFORM_ROOT=%~dp0.."
+if "%GEMINI_API_KEY%"=="" if exist "%DEVCORE_PLATFORM_ROOT%\Config\gemini_api_key.txt" set /p GEMINI_API_KEY=<"%DEVCORE_PLATFORM_ROOT%\Config\gemini_api_key.txt"
+echo. | repowise serve --host 127.0.0.1 --port 7337 --no-ui > "%USERPROFILE%\repowise_serve.log" 2>&1

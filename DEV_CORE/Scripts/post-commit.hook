@@ -1,12 +1,30 @@
 #!/bin/sh
 # post-commit -- DEV_CORE v10 -- Native Python Event Hook
-PYTHON_EXE="C:/Program Files/Python313/python.exe"
-HOOK_SCRIPT="C:/devcore/DEV_CORE/devcore_engine/hooks/post_commit.py"
 
-if [ -f "$PYTHON_EXE" ]; then
-    "$PYTHON_EXE" "$HOOK_SCRIPT"
-elif command -v python3 >/dev/null 2>&1; then
-    python3 "$HOOK_SCRIPT"
+# 1. Resolve Python
+if [ -n "$DEVCORE_PYTHON" ] && [ -x "$DEVCORE_PYTHON" ]; then
+    PYTHON_CMD="$DEVCORE_PYTHON"
 elif command -v python >/dev/null 2>&1; then
-    python "$HOOK_SCRIPT"
+    PYTHON_CMD="python"
+elif command -v python3 >/dev/null 2>&1; then
+    PYTHON_CMD="python3"
+elif [ -f "C:/Program Files/Python313/python.exe" ]; then
+    PYTHON_CMD="C:/Program Files/Python313/python.exe"
+else
+    PYTHON_CMD="python"
+fi
+
+# 2. Resolve Hook Script
+if [ -n "$DEVCORE_PLATFORM_ROOT" ] && [ -f "$DEVCORE_PLATFORM_ROOT/devcore_engine/hooks/post_commit.py" ]; then
+    HOOK_SCRIPT="$DEVCORE_PLATFORM_ROOT/devcore_engine/hooks/post_commit.py"
+elif [ -f "$GIT_DIR/../DEV_CORE/devcore_engine/hooks/post_commit.py" ]; then
+    HOOK_SCRIPT="$GIT_DIR/../DEV_CORE/devcore_engine/hooks/post_commit.py"
+elif [ -f "C:/devcore/DEV_CORE/devcore_engine/hooks/post_commit.py" ]; then
+    HOOK_SCRIPT="C:/devcore/DEV_CORE/devcore_engine/hooks/post_commit.py"
+else
+    HOOK_SCRIPT="$(git rev-parse --show-toplevel 2>/dev/null)/DEV_CORE/devcore_engine/hooks/post_commit.py"
+fi
+
+if [ -f "$HOOK_SCRIPT" ]; then
+    "$PYTHON_CMD" "$HOOK_SCRIPT"
 fi

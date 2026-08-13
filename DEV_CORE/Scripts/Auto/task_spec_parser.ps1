@@ -1,4 +1,4 @@
-﻿# task_spec_parser.ps1 -- DEV_CORE v9.0 Auto layer
+# task_spec_parser.ps1 -- DEV_CORE v9.0 Auto layer
 # Parser les fichiers de spec pour extraire des taches candidates
 
 $DEV_CORE      = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path (Join-Path $env:DEVCORE_PLATFORM_ROOT "devcore_engine"))) { $env:DEVCORE_PLATFORM_ROOT } else { (Split-Path -Parent $PSScriptRoot) }
@@ -28,7 +28,8 @@ Log "task_spec_parser -- analyse fichiers spec" "Cyan"
 $specDirs = @("$DEV_CORE_DATA\Vault\docs\superpowers\specs")
 
 # Trouver le depot git du projet actif pour y chercher des specs locales
-$gitRoot = git rev-parse --show-toplevel 2>$null
+$gitRootRes = git rev-parse --show-toplevel 2>&1
+$gitRoot = if ($LASTEXITCODE -eq 0 -and $gitRootRes -and $gitRootRes -notmatch "fatal:") { $gitRootRes.Trim() } else { $null }
 if ($gitRoot) {
     $specDirs += "$gitRoot\docs\superpowers\specs"
     $specDirs += "$gitRoot\DEV_CORE\docs\superpowers\specs"

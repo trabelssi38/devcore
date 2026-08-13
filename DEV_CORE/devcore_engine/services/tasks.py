@@ -24,7 +24,10 @@ class TaskService:
             self.data_root = get_data_root()
         else:
             self.data_root = data_root or get_data_root()
-            self.conn = connect_db()
+            if data_root is not None:
+                self.conn = connect_db(self.data_root / "devcore.db")
+            else:
+                self.conn = connect_db()
         self.event_bus = EventBus(self.conn)
 
 
@@ -108,7 +111,7 @@ class TaskService:
         metadata: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         # Auto detect active project before task assignment
-        system_dirs = {"trb_m", "users", "documents", "desktop", "downloads", "onedrive", "temp", "appdata"}
+        system_dirs = {"trb_m", "users", "documents", "desktop", "downloads", "onedrive", "temp", "appdata", Path.home().name.lower()}
         if not project_id or project_id.lower() in system_dirs:
             try:
                 import subprocess, os

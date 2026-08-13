@@ -7,7 +7,7 @@ $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path -Path (Join-Path $env
 } else {
     $defaultDevCore
 }
-if ($DEV_CORE -match '\\Scripts\\?$') {
+if ($DEV_CORE -match '[/\\]Scripts[/\\]?$') {
     $DEV_CORE = Split-Path -Parent $DEV_CORE
 }
 
@@ -68,7 +68,7 @@ Write-Host "  4/5 Python packages..." -ForegroundColor Cyan
 $packages = @("qdrant-client", "jsonschema", "repowise", "sqlite-vec", "headroom-ai[proxy]")
 foreach ($pkg in $packages) {
     try {
-        pip install $pkg --quiet 2>$null
+        pip install $pkg --quiet 2>&1 | Out-Null
         Write-Host "  [OK] $pkg" -ForegroundColor Green
     } catch {
         Write-Host "  [WARN] pip non disponible pour $pkg" -ForegroundColor Yellow
