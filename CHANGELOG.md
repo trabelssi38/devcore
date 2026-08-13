@@ -14,6 +14,10 @@ and this project adheres to Semantic Versioning.
   - **Normalisation des Séparateurs de Chemins** : Remplacement des regex rigides `-match '\\Scripts\\?$'` par `-match '[/\\]Scripts[/\\]?$'` pour supporter les slashes `/` et backslashes `\`.
   - **Suppression des Chemins Utilisateur et Racines Absolus** : Remplacement des occurrences en dur de `trb_m` et `C:\devcore` par `Path.home()`, `$env:USERPROFILE` et l'inclusion dynamique du nom d'utilisateur dans les filtres d'exclusion système.
   - **Supervision & Contrats de Test** : Alignement de `test_task_service.py` et `test_qdrant_vector_contract.py` sur les chemins locaux `get_db_path()` de `devcore.db`.
+- **Remplacement de Qdrant par `sqlite-vec` Natively** :
+  - **Élimination des Pings et Wait-Loops Qdrant** : Retrait des pings bloquants sur le port `6333` dans `session_start.ps1`, `endday_check.ps1` et `weekly_maintenance.ps1`.
+  - **Exécution Directe de la Maintenance** : `endday_check.ps1` lance désormais directement `endday.ps1` en s'appuyant sur l'extension locale de base vectorielle `sqlite-vec` de `devcore.db`.
+  - **Indicateurs Cockpit Modernisés** : `dc.py` et `gen_dashboard.py` vérifient et valident le statut vectoriel directement via la présence locale de `devcore.db` et le comptage des points via SQL.
 
 ## [10.3.9] - 2026-08-11
 
