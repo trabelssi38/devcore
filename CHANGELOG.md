@@ -13,6 +13,9 @@ and this project adheres to Semantic Versioning.
   - **Résolution de Conflit de Casse Variable** : Renommage de `$SETTINGS` en `$SETTINGS_PATH` dans `install_hooks.ps1` et `download/install_hooks.ps1` pour éliminer le conflit de casse PowerShell avec la variable `$settings`, évitant ainsi la corruption de l'écriture du fichier de configuration Claude.
   - **Restauration de devcore_engine** : Récupération des fichiers de l'engine supprimés localement afin de rendre le diagnostic et les services opérationnels.
 
+### Changed
+- **Migration vers l'Engine Python pour Claude** : Mise à jour de `install_hooks.ps1` et de sa copie d'archive pour utiliser nativement `devcore_engine` (commandes Python directes pour `session start`, `post_tool` et `session end`) à la place des scripts d'enveloppe `.ps1`.
+
 ## [10.3.10] - 2026-08-13
 
 ### Fixed

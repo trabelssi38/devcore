@@ -38,31 +38,33 @@ $settings = if (Test-Path $SETTINGS_PATH) {
     [PSCustomObject]@{}
 }
 
-# Script de session start -- declenche au premier message de chaque session
-$sessionStartScript = "$DEV_CORE\Scripts\session_start.ps1"
+$PYTHON_EXE = Get-DevCorePython
+$CLI_SCRIPT = "$DEV_CORE\devcore_engine\cli.py"
+$POST_TOOL  = "$DEV_CORE\devcore_engine\hooks\post_tool.py"
+
+# Commandes Python directes
+$cmdStart = "`"$PYTHON_EXE`" `"$CLI_SCRIPT`" session start"
+$cmdTool  = "`"$PYTHON_EXE`" `"$POST_TOOL`""
+$cmdEnd   = "`"$PYTHON_EXE`" `"$CLI_SCRIPT`" session end"
 
 # Construire les hooks
 $hooks = [PSCustomObject]@{
     UserPromptSubmit = @(
         [PSCustomObject]@{
             matcher = ""
-            hooks   = @(
-                [PSCustomObject]@{
-                    type    = "command"
-                    command = "powershell -ExecutionPolicy Bypass -NonInteractive -WindowStyle Hidden -File `"$sessionStartScript`""
-                }
-            )
+            hooks   = @( [PSCustomObject]@{ type = "command"; command = $cmdStart } )
         }
     )
     PostToolUse = @(
         [PSCustomObject]@{
             matcher = "Bash"
-            hooks   = @(
-                [PSCustomObject]@{
-                    type    = "command"
-                    command = "powershell -ExecutionPolicy Bypass -NonInteractive -WindowStyle Hidden -File `"$DEV_CORE\Scripts\post_tool_hook.ps1`""
-                }
-            )
+            hooks   = @( [PSCustomObject]@{ type = "command"; command = $cmdTool } )
+        }
+    )
+    Stop = @(
+        [PSCustomObject]@{
+            matcher = ""
+            hooks   = @( [PSCustomObject]@{ type = "command"; command = $cmdEnd } )
         }
     )
 }
@@ -74,8 +76,9 @@ $settings | Add-Member -NotePropertyName "hooks" -NotePropertyValue $hooks -Forc
 $settings | ConvertTo-Json -Depth 10 | Set-Content $SETTINGS_PATH -Encoding UTF8
 
 Write-Host "  [OK] settings.json mis a jour : $SETTINGS_PATH" -ForegroundColor Green
-Write-Host "  [OK] Hook UserPromptSubmit --> session_start.ps1" -ForegroundColor Green
-Write-Host "  [OK] Hook PostToolUse(Bash) --> post_tool_hook.ps1" -ForegroundColor Green
+Write-Host "  [OK] Hook UserPromptSubmit --> Python Native (session start)" -ForegroundColor Green
+Write-Host "  [OK] Hook PostToolUse(Bash) --> Python Native (post_tool)" -ForegroundColor Green
+Write-Host "  [OK] Hook Stop --> Python Native (session end)" -ForegroundColor Green
 Write-Host ""
 Write-Host "  IMPORTANT : Fermer et rouvrir Claude Code Desktop" -ForegroundColor Yellow
 Write-Host "  pour que les hooks soient pris en compte." -ForegroundColor Yellow
