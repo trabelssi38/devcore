@@ -78,9 +78,10 @@ Assert-Step "Variable DEVCORE_HEADROOM_ENFORCED" {
 } "DEVCORE_HEADROOM_ENFORCED must be 1 (Read: $env:DEVCORE_HEADROOM_ENFORCED)"
 
 # --- 2. Ports de Services ---
-Assert-Step "Service Qdrant (Port 6333)" {
-    Check-Port 6333
-} "Qdrant must be active on port 6333"
+Assert-Step "Service Vector Memory (sqlite-vec or Port 6333)" {
+    $dbFile = if ($env:DEVCORE_LOCAL_ROOT) { Join-Path $env:DEVCORE_LOCAL_ROOT "devcore.db" } elseif ($env:LOCALAPPDATA) { "$env:LOCALAPPDATA\DEV_CORE_LOCAL\devcore.db" } else { Join-Path $DEV_CORE_DATA "devcore.db" }
+    (Test-Path $dbFile) -or (Check-Port 6333)
+} "Vector memory must be initialized in sqlite-vec or active on Qdrant port 6333"
 
 Assert-Step "Service Gemini Router (Port 20130)" {
     Check-Port 20130

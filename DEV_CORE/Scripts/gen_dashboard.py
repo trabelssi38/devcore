@@ -152,8 +152,10 @@ def main():
     projects, task_details = load_projects_and_tasks(DATA_ROOT, PLATFORM_ROOT, token_metrics)
 
     # Service statuses
+    db_path = LOCAL_ROOT / "devcore.db"
+    has_sqlite_vec = db_path.exists()
     services = {
-        "qdrant": check_port("qdrant", 6333),
+        "qdrant": True if has_sqlite_vec else check_port("qdrant", 6333),
         "gemini_router": check_port("gemini_router", 20130),
         "dashboard_api": check_port("dashboard_api", 20129),
         "headroom": check_port("headroom", 8787),

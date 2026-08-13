@@ -1,4 +1,4 @@
-﻿# qdrant_sync.ps1 -- DEV_CORE v9.0 Auto layer
+# qdrant_sync.ps1 -- DEV_CORE v9.0 Auto layer
 $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path (Join-Path $env:DEVCORE_PLATFORM_ROOT "Scripts\platform_version.ps1"))) {
     $env:DEVCORE_PLATFORM_ROOT
 } elseif (Test-Path (Join-Path $PSScriptRoot "platform_version.ps1")) {
@@ -18,18 +18,26 @@ $DEV_CORE_LOCAL = if ($env:DEVCORE_LOCAL_ROOT) { $env:DEVCORE_LOCAL_ROOT } elsei
 $TODAY         = Get-Date -Format "yyyy-MM-dd"
 $LOG           = "$DEV_CORE_DATA\Logs\scripts\qdrant_sync_$TODAY.log"
 function Log { param($msg,$color="Gray"); $l="[$(Get-Date -f HH:mm:ss)] $msg"; Add-Content $LOG $l -ErrorAction SilentlyContinue; Write-Host "    $l" -ForegroundColor $color }
-Log "qdrant_sync -- verification Qdrant" "Cyan"
-$env:PYTHONPATH = "$DEV_CORE\Tools"
+Log "qdrant_sync -- verification memoire vectorielle unifiee" "Cyan"
+$dbFile = Join-Path $DEV_CORE_LOCAL "devcore.db"
+if (Test-Path $dbFile) {
+    Log "Base vectorielle sqlite-vec active ($dbFile)" "Green"
+} else {
+    Log "Base devcore.db locale absente -- initialisation requise" "Yellow"
+}
+
+# Verification optionnelle Qdrant distant / conteneur
 try {
-    $status = Invoke-RestMethod "http://localhost:6333/collections" -TimeoutSec 5
-    Log "Qdrant OK -- $($status.result.collections.Count) collections" "Green"
-    # Traiter la queue de refresh si elle existe
-    $queue = "$DEV_CORE_DATA\Memory\qdrant-refresh.jsonl"
-    if (Test-Path $queue) {
-        $lines = Get-Content $queue
-        Log "$($lines.Count) entrees en attente dans la queue" "Cyan"
-        # La queue sera traitee par le worker Python dedie
-        # python -m devcore.qdrant_worker (a implementer selon ton setup Ollama)
-        Log "Queue disponible pour traitement : $queue" "Gray"
-    }
-} catch { Log "Qdrant non disponible -- upsert differe" "Yellow" }
+    $status = Invoke-RestMethod "http://localhost:6333/collections" -TimeoutSec 1
+    Log "Qdrant HTTP externe detecte -- $($status.result.collections.Count) collections" "Green"
+} catch {
+    # Normal in native sqlite-vec mode
+}
+
+# Traiter la queue de refresh si elle existe
+$queue = "$DEV_CORE_DATA\Memory\qdrant-refresh.jsonl"
+if (Test-Path $queue) {
+    $lines = Get-Content $queue
+    Log "$($lines.Count) entrees en attente dans la queue" "Cyan"
+    Log "Queue disponible pour traitement : $queue" "Gray"
+}

@@ -508,11 +508,22 @@ def cmd_doctor(args):
     # 9. Services & Ports check
     services = {
         "PostgreSQL (Port 5432)": ("127.0.0.1", 5432, "tcp"),
-        "Qdrant (Port 6333)": ("http://localhost:6333/collections", 6333, "http"),
         "Gemini Router (Port 20130)": ("http://localhost:20130/v1/models", 20130, "http"),
         "FastAPI API (Port 20131)": ("http://localhost:20131/api/v1/health", 20131, "http"),
         "Repowise (Port 7337)": ("127.0.0.1", 7337, "tcp")
     }
+
+    # Verify vector DB (sqlite-vec or local Qdrant port 6333)
+    db_root = os.getenv("DEVCORE_LOCAL_ROOT")
+    db_file = (Path(db_root) / "devcore.db") if db_root else (Path.home() / ".gemini/antigravity/devcore.db")
+    has_sqlite_vec = db_file.exists()
+    qdrant_up = ping_http("http://localhost:6333/collections") if not has_sqlite_vec else False
+
+    check(
+        "Service Vector Memory (sqlite-vec / Qdrant)",
+        "OK" if (has_sqlite_vec or qdrant_up) else "WARN",
+        "Initialiser devcore.db local ou demarrer Qdrant"
+    )
 
     for name, (addr, port, p_type) in services.items():
         is_up = False

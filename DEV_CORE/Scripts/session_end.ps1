@@ -40,7 +40,7 @@ Log "========================================" "DarkGray"
 Log "Date: $TODAY" "White"
 Write-Host ""
 
-Log "[1/6] Sync Qdrant..." "Cyan"
+Log "[1/6] Sync Knowledge / Vector Memory..." "Cyan"
 & "$DEV_CORE\Scripts\qdrant_sync.ps1" 2>&1 | Tee-Object -FilePath $LOG -Append
 
 Log "[2/6] Sync Obsidian..." "Cyan"

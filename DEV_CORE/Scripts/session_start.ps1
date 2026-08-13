@@ -64,12 +64,10 @@ Log "session_start.ps1 -- hook auto"
 Log "launch.ps1"
 & "$DEV_CORE\Scripts\launch.ps1" -QuickStart 2>>$LOG
 
-# 2b. Watchdog Qdrant (4.2) -- tenter de demarrer si down
-try { Invoke-RestMethod "http://localhost:6333" -TimeoutSec 2 | Out-Null }
-catch {
-    Log "Qdrant down -- tentative docker start"
-    Start-Process "docker" -ArgumentList "start qdrant" -WindowStyle Hidden -ErrorAction SilentlyContinue
-    Start-Sleep 3
+# 2b. Verification base vectorielle unifiee SQLite-Vec
+$dbFile = Join-Path $DEV_CORE_LOCAL "devcore.db"
+if (Test-Path $dbFile) {
+    Log "Base vectorielle sqlite-vec active"
 }
 
 # 3. Charger la tache active

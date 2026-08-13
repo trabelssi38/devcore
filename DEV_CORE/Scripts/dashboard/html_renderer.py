@@ -37,6 +37,37 @@ def get_qdrant_points_count() -> int:
             pass
 
     import urllib.request
+    db_root = os.environ.get("DEVCORE_LOCAL_ROOT")
+    db_file = (Path(db_root) / "devcore.db") if db_root else None
+    if not db_file or not db_file.exists():
+        local_app = os.environ.get("LOCALAPPDATA")
+        if local_app:
+            db_file = Path(local_app) / "DEV_CORE_LOCAL" / "devcore.db"
+    if db_file and db_file.exists():
+        try:
+            import sqlite3
+            conn = sqlite3.connect(db_file)
+            cur = conn.cursor()
+            total = 0
+            tables = [r[0] for r in cur.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()]
+            for tbl in ["vec_decisions", "vec_lessons", "vec_patterns", "vec_codebase", "memory_entries"]:
+                if tbl in tables:
+                    try:
+                        cnt = cur.execute(f"SELECT COUNT(*) FROM {tbl}").fetchone()[0]
+                        total += cnt
+                    except Exception:
+                        pass
+            conn.close()
+            if total > 0:
+                try:
+                    cache_file.parent.mkdir(parents=True, exist_ok=True)
+                    cache_file.write_text(json.dumps({"points_count": total}), encoding="utf-8")
+                except Exception:
+                    pass
+                return total
+        except Exception:
+            pass
+
     host = os.environ.get("QDRANT_HOST", "127.0.0.1")
     try:
         req = urllib.request.Request(f"http://{host}:6333/collections", method="GET")

@@ -1,4 +1,4 @@
-﻿# weekly_maintenance.ps1 - DEV_CORE v9.0 Auto layer
+# weekly_maintenance.ps1 - DEV_CORE v9.0 Auto layer
 $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path (Join-Path $env:DEVCORE_PLATFORM_ROOT "Scripts\platform_version.ps1"))) {
     $env:DEVCORE_PLATFORM_ROOT
 } elseif (Test-Path (Join-Path $PSScriptRoot "platform_version.ps1")) {
@@ -28,10 +28,19 @@ Log "1/6 Memory audit" "Cyan"
 $memPath = "$DEV_CORE_DATA\Memory\MEMORY.md"
 if (Test-Path $memPath) { Log "  MEMORY.md : $((Get-Content $memPath).Count) lignes" "Green" }
 
-# 2. Qdrant dedup check
-Log "2/6 Qdrant check" "Cyan"
-try { $q = Invoke-RestMethod "http://localhost:6333/collections" -TimeoutSec 3; Log "  Qdrant OK" "Green" }
-catch { Log "  Qdrant non disponible" "Yellow" }
+# 2. Vector DB check
+Log "2/6 Vector DB check" "Cyan"
+$dbFile = Join-Path $DEV_CORE_LOCAL "devcore.db"
+if (Test-Path $dbFile) {
+    Log "  Base vectorielle sqlite-vec OK" "Green"
+} else {
+    try {
+        $q = Invoke-RestMethod "http://localhost:6333/collections" -TimeoutSec 1
+        Log "  Qdrant HTTP OK" "Green"
+    } catch {
+        Log "  Base vectorielle non initialisee" "Yellow"
+    }
+}
 
 # 3. Skills prune
 Log "3/6 Skills check" "Cyan"

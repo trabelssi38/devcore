@@ -38,19 +38,14 @@ if (Test-Path $FLAG) {
     exit 0
 }
 
-Write-Log "endday NON execute aujourd'hui - lancement..." "Yellow"
-Write-Log "Verification Qdrant disponible..." "Gray"
+Write-Log "endday NON execute aujourd'hui - lancement de la maintenance..." "Yellow"
 
 try {
-    $q = Invoke-RestMethod "http://localhost:6333/collections" -TimeoutSec 3
-    Write-Log "Qdrant OK - lancement endday.ps1" "Green"
     & "$DEV_CORE\Scripts\endday.ps1"
-
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     $timestamp | Set-Content $FLAG -Encoding UTF8
-    Write-Log "Flag endday cree: $timestamp" "Green"
+    Write-Log "Maintenance endday terminee avec succes ($timestamp)" "Green"
 } catch {
-    Write-Log "Qdrant non disponible - endday reporte" "Yellow"
-    # DO NOT create flag - allows retry on next run
+    Write-Log "Erreur lors de l'execution de endday : $_" "Red"
 }
 Write-Host ""
