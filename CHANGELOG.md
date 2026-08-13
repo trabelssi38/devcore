@@ -18,6 +18,7 @@ and this project adheres to Semantic Versioning.
   - **Élimination des Pings et Wait-Loops Qdrant** : Retrait des pings bloquants sur le port `6333` dans `session_start.ps1`, `endday_check.ps1` et `weekly_maintenance.ps1`.
   - **Exécution Directe de la Maintenance** : `endday_check.ps1` lance désormais directement `endday.ps1` en s'appuyant sur l'extension locale de base vectorielle `sqlite-vec` de `devcore.db`.
   - **Indicateurs Cockpit Modernisés** : `dc.py` et `gen_dashboard.py` vérifient et valident le statut vectoriel directement via la présence locale de `devcore.db` et le comptage des points via SQL.
+  - **Correction de la Synchronisation des Détails de Tâches (`tasks.py`)** : Restriction de la tentative de désérialisation JSON aux chaînes commençant par `[` ou `{}` dans `_sync_to_legacy_json`. Cela évite que les détails de tâches extraits en texte brut à partir des commits Git ne soient effacés silencieusement lors des synchronisations base de données <-> JSON.
 
 ## [10.3.9] - 2026-08-11
 
