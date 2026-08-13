@@ -5,7 +5,7 @@
 
 $DEV_CORE   = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\DEV_CORE" }
 $CLAUDE_DIR = "$env:USERPROFILE\.claude"
-$SETTINGS   = "$CLAUDE_DIR\settings.json"
+$SETTINGS_PATH = "$CLAUDE_DIR\settings.json"
 
 Write-Host ""
 Write-Host "  DEV_CORE v6 -- Installation hooks Claude Code" -ForegroundColor Cyan
@@ -16,8 +16,8 @@ Write-Host ""
 New-Item -ItemType Directory -Path $CLAUDE_DIR -Force | Out-Null
 
 # Lire settings.json existant ou creer vide
-$settings = if (Test-Path $SETTINGS) {
-    try { Get-Content $SETTINGS -Raw | ConvertFrom-Json }
+$settings = if (Test-Path $SETTINGS_PATH) {
+    try { Get-Content $SETTINGS_PATH -Raw | ConvertFrom-Json }
     catch { [PSCustomObject]@{} }
 } else {
     [PSCustomObject]@{}
@@ -56,9 +56,9 @@ $hooks = [PSCustomObject]@{
 $settings | Add-Member -NotePropertyName "hooks" -NotePropertyValue $hooks -Force
 
 # Sauvegarder
-$settings | ConvertTo-Json -Depth 10 | Set-Content $SETTINGS -Encoding UTF8
+$settings | ConvertTo-Json -Depth 10 | Set-Content $SETTINGS_PATH -Encoding UTF8
 
-Write-Host "  [OK] settings.json mis a jour : $SETTINGS" -ForegroundColor Green
+Write-Host "  [OK] settings.json mis a jour : $SETTINGS_PATH" -ForegroundColor Green
 Write-Host "  [OK] Hook UserPromptSubmit --> session_start.ps1" -ForegroundColor Green
 Write-Host "  [OK] Hook PostToolUse(Bash) --> post_tool_hook.ps1" -ForegroundColor Green
 Write-Host ""

@@ -5,6 +5,14 @@ All notable changes to the **DEV_CORE** platform will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Semantic Versioning.
 
+## [10.3.11] - 2026-08-13
+
+### Fixed
+- **Correction des Erreurs de Syntaxe PowerShell et Résolution des Chemins** :
+  - **Nettoyage des Blocs de Code Orphelins** : Suppression d'un bloc de code corrompu (`} else { ... }`) dans `launch_all.ps1`, `install_universal_hooks.ps1`, `ensure_repowise_watch.ps1` et `setup.ps1` provoquant un crash de syntaxe (`UnexpectedToken`).
+  - **Résolution de Conflit de Casse Variable** : Renommage de `$SETTINGS` en `$SETTINGS_PATH` dans `install_hooks.ps1` et `download/install_hooks.ps1` pour éliminer le conflit de casse PowerShell avec la variable `$settings`, évitant ainsi la corruption de l'écriture du fichier de configuration Claude.
+  - **Restauration de devcore_engine** : Récupération des fichiers de l'engine supprimés localement afin de rendre le diagnostic et les services opérationnels.
+
 ## [10.3.10] - 2026-08-13
 
 ### Fixed

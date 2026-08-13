@@ -14,9 +14,9 @@ cache_aligner:
 ccr:
   enabled: true       # Reversible compression
   # Cache local machine (hors Dropbox) — voir DEVCORE_LOCAL_ROOT
-  cache_dir: "C:/Users/Administrateur/AppData/Local/DEV_CORE_LOCAL/Cache/headroom"
+  cache_dir: "C:/Users/trb_m/AppData/Local/DEV_CORE_LOCAL/Cache/headroom"
 
 stats:
   enabled: true
   # Metrics locales machine (hors Dropbox)
-  output: "C:/Users/Administrateur/Dropbox/DEV_CORE_DATA/Metrics/headroom_stats.json"
+  output: "C:/Users/trb_m/Dropbox/DEV_CORE_DATA/Metrics/headroom_stats.json"

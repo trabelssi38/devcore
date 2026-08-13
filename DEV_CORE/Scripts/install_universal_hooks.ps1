@@ -16,13 +16,6 @@ $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path (Join-Path $env:DEVCO
 if ($DEV_CORE -match '[/\\]Scripts[/\\]?$') {
     $DEV_CORE = Split-Path -Parent $DEV_CORE
 }
-    $env:DEVCORE_PLATFORM_ROOT
-} else {
-    $defaultDevCore
-}
-if ($DEV_CORE -match '[/\\]Scripts[/\\]?$') {
-    $DEV_CORE = Split-Path -Parent $DEV_CORE
-}
 $PYTHON_EXE = "python"
 $CLI_SCRIPT = "$DEV_CORE\devcore_engine\cli.py"
 $POST_TOOL  = "$DEV_CORE\devcore_engine\hooks\post_tool.py"

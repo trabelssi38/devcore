@@ -24,13 +24,6 @@ $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path (Join-Path $env:DEVCO
 if ($DEV_CORE -match '[/\\]Scripts[/\\]?$') {
     $DEV_CORE = Split-Path -Parent $DEV_CORE
 }
-    $env:DEVCORE_PLATFORM_ROOT
-} else {
-    $defaultDevCore
-}
-if ($DEV_CORE -match '[/\\]Scripts[/\\]?$') {
-    $DEV_CORE = Split-Path -Parent $DEV_CORE
-}
 . "$DEV_CORE\Scripts\platform_version.ps1"
 $PLATFORM = Get-DevCorePlatformInfo
 
