@@ -5,6 +5,21 @@ All notable changes to the **DEV_CORE** platform will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Semantic Versioning.
 
+## [10.3.12] - 2026-08-19
+
+### Added
+- **Module d'Auto-Configuration Portable et Dynamique (`devcore_engine.installers.claude_installer`)** :
+  - **Auto-installation Unifiée** : Commande universelle `python -m devcore_engine setup [--target all|claude|desktop] [--verify] [--dry-run]` pour initialiser et synchroniser les configurations AI clients sans intervention manuelle.
+  - **Intégration Claude Desktop GUI** : Configuration automatique du fichier `%APPDATA%\Claude\claude_desktop_config.json` pour déclarer le serveur MCP Repowise tout en préservant intactes les préférences utilisateur existantes et en créant une sauvegarde `.bak`.
+  - **Intégration Claude Code CLI / Extension** : Mise à jour dynamique de `~/.claude/settings.json` avec les hooks natifs du cycle de vie (`session start`, `post_tool`, `session end`) et le serveur MCP Repowise.
+  - **Clients Universels** : Support étendu pour Codex (`.codex/config.toml`), Gemini et Antigravity (`~/.gemini/settings.json`).
+  - **Détection Dynamique de Projet (CWD & Git)** : Résolution automatique du projet cible depuis le répertoire de travail courant (`.devcore/project.json` ou racine Git), permettant d'exécuter le setup depuis n'importe quel dépôt secondaire.
+  - **Support `utf-8-sig` & Normalisation Windows** : Gestion transparente des BOM UTF-8 générés par PowerShell et sécurisation des remplacements de chemins Windows (`re.sub` avec lambda) pour éliminer les erreurs de template d'échappement.
+
+### Changed
+- **Scripts de Déploiement** : Intégration de l'auto-configuration dans `setup.ps1` et inclusion de `claude_desktop_config.json` dans `ensure_repowise_mcp.ps1`.
+- **Détection de Session** : Amélioration de `SessionManager.get_active_project()` pour auto-détecter dynamiquement le projet actif courant dès l'ouverture d'un sous-dossier ou dépôt.
+
 ## [10.3.11] - 2026-08-13
 
 ### Fixed

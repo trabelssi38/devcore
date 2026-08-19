@@ -181,6 +181,7 @@ Set-JsonMcpServer -Path (Join-Path $resolvedRepo ".mcp.json") -ServerConfig $loc
 
 $globalJsonTargets = @(
     (Join-Path $HomeDir ".claude\settings.json"),
+    (Join-Path $HomeDir "AppData\Roaming\Claude\claude_desktop_config.json"),
     (Join-Path $HomeDir ".gemini\settings.json"),
     (Join-Path $HomeDir ".gemini\antigravity\settings.json"),
     (Join-Path $HomeDir ".gemini\antigravity\mcp_config.json")

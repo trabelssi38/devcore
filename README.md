@@ -37,13 +37,22 @@ npm install
 cd ..
 ```
 
-### Étape 1 : Configurer la CLI locale (Hôte Windows)
-Pour utiliser le raccourci `dc` directement depuis votre console hôte Windows PowerShell :
+### Étape 1 : Configurer la plateforme et les clients IA (Auto-installation)
+Pour configurer automatiquement l'ensemble de l'environnement DEV_CORE, l'alias PowerShell `dc`, ainsi que les intégrations pour **Claude Code**, **Claude Desktop GUI**, **Codex**, **Gemini** et **Antigravity** :
+
 ```powershell
+# Auto-configuration globale et transportable
+python -m devcore_engine setup --target all
+
+# Ou via le script PowerShell initial :
 cd C:\devcore\DEV_CORE\Scripts
 .\setup.ps1
 ```
-*Note : Cela installe l'alias permanent `dc` pointant vers `dc.ps1`.*
+
+*Options disponibles :*
+- `python -m devcore_engine setup --target claude` : Configure uniquement Claude Code (CLI & Desktop).
+- `python -m devcore_engine setup --target desktop` : Configure l'application graphique Claude Desktop (`claude_desktop_config.json`).
+- `python -m devcore_engine setup --verify` : Vérifie l'état de l'intégration et des serveurs MCP.
 
 ### Étape 2 : Lancer la plateforme
 Pour démarrer tous les services natifs en arrière-plan :
@@ -57,10 +66,13 @@ Cette commande :
 - Lance automatiquement les services en processus détachés silencieux :
   - **Dashboard API** sur le port `20129`.
   - **Gemini Router** sur le port `20130`.
+  - **Headroom Proxy** sur le port `8787`.
 
 ### Étape 3 : Valider l'installation
 ```powershell
 # Exécuter les diagnostics de santé et de conformité
+python -m devcore_engine diagnose
+# ou simplement :
 dc check
 ```
 

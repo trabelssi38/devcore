@@ -20,12 +20,23 @@ from devcore_engine.migrate_to_unified_db import DevCoreMigrator
 
 
 def main() -> None:
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
     parser = argparse.ArgumentParser(prog="devcore", description="DEV_CORE Unified CLI Engine")
     subparsers = parser.add_subparsers(dest="command", help="Available subcommands")
 
     diag_p = subparsers.add_parser("diagnose", help="Run system diagnostics")
     diag_p.add_argument("--gate", action="store_true", help="Run gate check mode")
     diag_p.add_argument("--json", action="store_true", help="Output JSON format")
+
+    # Setup / Install AI clients
+    setup_p = subparsers.add_parser("setup", help="Auto-configure and install AI clients (Claude, Codex, Gemini, Desktop)")
+    setup_p.add_argument("--target", choices=["claude", "desktop", "all"], default="all", help="Target AI client integration")
+    setup_p.add_argument("--repo-root", default=None, help="Custom repository root path")
+    setup_p.add_argument("--dry-run", action="store_true", help="Simulate changes without modifying files")
+    setup_p.add_argument("--verify", action="store_true", help="Verify integration status")
 
 
     # Skills
@@ -62,39 +73,39 @@ def main() -> None:
     # Launch
     launch_p = subparsers.add_parser("launch", help="Launch platform services and session")
     launch_p.add_argument("--client", default="auto")
-    launch_p.add_argument("--project", default="devcore")
+    launch_p.add_argument("--project", default=None)
 
     # Session
     sess_p = subparsers.add_parser("session", help="Session lifecycle")
     sess_sub = sess_p.add_subparsers(dest="sess_action")
     s_start = sess_sub.add_parser("start", help="Start session")
-    s_start.add_argument("--project", default="devcore")
+    s_start.add_argument("--project", default=None)
     s_end = sess_sub.add_parser("end", help="End session")
-    s_end.add_argument("--project", default="devcore")
+    s_end.add_argument("--project", default=None)
 
     # EndDay
     endday_p = subparsers.add_parser("endday", help="Run end-of-day maintenance")
-    endday_p.add_argument("--project", default="devcore")
+    endday_p.add_argument("--project", default=None)
 
     # Task
     task_p = subparsers.add_parser("task", help="Task board operations")
     task_sub = task_p.add_subparsers(dest="task_action")
 
     board_p = task_sub.add_parser("board", help="Display task board")
-    board_p.add_argument("--project", default="devcore", help="Project ID")
+    board_p.add_argument("--project", default=None, help="Project ID")
 
     next_p = task_sub.add_parser("next", help="Select and start next task")
-    next_p.add_argument("--project", default="devcore", help="Project ID")
+    next_p.add_argument("--project", default=None, help="Project ID")
 
     add_p = task_sub.add_parser("add", help="Add new task")
     add_p.add_argument("title", help="Task title")
     add_p.add_argument("--mode", default="coding", choices=["coding", "reasoning", "bulk"])
     add_p.add_argument("--steps", type=int, default=1)
-    add_p.add_argument("--project", default="devcore")
+    add_p.add_argument("--project", default=None)
 
     done_p = task_sub.add_parser("complete", help="Complete active or specified task")
     done_p.add_argument("task_id", nargs="?", default=None)
-    done_p.add_argument("--project", default="devcore")
+    done_p.add_argument("--project", default=None)
 
     # Memory
     mem_p = subparsers.add_parser("memory", help="Memory operations")
@@ -121,6 +132,10 @@ def main() -> None:
 
     args = parser.parse_args()
 
+    from devcore_engine.lifecycle.session import SessionManager
+    sm = SessionManager()
+    target_project = getattr(args, "project", None) or sm.get_active_project()
+
     if args.command == "diagnose":
         from devcore_engine.infra.diagnose import DiagnosticEngine
         diag = DiagnosticEngine()
@@ -129,6 +144,30 @@ def main() -> None:
         print(json.dumps(report, indent=2))
         if getattr(args, "gate", False) and fails:
             sys.exit(1)
+
+    elif args.command == "setup":
+        from devcore_engine.installers.claude_installer import ClaudeInstaller
+        installer = ClaudeInstaller(repo_root=args.repo_root, dry_run=args.dry_run)
+        if args.verify:
+            report = installer.verify()
+            print(json.dumps(report, indent=2))
+            fails = [c for c in report.get("checks", []) if c.get("status") == "FAIL"]
+            if fails:
+                sys.exit(1)
+        else:
+            if args.target == "claude":
+                res = installer.install_claude_code()
+            elif args.target == "desktop":
+                res = installer.install_claude_desktop()
+            else:
+                res = installer.install_universal()
+            
+            for act in res.get("actions", []):
+                print(f"[OK] {act}")
+            
+            report = installer.verify()
+            print("\n=== Integration Diagnostics ===")
+            print(json.dumps(report, indent=2))
 
 
     elif args.command == "skills":
@@ -168,46 +207,44 @@ def main() -> None:
     elif args.command == "launch":
         from devcore_engine.lifecycle.launch import PlatformLauncher
         launcher = PlatformLauncher()
-        res = launcher.launch(client=args.client, project_id=args.project)
+        res = launcher.launch(client=args.client, project_id=target_project)
         print(json.dumps(res, indent=2))
 
     elif args.command == "session":
-        from devcore_engine.lifecycle.session import SessionManager
-        sm = SessionManager()
         if args.sess_action == "start":
-            res = sm.start_session(args.project)
+            res = sm.start_session(target_project)
         else:
-            res = sm.end_session(args.project)
+            res = sm.end_session(target_project)
         print(json.dumps(res, indent=2))
 
     elif args.command == "endday":
         from devcore_engine.lifecycle.endday import EndDayManager
         edm = EndDayManager()
-        res = edm.run_endday(args.project)
+        res = edm.run_endday(target_project)
         print(json.dumps(res, indent=2))
 
     elif args.command == "task":
         ts = TaskService()
         if args.task_action == "board":
-            board = ts.get_board(args.project)
+            board = ts.get_board(target_project)
             print(f"=== TASK BOARD ({board['project']}) ===")
             print(f"Current task: {board['current_task'] or 'None'}\n")
             for t in board["tasks"]:
                 print(f"  [{t['status'].upper():11s}] {t['id']}: {t['title']} ({t['steps_done']}/{t['steps_total']} steps)")
 
         elif args.task_action == "next":
-            active = ts.next_task(args.project)
+            active = ts.next_task(target_project)
             if active:
                 print(f"Active task: [{active['id']}] {active['title']}")
             else:
                 print("No pending tasks available.")
 
         elif args.task_action == "add":
-            t = ts.add_task(args.title, mode=args.mode, steps=args.steps, project_id=args.project)
+            t = ts.add_task(args.title, mode=args.mode, steps=args.steps, project_id=target_project)
             print(f"Created task: [{t['id']}] {t['title']}")
 
         elif args.task_action == "complete":
-            comp = ts.complete_task(args.task_id, project_id=args.project)
+            comp = ts.complete_task(args.task_id, project_id=target_project)
             if comp:
                 print(f"Completed task: [{comp['id']}] {comp['title']}")
             else:

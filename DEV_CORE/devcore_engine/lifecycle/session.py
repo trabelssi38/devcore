@@ -29,13 +29,39 @@ class SessionManager:
         if env_proj:
             return env_proj.strip()
 
-        # 2. Runtime state check in devcore.db
+        # 2. Check current working directory for .devcore/project.json
+        try:
+            cwd = Path.cwd().resolve()
+            curr = cwd
+            while curr and curr != curr.parent:
+                pjson = curr / ".devcore" / "project.json"
+                if pjson.exists():
+                    try:
+                        with open(pjson, "r", encoding="utf-8") as f:
+                            data = json.load(f)
+                            if data.get("name"):
+                                return str(data["name"]).strip()
+                    except Exception:
+                        pass
+                curr = curr.parent
+
+            # 3. Check for .git directory name
+            curr = cwd
+            while curr and curr != curr.parent:
+                git_dir = curr / ".git"
+                if git_dir.exists():
+                    return curr.name.strip()
+                curr = curr.parent
+        except Exception:
+            pass
+
+        # 4. Runtime state check in devcore.db
         cursor = self.conn.cursor()
         row = cursor.execute("SELECT value FROM runtime_state WHERE key = 'active_project';").fetchone()
         if row and row["value"]:
             return row["value"].strip()
 
-        # 3. Fallback to default project
+        # 5. Fallback to default project
         return "devcore"
 
     def set_active_project(self, project_id: str) -> None:
