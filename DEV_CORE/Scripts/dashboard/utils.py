@@ -68,16 +68,23 @@ def format_tokens(tokens) -> str:
     return "0"
 
 def get_last_log_time(prefix: str, data_root: Path = None) -> datetime:
-    root = data_root or LOCAL_ROOT
-    log_dir = root / "Logs" / "scripts"
-    if not log_dir.exists():
-        log_dir = DATA_ROOT / "Logs" / "scripts"
-        if not log_dir.exists():
-            return None
+    search_dirs = []
+    if data_root:
+        search_dirs.append(data_root / "Logs" / "scripts")
+    else:
+        search_dirs.append(LOCAL_ROOT / "Logs" / "scripts")
+        search_dirs.append(DATA_ROOT / "Logs" / "scripts")
+    
+    files = []
+    for d in search_dirs:
+        if d.exists():
+            try:
+                files.extend(list(d.glob(f"{prefix}*.log")))
+            except Exception:
+                pass
+    if not files:
+        return None
     try:
-        files = list(log_dir.glob(f"{prefix}*.log"))
-        if not files:
-            return None
         files.sort(key=lambda f: f.stat().st_mtime, reverse=True)
         return datetime.fromtimestamp(files[0].stat().st_mtime)
     except Exception:

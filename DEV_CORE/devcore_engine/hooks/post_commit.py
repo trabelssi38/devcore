@@ -71,7 +71,7 @@ def run_post_commit_hook() -> None:
         if task:
             # Rename generic task if needed
             clean_msg = re.sub(r"\[T-\d+\]", "", msg, flags=re.IGNORECASE).strip()
-            if "session de travail auto" in task["title"].lower() and clean_msg:
+            if ("session de travail auto" in task["title"].lower() or task["title"].lower() in ["false", ""]) and clean_msg:
                 task_service.edit_task(tag_id, title=clean_msg, project_id=project_id)
                 print(f"  [DEV_CORE] Tache {tag_id} renommee en : {clean_msg}")
 
@@ -95,7 +95,7 @@ def run_post_commit_hook() -> None:
         clean_msg = msg.splitlines()[0].strip()
         if active:
             target_id = active["id"]
-            if "session de travail auto" in active["title"].lower() or active["title"].lower().startswith("session"):
+            if "session de travail auto" in active["title"].lower() or active["title"].lower().startswith("session") or active["title"].lower() in ["false", ""]:
                 task_service.edit_task(target_id, title=clean_msg, project_id=project_id)
                 print(f"  [DEV_CORE] Tache active {target_id} renommee en : {clean_msg}")
             

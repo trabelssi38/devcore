@@ -134,7 +134,7 @@ try {
             Set-TaskProperty -Task $exists -Name "commit_hash" -Value $foundTags[$tag].hash
             Set-TaskProperty -Task $exists -Name "committed_at" -Value $foundTags[$tag].date
             # Si le titre est générique ou a changé, on le met à jour
-            if ($exists.title -match "Session de travail auto" -or ($exists.title -ne $foundTags[$tag].title -and $foundTags[$tag].title -ne "")) {
+            if ($exists.title -match "Session de travail auto" -or $exists.title -eq "false" -or $exists.title -eq "" -or ($exists.title -ne $foundTags[$tag].title -and $foundTags[$tag].title -ne "")) {
                 $oldTitle = $exists.title
                 $exists.title = $foundTags[$tag].title
                 Log "TITRE MIS A JOUR : $tag ($oldTitle -> $($foundTags[$tag].title))" "Cyan"
