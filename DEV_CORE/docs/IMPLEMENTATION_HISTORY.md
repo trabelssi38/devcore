@@ -20,6 +20,7 @@ Chronologie consolidee des implementations et plans. Source principale : histori
 | T-356 | Correctifs Cockpit Modèles & Isolement Projets/Tâches (v10.3.2) | Correction détection projets sans trb_m/dossiers OS, scrollbar répartition modèles, fidélité historique tâches/modèles de sessions |
 | 2026-08-11 | Correctifs MCP Repowise & Tokens Dashboard | Watchdog MCP Repowise corrigé (surveillance dernier ancêtre + `NO_WATCHDOG`), fallback « Sans tâche » supprimé (badges tokens exacts par tâche) |
 | T-372 (2026-08-13) | Portabilité & Migration Vectorielle SQLite (v10.3.10) | Résolution Python dynamique `Get-DevCorePython`, correction redirections `2>$null` -> `2>&1`, regex chemins universelles `[/\\]Scripts[/\\]?$`, élimination chemins codés en dur, remplacement complet des pings legacy Qdrant par `sqlite-vec`, et correction du bug de synchronisation effaçant les détails textuels de tâches. |
+| 2026-08-25 | Correction CLI Engine Launch & Documentation Routage 9Router (v10.3.12) | Support de l'argument `-QuickStart` dans `devcore_engine.cli launch` pour éviter les plantages au `session_start.ps1`, et documentation de la chaîne d'optimisation Headroom -> 9Router (`8788/8787` -> `20128`) pour Claude Code Desktop. |
 
 ## Mai 2026 - fondations
 

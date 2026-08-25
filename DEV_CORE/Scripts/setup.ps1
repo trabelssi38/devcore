@@ -108,15 +108,9 @@ foreach ($d in $dirs) {
 }
 Write-Host "  [OK] Dossiers verifies" -ForegroundColor Green
 
-# 6. Hooks et intégrations clients IA (Claude Code, Claude Desktop, Codex, Gemini, Antigravity)
-Write-Host "  6/6 Intégration des clients IA..." -ForegroundColor Cyan
+# 6. Hooks clients IA (Claude, Codex, Gemini, Qwen, Antigravity)
+Write-Host "  6/6 Hooks clients IA..." -ForegroundColor Cyan
 & "$DEV_CORE\Scripts\install_universal_hooks.ps1"
-try {
-    $pythonExe = Get-DevCorePython
-    & $pythonExe -m devcore_engine setup --target all
-} catch {
-    Write-Host "  [WARN] Python devcore_engine setup: $_" -ForegroundColor Yellow
-}
 
 # Recharger le profil
 try { . $PROFILE } catch {}

@@ -92,7 +92,3 @@ DEV_CORE/devcore.db-shm
 *.db-wal
 *.db-shm
 
-DEV_CORE/Dashboard/index.html
-DEV_CORE/Dashboard/index_terminal.html
-*.bak
-*.bak.*
