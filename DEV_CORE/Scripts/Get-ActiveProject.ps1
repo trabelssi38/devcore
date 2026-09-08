@@ -105,6 +105,31 @@ try {
         } catch {}
     }
     
+    # Si le projet a un .devcore/project.json ou .git et n'est pas dans systemDirs, il est valide et auto-enregistre
+    if (-not $isValid -and ($projectName -notin $systemDirs) -and $projectName -ne "app") {
+        if ((Test-Path (Join-Path $currentPwd ".devcore\project.json")) -or (Test-Path (Join-Path $currentPwd ".git"))) {
+            $isValid = $true
+            try {
+                if (Test-Path $configPath) {
+                    $registry = Get-Content $configPath -Raw -Encoding UTF8 | ConvertFrom-Json
+                } else {
+                    $registry = [pscustomobject]@{ projects = @() }
+                }
+                $existing = @()
+                if ($registry.projects) {
+                    $existing = @($registry.projects | Where-Object { $_.name -ne $projectName })
+                }
+                $existing += [pscustomobject]@{
+                    name = $projectName
+                    path = ($currentPwd -replace "\\", "/")
+                }
+                [pscustomobject]@{ projects = @($existing | Sort-Object name) } |
+                    ConvertTo-Json -Depth 5 |
+                    Set-Content $configPath -Encoding UTF8
+            } catch {}
+        }
+    }
+
     # Si le projet détecté est invalide (comme 'app' dans le sandbox), restaurer la valeur précédente si elle est valide
     $activeTxtPath = "$runtimeDir\active_project.txt"
     if (-not $isValid -and (Test-Path $activeTxtPath)) {

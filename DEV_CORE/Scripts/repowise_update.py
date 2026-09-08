@@ -134,6 +134,12 @@ def main():
             sys.exit(result.returncode)
         else:
             print("[RepowiseUpdate] Repowise index updated successfully.")
+            # Resync workspace configuration to capture the newly indexed commit
+            try:
+                from sync_repowise_workspace import sync_workspace
+                sync_workspace()
+            except Exception as e:
+                print(f"[RepowiseUpdate] Warning: post-update workspace sync failed: {e}")
     except subprocess.TimeoutExpired:
         print("[RepowiseUpdate] ERROR: Repowise update timed out after 120s", file=sys.stderr)
         sys.exit(1)

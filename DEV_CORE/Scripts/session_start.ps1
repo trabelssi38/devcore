@@ -18,10 +18,11 @@ if ($DEV_CORE -match '[/\\]Scripts[/\\]?$') {
 }
 . "$DEV_CORE\Scripts\platform_version.ps1"
 
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { (Join-Path $DEV_CORE "DEV_CORE_DATA") }
-$TODAY         = Get-Date -Format "yyyy-MM-dd"
-$LOG_DIR       = "$DEV_CORE_DATA\Logs\scripts"
-$SESSION_FLAG  = "$LOG_DIR\session_started_$TODAY.flag"
+$DEV_CORE_DATA  = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { (Join-Path $DEV_CORE "DEV_CORE_DATA") }
+$DEV_CORE_LOCAL = if ($env:DEVCORE_LOCAL_ROOT)    { $env:DEVCORE_LOCAL_ROOT }    elseif ($env:LOCALAPPDATA) { "$env:LOCALAPPDATA\DEV_CORE_LOCAL" } else { $DEV_CORE_DATA }
+$TODAY          = Get-Date -Format "yyyy-MM-dd"
+$LOG_DIR        = "$DEV_CORE_DATA\Logs\scripts"
+$SESSION_FLAG   = "$LOG_DIR\session_started_$TODAY.flag"
 
 New-Item -ItemType Directory -Path $LOG_DIR -Force | Out-Null
 $LOG = "$LOG_DIR\session_start_$TODAY.log"
@@ -38,9 +39,8 @@ if (-not (Test-Path $projectFile)) {
     elseif ((Get-ChildItem -Filter "*.gradle" -ErrorAction SilentlyContinue).Count -gt 0) { $stack = "android" }
     Log "Initialisation projet : $projName ($stack)"
     
-    # Creer .devcore/project.json
-    New-Item -ItemType Directory -Path "$(Get-Location)\.devcore" -Force | Out-Null
-    @{ name = $projName; stack = $stack; initialized_at = (Get-Date -f "o") } | ConvertTo-Json | Set-Content $projectFile -Encoding UTF8
+    # Creer .devcore/project.json et enregistrer le projet
+    & "$PSScriptRoot\new_project.ps1" -Name $projName -Stack $stack -Path (Get-Location).Path 2>>$LOG
 }
 
 # Auto-installer ou mettre a jour le hook post-commit si .git existe
@@ -61,8 +61,9 @@ $LOG = "$LOG_DIR\session_start_$TODAY.log"
 Log "session_start.ps1 -- hook auto"
 
 # 2. Launch
-Log "launch.ps1"
-& "$DEV_CORE\Scripts\launch.ps1" -QuickStart 2>>$LOG
+$projName = & "$PSScriptRoot\Get-ActiveProject.ps1"
+Log "launch.ps1 (project: $projName)"
+& "$DEV_CORE\Scripts\launch.ps1" -QuickStart --project $projName 2>>$LOG
 
 # 2b. Verification base vectorielle unifiee SQLite-Vec
 $dbFile = Join-Path $DEV_CORE_LOCAL "devcore.db"
@@ -71,7 +72,6 @@ if (Test-Path $dbFile) {
 }
 
 # 3. Charger la tache active
-$projName = & "$PSScriptRoot\Get-ActiveProject.ps1"
 $tFile = "$DEV_CORE_DATA\Memory\$projName\tasks.json"
 
 $hasPending = $false
@@ -79,7 +79,7 @@ if (Test-Path $tFile) {
     try {
         $board = Get-Content $tFile -Raw -Encoding UTF8 | ConvertFrom-Json
         if ($board -and $board.tasks) {
-            $pending = $board.tasks | Where-Object { $_.status -eq "todo" -or $_.status -eq "active" }
+            $pending = $board.tasks | Where-Object { $_.status -eq "todo" -or $_.status -eq "active" -or $_.status -eq "in_progress" }
             if ($pending) { $hasPending = $true }
         }
     } catch {}
@@ -90,13 +90,13 @@ if (-not (Test-Path $tFile) -or -not $hasPending) {
     if (-not (Test-Path $tFile)) {
         & "$PSScriptRoot\new_project.ps1" -Name $projName -Path (Get-Location).Path 2>>$LOG
     }
-    & "$PSScriptRoot\task_add.ps1" -Title "Session de travail auto ($TODAY)" -Mode "coding" 2>>$LOG
+    & "$PSScriptRoot\task_add.ps1" -Title "Session de travail auto ($TODAY)" -Mode "coding" -Project $projName 2>>$LOG
     $tFile = "$DEV_CORE_DATA\Memory\$projName\tasks.json"
 }
 
 if (Test-Path $tFile) {
     Log "task_next.ps1"
-    & "$PSScriptRoot\task_next.ps1" 2>>$LOG
+    & "$PSScriptRoot\task_next.ps1" --project $projName 2>>$LOG
 } else {
     Log "Erreur lors de la creation du board de taches."
 }

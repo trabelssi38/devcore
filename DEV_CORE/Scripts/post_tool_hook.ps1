@@ -24,7 +24,7 @@ $tFile         = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1
 if (-not (Test-Path $tFile)) { exit 0 }
 
 $board  = Get-Content $tFile -Raw | ConvertFrom-Json
-$active = $board.tasks | Where-Object { $_.status -eq "active" } | Select-Object -First 1
+$active = $board.tasks | Where-Object { $_.status -eq "active" -or $_.status -eq "in_progress" -or $_.id -eq $board.current_task } | Select-Object -First 1
 
 if (-not $active) { exit 0 }
 

@@ -42,7 +42,7 @@ if (-not (Test-Path $tFile)) {
 }
 
 $board = Get-Content $tFile -Raw | ConvertFrom-Json
-$active = $board.tasks | Where-Object { $_.status -eq "active" } | Select-Object -First 1
+$active = $board.tasks | Where-Object { $_.status -eq "active" -or $_.status -eq "in_progress" -or $_.id -eq $board.current_task } | Select-Object -First 1
 
 if (-not $active) {
     $done_ids = ($board.tasks | Where-Object { $_.status -eq "done" }).id
@@ -53,7 +53,7 @@ if (-not $active) {
     } | Select-Object -First 1
     if ($todo) {
         $board.current_task = $todo.id
-        $todo.status = "active"
+        $todo.status = "in_progress"
         $board | ConvertTo-Json -Depth 10 | Set-Content $tFile -Encoding UTF8
         $active = $todo
         Write-Host "  [DEV_CORE] Activation auto: $($active.id)" -ForegroundColor Cyan

@@ -5,6 +5,25 @@ All notable changes to the **DEV_CORE** platform will be documented in this file
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to Semantic Versioning.
 
+## [10.3.13] - 2026-09-08
+
+### Added
+- **Automatisation de la Remontée des Commits Repowise (`sync_repowise_workspace.py`)** :
+  - Extraction dynamique du hash `last_sync_commit` depuis `.repowise/state.json` de chaque sous-projet pour synchroniser automatiquement `last_commit_at_index` dans `.repowise-workspace.yaml`.
+  - Résolution du problème des faux positifs « 3 stale » dans `repowise status` sans nécessiter de commandes CLI manuelles.
+  - Déclenchement automatique de la synchronisation de workspace dans `repowise_update.py` à l'issue de chaque mise à jour réussie de dépôt.
+  - Détection et gestion transparente de l'encodage `utf-8-sig` pour supporter les fichiers `projects.json` avec BOM UTF-8 Windows sans générer d'erreurs de parsing JSON.
+  - Exclusion stricte et pruning des projets obsolètes/dépréciés (`EXCLUDED_PROJECTS`).
+
+### Changed / Fixed
+- **Harmonisation des États de Tâches (`active` / `in_progress`)** :
+  - Tolérance multi-états (`active`, `in_progress`, `current_task`) étendue dans `dashboard_api.py`, `session_start.ps1`, `task_git_scanner.ps1`, `ask.ps1`, `gen_session_context.ps1` et `post_tool_hook.ps1`.
+  - Complétion synchrone des tâches dans la base SQLite locale `devcore.db` lors des appels à `complete_task` via `dashboard_api.py`.
+- **Auto-Enregistrement Projet et Détection Active (`Get-ActiveProject.ps1`)** :
+  - Auto-enregistrement dynamique dans `projects.json` des projets valides possédant `.devcore/project.json` ou `.git`.
+- **Contrat de Test Workspace Repowise (`test_repowise_workspace_sync.ps1`)** :
+  - Détection automatique et dynamique de la racine du workspace et assertion de validation de la présence de `last_commit_at_index`.
+
 ## [10.3.12] - 2026-08-25
 
 ### Fixed

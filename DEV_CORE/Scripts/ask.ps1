@@ -27,7 +27,7 @@ $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { (
 $tFile = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
 if (Test-Path $tFile) {
     $board = Get-Content $tFile -Raw | ConvertFrom-Json
-    $active = $board.tasks | Where-Object { $_.status -eq "active" } | Select-Object -First 1
+    $active = $board.tasks | Where-Object { $_.status -eq "active" -or $_.status -eq "in_progress" -or $_.id -eq $board.current_task } | Select-Object -First 1
     if ($active) { $env:DEVCORE_MISSION_ID = $active.id }
 }
 

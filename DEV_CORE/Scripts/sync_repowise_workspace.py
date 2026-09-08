@@ -75,6 +75,26 @@ def dump_simple_yaml(data: dict) -> str:
 
     return "\n".join(lines) + "\n"
 
+# Known obsolete/deprecated projects pruned in commit 03d5ecefad
+EXCLUDED_PROJECTS = {
+    "addmefast", "addmefast-bot", "autop", "cnss", "downedit",
+    "tiktok-api", "tiktokscraperscripts"
+}
+
+def get_project_last_sync_commit(project_path: Path) -> str | None:
+    """Read last_sync_commit from <project_path>/.repowise/state.json if available."""
+    state_file = project_path / ".repowise" / "state.json"
+    if not state_file.exists():
+        return None
+    try:
+        data = json.loads(state_file.read_text(encoding="utf-8-sig"))
+        commit = data.get("last_sync_commit") or data.get("last_commit") or data.get("head_commit")
+        if commit and isinstance(commit, str) and len(commit.strip()) >= 7:
+            return commit.strip()
+    except Exception as e:
+        print(f"[SyncRepowiseWorkspace] Warning: failed to read {state_file}: {e}")
+    return None
+
 def sync_workspace():
     data = parse_simple_yaml(WORKSPACE_YAML)
     existing_repos = data.get("repos", [])
@@ -96,7 +116,7 @@ def sync_workspace():
     managed_projects = []
     if PROJECTS_JSON.exists():
         try:
-            pdata = json.loads(PROJECTS_JSON.read_text(encoding="utf-8"))
+            pdata = json.loads(PROJECTS_JSON.read_text(encoding="utf-8-sig"))
             managed_projects = pdata.get("projects", [])
         except Exception as e:
             print(f"[SyncRepowiseWorkspace] Warning: failed to parse {PROJECTS_JSON}: {e}")
@@ -118,6 +138,15 @@ def sync_workspace():
                 
             if rel_path == ".":
                 continue
+
+            alias_name = name.replace(" ", "_").lower()
+            if alias_name not in repo_map and rel_path not in repo_map:
+                new_entry = {
+                    "path": rel_path,
+                    "alias": alias_name
+                }
+                existing_repos.append(new_entry)
+                repo_map[alias_name] = new_entry
                 
     # 2b. Discover physical project directories on disk (e.g. E:\src_python, E:\src_web, C:\src)
     search_dirs = [Path(r"E:\src_python"), Path(r"E:\src_web"), Path(r"C:\src")]
@@ -126,6 +155,8 @@ def sync_workspace():
             for child in sdir.iterdir():
                 if child.is_dir() and not child.name.startswith("."):
                     alias_name = child.name.replace(" ", "_").lower()
+                    if alias_name in EXCLUDED_PROJECTS:
+                        continue
                     posix_path = child.as_posix()
                     if alias_name not in repo_map and posix_path not in repo_map:
                         new_entry = {
@@ -139,7 +170,7 @@ def sync_workspace():
                         # Also sync into projects.json if not present
                         if PROJECTS_JSON.exists():
                             try:
-                                pdata = json.loads(PROJECTS_JSON.read_text(encoding="utf-8"))
+                                pdata = json.loads(PROJECTS_JSON.read_text(encoding="utf-8-sig"))
                                 projs = pdata.get("projects", [])
                                 if not any(p.get("name") == alias_name for p in projs):
                                     projs.append({"name": alias_name, "path": posix_path})
@@ -148,20 +179,29 @@ def sync_workspace():
                             except Exception as e:
                                 print(f"[SyncRepowiseWorkspace] Error updating projects.json: {e}")
 
-    # 3. Prune entries whose physical directory does not exist
+    # 3. Prune entries whose physical directory does not exist or are excluded, and refresh last_commit_at_index
     filtered_repos = []
     for item in existing_repos:
         p_str = item.get("path", ".")
         alias = item.get("alias", p_str)
         
-        if p_str == "." or alias == "devcore":
-            filtered_repos.append(item)
+        if alias in EXCLUDED_PROJECTS:
+            print(f"[SyncRepowiseWorkspace] Pruned obsolete excluded project '{alias}' ({p_str})")
             continue
-            
-        # Resolve path against REPO_ROOT
-        full_path = (REPO_ROOT / p_str).resolve() if not Path(p_str).is_absolute() else Path(p_str)
+
+        if p_str == "." or alias == "devcore":
+            full_path = REPO_ROOT
+        else:
+            # Resolve path against REPO_ROOT
+            full_path = (REPO_ROOT / p_str).resolve() if not Path(p_str).is_absolute() else Path(p_str)
         
         if full_path.exists():
+            # Synchronize last_commit_at_index from the project's local .repowise/state.json
+            last_commit = get_project_last_sync_commit(full_path)
+            if last_commit:
+                if item.get("last_commit_at_index") != last_commit:
+                    print(f"[SyncRepowiseWorkspace] Updated commit for '{alias}': {item.get('last_commit_at_index', 'none')[:7]} -> {last_commit[:7]}")
+                item["last_commit_at_index"] = last_commit
             filtered_repos.append(item)
         else:
             print(f"[SyncRepowiseWorkspace] Removed missing project '{alias}' ({p_str})")

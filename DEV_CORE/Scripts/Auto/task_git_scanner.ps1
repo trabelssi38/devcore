@@ -170,7 +170,7 @@ try {
     # 7. Alerter sur les taches sans commit recent
     $stale = @()
     foreach ($task in $board.tasks) {
-        if ($task.status -eq "active") {
+        if ($task.status -eq "active" -or $task.status -eq "in_progress" -or $task.id -eq $board.current_task) {
             $hasCommit = $foundTags.ContainsKey($task.id)
             if (-not $hasCommit) {
                 $stale += $task.id

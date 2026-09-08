@@ -757,10 +757,12 @@ def complete_task(project, task_id):
             if str(task.get("id")).lower() == str(task_id).lower():
                 task_found = True
                 target_task_id = task.get("id")
-                is_active = (task.get("status") == "active")
+                is_active = (task.get("status") in ["active", "in_progress"] or str(board.get("current_task")).lower() == str(task_id).lower())
                 task["status"] = "done"
                 task["steps_done"] = task.get("steps_total", 1)
                 task["completed_at"] = datetime.now().isoformat()
+                if str(board.get("current_task")).lower() == str(task_id).lower():
+                    board["current_task"] = None
                 break
 
         if not task_found:
@@ -769,13 +771,32 @@ def complete_task(project, task_id):
         write_json_with_retry(tasks_file, board)
         print(f"[DashboardAPI] Successfully saved completed task status in tasks.json.")
 
+        # Update SQLite database if present
+        db_path = get_local_path("devcore.db")
+        if db_path.exists():
+            try:
+                import sqlite3
+                conn = sqlite3.connect(str(db_path))
+                cur = conn.cursor()
+                cols = [col[1] for col in cur.execute("PRAGMA table_info(tasks)").fetchall()]
+                proj_col = "project_id" if "project_id" in cols else "project"
+                conn.execute(
+                    f"UPDATE tasks SET status = 'done', steps_done = steps_total, completed_at = datetime('now'), updated_at = datetime('now') WHERE LOWER({proj_col}) = LOWER(?) AND LOWER(id) = LOWER(?)",
+                    (project, task_id)
+                )
+                conn.commit()
+                conn.close()
+            except Exception as dbe:
+                print(f"[DashboardAPI] Warning: Failed to update task completion in SQLite: {dbe}")
+
+        creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) if os.name == "nt" else 0
+
         if is_active:
             task_done_script = get_platform_path("Scripts", "task_done.ps1")
             ps_exe = shutil.which("powershell.exe") or shutil.which("powershell") or shutil.which("pwsh") or r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
             cmd = [ps_exe, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", 
                    str(task_done_script), "-Force"]
             print(f"[DashboardAPI] Running task_done.ps1 for active task completion (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
-            creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) if os.name == "nt" else 0
             try:
                 subprocess.run(cmd, capture_output=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC, creationflags=creationflags)
             except Exception as se:

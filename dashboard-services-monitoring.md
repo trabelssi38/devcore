@@ -22,6 +22,7 @@ Le cockpit surveille l'état d'activité des services clés :
   * `🟢 EN DIRECT (Port 7337)` : Métriques réelles (Score Global, Maintenabilité, Performance, Répartition sains/warning/alerte, Cibles de refactoring) récupérées via l'API HTTP Repowise.
   * `⚡ MCP INDEXED` : Mode fallback lorsque l'API HTTP 7337 est incalculable ou inactive.
 * **Filtrage JavaScript au Clic** : La fonction `updateRepowiseHealth(projectName)` masque les cartes des autres projets pour n'afficher que celle correspondant au projet sélectionné dans la liste du cockpit.
+* **Synchronisation Automatique du Workspace** : Le script `sync_repowise_workspace.py` extrait dynamiquement le dernier commit indexé de chaque sous-projet depuis son index local `.repowise/state.json`, garantissant la synchronisation continue de `.repowise-workspace.yaml` sans divergence de version Git.
 
 ---
 

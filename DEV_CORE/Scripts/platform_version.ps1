@@ -1,7 +1,9 @@
 # platform_version.ps1 -- canonical DEV_CORE platform version
 param(
-    [switch]$Raw,
-    [switch]$Title
+    [Alias("Raw")]
+    [switch]$AsRaw,
+    [Alias("Title")]
+    [switch]$AsTitle
 )
 
 # --- Portable DEVCORE_DATA_ROOT Auto-Detection ---
@@ -102,8 +104,8 @@ if (-not $env:DEVCORE_PYTHON) {
 }
 
 $info = Get-DevCorePlatformInfo
-if ($Raw) {
+if ($AsRaw) {
     Write-Output $info.version
-} elseif ($Title) {
+} elseif ($AsTitle) {
     Write-Output $info.title
 }
