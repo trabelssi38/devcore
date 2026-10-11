@@ -1,0 +1,394 @@
+{
+  "mode": "targets",
+  "targets": [
+    "DEV_CORE/Scripts/dashboard_api.py",
+    "DEV_CORE/devcore_engine/services/tasks.py",
+    "DEV_CORE/devcore_engine/db.py"
+  ],
+  "metrics": [
+    {
+      "file_path": "DEV_CORE/devcore_engine/services/tasks.py",
+      "score": 1.0,
+      "max_ccn": 13,
+      "max_nesting": 5,
+      "nloc": 260,
+      "is_test": false,
+      "has_test_file": false,
+      "line_coverage_pct": null,
+      "branch_coverage_pct": null,
+      "module": "DEV_CORE",
+      "weighted_deficit": 1820,
+      "maintainability_score": 5.0,
+      "performance_score": 9.15,
+      "primary_biomarker": "nested_complexity",
+      "primary_reason": "_sync_to_legacy_json nests 5 levels deep",
+      "total_deduction": 10.41
+    },
+    {
+      "file_path": "DEV_CORE/devcore_engine/db.py",
+      "score": 1.09,
+      "max_ccn": 13,
+      "max_nesting": 5,
+      "nloc": 441,
+      "is_test": false,
+      "has_test_file": false,
+      "line_coverage_pct": null,
+      "branch_coverage_pct": null,
+      "module": "DEV_CORE",
+      "weighted_deficit": 3047,
+      "maintainability_score": 8.2,
+      "performance_score": 9.3,
+      "primary_biomarker": "untested_hotspot",
+      "primary_reason": "Hotspot with no paired test file and no coverage data — 21 dependents",
+      "total_deduction": 9.608
+    },
+    {
+      "file_path": "DEV_CORE/Scripts/dashboard_api.py",
+      "score": 1.85,
+      "max_ccn": 18,
+      "max_nesting": 5,
+      "nloc": 1002,
+      "is_test": false,
+      "has_test_file": true,
+      "line_coverage_pct": null,
+      "branch_coverage_pct": null,
+      "module": "DEV_CORE",
+      "weighted_deficit": 6162,
+      "maintainability_score": 3.4,
+      "performance_score": 8.0,
+      "primary_biomarker": "ungoverned_hotspot",
+      "primary_reason": "Churn hotspot with no governing architectural decision.",
+      "total_deduction": 8.85
+    }
+  ],
+  "metrics_total": 3,
+  "findings": [
+    {
+      "id": "finding_e586aa8c7b1fed27dbc4",
+      "repository": "devcore",
+      "biomarker_type": "io_in_loop",
+      "severity": "medium",
+      "file_path": "DEV_CORE/Scripts/dashboard_api.py",
+      "function_name": "event_generator",
+      "line_start": 976,
+      "line_end": 976,
+      "health_impact": 0.0,
+      "reason": "a subprocess spawn is reached once per loop iteration through event_generator -> refresh_dashboard_payload_cache (cross-function N+1)",
+      "details": {
+        "boundary_kind": "subprocess",
+        "cross_function": true,
+        "path": [
+          "DEV_CORE/Scripts/dashboard_api.py::event_generator",
+          "DEV_CORE/Scripts/dashboard_api.py::refresh_dashboard_payload_cache"
+        ],
+        "path_total": 2,
+        "path_emitted": 2
+      },
+      "status": "open",
+      "dimension": "performance",
+      "perf_rank": 10
+    },
+    {
+      "id": "finding_642d6269a6ce74bd3738",
+      "repository": "devcore",
+      "biomarker_type": "io_in_loop",
+      "severity": "medium",
+      "file_path": "DEV_CORE/Scripts/dashboard_api.py",
+      "function_name": "event_generator",
+      "line_start": 971,
+      "line_end": 971,
+      "health_impact": 0.0,
+      "reason": "a subprocess spawn is reached once per loop iteration through event_generator -> get_last_modified_timestamp (cross-function N+1)",
+      "details": {
+        "boundary_kind": "subprocess",
+        "cross_function": true,
+        "path": [
+          "DEV_CORE/Scripts/dashboard_api.py::event_generator",
+          "DEV_CORE/Scripts/dashboard_api.py::get_last_modified_timestamp"
+        ],
+        "path_total": 2,
+        "path_emitted": 2
+      },
+      "status": "open",
+      "dimension": "performance",
+      "perf_rank": 10
+    },
+    {
+      "id": "finding_7800a7f514e2d9f3d2c5",
+      "repository": "devcore",
+      "biomarker_type": "hot_path_sync_io",
+      "severity": "low",
+      "file_path": "DEV_CORE/Scripts/dashboard_api.py",
+      "function_name": "get_last_modified_timestamp",
+      "line_start": 936,
+      "line_end": 936,
+      "health_impact": 0.0,
+      "reason": "a blocking subprocess spawn runs on a hot, request-reachable path; its latency is paid on every call through this function",
+      "details": {
+        "boundary_kind": "subprocess"
+      },
+      "status": "open",
+      "dimension": "performance",
+      "perf_rank": 9
+    },
+    {
+      "id": "finding_c743e7e6e7966f602e0f",
+      "repository": "devcore",
+      "biomarker_type": "hot_path_sync_io",
+      "severity": "low",
+      "file_path": "DEV_CORE/Scripts/dashboard_api.py",
+      "function_name": "delete_task",
+      "line_start": 873,
+      "line_end": 873,
+      "health_impact": 0.0,
+      "reason": "a blocking subprocess spawn runs on a hot, request-reachable path; its latency is paid on every call through this function",
+      "details": {
+        "boundary_kind": "subprocess"
+      },
+      "status": "open",
+      "dimension": "performance",
+      "perf_rank": 9
+    },
+    {
+      "id": "finding_fa710432b018e7981e1d",
+      "repository": "devcore",
+      "biomarker_type": "hot_path_sync_io",
+      "severity": "low",
+      "file_path": "DEV_CORE/Scripts/dashboard_api.py",
+      "function_name": "complete_task",
+      "line_start": 809,
+      "line_end": 809,
+      "health_impact": 0.0,
+      "reason": "a blocking subprocess spawn runs on a hot, request-reachable path; its latency is paid on every call through this function",
+      "details": {
+        "boundary_kind": "subprocess"
+      },
+      "status": "open",
+      "dimension": "performance",
+      "perf_rank": 9
+    }
+  ],
+  "findings_total": 12,
+  "scope": "all",
+  "counts": "everything",
+  "trends": [
+    {
+      "file_path": "DEV_CORE/devcore_engine/services/tasks.py",
+      "series": [
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0,
+        1.0
+      ],
+      "current": 1.0,
+      "delta": 0.0,
+      "declining": false,
+      "series_total": 20,
+      "series_emitted": 20
+    },
+    {
+      "file_path": "DEV_CORE/devcore_engine/db.py",
+      "series": [
+        6.85,
+        6.85,
+        6.85,
+        3.89,
+        1.09,
+        1.09,
+        1.09,
+        1.09,
+        1.09,
+        1.09,
+        1.09,
+        1.09,
+        1.09,
+        1.09,
+        1.09,
+        1.09,
+        1.09,
+        1.09,
+        1.09,
+        1.09
+      ],
+      "current": 1.09,
+      "delta": 0.0,
+      "declining": false,
+      "series_total": 20,
+      "series_emitted": 20
+    },
+    {
+      "file_path": "DEV_CORE/Scripts/dashboard_api.py",
+      "series": [
+        1.85,
+        1.85,
+        1.85,
+        1.85,
+        1.85,
+        1.85,
+        1.85,
+        1.85,
+        1.85,
+        1.85,
+        1.85,
+        1.85,
+        1.85,
+        1.85,
+        1.85,
+        1.85,
+        1.85,
+        1.85,
+        1.85,
+        1.85
+      ],
+      "current": 1.85,
+      "delta": 0.0,
+      "declining": false,
+      "series_total": 20,
+      "series_emitted": 20
+    }
+  ],
+  "performance_opportunities": [],
+  "performance_opportunities_total": 0,
+  "performance_opportunities_emitted": 0,
+  "performance_summary": {
+    "status": "unavailable",
+    "reason": "no_materialized_analysis",
+    "detail": "This index has no materialized performance analysis. Run repowise update to build it.",
+    "facets": {
+      "context": [],
+      "boundary": [],
+      "confidence": [],
+      "actionability": [],
+      "plan_state": [],
+      "context_total": 0,
+      "context_emitted": 0,
+      "boundary_total": 0,
+      "boundary_emitted": 0,
+      "confidence_total": 0,
+      "confidence_emitted": 0,
+      "actionability_total": 0,
+      "actionability_emitted": 0,
+      "plan_state_total": 0,
+      "plan_state_emitted": 0
+    },
+    "next_call": "get_health(include=['performance'], only=['performance_opportunities'], limit=6)"
+  },
+  "coverage": {
+    "summary": {
+      "file_count": 0,
+      "covered_lines": 0,
+      "total_lines": 0,
+      "line_coverage_pct": null,
+      "branch_coverage_pct": null,
+      "source_format": null,
+      "mapping_partial": null,
+      "ingested_at": null,
+      "ingested_commit_sha": null
+    },
+    "files": [],
+    "files_total": 0,
+    "files_emitted": 0
+  },
+  "targets_total": 3,
+  "targets_emitted": 3,
+  "metrics_emitted": 3,
+  "findings_emitted": 5,
+  "findings_reduced_reason": "limit",
+  "trends_total": 3,
+  "trends_emitted": 3,
+  "recovery": {
+    "findings": {
+      "remaining": 7,
+      "call": "get_health(targets=['DEV_CORE/Scripts/dashboard_api.py', 'DEV_CORE/devcore_engine/services/tasks.py', 'DEV_CORE/devcore_engine/db.py'], include=['performance', 'coverage'], repo='devcore', limit=7, only=['findings'], refactoring_view='diversified', cursor=5)"
+    }
+  },
+  "_meta": {
+    "contract_version": 2,
+    "index_age_days": 6,
+    "indexed_commit": "b2349de865c2",
+    "live_head": "b2349de865c2",
+    "index_behind": false,
+    "index_scope": {
+      "version": 1,
+      "projection": "compact",
+      "run_mode": "standard",
+      "content_provenance": "template",
+      "git_tier": "full",
+      "status": "unknown",
+      "fingerprint": "9c6c0f6f1ec9",
+      "full": "get_overview(repo=...)"
+    },
+    "embedder": "mock",
+    "embedder_degraded": false,
+    "semantic_search": false,
+    "health_semantics": {
+      "weighted_deficit_points": {
+        "unit": "health_score_points_x_nloc",
+        "numerator": "max(8.0 - file_score, 0.0) * max(nloc, 1)",
+        "denominator": "gap_analysis.weighted_gross_gap_points",
+        "scale": {
+          "minimum": 0,
+          "maximum": null,
+          "normalized": false
+        },
+        "direction": "higher means the file contributes more to the eligible population's gross deficit from the refactoring target score",
+        "interpretation": "a deterministic triage weight, not a probability, percentage, normalized score, or guaranteed improvement"
+      },
+      "percentiles": {
+        "stored_scale": "ratio_0_to_1",
+        "public_raw_scale": "percentile_rank_0_to_100",
+        "direction": "higher means ranked above more files in the eligible stored population",
+        "population": "the eligible repository files used by the stored analysis for that signal",
+        "freshness": "stored analysis; not recomputed by get_health"
+      }
+    },
+    "health_analyzed_at": "2026-09-23T12:14:09.242672",
+    "health_analysis": {
+      "status": "provenance_unknown",
+      "source": "stored_health_analysis",
+      "recomputed_this_call": false,
+      "live_verification": {
+        "basis": "index_commit_and_live_git_head",
+        "source_bytes_verified": false
+      },
+      "refresh": {
+        "command": "repowise update",
+        "precondition": "commit health-relevant working-tree changes first",
+        "required_before_comparison": true
+      },
+      "analyzed_at": "2026-09-23T12:14:09.242672",
+      "reason": "analysis_commit_not_recorded",
+      "analyzed_commit": null
+    },
+    "timing_ms": 159.7,
+    "response_budget": {
+      "limit_chars": 32000,
+      "tier": "expanded",
+      "serialized_chars": 8392
+    },
+    "completeness": {
+      "capped": true,
+      "shown": 78,
+      "total": 85,
+      "reason": "limit"
+    },
+    "replaced_tokens": 3900,
+    "tokens_saved": 1813
+  }
+}

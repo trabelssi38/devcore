@@ -1,0 +1,267 @@
+{
+  "targets": {
+    "DEV_CORE/devcore_engine/lifecycle/session.py": {
+      "type": "file",
+      "path": "DEV_CORE/devcore_engine/lifecycle/session.py",
+      "parent_page": {
+        "title": "Lifecycle Management and Agent Runners",
+        "target_path": "DEV_CORE/devcore_engine/lifecycle",
+        "section": "7.1"
+      },
+      "docs": {
+        "title": "File: DEV_CORE/devcore_engine/lifecycle/session.py",
+        "summary": "session.py -- DEV_CORE Session Lifecycle (Python Native) Replaces session_start.ps1 and session_end.ps1 by handling session initialization and cleanup.",
+        "symbols": [
+          {
+            "name": "SessionManager",
+            "kind": "class",
+            "signature": "class SessionManager",
+            "line": 20,
+            "symbol_id": "DEV_CORE/devcore_engine/lifecycle/session.py::SessionManager"
+          },
+          {
+            "name": "__init__",
+            "kind": "method",
+            "signature": "def __init__(self, conn: Optional[sqlite3.Connection] = None)",
+            "line": 21,
+            "symbol_id": "DEV_CORE/devcore_engine/lifecycle/session.py::SessionManager::__init__"
+          },
+          {
+            "name": "get_active_project",
+            "kind": "method",
+            "signature": "def get_active_project(self) -> str",
+            "line": 26,
+            "symbol_id": "DEV_CORE/devcore_engine/lifecycle/session.py::SessionManager::get_active_project"
+          },
+          {
+            "name": "set_active_project",
+            "kind": "method",
+            "signature": "def set_active_project(self, project_id: str) -> None",
+            "line": 41,
+            "symbol_id": "DEV_CORE/devcore_engine/lifecycle/session.py::SessionManager::set_active_project"
+          },
+          {
+            "name": "start_session",
+            "kind": "method",
+            "signature": "def start_session(self, project_id: Optional[str] = None) -> Dict[str, Any]",
+            "line": 54,
+            "symbol_id": "DEV_CORE/devcore_engine/lifecycle/session.py::SessionManager::start_session"
+          },
+          {
+            "name": "end_session",
+            "kind": "method",
+            "signature": "def end_session(self, project_id: Optional[str] = None) -> Dict[str, Any]",
+            "line": 87,
+            "symbol_id": "DEV_CORE/devcore_engine/lifecycle/session.py::SessionManager::end_session"
+          }
+        ]
+      },
+      "hotspot": true,
+      "freshness": {
+        "confidence_score": 1.0,
+        "freshness_status": "fresh",
+        "is_stale": false
+      },
+      "architectural_layer": {
+        "name": "Application",
+        "description": "",
+        "role": "edge_connector"
+      },
+      "health": {
+        "score": 7.03,
+        "max_ccn": 5,
+        "max_nesting": 1,
+        "nloc": 86,
+        "has_test_file": false,
+        "module": "DEV_CORE",
+        "duplication_pct": 25.56,
+        "top_biomarkers": [
+          {
+            "biomarker_type": "untested_hotspot",
+            "severity": "high",
+            "impact": 1.56,
+            "suggestion": "Write tests before refactoring. This file is high-churn and high-dependents but lacks coverage — add characterization tests for the current behavior first, then refactor with confidence."
+          },
+          {
+            "biomarker_type": "change_entropy",
+            "severity": "medium",
+            "impact": 1.06,
+            "suggestion": "Calm this file's change history. Its modifications arrive in wide, scattered commits — a strong history-based fault predictor. Land future edits in focused, single-purpose commits, and consider splitting the file so unrelated changes stop landing together."
+          }
+        ],
+        "signals": {
+          "prior_defect_count": 0,
+          "change_entropy_pct": 83.4,
+          "lines_added_90d": 139,
+          "lines_deleted_90d": 31,
+          "commit_count_90d": 4,
+          "age_days": 34,
+          "primary_owner_name": "trabelssi38",
+          "primary_owner_commit_pct": 0.9815,
+          "recent_owner_name": "trabelssi38",
+          "recent_owner_commit_pct": 0.75,
+          "in_degree": 5,
+          "out_degree": 3,
+          "bug_magnet": false
+        }
+      }
+    },
+    "DEV_CORE/API/devcore_api/worker.py": {
+      "type": "file",
+      "path": "DEV_CORE/API/devcore_api/worker.py",
+      "parent_page": {
+        "title": "API Contracts and Runtime Execution",
+        "target_path": "DEV_CORE/API",
+        "section": "5"
+      },
+      "docs": {
+        "title": "File: DEV_CORE/API/devcore_api/worker.py",
+        "summary": "`DEV_CORE/API/devcore_api/worker.py` is a python source file in the API layer.",
+        "symbols": [
+          {
+            "name": "WorkerRun",
+            "kind": "class",
+            "signature": "class WorkerRun",
+            "line": 14,
+            "symbol_id": "DEV_CORE/API/devcore_api/worker.py::WorkerRun"
+          },
+          {
+            "name": "RunRepository",
+            "kind": "class",
+            "signature": "class RunRepository",
+            "line": 22,
+            "symbol_id": "DEV_CORE/API/devcore_api/worker.py::RunRepository"
+          },
+          {
+            "name": "claim_next_queued",
+            "kind": "method",
+            "signature": "def claim_next_queued(self) -> WorkerRun | None",
+            "line": 23,
+            "symbol_id": "DEV_CORE/API/devcore_api/worker.py::RunRepository::claim_next_queued"
+          },
+          {
+            "name": "transition",
+            "kind": "method",
+            "signature": "def transition(self, run_id: str, action: str) -> None",
+            "line": 24,
+            "symbol_id": "DEV_CORE/API/devcore_api/worker.py::RunRepository::transition"
+          },
+          {
+            "name": "WorkerResult",
+            "kind": "variable",
+            "signature": "WorkerResult = Literal[\"idle\", \"paused\", \"succeeded\", \"failed\", \"timed_out\"]",
+            "line": 27,
+            "symbol_id": "DEV_CORE/API/devcore_api/worker.py::WorkerResult"
+          },
+          {
+            "name": "Worker",
+            "kind": "class",
+            "signature": "class Worker",
+            "line": 30,
+            "symbol_id": "DEV_CORE/API/devcore_api/worker.py::Worker"
+          },
+          {
+            "name": "__init__",
+            "kind": "method",
+            "signature": "def __init__( self, *, repository: RunRepository, handler: Callable[[WorkerRun], None], timeout_seconds: float | None = None, span_recorder: SpanRecorder | None = None, )",
+            "line": 31,
+            "symbol_id": "DEV_CORE/API/devcore_api/worker.py::Worker::__init__"
+          },
+          {
+            "name": "run_once",
+            "kind": "method",
+            "signature": "def run_once(self) -> WorkerResult",
+            "line": 44,
+            "symbol_id": "DEV_CORE/API/devcore_api/worker.py::Worker::run_once"
+          },
+          {
+            "name": "resume_after_restart",
+            "kind": "method",
+            "signature": "def resume_after_restart(self) -> int",
+            "line": 72,
+            "symbol_id": "DEV_CORE/API/devcore_api/worker.py::Worker::resume_after_restart"
+          }
+        ]
+      },
+      "hotspot": false,
+      "freshness": {
+        "confidence_score": 1.0,
+        "freshness_status": "fresh",
+        "is_stale": false
+      },
+      "architectural_layer": {
+        "name": "API",
+        "description": "",
+        "role": "edge_connector"
+      },
+      "health": {
+        "score": 7.23,
+        "max_ccn": 7,
+        "max_nesting": 2,
+        "nloc": 62,
+        "has_test_file": false,
+        "module": "DEV_CORE",
+        "duplication_pct": null,
+        "top_biomarkers": [
+          {
+            "biomarker_type": "untested_hotspot",
+            "severity": "high",
+            "impact": 1.56,
+            "suggestion": "Write tests before refactoring. This file is high-churn and high-dependents but lacks coverage — add characterization tests for the current behavior first, then refactor with confidence."
+          },
+          {
+            "biomarker_type": "change_entropy",
+            "severity": "medium",
+            "impact": 1.06,
+            "suggestion": "Calm this file's change history. Its modifications arrive in wide, scattered commits — a strong history-based fault predictor. Land future edits in focused, single-purpose commits, and consider splitting the file so unrelated changes stop landing together."
+          }
+        ],
+        "signals": {
+          "prior_defect_count": 0,
+          "change_entropy_pct": 88.8,
+          "lines_added_90d": 94,
+          "lines_deleted_90d": 18,
+          "commit_count_90d": 5,
+          "age_days": 58,
+          "primary_owner_name": "trabelssi38",
+          "primary_owner_commit_pct": 1.0,
+          "recent_owner_name": "trabelssi38",
+          "recent_owner_commit_pct": 1.0,
+          "in_degree": 7,
+          "out_degree": 3,
+          "bug_magnet": false
+        }
+      }
+    }
+  },
+  "_meta": {
+    "contract_version": 2,
+    "timing_ms": 299.4,
+    "index_age_days": 6,
+    "indexed_commit": "b2349de865c2",
+    "live_head": "b2349de865c2",
+    "index_behind": false,
+    "index_scope": {
+      "version": 1,
+      "projection": "compact",
+      "run_mode": "standard",
+      "content_provenance": "template",
+      "git_tier": "full",
+      "status": "unknown",
+      "fingerprint": "9c6c0f6f1ec9",
+      "full": "get_overview(repo=...)"
+    },
+    "embedder": "mock",
+    "embedder_degraded": false,
+    "semantic_search": false,
+    "scope_hint": "Unrelated to what was served: Test (78 files), Docs & Tooling (75), Utility (32).",
+    "response_budget": {
+      "limit_chars": 32000,
+      "tier": "expanded",
+      "serialized_chars": 6954
+    },
+    "completeness": {
+      "capped": false
+    }
+  }
+}

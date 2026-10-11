@@ -1,0 +1,494 @@
+{
+  "title": "Repository Overview: devcore",
+  "content_md": "## Project Summary\nDevcore is a core development automation platform: it consumes workspace sources and configuration files, processes them through AST parsers and SQLite-backed engines, and produces agent execution workflows, metrics dashboards, and Model Context Protocol (MCP) server endpoints.",
+  "code_health": {
+    "average_health": 7.9,
+    "band": "good",
+    "hotspot_health": 3.06,
+    "worst_performer_path": "DEV_CORE/devcore_engine/services/tasks.py",
+    "worst_performer_score": 1.0,
+    "open_findings": 1322,
+    "file_count": 356,
+    "distribution": {
+      "total_files": 356,
+      "total_nloc": 41751,
+      "bands": {
+        "at_risk": {
+          "files": 15,
+          "nloc": 7070,
+          "pct": 16.9
+        },
+        "needs_work": {
+          "files": 7,
+          "nloc": 1210,
+          "pct": 2.9
+        },
+        "fair": {
+          "files": 15,
+          "nloc": 2701,
+          "pct": 6.5
+        },
+        "good": {
+          "files": 23,
+          "nloc": 3065,
+          "pct": 7.3
+        },
+        "excellent": {
+          "files": 296,
+          "nloc": 27705,
+          "pct": 66.4
+        }
+      }
+    }
+  },
+  "key_modules": [
+    {
+      "name": "API Contracts and Runtime Execution",
+      "path": "DEV_CORE/API",
+      "section": "5"
+    },
+    {
+      "name": "Scripts Overview",
+      "path": "DEV_CORE/Scripts",
+      "section": "6"
+    },
+    {
+      "name": "Dashboard API and Integrity Checks",
+      "path": "DEV_CORE/Scripts/Auto",
+      "section": "6.1"
+    },
+    {
+      "name": "Router Configuration and Stream Parsing",
+      "path": "DEV_CORE/Scripts/router",
+      "section": "6.2"
+    },
+    {
+      "name": "Devcore Engine Overview",
+      "path": "DEV_CORE/devcore_engine",
+      "section": "7"
+    },
+    {
+      "name": "Lifecycle Management and Agent Runners",
+      "path": "DEV_CORE/devcore_engine/lifecycle",
+      "section": "7.1"
+    },
+    {
+      "name": "Knowledge and Memory Hierarchy",
+      "path": "DEV_CORE/devcore_engine/services",
+      "section": "7.2"
+    },
+    {
+      "name": "Database Schema and Alembic Migrations",
+      "path": "DEV_CORE/_archive/Database/alembic",
+      "section": "8"
+    }
+  ],
+  "entry_points": [
+    "DEV_CORE/devcore_engine/cli.py",
+    "DEV_CORE/devcore_engine/__main__.py",
+    "DEV_CORE/API/devcore_api/app.py",
+    "DEV_CORE/MCP/devcore-scripts/server.py",
+    "DEV_CORE/MCP/obsidian-vault/server.py",
+    "DEV_CORE/_archive/MCP/qdrant-storage/server.py"
+  ],
+  "git_health": {
+    "files_git_attributed": 239,
+    "hotspot_count": 36,
+    "avg_bus_factor": 1.1,
+    "files_with_bus_factor_1": 212,
+    "churn_trend": "decreasing",
+    "top_churn_modules": [
+      "DEV_CORE/Scripts",
+      "DEV_CORE/devcore_engine",
+      "DEV_CORE/API",
+      "DEV_CORE/Web",
+      "DEV_CORE/Tools"
+    ]
+  },
+  "more": "get_overview(include=[...]) also serves: \"outline\" (the wiki page tree), \"tour\" (guided_tour + reading_order), \"decisions\", \"graph\" (code communities), \"ownership\" (top owners, silos), \"content\" (the full essay).",
+  "content_hint": "Overview essay trimmed to its summary section. Call get_overview(include=[\"content\"]) for the full walkthrough.",
+  "architecture": {
+    "layers": [
+      {
+        "name": "Application",
+        "file_count": 103
+      },
+      {
+        "name": "Types",
+        "file_count": 5
+      },
+      {
+        "name": "Config",
+        "file_count": 27
+      },
+      {
+        "name": "UI",
+        "file_count": 5
+      },
+      {
+        "name": "API",
+        "file_count": 19
+      },
+      {
+        "name": "Utility",
+        "file_count": 32
+      },
+      {
+        "name": "Service",
+        "file_count": 12
+      },
+      {
+        "name": "Docs & Tooling",
+        "file_count": 75
+      },
+      {
+        "name": "Test",
+        "file_count": 78
+      }
+    ],
+    "tour_available": true,
+    "tour_step_count": 12,
+    "layer_order": [
+      "Application",
+      "API",
+      "Utility",
+      "UI",
+      "Service",
+      "Docs & Tooling",
+      "Test"
+    ]
+  },
+  "workspace": {
+    "workspace_root": "E:\\src_python\\devcore",
+    "default_repo": "devcore",
+    "other_repos": [
+      "conso_api_madania",
+      "migration_to_12c",
+      "tweepy-bots",
+      "dashboard_recette_br",
+      "job_tracker",
+      "oracle_legacy_intelligence_platform"
+    ],
+    "hint": "This repo is part of a workspace. Other repos: conso_api_madania, migration_to_12c, tweepy-bots, dashboard_recette_br, job_tracker, oracle_legacy_intelligence_platform. Use repo='<alias>' to query another repo, or repo='all' for workspace-wide results.",
+    "cross_repo": {
+      "co_change_count": 151,
+      "package_dep_count": 0,
+      "package_diagnostic_count": 0,
+      "package_diagnostics_emitted": 0,
+      "package_diagnostic_codes": [],
+      "top_connections": [
+        {
+          "repos": [
+            "devcore",
+            "job_tracker"
+          ],
+          "edge_count": 50
+        },
+        {
+          "repos": [
+            "dashboard_recette_br",
+            "devcore"
+          ],
+          "edge_count": 50
+        },
+        {
+          "repos": [
+            "job_tracker",
+            "oracle_legacy_intelligence_platform"
+          ],
+          "edge_count": 27
+        },
+        {
+          "repos": [
+            "devcore",
+            "oracle_legacy_intelligence_platform"
+          ],
+          "edge_count": 21
+        },
+        {
+          "repos": [
+            "dashboard_recette_br",
+            "job_tracker"
+          ],
+          "edge_count": 3
+        }
+      ]
+    },
+    "contract_links": {
+      "total_contracts": 618,
+      "total_links": 82,
+      "by_type": {
+        "http": 414,
+        "data": 204
+      }
+    }
+  },
+  "tool_surface": {
+    "mode": "workspace",
+    "counts": {
+      "enabled": 11,
+      "default": 11,
+      "eligible": 18,
+      "opt_in_available": 7,
+      "tiers": {
+        "canonical": 10,
+        "utility": 1
+      }
+    },
+    "enabled": [
+      "get_answer",
+      "get_context",
+      "get_symbol",
+      "search_codebase",
+      "get_risk",
+      "get_change_risk",
+      "get_why",
+      "get_overview",
+      "get_health",
+      "get_dead_code",
+      "list_repos"
+    ],
+    "tools": [
+      {
+        "name": "get_answer",
+        "tier": "canonical",
+        "description": "Answer a how, where, or why question in one evidence-grounded call.",
+        "default": true
+      },
+      {
+        "name": "get_context",
+        "tier": "canonical",
+        "description": "Triage card for files / modules / symbols — relationships, not source bytes.",
+        "default": true
+      },
+      {
+        "name": "get_symbol",
+        "tier": "canonical",
+        "description": "Follow-up read of one symbol whose id another response already gave you.",
+        "default": true
+      },
+      {
+        "name": "search_codebase",
+        "tier": "canonical",
+        "description": "Find code by concept, symbol, or path — hybrid codebase search.",
+        "default": true
+      },
+      {
+        "name": "get_risk",
+        "tier": "canonical",
+        "description": "What history says about touching these files — bug fixes, churn, owners.",
+        "default": true
+      },
+      {
+        "name": "get_change_risk",
+        "tier": "canonical",
+        "description": "Review a commit, ``base..head`` range, or uncommitted work.",
+        "default": true
+      },
+      {
+        "name": "get_why",
+        "tier": "canonical",
+        "description": "Why this code is shaped this way — decision records + evidence commits.",
+        "default": true
+      },
+      {
+        "name": "get_overview",
+        "tier": "canonical",
+        "description": "Architecture map for an unfamiliar repo — first call when you don't know your way around.",
+        "default": true
+      },
+      {
+        "name": "get_health",
+        "tier": "canonical",
+        "description": "Code-health scores and findings from stored analysis.",
+        "default": true
+      },
+      {
+        "name": "get_dead_code",
+        "tier": "canonical",
+        "description": "Unused exports, unreachable files, zombie packages — tiered by confidence.",
+        "default": true
+      },
+      {
+        "name": "list_repos",
+        "tier": "utility",
+        "description": "List repos available through this MCP server.",
+        "default": true
+      }
+    ],
+    "opt_in": [
+      {
+        "name": "get_architecture",
+        "description": "Workspace architecture metrics — coupling, core, and a 1-10 score.",
+        "enabled": false
+      },
+      {
+        "name": "get_blast_radius",
+        "description": "Cross-repo blast radius — which downstream services are structurally reachable.",
+        "enabled": false
+      },
+      {
+        "name": "get_dependency_path",
+        "description": "Find how two files/modules are connected in the dependency graph.",
+        "enabled": false
+      },
+      {
+        "name": "get_execution_flows",
+        "description": "Show how the codebase executes: top entry points and their call traces.",
+        "enabled": false
+      },
+      {
+        "name": "set_finding_status",
+        "description": "Record a durable disposition on one refactoring plan.",
+        "enabled": false
+      },
+      {
+        "name": "generate_refactoring_code",
+        "description": "Generate refactored code + a unified diff for one refactoring plan.",
+        "enabled": false
+      },
+      {
+        "name": "get_conformance",
+        "description": "Architecture conformance — dependency-rule violations + cycles.",
+        "enabled": false
+      }
+    ],
+    "recipes": [
+      {
+        "name": "answer_question",
+        "call": "get_answer(question=\"how does X work?\")"
+      },
+      {
+        "name": "read_file_shape",
+        "call": "get_context(targets=[\"path\"], include=[\"skeleton\"])"
+      },
+      {
+        "name": "find_raw_hits",
+        "call": "search_codebase(query=\"identifier or path\", mode=\"auto\")"
+      },
+      {
+        "name": "assess_hotspot",
+        "call": "get_risk(targets=[\"path\"])"
+      },
+      {
+        "name": "review_change",
+        "call": "get_risk(targets=[\"path\"], changed_files=[\"path\"])"
+      },
+      {
+        "name": "read_rationale",
+        "call": "get_why(targets=[\"path\"])"
+      },
+      {
+        "name": "health_directive",
+        "call": "get_health(only=[\"directive\"])"
+      },
+      {
+        "name": "health_file_self_check",
+        "call": "get_health(targets=[\"path\"], include=[\"refactoring\"])"
+      },
+      {
+        "name": "health_module_triage",
+        "call": "get_health(targets=[\"module:path\"], only=[\"modules\",\"metrics\"])"
+      },
+      {
+        "name": "health_trend",
+        "call": "get_health(include=[\"trend\"], only=[\"trend\"])"
+      },
+      {
+        "name": "health_accuracy",
+        "call": "get_health(include=[\"accuracy\"], only=[\"accuracy\"])"
+      },
+      {
+        "name": "health_coverage",
+        "call": "get_health(include=[\"coverage\"], only=[\"coverage\"])"
+      },
+      {
+        "name": "health_performance_refactoring",
+        "call": "get_health(include=[\"performance\",\"refactoring\"], only=[\"performance_opportunities\",\"refactoring_plans\"])"
+      },
+      {
+        "name": "health_performance_summary",
+        "call": "get_health(include=[\"performance\"], only=[\"performance_summary\"])"
+      },
+      {
+        "name": "health_performance_opportunity",
+        "call": "get_health(opportunity_id=\"perf...\")"
+      },
+      {
+        "name": "health_performance_evidence",
+        "call": "get_health(opportunity_id=\"perf...\", only=[\"performance_evidence\"], cursor=0)"
+      }
+    ]
+  },
+  "_meta": {
+    "contract_version": 2,
+    "index_age_days": 6,
+    "indexed_commit": "b2349de865c2",
+    "live_head": "b2349de865c2",
+    "index_behind": false,
+    "index_scope": {
+      "version": 1,
+      "run_mode": "standard",
+      "content_provenance": "template",
+      "git_tier": "full",
+      "git_commit_cap": null,
+      "git_history_coverage": null,
+      "file_pages": {
+        "configured_cap": null,
+        "effective_cap": null,
+        "eligible": null,
+        "generated": null,
+        "omitted": null
+      },
+      "analysis": {
+        "unavailable": [],
+        "skipped": []
+      },
+      "upgrade": {
+        "status": "unknown",
+        "retryable": null,
+        "completed_stages": [],
+        "next_stage": null
+      },
+      "provider": {
+        "name": null,
+        "model": null,
+        "embedder": "mock",
+        "reused": null,
+        "model_cost_possible": null
+      },
+      "search": {
+        "full_text": "unknown",
+        "semantic": "unknown",
+        "next_command": null
+      },
+      "fingerprint": "9c6c0f6f1ec9"
+    },
+    "embedder": "mock",
+    "embedder_degraded": false,
+    "semantic_search": false,
+    "newer_release": "repowise 0.54.0 is available, this server runs 0.52.0; upgrade and restart the MCP server",
+    "omitted": {
+      "refs": [
+        "repowise#19bebeb21917"
+      ],
+      "tokens": 114,
+      "restore": "`repowise expand <ref>`, or get_symbol(\"repowise#<ref>\", query=...)"
+    },
+    "state": {
+      "truncated": true
+    },
+    "response_budget": {
+      "limit_chars": 24000,
+      "tier": "default",
+      "serialized_chars": 9760
+    },
+    "completeness": {
+      "capped": false
+    },
+    "replaced_tokens": 6000,
+    "tokens_saved": 3576,
+    "timing_ms": 1884.69
+  },
+  "omission_marker": "[repowise#19bebeb21917: 9 lines omitted (~114 tokens); restore: repowise expand 19bebeb21917]"
+}

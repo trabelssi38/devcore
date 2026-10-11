@@ -1,0 +1,162 @@
+[
+  {
+    "id": "Q01",
+    "question": "Comment fonctionne l'isolation par projet sur l'API DevCore ?",
+    "target_id": "doc_arch_project_isolation",
+    "target_title": "Architecture: Isolation par projet",
+    "keywords": ["isolation", "projet", "passerelle", "project_mismatch", "400"],
+    "project": "devcore"
+  },
+  {
+    "id": "Q02",
+    "question": "Quel est le rôle du middleware d'autorisation de l'API ?",
+    "target_id": "doc_sec_auth_gate",
+    "target_title": "Sécurité: Middleware d'autorisation",
+    "keywords": ["middleware", "autorisation", "project_authorization_gate", "bearer", "cookie"],
+    "project": "devcore"
+  },
+  {
+    "id": "Q03",
+    "question": "Comment sont ordonnancés les runs dans DurableRunEngine ?",
+    "target_id": "doc_runs_scheduler",
+    "target_title": "Exécution: Ordonnanceur équitable DurableRunEngine",
+    "keywords": ["ordonnanceur", "créneaux", "concurrence", "round-robin", "famine"],
+    "project": "devcore"
+  },
+  {
+    "id": "Q04",
+    "question": "Comment sont gérés les timeouts et l'arrêt d'un worker sous Windows ?",
+    "target_id": "doc_runs_windows_job",
+    "target_title": "Confinement: Windows Job Object et extinction des processus",
+    "keywords": ["windows", "job", "timeout", "processus", "orphelins", "kill"],
+    "project": "devcore"
+  },
+  {
+    "id": "Q05",
+    "question": "Quelle est la garantie d'idempotence sur la soumission de runs HTTP 202 ?",
+    "target_id": "doc_runs_idempotence",
+    "target_title": "Runs: Idempotence et admission de requêtes",
+    "keywords": ["idempotence", "admission", "backpressure", "clé", "202"],
+    "project": "devcore"
+  },
+  {
+    "id": "Q06",
+    "question": "Comment fonctionne l'outbox transactionnelle du Cockpit ?",
+    "target_id": "doc_cockpit_outbox",
+    "target_title": "Cohérence: Outbox transactionnelle et déduplication",
+    "keywords": ["outbox", "transaction", "déduplication", "sqlite", "dlq"],
+    "project": "devcore"
+  },
+  {
+    "id": "Q07",
+    "question": "Comment les snapshots du Cockpit sont-ils protégés contre les lectures concurrentes ?",
+    "target_id": "doc_cockpit_snapshots",
+    "target_title": "Projections: Snapshots versionnés et pin_snapshot",
+    "keywords": ["snapshots", "pin_snapshot", "descripteurs", "fstat", "verrou"],
+    "project": "devcore"
+  },
+  {
+    "id": "Q08",
+    "question": "Quel est le format du curseur SSE et comment est gérée la reconnexion ?",
+    "target_id": "doc_cockpit_sse_cursor",
+    "target_title": "Streaming: Curseurs SSE et rattrapage morphDOM",
+    "keywords": ["curseur", "sse", "last-event-id", "morphdom", "reconnexion"],
+    "project": "devcore"
+  },
+  {
+    "id": "Q09",
+    "question": "Combien de flux SSE simultanés sont admis par StreamSlots ?",
+    "target_id": "doc_cockpit_stream_admission",
+    "target_title": "Cockpit: Limiteur de flux simultanés StreamSlots",
+    "keywords": ["streamslots", "admission", "connexions", "503", "retry-after"],
+    "project": "devcore"
+  },
+  {
+    "id": "Q10",
+    "question": "Quelle est la dimension obligatoire des vecteurs d'embeddings ?",
+    "target_id": "doc_memory_embedding_contract",
+    "target_title": "Mémoire: Contrat 768 dimensions pour gemini-embedding-001",
+    "keywords": ["embeddings", "768", "dimensions", "gemini-embedding-001", "norme"],
+    "project": "devcore"
+  },
+  {
+    "id": "Q11",
+    "question": "Que se passe-t-il si le fournisseur d'embeddings est indisponible ?",
+    "target_id": "doc_memory_lexical_fallback",
+    "target_title": "Mémoire: Mode dégradé et repli lexical FTS5",
+    "keywords": ["repli", "lexical", "dégradé", "fts5", "indisponible"],
+    "project": "devcore"
+  },
+  {
+    "id": "Q12",
+    "question": "Comment fonctionne la fusion Reciprocal Rank Fusion (RRF) ?",
+    "target_id": "doc_memory_rrf_fusion",
+    "target_title": "Recherche: Fusion Reciprocal Rank Fusion avec k=60",
+    "keywords": ["rrf", "fusion", "k=60", "hybride", "classement"],
+    "project": "devcore"
+  },
+  {
+    "id": "Q13",
+    "question": "Comment RepoWise est-il invoqué en local pour éviter les fuites réseau ?",
+    "target_id": "doc_repowise_local_mcp",
+    "target_title": "RepoWise: Transport local stdio et blocage des sockets",
+    "keywords": ["repowise", "audit", "hook", "sockets", "no-workspace"],
+    "project": "devcore"
+  },
+  {
+    "id": "Q14",
+    "question": "Quelle est la décision d'architecture concernant DBOS ?",
+    "target_id": "decision_D008_durable_engine",
+    "target_title": "Décision D-008: DurableRunEngine natif remplaçant DBOS",
+    "keywords": ["d-008", "dbos", "moteur", "durable", "windowsjob"],
+    "project": "devcore"
+  },
+  {
+    "id": "Q15",
+    "question": "Comment sont isolées les données de test par rapport à Dropbox ?",
+    "target_id": "decision_D004_data_roots",
+    "target_title": "Décision D-004: Séparation des données actives et Dropbox",
+    "keywords": ["d-004", "dropbox", "racines", "temporaires", "fixtures"],
+    "project": "devcore"
+  },
+  {
+    "id": "Q16",
+    "question": "Comment sont hachés et vérifiés les mots de passe locaux ?",
+    "target_id": "doc_sec_passwords_argon2",
+    "target_title": "Sécurité: Hachage robuste Argon2id pour l'identité locale",
+    "keywords": ["argon2", "argon2id", "mots de passe", "hachage", "sel"],
+    "project": "devcore"
+  },
+  {
+    "id": "Q17",
+    "question": "Comment est calculée la version d'une tâche lors d'une mutation ?",
+    "target_id": "doc_persist_optimistic_locking",
+    "target_title": "Persistance: Verrouillage optimiste et détection de stale version",
+    "keywords": ["version", "stale_task_version", "verrouillage", "optimiste", "mutation"],
+    "project": "devcore"
+  },
+  {
+    "id": "Q18",
+    "question": "Comment fonctionne l'analyse d'impact (blast radius) du graphe de connaissances ?",
+    "target_id": "doc_knowledge_blast_radius",
+    "target_title": "Graphe: Analyse d'impact et rayon de propagation borné",
+    "keywords": ["blast", "radius", "graphe", "impact", "noeuds"],
+    "project": "devcore"
+  },
+  {
+    "id": "Q19",
+    "question": "Quel est le budget UTF-8 maximal pour la reprise de contexte de projet ?",
+    "target_id": "doc_context_budget_utf8",
+    "target_title": "Contexte: Budget mesuré en octets UTF-8 (12000 octets)",
+    "keywords": ["budget", "octets", "12000", "contexte", "utf8"],
+    "project": "devcore"
+  },
+  {
+    "id": "Q20",
+    "question": "Comment est assurée la déduplication des effets externes des workflows ?",
+    "target_id": "doc_runs_external_effects",
+    "target_title": "Workflows: Déduplication des effets externes EffectIdempotencyStore",
+    "keywords": ["effets", "externes", "déduplication", "workflow", "idempotence"],
+    "project": "devcore"
+  }
+]

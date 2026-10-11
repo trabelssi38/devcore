@@ -1,0 +1,25 @@
+{
+  "cross_project_edit": [
+    {
+      "id": "T-01",
+      "project_id": "audit_a",
+      "title": "Edit intended for A"
+    },
+    {
+      "id": "T-01",
+      "project_id": "audit_b",
+      "title": "Edit intended for A"
+    }
+  ],
+  "session_a_after_b_switch": "audit_b",
+  "run_foreign_key": "foreign key mismatch - \"runs\" referencing \"tasks\"",
+  "worker_timeout": {
+    "configured_s": 0.02,
+    "elapsed_s": 0.201,
+    "result": "timed_out"
+  },
+  "event_loop_block": {
+    "simulated_sync_work_s": 0.2,
+    "heartbeat_delay_s": 0.201
+  }
+}
