@@ -1,22 +1,18 @@
-proxy:
-  port: 8787
-  upstream: "http://127.0.0.1:20128"  # 9Router
-  
-compression:
-  json: true          # SmartCrusher pour JSON (remplace TOON)
-  code: true          # CodeCompressor AST-aware
-  logs: true          # LogCompressor (remplace RTK)
-  prose: true         # Kompress-base
-
-cache_aligner:
-  enabled: true       # Stabilise les préfixes pour KV cache
-  
-ccr:
-  enabled: true       # Reversible compression
-  # Cache local machine (hors Dropbox) — voir DEVCORE_LOCAL_ROOT
-  cache_dir: "C:/Users/Administrateur/AppData/Local/DEV_CORE_LOCAL/Cache/headroom"
-
-stats:
-  enabled: true
-  # Metrics locales machine (hors Dropbox)
-  output: "C:/Users/Administrateur/Dropbox/DEV_CORE_DATA/Metrics/headroom_stats.json"
+# Declarative route contract, not a Headroom CLI configuration file.
+# Runtime source of truth: Scripts/headroom_routes.py (fixed parameters + guard).
+profiles:
+  native:
+    port: 8787
+    upstream_policy: native_provider
+    preserve_requested_model: true
+  auxiliary:
+    port: 8789
+    openai_upstream: http://127.0.0.1:20130
+    allowed_models: [devcore-writing, devcore-documentation, devcore-summary, devcore-bulk]
+embeddings:
+  endpoint: http://127.0.0.1:20130/v1/embeddings
+metrics:
+  native: http://127.0.0.1:8787/devcore/routes
+  auxiliary: http://127.0.0.1:8789/devcore/routes
+  router_stats: gemini_auxiliary_stats.json
+# No shared filesystem cache or model routing; compression defaults to lossless.

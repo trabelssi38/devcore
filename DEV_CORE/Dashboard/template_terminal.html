@@ -516,9 +516,6 @@ div[style*="color:#cbd5e1"][style*="font-size:10.5px"] {
 <div id="confirm-modal" class="modal-overlay" style="display:none"></div>
 <div id="details-bubble" style="display:none"></div>
 
-<script id="task-details-data" type="application/json">{{TASK_DETAILS_MAP}}</script>
-<script id="task-interactions-data" type="application/json">{{TASK_INTERACTIONS_MAP}}</script>
-<script id="token-metrics-data" type="application/json">{{TOKEN_METRICS_JSON}}</script>
 
 <script>
 window.devcoreActiveProject = "{{ACTIVE_PROJECT_NAME}}";
@@ -920,46 +917,53 @@ function apiFetch(url, options) {
   return fetch(url, options || {});
 }
 
-function completeTask(project, id, event) {
+function taskVersionAvailable(expectedVersion) {
+  if (Number.isSafeInteger(expectedVersion) && expectedVersion > 0) return true;
+  alert("Version de tâche indisponible. Actualisez le Cockpit ; si le problème persiste, le magasin doit être qualifié avant cette action.");
+  return false;
+}
+
+async function handleTaskMutationResponse(r) {
+  const isJson = r.headers.get('content-type')?.includes('application/json');
+  const data = isJson ? await r.json() : null;
+  if (r.ok && (data?.success || data?.status === 'success')) {
+    refreshDashboard();
+    return;
+  }
+  if (r.status === 409 && data?.detail?.code === 'stale_task_version') {
+    alert("Cette tâche a changé depuis son affichage. Le Cockpit va être actualisé ; vérifiez son état avant de recommencer.");
+    refreshDashboard();
+    return;
+  }
+  const detail = data?.detail;
+  const err = data?.error || (typeof detail === 'string' ? detail : detail?.message) || data?.message || `Status ${r.status}`;
+  alert("Erreur : " + err);
+}
+
+function completeTask(project, id, event, expectedVersion) {
   if (event) event.stopPropagation();
+  if (!taskVersionAvailable(expectedVersion)) return;
   if (confirm(`Voulez-vous clôturer la tâche ${id} du projet ${project} ?`)) {
-    apiFetch(`${API_BASE}/api/done`, {
+    return apiFetch(`${API_BASE}/api/done`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ project, id })
+        body: JSON.stringify({ project, id, expected_version: expectedVersion })
       })
-      .then(async r => {
-        const isJson = r.headers.get('content-type')?.includes('application/json');
-        const data = isJson ? await r.json() : null;
-        if (r.ok && (data?.success || data?.status === 'success')) {
-          refreshDashboard();
-        } else {
-          const err = data?.error || data?.detail || data?.message || `Status ${r.status}`;
-          alert("Erreur : " + err);
-        }
-      })
+      .then(handleTaskMutationResponse)
       .catch(err => alert("Impossible de joindre le serveur API local (Port 20129). Veuillez vérifier qu'il est bien démarré."));
   }
 }
 
-function deleteTask(project, id, event) {
+function deleteTask(project, id, event, expectedVersion) {
   if (event) event.stopPropagation();
+  if (!taskVersionAvailable(expectedVersion)) return;
   if (confirm(`Êtes-vous sûr de vouloir supprimer la tâche ${id} du projet ${project} ?\nCette action est irréversible.`)) {
-    apiFetch(`${API_BASE}/api/delete`, {
+    return apiFetch(`${API_BASE}/api/delete`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ project, id })
+        body: JSON.stringify({ project, id, expected_version: expectedVersion })
       })
-      .then(async r => {
-        const isJson = r.headers.get('content-type')?.includes('application/json');
-        const data = isJson ? await r.json() : null;
-        if (r.ok && (data?.success || data?.status === 'success')) {
-          refreshDashboard();
-        } else {
-          const err = data?.error || data?.detail || data?.message || `Status ${r.status}`;
-          alert("Erreur : " + err);
-        }
-      })
+      .then(handleTaskMutationResponse)
       .catch(err => alert("Impossible de joindre le serveur API local (Port 20129). Veuillez vérifier qu'il est bien démarré."));
   }
 }
@@ -1037,17 +1041,145 @@ loadSettings();
 })();
 
 /* ── Auto-refresh via AJAX ── */
-async function refreshDashboard(){
+let dashboardRefreshPromise = null;
+let dashboardRefreshPending = false;
+
+function refreshDashboard() {
+  dashboardRefreshPending = true;
+  if (dashboardRefreshPromise) return dashboardRefreshPromise;
+  dashboardRefreshPromise = Promise.resolve().then(async () => {
+    let applied = false;
+    do {
+      dashboardRefreshPending = false;
+      applied = await performDashboardRefresh();
+      if (applied === true) {
+        dashboardSnapshotRecoveryDenied = false;
+        resetDashboardSnapshotRecovery();
+      }
+    } while (dashboardRefreshPending);
+    return applied;
+  }).finally(() => {
+    dashboardRefreshPromise = null;
+    if (dashboardRefreshPending) return refreshDashboard();
+  });
+  return dashboardRefreshPromise;
+}
+
+async function readDashboardJson(response) {
+  const limit = 16 * 1024 * 1024;
+  if (!response.body) throw new Error('Dashboard response body unavailable');
+  const reader = response.body.getReader();
+  try {
+    const declared = response.headers.get('Content-Length');
+    if (declared && /^[0-9]+$/.test(declared) && Number(declared) > limit) {
+      throw new Error('Dashboard response size limit exceeded');
+    }
+    const decoder = new TextDecoder('utf-8', { fatal: true });
+    let size = 0;
+    const parts = [];
+    let pending = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > limit) throw new Error('Dashboard response size limit exceeded');
+      pending += decoder.decode(value, { stream: true });
+      if (pending.length >= 65536) { parts.push(pending); pending = ''; }
+    }
+    parts.push(pending + decoder.decode());
+    return JSON.parse(parts.join(''));
+  } finally {
+    try { await reader.cancel(); } catch (_) { /* Preserve the original read error. */ }
+    reader.releaseLock();
+  }
+}
+
+let dashboardSnapshotRetryId = null;
+let dashboardAppliedSnapshotCursor = null;
+let dashboardSnapshotRecoveryDenied = false;
+let dashboardSnapshotRetryDelay = 5000;
+
+function resetDashboardSnapshotRecovery() {
+  if (dashboardSnapshotRetryId !== null) clearTimeout(dashboardSnapshotRetryId);
+  dashboardSnapshotRetryId = null;
+  dashboardSnapshotRetryDelay = 5000;
+}
+
+function refreshDashboardForSse() {
+  if (dashboardSnapshotRecoveryDenied) return Promise.resolve(false);
+  const settled = applied => {
+    if (applied === true) {
+      resetDashboardSnapshotRecovery();
+    } else if (!dashboardSnapshotRecoveryDenied && dashboardSnapshotRetryId === null) {
+      const delay = Math.floor(dashboardSnapshotRetryDelay * (0.8 + 0.2 * Math.random()));
+      dashboardSnapshotRetryDelay = Math.min(dashboardSnapshotRetryDelay * 2, 60000);
+      dashboardSnapshotRetryId = setTimeout(() => {
+        dashboardSnapshotRetryId = null;
+        refreshDashboardForSse();
+      }, delay);
+    }
+    return applied === true;
+  };
+  return Promise.resolve(refreshDashboard()).then(settled, error => {
+    console.error('Dashboard snapshot recovery failed:', error);
+    return settled(false);
+  });
+}
+
+function checkDashboardResponseAccess(response) {
+  if (response.status === 401 || response.status === 403) {
+    dashboardSnapshotRecoveryDenied = true;
+    resetDashboardSnapshotRecovery();
+    throw new Error('Dashboard access denied (' + response.status + ')');
+  }
+}
+
+function recordAppliedDashboardSnapshot(payload) {
+  dashboardAppliedSnapshotCursor = payload.cache?.snapshot_cursor || null;
+}
+
+function validateDashboardSnapshot(payload) {
+  const isMap = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+  if (!isMap(payload) || payload.schema_version !== 1 || !isMap(payload.sections)) {
+    throw new Error('Unsupported dashboard payload schema');
+  }
+  const sectionNames = ['project_cards', 'tasks_pipeline', 'services_monitoring',
+    'token_activity_report', 'context_composition', 'metrics_service_summary',
+    'event_bus_recent', 'plugin_status', 'knowledge_graph_summary', 'automation_hooks'];
+  for (const name of sectionNames) {
+    if (name in payload.sections && typeof payload.sections[name] !== 'string') {
+      throw new Error('Invalid dashboard section');
+    }
+  }
+  for (const name of ['task_details', 'task_interactions', 'token_metrics', 'cache']) {
+    if (payload[name] !== undefined && !isMap(payload[name])) {
+      throw new Error('Invalid dashboard data map');
+    }
+  }
+  const cursor = payload.cache?.snapshot_cursor;
+  if (cursor !== undefined && cursor !== null &&
+      (typeof cursor !== 'string' || !/^snapshot:[0-9a-f]{32}$/.test(cursor))) {
+    throw new Error('Invalid dashboard snapshot cursor');
+  }
+}
+
+async function performDashboardRefresh(){
+  const controller = new AbortController();
+  const deadline = setTimeout(() => controller.abort(), 20000);
   try{
-    const res=await fetch('http://127.0.0.1:20129/api/dashboard',{cache:'no-store'});
+    const res=await fetch(`${API_BASE}/api/dashboard`,{cache:'no-store',signal:controller.signal});
+    checkDashboardResponseAccess(res);
     if(!res.ok) throw new Error(res.status);
-    const data=await res.json();
-    const s=data.sections||{};
-    if(s.project_cards)         updateContainerHTML('project-cards', s.project_cards);
-    if(s.tasks_pipeline)        updateContainerHTML('tasks-pipeline', s.tasks_pipeline);
-    if(s.services_monitoring)   updateContainerHTML('services-monitoring', s.services_monitoring+'<div class="term-footer">Auto-refresh 15s · DEV_CORE v' + (window.devcoreVersion || '10.2.0') + '</div>');
+    const data=await readDashboardJson(res);
+    validateDashboardSnapshot(data);
+    const interactions = data.task_interactions || {};
+    const s=data.sections;
+
+    updateContainerHTML('project-cards', (s.project_cards || ''));
+    updateContainerHTML('tasks-pipeline', (s.tasks_pipeline || ''));
+    updateContainerHTML('services-monitoring', (s.services_monitoring || '')+'<div class="term-footer">Auto-refresh 60s · DEV_CORE v' + (window.devcoreVersion || '10.2.0') + '</div>');
     
-    if(s.token_activity_report) {
+    if(document.getElementById('token-activity-report')) {
       const oldTR = document.getElementById('token-activity-report');
       const existingDetails = oldTR.querySelector('details');
       let wasOpen = true;
@@ -1056,7 +1188,7 @@ async function refreshDashboard(){
       } else if (localStorage.getItem('devcore_token_report_open') !== null) {
         wasOpen = localStorage.getItem('devcore_token_report_open') === 'true';
       }
-      updateContainerHTML('token-activity-report', s.token_activity_report);
+    updateContainerHTML('token-activity-report', s.token_activity_report || '');
       const newDetails = oldTR.querySelector('details');
       if (newDetails) {
         if (wasOpen) {
@@ -1070,12 +1202,18 @@ async function refreshDashboard(){
       }
     }
     
-    if(s.context_composition)   updateContainerHTML('context-composition', s.context_composition);
-    if(s.metrics_service_summary) updateContainerHTML('metrics-service-summary', s.metrics_service_summary);
-    if(s.event_bus_recent)      updateContainerHTML('event-bus-recent', s.event_bus_recent);
-    if(s.plugin_status)         updateContainerHTML('plugin-status', s.plugin_status);
-    if(s.knowledge_graph_summary) updateContainerHTML('knowledge-graph-summary', s.knowledge_graph_summary);
-    if(s.automation_hooks)      updateContainerHTML('automation-hooks', s.automation_hooks);
+    updateContainerHTML('context-composition', (s.context_composition || ''));
+    updateContainerHTML('metrics-service-summary', (s.metrics_service_summary || ''));
+    updateContainerHTML('event-bus-recent', (s.event_bus_recent || ''));
+    updateContainerHTML('plugin-status', (s.plugin_status || ''));
+    updateContainerHTML('knowledge-graph-summary', (s.knowledge_graph_summary || ''));
+    updateContainerHTML('automation-hooks', (s.automation_hooks || ''));
+
+    const detailsDataEl = document.getElementById('task-details-data');
+    if (detailsDataEl) detailsDataEl.textContent = JSON.stringify(data.task_details || {});
+
+    const interactionsDataEl = document.getElementById('task-interactions-data');
+    if (interactionsDataEl) interactionsDataEl.textContent = JSON.stringify(interactions);
 
     // Save updated token metrics to the data block for dynamic JS logic
     const tokenDataEl = document.getElementById('token-metrics-data');
@@ -1103,10 +1241,15 @@ async function refreshDashboard(){
     document.getElementById('sys-status').className='v-ok';
     const td=data.task_details||{};
     const n=Object.keys(td).length;
-    if(n>0) document.getElementById('task-count').textContent=n;
+    document.getElementById('task-count').textContent=n;
+    recordAppliedDashboardSnapshot(data);
+    return true;
   }catch(e){
     document.getElementById('api-ok').textContent=':20129 ✗';
     document.getElementById('api-ok').className='v-err';
+    return false;
+  }finally{
+    clearTimeout(deadline);
   }
 }
 
@@ -1119,26 +1262,27 @@ function connectStream() {
   sse.addEventListener('dashboard.delta', function(e) {
     try {
       const payload = JSON.parse(e.data);
-      if (payload && payload.has_changes) {
-        refreshDashboard();
+      if (payload && (payload.has_changes || payload.snapshot_required)) {
+        refreshDashboardForSse();
       }
     } catch(err) {
       console.error('SSE delta error:', err);
     }
   });
   sse.onerror = function() {
-    console.warn('SSE connection lost. Reconnecting in 5s...');
-    sse.close();
-    setTimeout(connectStream, 5000);
+    // Keep this EventSource: native retry preserves Last-Event-ID.
+    console.warn('SSE connection lost. Native reconnection pending...');
   };
 }
 function showInteractions(projectName, taskId, btnEl, event) {
+  const escapeText = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[ch]));
   if (event) event.stopPropagation();
   console.log('[Cockpit Debug] showInteractions clicked:', { projectName, taskId });
   const interactionsMapEl = document.getElementById('task-interactions-data');
   const interactionsMap = interactionsMapEl ? JSON.parse(interactionsMapEl.textContent || '{}') : {};
   const key = `${projectName}_${taskId}`;
-  let data = interactionsMap[key] || interactionsMap[taskId];
+  let data = interactionsMap[key];
+  if (data?.project !== projectName || data?.task_id !== taskId) data = null;
   console.log('[Cockpit Debug] Interactions data resolved:', data);
   if (!data) {
     data = {
@@ -1171,7 +1315,7 @@ function showInteractions(projectName, taskId, btnEl, event) {
   if (modulesList.length > 0) {
     modulesHtml = modulesList.map(mod => {
       return `<div style="background:rgba(56,189,248,0.1); border:1px solid rgba(56,189,248,0.25); border-radius:6px; padding:4px 9px; font-size:10.5px; font-weight:600; color:#38bdf8; display:inline-flex; align-items:center;">
-        ${mod}
+        ${escapeText(mod)}
       </div>`;
     }).join("");
   } else {
@@ -1187,7 +1331,7 @@ function showInteractions(projectName, taskId, btnEl, event) {
       else if (f.endsWith(".html") || f.endsWith(".css")) icon = "🎨";
       else if (f.endsWith(".md") || f.endsWith(".json")) icon = "📝";
       return `<div style="background:rgba(30,41,59,0.6); border:1px solid #334155; border-radius:6px; padding:6px 10px; font-size:11px; font-family:'JetBrains Mono',monospace; color:#cbd5e1; display:flex; align-items:center; gap:8px;">
-        <span>${icon}</span><span style="word-break:break-all;">${f}</span>
+        <span>${icon}</span><span style="word-break:break-all;">${escapeText(f)}</span>
       </div>`;
     }).join("");
   } else {
@@ -1198,9 +1342,9 @@ function showInteractions(projectName, taskId, btnEl, event) {
   if (eventsList.length > 0) {
     eventsHtml = eventsList.map(e => {
       return `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(15,23,42,0.6); border-left:3px solid #38bdf8; border-radius:4px; padding:6px 10px; font-size:11px;">
-        <span style="color:#f8fafc; font-weight:600;">${e.event_type}</span>
-        <span style="color:#94a3b8; font-size:10px; flex:1; margin:0 10px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${e.details || ''}</span>
-        <span style="color:#64748b; font-size:9.5px; font-family:monospace; flex-shrink:0;">${e.created_at || ''}</span>
+        <span style="color:#f8fafc; font-weight:600;">${escapeText(e.event_type)}</span>
+        <span style="color:#94a3b8; font-size:10px; flex:1; margin:0 10px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${escapeText(e.details)}</span>
+        <span style="color:#64748b; font-size:9.5px; font-family:monospace; flex-shrink:0;">${escapeText(e.created_at)}</span>
       </div>`;
     }).join("");
   } else {

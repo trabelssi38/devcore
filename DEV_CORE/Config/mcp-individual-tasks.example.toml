@@ -1,0 +1,33 @@
+# Exemple de recette de consultation des tâches. Aucun secret en configuration.
+# API individuelle déjà qualifiée et token task.read pour le projet requis.
+# context.read peut être ajouté pour la fiche ; il n'est pas impliqué par task.read.
+# Pour une recette de clôture : TASK_ACCESS=write, READ_ONLY=0, ajouter
+# devcore_task_done à enabled_tools et provisionner explicitement task.mutate.
+# Suppression logique de recette : également TASK_DELETE=1 et
+# devcore_task_delete dans enabled_tools. Ce flag ne donne aucun droit serveur.
+# Audit de recette : TASK_AUDIT=1, devcore_task_audit dans enabled_tools,
+# credential task.audit.read pour un responsable du projet. Lecture seule autorisée.
+[mcp_servers.devcore_individual_tasks]
+command = "E:/DevCoreRuntime/releases/devcore-py313-20261002/Scripts/python.exe"
+args = ["E:/src_python/devcore/DEV_CORE/MCP/devcore-scripts/server.py"]
+cwd = "E:/src_python/devcore"
+startup_timeout_sec = 30
+tool_timeout_sec = 30
+enabled_tools = ["devcore_project_context", "devcore_task_status"]
+
+[mcp_servers.devcore_individual_tasks.env]
+DEVCORE_MCP_AUTH_PROFILE = "individual"
+DEVCORE_MCP_API_URL = "http://127.0.0.1:20129"
+DEVCORE_MCP_PROJECT = "devcore"
+DEVCORE_MCP_CREDENTIAL_FILE = "E:/DevCoreSecrets/Users/UTILISATEUR/tasks.json"
+DEVCORE_CONTEXT_MAX_BYTES = "12000"
+DEVCORE_MCP_API_TIMEOUT_SECONDS = "10"
+DEVCORE_MCP_TASK_ACCESS = "read"
+DEVCORE_MCP_TASK_DELETE = "0"
+DEVCORE_MCP_TASK_AUDIT = "0"
+DEVCORE_MCP_READ_ONLY = "1"
+
+# Pause/reprise : TASK_ACCESS=write, READ_ONLY=0 et TASK_TRANSITIONS=1,
+# enabled_tools inclut devcore_task_pause/devcore_task_resume ; task.mutate requis.
+# Activation désactivée dans cet exemple ; aucun droit serveur accordé par le flag.
+DEVCORE_MCP_TASK_TRANSITIONS = "0"

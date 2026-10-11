@@ -1,24 +1,30 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "2.0",
   "default_mode": "coding",
   "profiles": {
     "reasoning": {
       "mode": "reasoning",
       "budget": "32k tokens",
       "profile": "deep-reasoning",
-      "model": "devcore-reasoning",
-      "gemini_model": "gemini-2.5-pro",
+      "model": null,
+      "gemini_model": null,
       "codex_behavior": "Architecture, analyse, decision, spec et plan. Ne change pas le modele Codex Desktop.",
-      "hint": "Skill dev-methodology. Brainstorm -> spec -> plan. Attends validation si la demande n'est pas deja explicite."
+      "hint": "Skill dev-methodology. Brainstorm -> spec -> plan. Attends validation si la demande n'est pas deja explicite.",
+      "route": "native",
+      "endpoint": "http://127.0.0.1:8787/v1",
+      "preserve_requested_model": true
     },
     "coding": {
       "mode": "coding",
       "budget": "8k tokens",
       "profile": "implementation",
-      "model": "devcore-coding",
-      "gemini_model": "gemini-2.5-pro",
+      "model": null,
+      "gemini_model": null,
       "codex_behavior": "Implementation precise, TDD, verification locale, commits atomiques.",
-      "hint": "Skill dev-methodology. TDD. Commit [T-XX] apres chaque etape validee."
+      "hint": "Skill dev-methodology. TDD. Commit [T-XX] apres chaque etape validee.",
+      "route": "native",
+      "endpoint": "http://127.0.0.1:8787/v1",
+      "preserve_requested_model": true
     },
     "bulk": {
       "mode": "bulk",
@@ -27,7 +33,10 @@
       "model": "devcore-bulk",
       "gemini_model": "gemini-2.5-flash",
       "codex_behavior": "Traitement de volume, generation en masse, sortie compressee.",
-      "hint": "Skill fabric-patterns. Mode bulk -- genere tout sans validation intermediaire quand le scope est clair."
+      "hint": "Skill fabric-patterns. Mode bulk -- genere tout sans validation intermediaire quand le scope est clair.",
+      "route": "auxiliary",
+      "endpoint": "http://127.0.0.1:8789/v1",
+      "preserve_requested_model": false
     }
   },
   "aliases": {

@@ -729,55 +729,62 @@ function apiFetch(url, options) {
   return fetch(url, options || {});
 }
 
-function completeTask(project, id, event) {
+function taskVersionAvailable(expectedVersion) {
+  if (Number.isSafeInteger(expectedVersion) && expectedVersion > 0) return true;
+  alert("Version de tâche indisponible. Actualisez le Cockpit ; si le problème persiste, le magasin doit être qualifié avant cette action.");
+  return false;
+}
+
+async function handleTaskMutationResponse(r) {
+  const isJson = r.headers.get('content-type')?.includes('application/json');
+  const data = isJson ? await r.json() : null;
+  if (r.ok && (data?.success || data?.status === 'success')) {
+    refreshDashboard();
+    return;
+  }
+  if (r.status === 409 && data?.detail?.code === 'stale_task_version') {
+    alert("Cette tâche a changé depuis son affichage. Le Cockpit va être actualisé ; vérifiez son état avant de recommencer.");
+    refreshDashboard();
+    return;
+  }
+  const detail = data?.detail;
+  const err = data?.error || (typeof detail === 'string' ? detail : detail?.message) || data?.message || `Status ${r.status}`;
+  alert("Erreur : " + err);
+}
+
+function completeTask(project, id, event, expectedVersion) {
   if (event) event.stopPropagation();
+  if (!taskVersionAvailable(expectedVersion)) return;
   showConfirmModal(
     "Clôture de tâche",
     `Voulez-vous clôturer la tâche <b>${id}</b> du projet <b>${project}</b> ?`,
     false,
     function() {
-      apiFetch(`${API_BASE}/api/done`, {
+      return apiFetch(`${API_BASE}/api/done`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ project, id })
+          body: JSON.stringify({ project, id, expected_version: expectedVersion })
         })
-        .then(async r => {
-          const isJson = r.headers.get('content-type')?.includes('application/json');
-          const data = isJson ? await r.json() : null;
-          if (r.ok && (data?.success || data?.status === 'success')) {
-            refreshDashboard();
-          } else {
-            const err = data?.error || data?.detail || data?.message || `Status ${r.status}`;
-            alert("Erreur : " + err);
-          }
-        })
+        .then(handleTaskMutationResponse)
         .catch(err => alert("Impossible de joindre le serveur API local (Port 20129). Veuillez vérifier qu'il est bien démarré."));
     }
   );
 }
 
-function deleteTask(project, id, event) {
+function deleteTask(project, id, event, expectedVersion) {
   if (event) event.stopPropagation();
+  if (!taskVersionAvailable(expectedVersion)) return;
   showConfirmModal(
     "Suppression de tâche",
     `Êtes-vous sûr de vouloir supprimer la tâche <b>${id}</b> du projet <b>${project}</b> ?<br/><span style="color:#f87171;font-size:11px;margin-top:8px;display:block;">Cette action est irréversible.</span>`,
     true,
     function() {
-      apiFetch(`${API_BASE}/api/delete`, {
+      return apiFetch(`${API_BASE}/api/delete`, {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ project, id })
+          body: JSON.stringify({ project, id, expected_version: expectedVersion })
         })
-        .then(async r => {
-          const isJson = r.headers.get('content-type')?.includes('application/json');
-          const data = isJson ? await r.json() : null;
-          if (r.ok && (data?.success || data?.status === 'success')) {
-            refreshDashboard();
-          } else {
-            const err = data?.error || data?.detail || data?.message || `Status ${r.status}`;
-            alert("Erreur : " + err);
-          }
-        })
+        .then(handleTaskMutationResponse)
         .catch(err => alert("Impossible de joindre le serveur API local (Port 20129). Veuillez vérifier qu'il est bien démarré."));
     }
   );
@@ -917,7 +924,129 @@ function refreshDashboardLegacy() {
     });
 }
 
+let dashboardRefreshPromise = null;
+let dashboardRefreshPending = false;
+
 function refreshDashboard() {
+  dashboardRefreshPending = true;
+  if (dashboardRefreshPromise) return dashboardRefreshPromise;
+  dashboardRefreshPromise = Promise.resolve().then(async () => {
+    let applied = false;
+    do {
+      dashboardRefreshPending = false;
+      applied = await performDashboardRefresh();
+      if (applied === true) {
+        dashboardSnapshotRecoveryDenied = false;
+        resetDashboardSnapshotRecovery();
+      }
+    } while (dashboardRefreshPending);
+    return applied;
+  }).finally(() => {
+    dashboardRefreshPromise = null;
+    if (dashboardRefreshPending) return refreshDashboard();
+  });
+  return dashboardRefreshPromise;
+}
+
+async function readDashboardJson(response) {
+  const limit = 16 * 1024 * 1024;
+  if (!response.body) throw new Error('Dashboard response body unavailable');
+  const reader = response.body.getReader();
+  try {
+    const declared = response.headers.get('Content-Length');
+    if (declared && /^[0-9]+$/.test(declared) && Number(declared) > limit) {
+      throw new Error('Dashboard response size limit exceeded');
+    }
+    const decoder = new TextDecoder('utf-8', { fatal: true });
+    let size = 0;
+    const parts = [];
+    let pending = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > limit) throw new Error('Dashboard response size limit exceeded');
+      pending += decoder.decode(value, { stream: true });
+      if (pending.length >= 65536) { parts.push(pending); pending = ''; }
+    }
+    parts.push(pending + decoder.decode());
+    return JSON.parse(parts.join(''));
+  } finally {
+    try { await reader.cancel(); } catch (_) { /* Preserve the original read error. */ }
+    reader.releaseLock();
+  }
+}
+
+let dashboardSnapshotRetryId = null;
+let dashboardAppliedSnapshotCursor = null;
+let dashboardSnapshotRecoveryDenied = false;
+let dashboardSnapshotRetryDelay = 5000;
+
+function resetDashboardSnapshotRecovery() {
+  if (dashboardSnapshotRetryId !== null) clearTimeout(dashboardSnapshotRetryId);
+  dashboardSnapshotRetryId = null;
+  dashboardSnapshotRetryDelay = 5000;
+}
+
+function refreshDashboardForSse() {
+  if (dashboardSnapshotRecoveryDenied) return Promise.resolve(false);
+  const settled = applied => {
+    if (applied === true) {
+      resetDashboardSnapshotRecovery();
+    } else if (!dashboardSnapshotRecoveryDenied && dashboardSnapshotRetryId === null) {
+      const delay = Math.floor(dashboardSnapshotRetryDelay * (0.8 + 0.2 * Math.random()));
+      dashboardSnapshotRetryDelay = Math.min(dashboardSnapshotRetryDelay * 2, 60000);
+      dashboardSnapshotRetryId = setTimeout(() => {
+        dashboardSnapshotRetryId = null;
+        refreshDashboardForSse();
+      }, delay);
+    }
+    return applied === true;
+  };
+  return Promise.resolve(refreshDashboard()).then(settled, error => {
+    console.error('Dashboard snapshot recovery failed:', error);
+    return settled(false);
+  });
+}
+
+function checkDashboardResponseAccess(response) {
+  if (response.status === 401 || response.status === 403) {
+    dashboardSnapshotRecoveryDenied = true;
+    resetDashboardSnapshotRecovery();
+    throw new Error('Dashboard access denied (' + response.status + ')');
+  }
+}
+
+function recordAppliedDashboardSnapshot(payload) {
+  dashboardAppliedSnapshotCursor = payload.cache?.snapshot_cursor || null;
+}
+
+function validateDashboardSnapshot(payload) {
+  const isMap = value => value !== null && typeof value === 'object' && !Array.isArray(value);
+  if (!isMap(payload) || payload.schema_version !== 1 || !isMap(payload.sections)) {
+    throw new Error('Unsupported dashboard payload schema');
+  }
+  const sectionNames = ['project_cards', 'tasks_pipeline', 'services_monitoring',
+    'token_activity_report', 'context_composition', 'metrics_service_summary',
+    'event_bus_recent', 'plugin_status', 'knowledge_graph_summary', 'automation_hooks'];
+  for (const name of sectionNames) {
+    if (name in payload.sections && typeof payload.sections[name] !== 'string') {
+      throw new Error('Invalid dashboard section');
+    }
+  }
+  for (const name of ['task_details', 'task_interactions', 'token_metrics', 'cache']) {
+    if (payload[name] !== undefined && !isMap(payload[name])) {
+      throw new Error('Invalid dashboard data map');
+    }
+  }
+  const cursor = payload.cache?.snapshot_cursor;
+  if (cursor !== undefined && cursor !== null &&
+      (typeof cursor !== 'string' || !/^snapshot:[0-9a-f]{32}$/.test(cursor))) {
+    throw new Error('Invalid dashboard snapshot cursor');
+  }
+}
+
+function performDashboardRefresh() {
   const indicator = document.getElementById('sync-indicator');
   if (indicator) {
     indicator.style.background = '#6366f1';
@@ -925,15 +1054,17 @@ function refreshDashboard() {
     indicator.style.opacity = '1';
   }
 
-  fetch(`${API_BASE}/api/dashboard`)
+  const controller = new AbortController();
+  const deadline = setTimeout(() => controller.abort(), 20000);
+  return fetch(`${API_BASE}/api/dashboard`, { signal: controller.signal })
     .then(response => {
+      checkDashboardResponseAccess(response);
       if (!response.ok) throw new Error('API server returned error status');
-      return response.json();
+      return readDashboardJson(response);
     })
     .then(payload => {
-      if (!payload || payload.schema_version !== 1 || !payload.sections) {
-        throw new Error('Unsupported dashboard payload schema');
-      }
+      validateDashboardSnapshot(payload);
+      const interactions = payload.task_interactions || {};
 
       const oldProjects = document.getElementById('project-cards');
       if (oldProjects) {
@@ -1007,6 +1138,9 @@ function refreshDashboard() {
       const detailsDataEl = document.getElementById('task-details-data');
       if (detailsDataEl) detailsDataEl.textContent = JSON.stringify(window.taskDetailsMap);
 
+      const interactionsDataEl = document.getElementById('task-interactions-data');
+      if (interactionsDataEl) interactionsDataEl.textContent = JSON.stringify(interactions);
+
       const tokenDataEl = document.getElementById('token-metrics-data');
       if (tokenDataEl) tokenDataEl.textContent = JSON.stringify(payload.token_metrics || {});
 
@@ -1030,6 +1164,8 @@ function refreshDashboard() {
         indicator.style.boxShadow = '0 0 8px #22c55e';
         indicator.style.opacity = '0.7';
       }
+      recordAppliedDashboardSnapshot(payload);
+      return true;
     })
     .catch(err => {
       console.error("Failed to refresh dashboard:", err);
@@ -1038,7 +1174,9 @@ function refreshDashboard() {
         indicator.style.boxShadow = '0 0 12px #ef4444';
         indicator.style.opacity = '1';
       }
-    });
+      return false;
+    })
+    .finally(() => clearTimeout(deadline));
 }
 
 function checkPlugin(pluginId) {
@@ -1341,6 +1479,7 @@ let currentTab = 'tasks';
 let refreshIntervalId = null;
 let currentRefreshRate = 15000;
 let dashboardStreamAbort = null;
+let dashboardLastEventId = null;
 let dashboardStreamRetryId = null;
 
 function switchTab(tab) {
@@ -1451,20 +1590,24 @@ function setupRefresh(rateMs) {
 
 // Rafraîchir le tableau de bord immédiatement puis toutes les 15 secondes (ou le taux configuré)
 function handleDashboardSseEvent(eventName, payload) {
-  if (eventName === 'dashboard.delta' && payload && payload.has_changes && currentTab === 'tasks') {
-    refreshDashboard();
+  if (eventName === 'dashboard.delta' && payload && (payload.has_changes || payload.snapshot_required)) {
+    refreshDashboardForSse();
   }
 }
 
 function parseDashboardSseBlock(block) {
-  const event = { event: 'message', data: '' };
-  block.split('\n').forEach(line => {
+  const event = { event: 'message', data: [], id: null };
+  block.split('\n').forEach(raw => {
+    const line = raw.endsWith('\r') ? raw.slice(0, -1) : raw;
     if (line.startsWith('event:')) event.event = line.slice(6).trim();
-    if (line.startsWith('data:')) event.data += line.slice(5).trim();
+    if (line.startsWith('data:')) event.data.push(line.slice(5).replace(/^ /, ''));
+    if (line.startsWith('id:')) event.id = line.slice(3).trim();
   });
-  if (!event.data) return;
+  if (event.id && /^snapshot:[0-9a-f]{32}$/.test(event.id)) dashboardLastEventId = event.id;
+  const data = event.data.join('\n');
+  if (!data || (event.event === 'message' && data === 'Connected')) return;
   try {
-    handleDashboardSseEvent(event.event, JSON.parse(event.data));
+    handleDashboardSseEvent(event.event, JSON.parse(data));
   } catch (err) {
     console.error('Invalid dashboard SSE payload:', err);
   }
@@ -1476,10 +1619,11 @@ function connectDashboardStream() {
     clearTimeout(dashboardStreamRetryId);
     dashboardStreamRetryId = null;
   }
-  dashboardStreamAbort = new AbortController();
-  fetch(`${API_BASE}/api/dashboard/stream`, {
-    headers: { Accept: 'text/event-stream' },
-    signal: dashboardStreamAbort.signal
+  const controller = new AbortController();
+  dashboardStreamAbort = controller;
+  return fetch(`${API_BASE}/api/dashboard/stream`, {
+    headers: { Accept: 'text/event-stream', ...(dashboardAppliedSnapshotCursor ? { 'Last-Event-ID': dashboardAppliedSnapshotCursor } : {}) },
+    signal: controller.signal
   })
     .then(response => {
       if (!response.ok || !response.body) throw new Error('Dashboard stream unavailable');
@@ -1487,37 +1631,52 @@ function connectDashboardStream() {
       const decoder = new TextDecoder();
       let buffer = '';
 
-      function pump() {
-        return reader.read().then(({ done, value }) => {
-          if (done) throw new Error('Dashboard stream closed');
-          buffer += decoder.decode(value, { stream: true });
-          const blocks = buffer.split('\n\n');
-          buffer = blocks.pop() || '';
-          blocks.forEach(parseDashboardSseBlock);
-          return pump();
-        });
+      async function pump() {
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) throw new Error('Dashboard stream closed');
+            buffer += decoder.decode(value, { stream: true });
+            if (buffer.length > 1048576) throw new Error('Dashboard stream buffer limit exceeded');
+            const blocks = buffer.split(/\r?\n\r?\n/);
+            buffer = blocks.pop() || '';
+            blocks.forEach(parseDashboardSseBlock);
+          }
+        } finally {
+          try { await reader.cancel(); } catch (_) { /* Transport may already be closed. */ }
+          reader.releaseLock();
+        }
       }
 
       return pump();
     })
     .catch(err => {
-      if (dashboardStreamAbort && !dashboardStreamAbort.signal.aborted) {
+      if (dashboardStreamAbort !== controller) return;
+      dashboardStreamAbort = null;
+      if (!controller.signal.aborted) {
         console.error('Dashboard stream error:', err);
-        dashboardStreamAbort = null;
         dashboardStreamRetryId = setTimeout(connectDashboardStream, 5000);
       }
     });
 }
 
+function startDashboardSynchronization() {
+  // Apply the first snapshot before sending its cursor to the stream handshake.
+  // Failed reads retain their independent recovery timer and still open the stream.
+  return refreshDashboardForSse().then(() => { connectDashboardStream(); });
+}
+
 setupRefresh(60000); // 60s fallback polling since SSE is active
-refreshDashboard();
+startDashboardSynchronization();
 function showInteractions(projectName, taskId, btnEl, event) {
+  const escapeText = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[ch]));
   if (event) event.stopPropagation();
   console.log('[Cockpit Debug] showInteractions clicked:', { projectName, taskId });
   const interactionsMapEl = document.getElementById('task-interactions-data');
   const interactionsMap = interactionsMapEl ? JSON.parse(interactionsMapEl.textContent || '{}') : {};
   const key = `${projectName}_${taskId}`;
-  let data = interactionsMap[key] || interactionsMap[taskId];
+  let data = interactionsMap[key];
+  if (data?.project !== projectName || data?.task_id !== taskId) data = null;
   console.log('[Cockpit Debug] Interactions data resolved:', data);
   if (!data) {
     data = {
@@ -1550,7 +1709,7 @@ function showInteractions(projectName, taskId, btnEl, event) {
   if (modulesList.length > 0) {
     modulesHtml = modulesList.map(mod => {
       return `<div style="background:rgba(56,189,248,0.1); border:1px solid rgba(56,189,248,0.25); border-radius:6px; padding:4px 9px; font-size:10.5px; font-weight:600; color:#38bdf8; display:inline-flex; align-items:center;">
-        ${mod}
+        ${escapeText(mod)}
       </div>`;
     }).join("");
   } else {
@@ -1566,7 +1725,7 @@ function showInteractions(projectName, taskId, btnEl, event) {
       else if (f.endsWith(".html") || f.endsWith(".css")) icon = "🎨";
       else if (f.endsWith(".md") || f.endsWith(".json")) icon = "📝";
       return `<div style="background:rgba(30,41,59,0.6); border:1px solid #334155; border-radius:6px; padding:6px 10px; font-size:11px; font-family:'JetBrains Mono',monospace; color:#cbd5e1; display:flex; align-items:center; gap:8px;">
-        <span>${icon}</span><span style="word-break:break-all;">${f}</span>
+        <span>${icon}</span><span style="word-break:break-all;">${escapeText(f)}</span>
       </div>`;
     }).join("");
   } else {
@@ -1577,9 +1736,9 @@ function showInteractions(projectName, taskId, btnEl, event) {
   if (eventsList.length > 0) {
     eventsHtml = eventsList.map(e => {
       return `<div style="display:flex; justify-content:space-between; align-items:center; background:rgba(15,23,42,0.6); border-left:3px solid #38bdf8; border-radius:4px; padding:6px 10px; font-size:11px;">
-        <span style="color:#f8fafc; font-weight:600;">${e.event_type}</span>
-        <span style="color:#94a3b8; font-size:10px; flex:1; margin:0 10px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${e.details || ''}</span>
-        <span style="color:#64748b; font-size:9.5px; font-family:monospace; flex-shrink:0;">${e.created_at || ''}</span>
+        <span style="color:#f8fafc; font-weight:600;">${escapeText(e.event_type)}</span>
+        <span style="color:#94a3b8; font-size:10px; flex:1; margin:0 10px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${escapeText(e.details)}</span>
+        <span style="color:#64748b; font-size:9.5px; font-family:monospace; flex-shrink:0;">${escapeText(e.created_at)}</span>
       </div>`;
     }).join("");
   } else {

@@ -17,6 +17,14 @@
     "repowise": {
       "host": "127.0.0.1",
       "port": 7337
+    },
+    "headroom_auxiliary": {
+      "host": "127.0.0.1",
+      "port": 8789
+    },
+    "api_gateway": {
+      "host": "127.0.0.1",
+      "port": 20131
     }
   }
 }

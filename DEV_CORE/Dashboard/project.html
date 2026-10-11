@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DevCore · Projet</title>
+  <style>
+    :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
+    body { max-width: 960px; margin: 3rem auto; padding: 0 1.2rem; }
+    h1 { margin-bottom: .3rem; } p { line-height: 1.5; }
+    form, section { border: 1px solid #80808070; border-radius: 12px; padding: 1.2rem; margin: 1.2rem 0; }
+    label { display: block; margin: .8rem 0 .3rem; }
+    input { box-sizing: border-box; width: 100%; max-width: 30rem; padding: .7rem; }
+    button { padding: .6rem .9rem; margin: .4rem .4rem .4rem 0; cursor: pointer; }
+    button:disabled { cursor: default; opacity: .55; }
+    table { width: 100%; border-collapse: collapse; } th, td { text-align: left; padding: .7rem; border-bottom: 1px solid #80808050; overflow-wrap: anywhere; }
+    .table-wrap { overflow-x: auto; } #message { min-height: 1.5rem; font-weight: 600; }
+    [hidden] { display: none !important; } .muted { color: #808080; }
+    #context-card { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
+    #context-decisions li { margin: 1rem 0; overflow-wrap: anywhere; }
+    #audit-panel th { white-space: nowrap; }
+  </style>
+  <script src="/project.js" defer></script>
+</head>
+<body>
+  <header><h1>DevCore</h1><p>Votre projet · instance locale de recette</p></header>
+  <p id="message" role="status" aria-live="polite"></p>
+  <form id="login">
+    <h2>Ouvrir une session individuelle</h2>
+    <p>Connectez-vous avec votre compte local et un projet autorisé. La session expire après 30 minutes.</p>
+    <label for="project-input">Projet</label>
+    <input id="project-input" name="project" required autocomplete="off" spellcheck="false">
+    <label for="user-input">Utilisateur</label>
+    <input id="user-input" name="username" required autocomplete="username" spellcheck="false">
+    <label for="password-input">Mot de passe</label>
+    <input id="password-input" name="password" type="password" required maxlength="256" autocomplete="current-password">
+    <p><button id="connect" type="submit">Se connecter</button></p>
+  </form>
+  <section id="workspace" hidden aria-label="Tâches du projet">
+    <h2 id="project-title"></h2>
+    <p id="identity"></p>
+    <p id="rights"></p>
+    <button id="refresh" type="button">Actualiser</button>
+    <button id="logout" type="button">Se déconnecter</button>
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">Tâche</th><th scope="col">État</th><th scope="col">Actions</th></tr></thead>
+      <tbody id="tasks"></tbody>
+    </table></div>
+    <p id="empty" hidden>Aucune tâche sur cette page.</p>
+    <nav aria-label="Pagination des tâches">
+      <button id="previous" type="button">Précédent</button>
+      <span id="page"></span>
+      <button id="next" type="button">Suivant</button>
+    </nav>
+    <section id="context-panel" aria-label="Fiche et décisions du projet">
+      <h3>Fiche et décisions</h3>
+      <p id="context-status" role="status" aria-live="polite"></p>
+      <pre id="context-card"></pre>
+      <ul id="context-decisions"></ul>
+      <p id="context-provenance" class="muted"></p>
+      <p id="context-warnings"></p>
+      <p id="context-omissions" class="muted"></p>
+      <form id="context-form">
+        <label for="context-query">Approfondir un sujet du projet</label>
+        <input id="context-query" maxlength="4096" autocomplete="off" placeholder="Ex. workers, architecture, déploiement">
+        <button id="context-search" type="submit">Approfondir</button>
+      </form>
+    </section>
+    <section id="audit-panel" hidden aria-label="Historique des modifications du projet">
+      <h3>Historique des modifications</h3>
+      <p>Clôtures et suppressions enregistrées, avec leur auteur et les versions avant et après.</p>
+      <form id="audit-form">
+        <label for="audit-task">Identifiant de tâche (facultatif)</label>
+        <input id="audit-task" maxlength="128" autocomplete="off" spellcheck="false" placeholder="Ex. T-01">
+        <button id="audit-search" type="submit">Afficher les dernières modifications</button>
+      </form>
+      <p id="audit-status" role="status" aria-live="polite"></p>
+      <div class="table-wrap"><table>
+        <thead><tr><th scope="col">Date</th><th scope="col">Tâche</th><th scope="col">Auteur</th><th scope="col">Modification</th></tr></thead>
+        <tbody id="audit-events"></tbody>
+      </table></div>
+      <button id="audit-next" type="button" disabled>Modifications plus anciennes</button>
+    </section>
+  </section>
+  <noscript><p>JavaScript est nécessaire pour ouvrir la session et consulter les tâches.</p></noscript>
+</body>
+</html>
