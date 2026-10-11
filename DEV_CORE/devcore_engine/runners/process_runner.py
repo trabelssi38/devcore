@@ -1,6 +1,5 @@
 import asyncio
 import time
-import sys
 from typing import Optional
 from .agent_runner import AgentRunner, TaskSpec, ExecutionResult, RunnerStatus
 
@@ -8,12 +7,12 @@ from .agent_runner import AgentRunner, TaskSpec, ExecutionResult, RunnerStatus
 class LocalProcessRunner(AgentRunner):
     """
     Local process runner adapter for AgentRunner interface.
-    Executes task actions as isolated subprocesses with timeout and checkpoint management.
+    Executes explicitly configured commands as subprocesses with a timeout.
     """
 
     def __init__(self, default_cmd: Optional[str] = None):
         super().__init__(name="LocalProcessRunner", backend_type="process")
-        self.default_cmd = default_cmd or f"{sys.executable} -c \"print('DEV_CORE Task Executed')\""
+        self.default_cmd = default_cmd
 
     async def has_active_task(self) -> bool:
         return self._current_task is not None
@@ -25,6 +24,13 @@ class LocalProcessRunner(AgentRunner):
         start_time = time.time()
         self._current_task = task
         cmd = task.metadata.get("command") or self.default_cmd
+        if not cmd:
+            self._current_task = None
+            return ExecutionResult(
+                task_id=task.id,
+                status="failed",
+                error="No process command configured for this task",
+            )
         
         try:
             proc = await asyncio.create_subprocess_shell(
@@ -46,7 +52,7 @@ class LocalProcessRunner(AgentRunner):
                     output=output_str.strip(),
                     error=error_str.strip() if error_str else None,
                     duration_sec=round(duration, 3),
-                    checkpoint_saved=True
+                    checkpoint_saved=False
                 )
             except asyncio.TimeoutError:
                 proc.kill()
@@ -70,7 +76,7 @@ class LocalProcessRunner(AgentRunner):
             self._current_task = None
 
     async def checkpoint(self, task_id: str) -> bool:
-        return True
+        return False
 
     async def report_status(self) -> RunnerStatus:
         active = await self.has_active_task()

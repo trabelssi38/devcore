@@ -20,11 +20,14 @@ class TestAgentRunner(unittest.TestCase):
             self.assertIn("T-999", prompt)
 
             res = await runner.run(task)
-            self.assertEqual(res.status, "success")
+            self.assertEqual(res.status, "failed")
             self.assertEqual(res.task_id, "T-999")
+            self.assertIn("not implemented", res.error)
+            self.assertFalse(res.checkpoint_saved)
+            self.assertFalse(await runner.checkpoint(task.id))
 
             status = await runner.report_status()
-            self.assertEqual(status.health, "OK")
+            self.assertEqual(status.health, "DOWN")
             self.assertFalse(status.active)
 
         asyncio.run(run_test())
@@ -36,7 +39,18 @@ class TestAgentRunner(unittest.TestCase):
             res = await runner.run(task)
             self.assertEqual(res.status, "success")
             self.assertIn("Hello ProcessRunner", res.output)
+            self.assertFalse(res.checkpoint_saved)
+            self.assertFalse(await runner.checkpoint(task.id))
 
+        asyncio.run(run_test())
+
+    def test_process_runner_without_command_fails(self):
+        async def run_test():
+            runner = LocalProcessRunner()
+            task = TaskSpec(id="T-996", project="devcore", title="No command")
+            res = await runner.run(task)
+            self.assertEqual(res.status, "failed")
+            self.assertIn("No process command", res.error)
         asyncio.run(run_test())
 
     def test_process_runner_timeout(self):

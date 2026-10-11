@@ -1,13 +1,9 @@
-import asyncio
-import time
-from typing import Optional
 from .agent_runner import AgentRunner, TaskSpec, ExecutionResult, RunnerStatus
 
 
 class HermesRunner(AgentRunner):
     """
-    Hermes daemon adapter for AgentRunner interface.
-    Delegates task execution to Hermes daemon or fallback runner if Hermes is offline.
+    Placeholder adapter until a real Hermes daemon protocol is implemented.
     """
 
     def __init__(self, daemon_url: str = "http://127.0.0.1:20128"):
@@ -22,32 +18,15 @@ class HermesRunner(AgentRunner):
         return f"[DEV_CORE Task {task.id}] Project: {task.project}\nMode: {task.mode}\nGoal: {prompt}"
 
     async def run(self, task: TaskSpec) -> ExecutionResult:
-        start_time = time.time()
-        self._current_task = task
-        try:
-            # Simulated async invocation of Hermes task queue
-            await asyncio.sleep(0.05)
-            duration = time.time() - start_time
-            return ExecutionResult(
-                task_id=task.id,
-                status="success",
-                output=f"Executed task {task.id} via Hermes adapter",
-                duration_sec=round(duration, 3),
-                checkpoint_saved=True
-            )
-        except Exception as exc:
-            duration = time.time() - start_time
-            return ExecutionResult(
-                task_id=task.id,
-                status="failed",
-                error=str(exc),
-                duration_sec=round(duration, 3)
-            )
-        finally:
-            self._current_task = None
+        return ExecutionResult(
+            task_id=task.id,
+            status="failed",
+            error="Hermes execution backend is not implemented",
+            checkpoint_saved=False,
+        )
 
     async def checkpoint(self, task_id: str) -> bool:
-        return True
+        return False
 
     async def report_status(self) -> RunnerStatus:
         active = await self.has_active_task()
@@ -57,5 +36,5 @@ class HermesRunner(AgentRunner):
             backend_type=self.backend_type,
             active=active,
             current_task_id=task_id,
-            health="OK"
+            health="DOWN"
         )

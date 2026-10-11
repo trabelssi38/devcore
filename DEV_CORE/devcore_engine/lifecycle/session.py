@@ -12,6 +12,7 @@ import os
 import sqlite3
 from typing import Any, Dict, Optional
 
+from devcore_engine.context import RequestContext, project_from_directory, validate_project_id
 from devcore_engine.db import connect_db, init_db
 from devcore_engine.services.events import EventBus
 from devcore_engine.services.tasks import TaskService
@@ -22,38 +23,29 @@ class SessionManager:
         self.conn = conn or init_db()
         self.event_bus = EventBus(self.conn)
         self.task_service = TaskService(self.conn)
+        self._active_project: Optional[str] = None
 
     def get_active_project(self) -> str:
-        # 1. Environment variable check
+        if self._active_project:
+            return self._active_project
+
+        # Environment variable is scoped to this process, rather than all clients.
         env_proj = os.getenv("DEVCORE_ACTIVE_PROJECT_NAME")
         if env_proj:
-            return env_proj.strip()
+            return validate_project_id(env_proj.strip())
 
-        # 2. Runtime state check in devcore.db
-        cursor = self.conn.cursor()
-        row = cursor.execute("SELECT value FROM runtime_state WHERE key = 'active_project';").fetchone()
-        if row and row["value"]:
-            return row["value"].strip()
+        dir_proj = project_from_directory()
+        if dir_proj:
+            return dir_proj
 
-        # 3. Fallback to default project
-        return "devcore"
+        raise ValueError("No active project context found")
 
     def set_active_project(self, project_id: str) -> None:
-        self.conn.execute(
-            """
-            INSERT INTO runtime_state (key, value, updated_at)
-            VALUES ('active_project', ?, datetime('now'))
-            ON CONFLICT(key) DO UPDATE SET
-                value = excluded.value,
-                updated_at = datetime('now');
-            """,
-            (project_id.strip(),),
-        )
-        self.conn.commit()
+        self._active_project = validate_project_id(project_id)
 
-    def start_session(self, project_id: Optional[str] = None) -> Dict[str, Any]:
-        current_project = project_id or self.get_active_project()
-        self.set_active_project(current_project)
+    def start_session(self, project_id: str | RequestContext) -> Dict[str, Any]:
+        context = project_id if isinstance(project_id, RequestContext) else RequestContext(project_id=project_id)
+        current_project = context.project_id
 
         # Ensure there is an active task, or create a default session task if none exists
         active_task = self.task_service.next_task(current_project)
@@ -75,6 +67,7 @@ class SessionManager:
             },
             project=current_project,
             task_id=active_task["id"] if active_task else None,
+            correlation_id=context.trace_id,
         )
 
         return {
@@ -82,21 +75,25 @@ class SessionManager:
             "project": current_project,
             "active_task": active_task,
             "event_id": evt_id,
+            "trace_id": context.trace_id,
         }
 
-    def end_session(self, project_id: Optional[str] = None) -> Dict[str, Any]:
-        current_project = project_id or self.get_active_project()
+    def end_session(self, project_id: str | RequestContext) -> Dict[str, Any]:
+        context = project_id if isinstance(project_id, RequestContext) else RequestContext(project_id=project_id)
+        current_project = context.project_id
         
         evt_id = self.event_bus.publish(
             "SessionEnded",
             {"project": current_project},
             project=current_project,
+            correlation_id=context.trace_id,
         )
 
         return {
             "status": "ended",
             "project": current_project,
             "event_id": evt_id,
+            "trace_id": context.trace_id,
         }
 
 

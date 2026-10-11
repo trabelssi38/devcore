@@ -18,16 +18,30 @@ from typing import Any, Dict, List, Optional
 from devcore_engine.db import connect_db, get_data_root, get_db_path, init_db
 
 
+def is_legacy_import_disabled() -> bool:
+    """Check whether automatic legacy import is disabled post-cutover."""
+    if os.environ.get("DEVCORE_DISABLE_LEGACY_IMPORT") in ("1", "true", "yes", "on"):
+        return True
+    local_root = os.environ.get("DEVCORE_LOCAL_ROOT")
+    if local_root and (Path(local_root) / ".cutover_complete").exists():
+        return True
+    return False
+
 
 class DevCoreMigrator:
-    def __init__(self, data_root: Optional[Path] = None):
+    def __init__(self, data_root: Optional[Path] = None, db_path: Optional[Path] = None):
         self.data_root = data_root or get_data_root()
-        self.db_path = get_db_path()  # always local (hors Dropbox)
+        self.db_path = db_path or get_db_path()  # default is local (hors Dropbox)
         self.conn = connect_db(self.db_path)
         # Disable foreign keys temporarily for initial bulk import
         self.conn.execute("PRAGMA foreign_keys = OFF;")
 
     def run_all(self) -> Dict[str, int]:
+        if is_legacy_import_disabled():
+            raise RuntimeError(
+                "Legacy automatic migration to devcore.db is permanently disabled post-cutover. "
+                "Use versioned atomic exports and PostgreSQL importer instead."
+            )
         stats = {}
         stats["projects"] = self.migrate_projects()
         stats["tasks"] = self.migrate_tasks()
@@ -239,15 +253,19 @@ class DevCoreMigrator:
         if not kg_dir.exists():
             return count
 
+        graphs = []
         for graph_file in kg_dir.glob("*.json"):
             try:
                 graph = json.loads(graph_file.read_text(encoding="utf-8-sig"))
-                nodes = graph.get("nodes", {})
-                edges = graph.get("edges", {})
+                graphs.append((graph_file, graph))
+            except Exception as exc:
+                print(f"[WARN] Error reading knowledge graph {graph_file}: {exc}")
 
-                # Nodes
-                node_list = nodes.values() if isinstance(nodes, dict) else nodes
-                for n in node_list:
+        # Import every node before examining references across graph files.
+        for graph_file, graph in graphs:
+            try:
+                nodes = graph.get("nodes", {})
+                for n in (nodes.values() if isinstance(nodes, dict) else nodes):
                     nid = n.get("id")
                     if not nid:
                         continue
@@ -267,26 +285,49 @@ class DevCoreMigrator:
                         ),
                     )
                     count += 1
+            except Exception as exc:
+                print(f"[WARN] Error importing knowledge nodes {graph_file}: {exc}")
+        self.conn.commit()
 
-                # Edges
+        self.conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_kg_edges_relation ON kg_edges(from_node, to_node, type)"
+        )
+
+        for graph_file, graph in graphs:
+            try:
+                edges = graph.get("edges", {})
                 edge_list = edges.values() if isinstance(edges, dict) else edges
                 for e in edge_list:
                     from_node = e.get("from") or e.get("from_node")
                     to_node = e.get("to") or e.get("to_node")
                     if from_node and to_node:
-                        self.conn.execute(
+                        props = json.dumps(e.get("properties", {}))
+                        inserted = self.conn.execute(
                             """
                             INSERT INTO kg_edges (from_node, to_node, type, properties)
-                            VALUES (?, ?, ?, ?);
+                            SELECT ?, ?, ?, ?
+                            WHERE EXISTS (SELECT 1 FROM kg_nodes WHERE id = ?)
+                              AND EXISTS (SELECT 1 FROM kg_nodes WHERE id = ?)
+                              AND NOT EXISTS (
+                                  SELECT 1 FROM kg_edges
+                                  WHERE from_node = ? AND to_node = ? AND type = ?
+                                    AND properties = ?
+                              );
                             """,
                             (
                                 from_node,
                                 to_node,
                                 e.get("type", "relates_to"),
-                                json.dumps(e.get("properties", {})),
+                                props,
+                                from_node,
+                                to_node,
+                                from_node,
+                                to_node,
+                                e.get("type", "relates_to"),
+                                props,
                             ),
                         )
-                        count += 1
+                        count += inserted.rowcount
             except Exception as exc:
                 print(f"[WARN] Error migrating knowledge graph {graph_file}: {exc}")
 

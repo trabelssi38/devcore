@@ -21,7 +21,7 @@ class MemoryHierarchy:
         self.conn = conn or init_db()
         self.memory_service = MemoryService(self.conn)
 
-    def query(self, query_text: str, task_type: str = "devcore", query_vector: Optional[List[float]] = None) -> str:
+    def query(self, query_text: str, task_type: str = "devcore", query_vector: Optional[List[float]] = None, project: str = "devcore") -> str:
         results = ["=== MEMORY HIERARCHY SEARCH RESULTS ==="]
 
         # 1. L3 Persona & L2 Scenario (Immediate load)
@@ -39,7 +39,7 @@ class MemoryHierarchy:
         ranked_lists: List[List[Dict[str, Any]]] = []
 
         # Job 1: FTS5 Full-Text Search
-        fts_items = self._search_fts(query_text)
+        fts_items = self._search_fts(query_text, project=project)
         if fts_items:
             ranked_lists.append(fts_items)
 
@@ -71,7 +71,7 @@ class MemoryHierarchy:
 
         return "\n".join(results)
 
-    def _search_fts(self, query_text: str, limit: int = 10) -> List[Dict[str, Any]]:
+    def _search_fts(self, query_text: str, project: str = "devcore", limit: int = 10) -> List[Dict[str, Any]]:
         cursor = self.conn.cursor()
         items = []
 
@@ -85,10 +85,10 @@ class MemoryHierarchy:
                 """
                 SELECT project, task_id, content
                 FROM conversations_fts
-                WHERE content MATCH ?
+                WHERE conversations_fts MATCH ? AND project = ?
                 LIMIT ?;
                 """,
-                (clean_q, limit),
+                (clean_q, project, limit),
             ).fetchall()
             for r in rows:
                 items.append({
@@ -97,22 +97,28 @@ class MemoryHierarchy:
                     "preview": f"[{r['project']}/{r['task_id'] or 'main'}] {r['content'][:250]}...",
                 })
         except Exception:
-            # Fallback to LIKE if FTS expression fails
-            rows = cursor.execute(
-                """
-                SELECT project, task_id, content
-                FROM conversations
-                WHERE content LIKE ?
-                LIMIT ?;
-                """,
-                (f"%{clean_q}%", limit),
-            ).fetchall()
-            for r in rows:
-                items.append({
-                    "id": f"fts_{r['project']}_{r['task_id'] or 'main'}",
-                    "type": "fts",
-                    "preview": f"[{r['project']}/{r['task_id'] or 'main'}] {r['content'][:250]}...",
-                })
+            pass
+
+        if not items:
+            # Fallback to LIKE if FTS expression fails or returns no items
+            try:
+                rows = cursor.execute(
+                    """
+                    SELECT project, task_id, content
+                    FROM conversations
+                    WHERE project = ? AND content LIKE ?
+                    LIMIT ?;
+                    """,
+                    (project, f"%{clean_q}%", limit),
+                ).fetchall()
+                for r in rows:
+                    items.append({
+                        "id": f"fts_{r['project']}_{r['task_id'] or 'main'}",
+                        "type": "fts",
+                        "preview": f"[{r['project']}/{r['task_id'] or 'main'}] {r['content'][:250]}...",
+                    })
+            except Exception:
+                pass
 
         return items
 

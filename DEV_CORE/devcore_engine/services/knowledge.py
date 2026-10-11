@@ -28,42 +28,75 @@ class KnowledgeGraph:
             self.conn = connect_db()
 
 
-    def get_stats(self) -> Dict[str, int]:
+    def _has_project_column(self, table: str) -> bool:
         cursor = self.conn.cursor()
-        node_count = cursor.execute("SELECT COUNT(*) FROM kg_nodes;").fetchone()[0]
-        edge_count = cursor.execute("SELECT COUNT(*) FROM kg_edges;").fetchone()[0]
+        cols = {row[1] for row in cursor.execute(f"PRAGMA table_info({table});").fetchall()}
+        return "project_id" in cols
+
+    def get_stats(self, project_id: Optional[str] = None) -> Dict[str, int]:
+        cursor = self.conn.cursor()
+        has_proj = self._has_project_column("kg_nodes")
+        if project_id and has_proj:
+            node_count = cursor.execute("SELECT COUNT(*) FROM kg_nodes WHERE project_id = ?;", (project_id,)).fetchone()[0]
+            edge_count = cursor.execute("SELECT COUNT(*) FROM kg_edges WHERE project_id = ?;", (project_id,)).fetchone()[0]
+        else:
+            node_count = cursor.execute("SELECT COUNT(*) FROM kg_nodes;").fetchone()[0]
+            edge_count = cursor.execute("SELECT COUNT(*) FROM kg_edges;").fetchone()[0]
         return {"nodes": node_count, "edges": edge_count}
 
-    def add_node(self, node_id: str, node_type: str, label: str, properties: Optional[Dict[str, Any]] = None) -> None:
+    def add_node(self, node_id: str, node_type: str, label: str, properties: Optional[Dict[str, Any]] = None, project_id: str = "devcore") -> None:
         props_json = json.dumps(properties or {})
-        self.conn.execute(
-            """
-            INSERT INTO kg_nodes (id, type, label, properties)
-            VALUES (?, ?, ?, ?)
-            ON CONFLICT(id) DO UPDATE SET
-                label = excluded.label,
-                properties = excluded.properties;
-            """,
-            (node_id, node_type, label, props_json),
-        )
+        if self._has_project_column("kg_nodes"):
+            self.conn.execute(
+                """
+                INSERT INTO kg_nodes (id, project_id, type, label, properties)
+                VALUES (?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    project_id = excluded.project_id,
+                    label = excluded.label,
+                    properties = excluded.properties;
+                """,
+                (node_id, project_id, node_type, label, props_json),
+            )
+        else:
+            self.conn.execute(
+                """
+                INSERT INTO kg_nodes (id, type, label, properties)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    label = excluded.label,
+                    properties = excluded.properties;
+                """,
+                (node_id, node_type, label, props_json),
+            )
         self.conn.commit()
 
-    def add_edge(self, from_node: str, to_node: str, edge_type: str = "relates_to", properties: Optional[Dict[str, Any]] = None) -> None:
+    def add_edge(self, from_node: str, to_node: str, edge_type: str = "relates_to", properties: Optional[Dict[str, Any]] = None, project_id: str = "devcore") -> None:
         props_json = json.dumps(properties or {})
-        self.conn.execute(
-            """
-            INSERT INTO kg_edges (from_node, to_node, type, properties)
-            VALUES (?, ?, ?, ?);
-            """,
-            (from_node, to_node, edge_type, props_json),
-        )
+        if self._has_project_column("kg_edges"):
+            self.conn.execute(
+                """
+                INSERT INTO kg_edges (project_id, from_node, to_node, type, properties)
+                VALUES (?, ?, ?, ?, ?);
+                """,
+                (project_id, from_node, to_node, edge_type, props_json),
+            )
+        else:
+            self.conn.execute(
+                """
+                INSERT INTO kg_edges (from_node, to_node, type, properties)
+                VALUES (?, ?, ?, ?);
+                """,
+                (from_node, to_node, edge_type, props_json),
+            )
         self.conn.commit()
 
-    def impact_analysis(self, target_node_id: str, max_depth: int = 2) -> Dict[str, Any]:
+    def impact_analysis(self, target_node_id: str, max_depth: int = 2, project_id: Optional[str] = None) -> Dict[str, Any]:
         cursor = self.conn.cursor()
         visited: Set[str] = set()
         queue = [(target_node_id, 0)]
         affected = []
+        has_proj = self._has_project_column("kg_nodes") and project_id is not None
 
         while queue:
             current, depth = queue.pop(0)
@@ -71,26 +104,41 @@ class KnowledgeGraph:
                 continue
             visited.add(current)
 
-            node = cursor.execute("SELECT * FROM kg_nodes WHERE id = ?;", (current,)).fetchone()
+            if has_proj:
+                node = cursor.execute("SELECT * FROM kg_nodes WHERE id = ? AND project_id = ?;", (current, project_id)).fetchone()
+            else:
+                node = cursor.execute("SELECT * FROM kg_nodes WHERE id = ?;", (current,)).fetchone()
             if node:
-                affected.append({"id": current, "label": node["label"], "type": node["type"], "depth": depth})
+                item = {"id": current, "label": node["label"], "type": node["type"], "depth": depth}
+                if has_proj:
+                    item["project_id"] = project_id
+                affected.append(item)
 
             # Find incoming & outgoing edges
-            edges = cursor.execute(
-                "SELECT from_node, to_node FROM kg_edges WHERE from_node = ? OR to_node = ?;",
-                (current, current),
-            ).fetchall()
+            if has_proj:
+                edges = cursor.execute(
+                    "SELECT from_node, to_node FROM kg_edges WHERE (from_node = ? OR to_node = ?) AND project_id = ?;",
+                    (current, current, project_id),
+                ).fetchall()
+            else:
+                edges = cursor.execute(
+                    "SELECT from_node, to_node FROM kg_edges WHERE from_node = ? OR to_node = ?;",
+                    (current, current),
+                ).fetchall()
 
             for e in edges:
                 neighbor = e["to_node"] if e["from_node"] == current else e["from_node"]
                 if neighbor not in visited:
                     queue.append((neighbor, depth + 1))
 
-        return {
+        res = {
             "target": target_node_id,
             "blast_radius_count": len(affected),
             "affected_nodes": affected,
         }
+        if project_id:
+            res["project_id"] = project_id
+        return res
 
 
 if __name__ == "__main__":

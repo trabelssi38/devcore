@@ -17,19 +17,28 @@ except ImportError:
     HAS_SQLITE_VEC = False
 
 
+def _configured_root(variable: str) -> Path | None:
+    """An explicit store selection never falls back to another store."""
+    value = os.environ.get(variable)
+    if value is None:
+        return None
+    if not value.strip():
+        raise ValueError(f"{variable} must name a directory or be unset")
+    root = Path(value)
+    if root.exists() and not root.is_dir():
+        raise NotADirectoryError(f"{variable} is not a directory")
+    return root
+
+
 def get_data_root() -> Path:
-    """Returns DEVCORE_DATA_ROOT — the shared Dropbox folder (Memory, Plugins, Vault…)."""
-    env_root = os.getenv("DEVCORE_DATA_ROOT")
+    """Resolve shared documents; discover legacy defaults only when unset.
 
-    is_default_or_missing = (
-        not env_root
-        or "C:\\devcore\\DEV_CORE_DATA" in env_root
-        or "\\DEV_CORE\\DEV_CORE_DATA" in env_root
-        or not Path(env_root).exists()
-    )
-
-    if not is_default_or_missing:
-        return Path(env_root)
+    Explicit paths are preserved even before creation. Resolution creates no
+    directory, and a configured empty value or file fails without redirection.
+    """
+    configured = _configured_root("DEVCORE_DATA_ROOT")
+    if configured is not None:
+        return configured
 
     # Auto-detect Dropbox folder on Windows
     if os.name == "nt":
@@ -55,9 +64,6 @@ def get_data_root() -> Path:
                 except Exception:
                     pass
 
-    if env_root:
-        return Path(env_root)
-
     # Default fallback
     platform_root = os.getenv("DEVCORE_PLATFORM_ROOT", "C:/devcore/DEV_CORE")
     return Path(platform_root).parent / "DEV_CORE_DATA"
@@ -69,12 +75,14 @@ def get_local_data_root() -> Path:
 
     Priority:
     1. Env var DEVCORE_LOCAL_ROOT
-    2. <shared_root>_local/  sibling of the Dropbox DEV_CORE_DATA folder
-    3. %LOCALAPPDATA%/DEV_CORE_LOCAL on Windows
+    2. %LOCALAPPDATA%/DEV_CORE_LOCAL on Windows
+    3. DEV_CORE_DATA_local/ sibling of shared documents elsewhere
+
+    Explicit roots are created with missing parents. Errors propagate; they
+    never redirect a database to another root. This is not a path sandbox.
     """
-    env_local = os.getenv("DEVCORE_LOCAL_ROOT")
-    if env_local and Path(env_local).parent.exists():
-        local = Path(env_local)
+    local = _configured_root("DEVCORE_LOCAL_ROOT")
+    if local is not None:
         local.mkdir(parents=True, exist_ok=True)
         return local
 
@@ -120,8 +128,35 @@ def connect_db(db_path: Optional[Path] = None) -> sqlite3.Connection:
         conn.enable_load_extension(False)
 
     conn.executescript(INIT_SCHEMA_SQL)
+    _ensure_task_version_trigger(conn)
+    if HAS_SQLITE_VEC:
+        try:
+            conn.executescript(VECTOR_SCHEMA_SQL)
+        except sqlite3.OperationalError:
+            pass
 
     return conn
+
+
+TASK_VERSION_TRIGGER_SQL = """
+CREATE TRIGGER IF NOT EXISTS tasks_increment_version
+AFTER UPDATE ON tasks
+FOR EACH ROW WHEN NEW.version = OLD.version
+BEGIN
+    UPDATE tasks SET version = OLD.version + 1
+    WHERE id = NEW.id AND project_id = NEW.project_id;
+END;
+"""
+
+
+def _ensure_task_version_trigger(conn: sqlite3.Connection) -> None:
+    """Enable row versions only where the schema already has the column.
+
+    An existing active database is never ALTERed implicitly during connect.
+    """
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(tasks)")}
+    if "version" in columns:
+        conn.executescript(TASK_VERSION_TRIGGER_SQL)
 
 
 
@@ -157,6 +192,7 @@ CREATE TABLE IF NOT EXISTS tasks (
     started_at TEXT,
     completed_at TEXT,
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    version INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
     PRIMARY KEY (id, project_id),
     CHECK (steps_done >= 0 AND steps_total >= 1),
     CHECK (steps_done <= steps_total)
@@ -166,14 +202,26 @@ CREATE TABLE IF NOT EXISTS tasks (
 CREATE TABLE IF NOT EXISTS runs (
     id TEXT PRIMARY KEY,
     project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-    task_id TEXT REFERENCES tasks(id) ON DELETE SET NULL,
+    task_id TEXT,
     status TEXT NOT NULL DEFAULT 'queued',
     runner TEXT,
     started_at TEXT,
     finished_at TEXT,
     metadata TEXT NOT NULL DEFAULT '{}',
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (task_id, project_id) REFERENCES tasks(id, project_id)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_tasks_project_identity ON tasks(id, project_id);
+
+-- Idempotent imports from legacy task suggestion queues
+CREATE TABLE IF NOT EXISTS task_imports (
+    project_id TEXT NOT NULL,
+    source_key TEXT NOT NULL,
+    task_id TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (project_id, source_key),
+    FOREIGN KEY (task_id, project_id) REFERENCES tasks(id, project_id)
 );
 
 -- Plugins (OLTP)
@@ -193,21 +241,22 @@ CREATE TABLE IF NOT EXISTS plugins (
 CREATE TABLE IF NOT EXISTS events (
     id TEXT PRIMARY KEY,
     project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-    task_id TEXT REFERENCES tasks(id) ON DELETE SET NULL,
+    task_id TEXT,
     run_id TEXT REFERENCES runs(id) ON DELETE SET NULL,
     plugin_id TEXT REFERENCES plugins(id) ON DELETE SET NULL,
     event_type TEXT NOT NULL,
     source TEXT NOT NULL,
     correlation_id TEXT,
     payload TEXT NOT NULL DEFAULT '{}',
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (task_id, project_id) REFERENCES tasks(id, project_id)
 );
 
 -- Audit Log
 CREATE TABLE IF NOT EXISTS audit_log (
     id TEXT PRIMARY KEY,
     project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
-    task_id TEXT REFERENCES tasks(id) ON DELETE SET NULL,
+    task_id TEXT,
     run_id TEXT REFERENCES runs(id) ON DELETE SET NULL,
     plugin_id TEXT REFERENCES plugins(id) ON DELETE SET NULL,
     actor TEXT NOT NULL DEFAULT 'system',
@@ -215,7 +264,8 @@ CREATE TABLE IF NOT EXISTS audit_log (
     entity_type TEXT NOT NULL,
     entity_id TEXT NOT NULL,
     details TEXT NOT NULL DEFAULT '{}',
-    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (task_id, project_id) REFERENCES tasks(id, project_id)
 );
 
 -- Schedules
@@ -273,18 +323,44 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_memory_name_type ON memory_entries(name, t
 -- Knowledge Graph Nodes
 CREATE TABLE IF NOT EXISTS kg_nodes (
     id TEXT PRIMARY KEY,
+    project_id TEXT NOT NULL DEFAULT 'devcore',
     type TEXT NOT NULL,
     label TEXT NOT NULL,
     properties TEXT DEFAULT '{}'
 );
+CREATE INDEX IF NOT EXISTS idx_kg_nodes_project ON kg_nodes(project_id);
 
 -- Knowledge Graph Edges
 CREATE TABLE IF NOT EXISTS kg_edges (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id TEXT NOT NULL DEFAULT 'devcore',
     from_node TEXT NOT NULL REFERENCES kg_nodes(id) ON DELETE CASCADE,
     to_node TEXT NOT NULL REFERENCES kg_nodes(id) ON DELETE CASCADE,
     type TEXT NOT NULL,
     properties TEXT DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS idx_kg_edges_project ON kg_edges(project_id);
+
+-- Knowledge Items (Lot L7 unified knowledge memory)
+CREATE TABLE IF NOT EXISTS knowledge_items (
+    id TEXT NOT NULL,
+    project_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    kind TEXT NOT NULL DEFAULT 'document',
+    source_path TEXT,
+    commit_hash TEXT,
+    embedding TEXT,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (id, project_id)
+);
+CREATE INDEX IF NOT EXISTS idx_ki_project ON knowledge_items(project_id);
+CREATE VIRTUAL TABLE IF NOT EXISTS knowledge_items_fts USING fts5(
+    id UNINDEXED,
+    project_id UNINDEXED,
+    title,
+    content
 );
 
 -- Bus Events
@@ -303,6 +379,7 @@ CREATE INDEX IF NOT EXISTS idx_bus_events_date ON bus_events(created_at DESC);
 -- Vault Notes (Obsidian PKM / Daily Notes)
 CREATE TABLE IF NOT EXISTS vault_notes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    project_id TEXT NOT NULL DEFAULT 'devcore',
     path TEXT NOT NULL UNIQUE,
     title TEXT,
     tags TEXT DEFAULT '[]',
@@ -310,6 +387,7 @@ CREATE TABLE IF NOT EXISTS vault_notes (
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE INDEX IF NOT EXISTS idx_vault_notes_project ON vault_notes(project_id);
 
 -- Workflow States
 CREATE TABLE IF NOT EXISTS workflow_states (
@@ -458,6 +536,18 @@ def _align_existing_schema(conn: sqlite3.Connection) -> None:
         """)
         cursor.execute("DROP TABLE _legacy_tasks;")
 
+    # Some already project-scoped databases predate optimistic task versions.
+    # The post-commit hook reads and updates this column, so add it before the
+    # hook opens the task service instead of leaving SQLite to report
+    # ``no such column: version``.
+    table_info = cursor.execute("PRAGMA table_info(tasks);").fetchall()
+    task_columns = {row[1] for row in table_info}
+    if task_columns and "version" not in task_columns:
+        cursor.execute(
+            "ALTER TABLE tasks ADD COLUMN version INTEGER NOT NULL DEFAULT 1 "
+            "CHECK (version >= 1);"
+        )
+
     # Align 'events' table
     table_info = cursor.execute("PRAGMA table_info(events);").fetchall()
     cols = {row[1]: row for row in table_info}
@@ -486,6 +576,13 @@ def _align_existing_schema(conn: sqlite3.Connection) -> None:
         """)
         cursor.execute("DROP TABLE _legacy_events;")
 
+    # Align kg_nodes, kg_edges, vault_notes for project_id
+    for tbl in ("kg_nodes", "kg_edges", "vault_notes"):
+        info = cursor.execute(f"PRAGMA table_info({tbl});").fetchall()
+        cols = {row[1] for row in info}
+        if cols and "project_id" not in cols:
+            cursor.execute(f"ALTER TABLE {tbl} ADD COLUMN project_id TEXT NOT NULL DEFAULT 'devcore';")
+
     conn.commit()
 
 
@@ -495,6 +592,7 @@ def init_db(db_path: Optional[Path] = None) -> sqlite3.Connection:
     conn = connect_db(db_path)
     _align_existing_schema(conn)
     conn.executescript(INIT_SCHEMA_SQL)
+    _ensure_task_version_trigger(conn)
     
     if HAS_SQLITE_VEC:
         try:

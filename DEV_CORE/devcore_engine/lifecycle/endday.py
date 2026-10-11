@@ -12,31 +12,29 @@ import datetime
 import sqlite3
 from typing import Any, Dict, Optional
 
+from devcore_engine.context import RequestContext
 from devcore_engine.db import connect_db, init_db
 from devcore_engine.services.events import EventBus
-from devcore_engine.services.memory import MemoryService
-from devcore_engine.services.tasks import TaskService
+from devcore_engine.services.tasks import TaskService, _validate_project_id
 
 
 class EndDayManager:
     def __init__(self, conn: Optional[sqlite3.Connection] = None):
         self.conn = conn or init_db()
         self.event_bus = EventBus(self.conn)
-        self.memory_service = MemoryService(self.conn)
         self.task_service = TaskService(self.conn)
 
-    def run_endday(self, project_id: str = "devcore") -> Dict[str, Any]:
+    def run_endday(self, project_id: str | RequestContext) -> Dict[str, Any]:
+        context = project_id if isinstance(project_id, RequestContext) else RequestContext(project_id=_validate_project_id(project_id))
+        project_id = context.project_id
         today_str = datetime.date.today().isoformat()
-        
-        # 1. Rotate MEMORY file if threshold exceeded
-        rotate_res = self.memory_service.rotate("MEMORY", threshold=300, keep_lines=200)
 
-        # 2. Get completed tasks summary
+        # Shared memory has no project owner and cannot be rotated here.
         board = self.task_service.get_board(project_id)
         done_tasks = [t for t in board["tasks"] if t["status"] == "done"]
 
-        # 3. Insert or update vault daily note record
-        daily_path = f"Daily Notes/{today_str}.md"
+        # Keep the SQL note distinct from historical global daily notes.
+        daily_path = f"Projects/{project_id}/Daily Notes/{today_str}.md"
         cursor = self.conn.cursor()
         existing_note = cursor.execute("SELECT content FROM vault_notes WHERE path = ?;", (daily_path,)).fetchone()
         
@@ -63,16 +61,17 @@ class EndDayManager:
             (daily_path, f"Daily Note {today_str}", note_content),
         )
 
-        # 4. Record EndDayCompleted event
+        # Record EndDayCompleted event in the same project.
         evt_id = self.event_bus.publish(
             "EndDayCompleted",
             {
                 "date": today_str,
                 "project": project_id,
                 "done_count": len(done_tasks),
-                "memory_rotated": rotate_res["rotated"],
+                "memory_rotated": False,
             },
             project=project_id,
+            correlation_id=context.trace_id,
         )
 
         self.conn.commit()
@@ -82,8 +81,9 @@ class EndDayManager:
             "date": today_str,
             "project": project_id,
             "done_tasks_count": len(done_tasks),
-            "memory_rotation": rotate_res,
+            "memory_rotation": None,
             "event_id": evt_id,
+            "trace_id": context.trace_id,
         }
 
 

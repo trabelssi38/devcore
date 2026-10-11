@@ -38,6 +38,25 @@ class EventBus:
         task_id: Optional[str] = None,
         correlation_id: Optional[str] = None,
     ) -> str:
+        evt_id = self._insert(event_type, payload, source, project, task_id, correlation_id)
+        self.conn.commit()
+        return evt_id
+
+    def append_in_transaction(
+        self,
+        event_type: str,
+        payload: Dict[str, Any] | str,
+        source: str = "devcore",
+        project: str = "devcore",
+        task_id: Optional[str] = None,
+        correlation_id: Optional[str] = None,
+    ) -> str:
+        """Append on the caller's connection; the caller owns commit/rollback."""
+        if not self.conn.in_transaction:
+            raise RuntimeError("An active transaction is required to append an event")
+        return self._insert(event_type, payload, source, project, task_id, correlation_id)
+
+    def _insert(self, event_type, payload, source, project, task_id, correlation_id):
         evt_id = f"evt_{uuid.uuid4().hex[:12]}"
         payload_json = json.dumps(payload) if isinstance(payload, dict) else str(payload)
 
@@ -48,7 +67,6 @@ class EventBus:
             """,
             (evt_id, source, event_type, project, task_id, correlation_id, payload_json),
         )
-        self.conn.commit()
         return evt_id
 
     def read(

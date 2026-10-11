@@ -52,7 +52,8 @@ class MultiProjectGitScanner:
                 text=True,
                 encoding="utf-8-sig",
                 errors="replace",
-                creationflags=creationflags
+                creationflags=creationflags,
+                timeout=30,
             )
             if res.returncode != 0 or not res.stdout.strip():
                 return 0
@@ -72,10 +73,11 @@ class MultiProjectGitScanner:
         """, (name, name, str(repo_path)))
 
         # Get existing task titles & commit hashes for this project
-        cur.execute("SELECT id, title, metadata FROM tasks WHERE project_id=?", (name,))
+        cur.execute("SELECT id, title, status FROM tasks WHERE project_id=?", (name,))
         existing_rows = cur.fetchall()
         existing_ids = {r[0] for r in existing_rows}
-        existing_titles = {r[1].strip().lower() for r in existing_rows if r[1]}
+        deleted_ids = {r[0] for r in existing_rows if r[2] == "deleted"}
+        existing_titles = {r[1].strip().lower() for r in existing_rows if r[1] and r[2] != "deleted"}
 
         for line in lines:
             if not line.strip() or "|" not in line:
@@ -101,6 +103,8 @@ class MultiProjectGitScanner:
             details = f"**Actions détectées dans le commit Git ({short_hash}) :**\n- {clean_title}"
 
             if task_id in existing_ids:
+                if task_id in deleted_ids:
+                    continue
                 # Update existing task if missing metadata or status not done
                 cur.execute("""
                     UPDATE tasks
@@ -108,24 +112,18 @@ class MultiProjectGitScanner:
                         metadata=CASE WHEN (metadata IS NULL OR metadata='') THEN ? ELSE metadata END,
                         completed_at=CASE WHEN (completed_at IS NULL OR completed_at='') THEN ? ELSE completed_at END,
                         updated_at=datetime('now')
-                    WHERE id=? AND project_id=?
+                    WHERE id=? AND project_id=? AND status <> 'deleted'
                 """, (details, date_str, task_id, name))
             elif clean_title.lower() not in existing_titles:
                 # Insert new task for this commit
                 cur.execute("""
                     INSERT INTO tasks (id, project_id, title, status, mode, steps_total, steps_done, metadata, started_at, completed_at, created_at, updated_at)
                     VALUES (?, ?, ?, 'done', 'git', 1, 1, ?, ?, ?, ?, datetime('now'))
-                    ON CONFLICT(id, project_id) DO UPDATE SET
-                        project_id=excluded.project_id,
-                        title=excluded.title,
-                        status='done',
-                        metadata=excluded.metadata,
-                        completed_at=excluded.completed_at,
-                        updated_at=datetime('now')
+                    ON CONFLICT(id, project_id) DO NOTHING
                 """, (task_id, name, clean_title, details, date_str, date_str, date_str))
                 existing_ids.add(task_id)
                 existing_titles.add(clean_title.lower())
-                new_count += 1
+                new_count += cur.rowcount
 
         self.conn.commit()
         return new_count
@@ -147,24 +145,13 @@ class MultiProjectGitScanner:
                 results[p_name] = added
                 total_new += added
 
-        # Also sync tasks.json for backward compatibility
-        try:
-            from devcore_engine.services.tasks import TaskService
-            ts = TaskService(self.conn)
-            for p in projects:
-                p_name = p.get("name")
-                if p_name:
-                    ts._sync_to_legacy_json(p_name)
-        except Exception:
-            pass
-
         try:
             from devcore_engine.infra.system_watcher import SystemWatcher
             # Trigger gen_dashboard.py if commits were added
             if total_new > 0:
                 gen_dash_script = DEV_CORE_ROOT / "Scripts" / "gen_dashboard.py"
                 creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) if os.name == "nt" else 0
-                subprocess.run([sys.executable, str(gen_dash_script)], capture_output=True, creationflags=creationflags)
+                subprocess.run([sys.executable, str(gen_dash_script)], capture_output=True, creationflags=creationflags, timeout=90)
         except Exception:
             pass
 
@@ -175,6 +162,29 @@ class MultiProjectGitScanner:
 
 
 if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Scan recent Git commits into project-scoped SQLite tasks")
+    parser.add_argument("--project", required=True)
+    parser.add_argument("--repo", type=Path, required=True)
+    parser.add_argument("--days", type=int, default=30)
+    args = parser.parse_args()
+    if not args.project.strip() or args.days < 1:
+        parser.error("project must be nonempty and days must be positive")
+    if not args.repo.is_dir():
+        parser.error("repo must be an existing directory")
+    try:
+        check = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            cwd=str(args.repo), capture_output=True, text=True, timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        parser.error(f"cannot inspect Git repository: {exc}")
+    if check.returncode != 0:
+        parser.error("repo is not inside a Git repository")
     scanner = MultiProjectGitScanner()
-    res = scanner.scan_all_projects()
-    print(f"[MultiProjectGitScanner] Scan completed: {res}")
+    try:
+        added = scanner.scan_project_repo(args.project, args.repo, days=args.days)
+        print(f"[MultiProjectGitScanner] {args.project}: {added} new tasks")
+    finally:
+        scanner.conn.close()

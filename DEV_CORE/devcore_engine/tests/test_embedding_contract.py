@@ -6,6 +6,7 @@ class TestEmbeddingContract(unittest.TestCase):
     def test_contract_properties(self):
         contract = EmbeddingService.get_contract()
         self.assertEqual(contract["dimensions"], 768)
+        self.assertEqual(contract["endpoint"], "http://127.0.0.1:20130/v1/embeddings")
         self.assertEqual(contract["model"], "gemini-embedding-001")
         self.assertEqual(contract["query_model"], "gemini-embedding-001")
         self.assertIn("decisions", contract["qdrant_collections"])
@@ -14,6 +15,8 @@ class TestEmbeddingContract(unittest.TestCase):
         body = EmbeddingService.create_request_body("sync text", is_query=False)
         self.assertEqual(body["model"], "gemini-embedding-001")
         self.assertEqual(body["dimensions"], 768)
+        self.assertEqual(body["input"], "sync text")
+        self.assertNotIn("contents", body)
 
     def test_request_body_query(self):
         body = EmbeddingService.create_request_body("query text", is_query=True)

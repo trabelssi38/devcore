@@ -16,9 +16,10 @@ import time
 from typing import Any, Dict, Optional
 
 from devcore_engine.db import connect_db, init_db
-from devcore_engine.migrate_to_unified_db import DevCoreMigrator
+from devcore_engine.context import RequestContext
 from devcore_engine.services.events import EventBus
 from devcore_engine.lifecycle.session import SessionManager
+from devcore_engine.services.tasks import _validate_project_id
 
 
 def check_port(host: str, port: int, timeout: float = 0.3) -> bool:
@@ -35,14 +36,13 @@ class PlatformLauncher:
         self.event_bus = EventBus(self.conn)
         self.session_manager = SessionManager(self.conn)
 
-    def launch(self, client: str = "auto", project_id: str = "devcore") -> Dict[str, Any]:
+    def launch(self, project_id: str, client: str = "auto") -> Dict[str, Any]:
+        context = RequestContext(project_id=_validate_project_id(project_id))
+        project_id = context.project_id
         start_time = time.time()
-        
-        # 1. Idempotent Migration & DB Sync
-        migrator = DevCoreMigrator()
-        migration_stats = migrator.run_all()
 
-        # 2. Check Native Services & Auto-Heal via SystemWatcher
+        # Migrations require an explicit import command; startup must not replay Dropbox JSON.
+        # Check Native Services & Auto-Heal via SystemWatcher.
         from devcore_engine.infra.system_watcher import SystemWatcher
         watcher = SystemWatcher(self.conn)
         watch_result = watcher.audit_and_heal()
@@ -54,7 +54,7 @@ class PlatformLauncher:
 
 
         # 3. Initialize Session Context
-        session_info = self.session_manager.start_session(project_id)
+        session_info = self.session_manager.start_session(context)
 
         duration = time.time() - start_time
 
@@ -69,6 +69,7 @@ class PlatformLauncher:
                 "gemini_router_online": router_up,
             },
             project=project_id,
+            correlation_id=context.trace_id,
         )
 
         return {
@@ -83,10 +84,9 @@ class PlatformLauncher:
             },
             "session": session_info,
             "event_id": evt_id,
+            "trace_id": context.trace_id,
         }
 
 
 if __name__ == "__main__":
-    launcher = PlatformLauncher()
-    res = launcher.launch()
-    print(f"[PlatformLauncher] Launch result: {res}")
+    raise SystemExit("Use python -m devcore_engine.cli launch --project <project>.")

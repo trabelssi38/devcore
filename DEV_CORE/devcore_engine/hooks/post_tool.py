@@ -9,21 +9,22 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent.resolve()))
 
 import json
-import os
-import sqlite3
 from typing import Any, Dict, Optional
 
-from devcore_engine.db import connect_db, init_db
+from devcore_engine.context import project_from_directory, validate_project_id
+from devcore_engine.db import init_db
 from devcore_engine.services.events import EventBus
-from devcore_engine.lifecycle.session import SessionManager
 
 
-def run_post_tool_hook(tool_name: str = "Bash", payload: Optional[Dict[str, Any]] = None) -> None:
+def run_post_tool_hook(tool_name: str = "Bash", payload: Optional[Dict[str, Any]] = None,
+                       project_id: Optional[str] = None) -> None:
+    project_id = project_id or project_from_directory()
+    if not project_id:
+        return
+    project_id = validate_project_id(project_id)
+
     conn = init_db()
     event_bus = EventBus(conn)
-    session_mgr = SessionManager(conn)
-
-    project_id = session_mgr.get_active_project()
 
     # Record ToolExecuted event
     event_bus.publish(
