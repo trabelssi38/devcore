@@ -534,9 +534,18 @@ def _align_existing_schema(conn: sqlite3.Connection) -> None:
                 updated_at TEXT NOT NULL DEFAULT (datetime('now'))
             );
         """)
-        cursor.execute("""
+        # Legacy task tables differ by release; only reference columns that
+        # actually exist so SQLite can migrate the oldest project boards.
+        legacy_expr = lambda name, default: name if name in cols else default
+        cursor.execute(f"""
             INSERT OR IGNORE INTO tasks (id, project_id, title, status, mode, steps_total, steps_done, started_at, completed_at)
-            SELECT id, COALESCE(project, 'devcore'), title, status, COALESCE(mode, 'coding'), COALESCE(steps_total, 1), COALESCE(steps_done, 0), started_at, completed_at
+            SELECT id, COALESCE({legacy_expr('project', "'devcore'")}, 'devcore'),
+                   title, {legacy_expr('status', "'todo'")},
+                   {legacy_expr('mode', "'coding'")},
+                   COALESCE({legacy_expr('steps_total', '1')}, 1),
+                   COALESCE({legacy_expr('steps_done', '0')}, 0),
+                   {legacy_expr('started_at', 'NULL')},
+                   {legacy_expr('completed_at', 'NULL')}
             FROM _legacy_tasks;
         """)
         cursor.execute("DROP TABLE _legacy_tasks;")
