@@ -1811,3 +1811,9 @@ contrôle. RepoWise MCP répond avec un index derrière `HEAD` (`b2349de` contre
 `0479d2f`). La remise en service coordonnée de cette pile est ajoutée aux
 prochaines étapes post-L9 ; aucune bascule globale n'est déclarée terminée.
 
+
+## v275 — Nettoyage du gros commit local (2026-10-11)
+
+- La branche `local-all-b33` est conservée comme sauvegarde immuable du gros commit local.
+- Le hook Git post-commit migre désormais les anciennes tables `tasks` avant de créer les index du schéma courant et ajoute `version` quand elle manque. Les variantes historiques sans `mode` sont acceptées ; le cas est couvert par un test sur copie temporaire.
+- Les changements ont été découpés en commits séparés pour le cœur SQLite, l’API, le runtime MCP/scheduler, le cockpit, l’automatisation et la qualification/documentation. La validation directe du hook sur racines temporaires Python 3.13 est réussie ; les répertoires de fixtures pytest existants restent hors du périmètre de nettoyage.
