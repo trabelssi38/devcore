@@ -127,6 +127,11 @@ def connect_db(db_path: Optional[Path] = None) -> sqlite3.Connection:
         sqlite_vec.load(conn)
         conn.enable_load_extension(False)
 
+    # Align legacy tables before creating indexes from the current schema.
+    # Older task tables may not have project_id yet; executing INIT_SCHEMA_SQL
+    # first would fail while creating idx_tasks_project_status and prevent the
+    # post-commit hook from reaching init_db's migration path.
+    _align_existing_schema(conn)
     conn.executescript(INIT_SCHEMA_SQL)
     _ensure_task_version_trigger(conn)
     if HAS_SQLITE_VEC:
