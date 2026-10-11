@@ -72,3 +72,23 @@ def test_init_db_repairs_project_scoped_tasks_for_post_commit_hook(tmp_path):
         "SELECT version FROM tasks WHERE id='T-01' AND project_id='alpha'"
     ).fetchone()[0] == 2
     migrated.close()
+
+
+def test_init_db_migrates_oldest_task_shape_before_hook_indexes(tmp_path):
+    db = tmp_path / "old.db"
+    conn = sqlite3.connect(db)
+    conn.execute(
+        "CREATE TABLE tasks (id TEXT PRIMARY KEY, title TEXT NOT NULL, "
+        "status TEXT NOT NULL DEFAULT 'todo', steps_done INTEGER NOT NULL DEFAULT 0, "
+        "steps_total INTEGER NOT NULL DEFAULT 1, project TEXT, started_at TEXT, completed_at TEXT)"
+    )
+    conn.execute("INSERT INTO tasks(id,title,project) VALUES ('T-01','session','alpha')")
+    conn.commit()
+    conn.close()
+
+    migrated = init_db(db)
+    row = migrated.execute(
+        "SELECT project_id,version FROM tasks WHERE id='T-01'"
+    ).fetchone()
+    assert (row["project_id"], row["version"]) == ("alpha", 1)
+    migrated.close()
