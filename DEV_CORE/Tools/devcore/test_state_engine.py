@@ -190,3 +190,13 @@ def test_state_persistence(tmp_path):
     assert loaded.steps["step-1"]["output"] == {"value": 42}
     assert loaded.steps["step-2"]["status"] == "skipped"
     assert loaded.steps["step-2"]["error_message"] == "Not needed"
+
+
+def test_workflow_project_is_persisted_for_scoped_api(tmp_path):
+    engine = StateEngine(name="Scoped Run", project="devcore")
+    state_file = engine.persist(tmp_path / "wf-scoped.state.json")
+    restored = StateEngine.load_from_json(state_file)
+    assert restored.project == "devcore"
+    assert restored.to_dict()["project"] == "devcore"
+    with pytest.raises(ValueError):
+        StateEngine(name="Invalid", project="../other")

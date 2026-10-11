@@ -51,7 +51,7 @@ def init_db(db_path: Path) -> None:
 
 def is_run_completed(job_id: str, scheduled_at: str, db_path: Optional[Path] = None) -> bool:
     """
-    Check if a run for the given job_id and scheduled_at time is already completed or active.
+    Check if a run for the given job_id and scheduled_at time is completed.
     This checks the idempotency key in the run_history database.
     """
     if db_path is None:
@@ -64,12 +64,28 @@ def is_run_completed(job_id: str, scheduled_at: str, db_path: Optional[Path] = N
     conn = sqlite3.connect(str(db_path))
     cursor = conn.cursor()
     cursor.execute(
-        "SELECT 1 FROM run_history WHERE idempotency_key = ? AND status IN ('ok', 'skipped', 'running')",
+        "SELECT 1 FROM run_history WHERE idempotency_key = ? AND status IN ('ok', 'skipped')",
         (idempotency_key,)
     )
     row = cursor.fetchone()
     conn.close()
     return row is not None
+
+
+def get_completed_result(job_id: str, scheduled_at: str, db_path: Path):
+    """Return the persisted terminal result for registry recovery, or None.
+
+    No initialization or success inferred from running/error. Called under the
+    scheduler cycle guard; administrative resolution uses that same guard.
+    """
+    conn = sqlite3.connect(db_path.as_uri() + '?mode=ro', uri=True, timeout=1)
+    try:
+        return conn.execute(
+            "SELECT status,error FROM run_history WHERE idempotency_key=? AND status IN ('ok','skipped')",
+            (f'{job_id}:{scheduled_at}',),
+        ).fetchone()
+    finally:
+        conn.close()
 
 
 def record_run(
@@ -137,6 +153,9 @@ def update_run(
             """,
             (duration, status, error, datetime.now().isoformat(), idempotency_key)
         )
+        if cursor.rowcount != 1:
+            conn.rollback()
+            return False
         conn.commit()
         success = True
     except Exception:

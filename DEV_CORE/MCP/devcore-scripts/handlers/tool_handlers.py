@@ -1,8 +1,8 @@
 import os
 import sys
 import json
+import re
 import socket
-from datetime import datetime
 from pathlib import Path
 
 from services.task_service import (
@@ -11,7 +11,8 @@ from services.task_service import (
     DEVCORE_LOCAL,
     DEVCORE_SCRIPTS,
     run_python_script,
-    get_active_project,
+    require_project,
+    open_task_service,
     get_active_task_status,
     complete_active_task,
     sync_tasks
@@ -63,24 +64,25 @@ def run_powershell_script(script_path: Path, args: list = None) -> dict:
             "error": str(e)
         }
 
-def emit_event(event_type: str, payload: dict) -> dict:
+def emit_event(event_type: str, payload: dict, project: str | None) -> dict:
     try:
-        bus_dir = DEVCORE_LOCAL / "Bus" / "events"
-        bus_dir.mkdir(parents=True, exist_ok=True)
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        evt_file = bus_dir / f"{timestamp}_{event_type}.json"
-        
-        evt_data = {
-            "type": event_type,
-            "timestamp": datetime.now().isoformat()
-        }
-        if payload:
-            evt_data.update(payload)
-            
-        with open(evt_file, "w", encoding="utf-8") as f:
-            json.dump(evt_data, f, ensure_ascii=False, indent=2)
-            
-        return {"success": True, "event_file": str(evt_file)}
+        import re
+        from devcore_engine.services.tasks import TaskService
+
+        project = require_project(project)
+        if not isinstance(event_type, str) or not re.fullmatch(r"[A-Za-z][A-Za-z0-9_.-]{0,79}", event_type):
+            raise ValueError("invalid event_type")
+        if not isinstance(payload, dict):
+            raise ValueError("payload must be an object")
+        service = TaskService()
+        try:
+            service.get_board(project)
+            if not service.conn.execute("SELECT 1 FROM projects WHERE id = ?", (project,)).fetchone():
+                raise ValueError(f"project not found: {project}")
+            event_id = service.event_bus.publish(event_type, payload, project=project)
+            return {"success": True, "event_id": event_id, "project": project}
+        finally:
+            service.conn.close()
     except Exception as e:
         return {"success": False, "error": str(e)}
 
@@ -92,16 +94,21 @@ def handle_launch(arguments: dict) -> dict:
     return {"success": True, "stdout": "Daily launch sequence completed natively in Python."}
 
 def handle_task_scan(arguments: dict) -> dict:
-    return run_python_script(DEVCORE_SCRIPTS / "Auto" / "task_prompt_analyzer.py")
+    try:
+        project = require_project(arguments.get("project"))
+    except ValueError as exc:
+        return {"success": False, "error": str(exc)}
+    return run_python_script(DEVCORE_SCRIPTS / "Auto" / "task_prompt_analyzer.py", ["--project", project])
 
 def handle_task_sync(arguments: dict) -> dict:
-    return sync_tasks()
+    return sync_tasks(arguments.get("project"))
 
 def handle_task_status(arguments: dict) -> dict:
-    return get_active_task_status()
+    return get_active_task_status(arguments.get("project"))
 
 def handle_task_done(arguments: dict) -> dict:
-    return complete_active_task()
+    return complete_active_task(arguments.get("project"), task_id=arguments.get("task_id"),
+                                expected_version=arguments.get("expected_version"))
 
 def handle_endday(arguments: dict) -> dict:
     run_python_script(DEVCORE_SCRIPTS / "Auto" / "token_report.py")
@@ -112,26 +119,65 @@ def handle_diagnose(arguments: dict) -> dict:
     return run_python_script(DEVCORE_SCRIPTS / "dc.py", ["doctor"])
 
 def handle_check(arguments: dict) -> dict:
-    project = get_active_project()
-    tasks_file = DEVCORE_DATA / "Memory" / project / "tasks.json"
     try:
-        tasks_data = json.loads(tasks_file.read_text(encoding="utf-8-sig")) if tasks_file.exists() else {}
-    except Exception:
-        tasks_data = {}
+        project = require_project(arguments.get("project"))
+        service = open_task_service()
+        try:
+            tasks_data = service.get_board(project)
+            if not service.conn.execute("SELECT 1 FROM projects WHERE id = ?", (project,)).fetchone():
+                raise ValueError(f"project not found: {project}")
+        finally:
+            service.conn.close()
+    except Exception as exc:
+        return {"success": False, "error": str(exc)}
     return {
+        "success": True,
         "tasks_json": tasks_data,
         "qdrant_status": "Qdrant active check" if check_port(6333) else "Qdrant unavailable",
         "memory_exists": (DEVCORE_DATA / "Memory" / "MEMORY.md").exists()
     }
 
+def handle_project_context(arguments: dict) -> dict:
+    """Read only the administrator-configured context directory; no client path input."""
+    from devcore_engine.services.project_context import load_project_context
+    try:
+        if set(arguments) - {"project", "budget_bytes", "query"}:
+            raise ValueError("Unsupported project context argument")
+        project = require_project(arguments.get("project"))
+        root = os.getenv("DEVCORE_CONTEXT_ROOT")
+        if not root or not Path(root).is_absolute():
+            raise ValueError("An explicit absolute DEVCORE_CONTEXT_ROOT is required")
+        limit = int(os.getenv("DEVCORE_CONTEXT_MAX_BYTES", "12000"))
+        if not 256 <= limit <= 65536:
+            raise ValueError("Invalid configured context limit")
+        budget = arguments.get("budget_bytes", limit)
+        if type(budget) is not int or not 256 <= budget <= limit:
+            raise ValueError("budget_bytes must be between 256 and the configured context limit")
+        return load_project_context(Path(root), project, budget_bytes=budget,
+                                    query=arguments.get("query", ""))
+    except (OSError, ValueError) as exc:
+        return {"success": False, "error": str(exc)}
+
 def handle_event_emit(arguments: dict) -> dict:
-    return emit_event(arguments.get("event_type"), arguments.get("payload", {}))
+    return emit_event(arguments.get("event_type"), arguments.get("payload", {}), arguments.get("project"))
 
 def handle_dashboard_refresh(arguments: dict) -> dict:
     return run_python_script(DEVCORE_SCRIPTS / "gen_dashboard.py")
 
 def handle_health_check(arguments: dict) -> dict:
-    return run_python_script(DEVCORE_SCRIPTS / "Auto" / "integrity_check.py")
+    try:
+        project = require_project(arguments.get("project"))
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,79}", project) or project in {".", ".."}:
+            raise ValueError("project must be a simple project identifier")
+        repo_root = os.getenv("DEVCORE_MCP_REPO_ROOT", "")
+        if not repo_root or not Path(repo_root).is_absolute() or not Path(repo_root).is_dir():
+            raise ValueError("An absolute existing DEVCORE_MCP_REPO_ROOT is required")
+    except ValueError as exc:
+        return {"success": False, "error": str(exc)}
+    return run_python_script(
+        DEVCORE_SCRIPTS / "Auto" / "integrity_check.py",
+        ["--project", project, "--repo", str(Path(repo_root).resolve())],
+    )
 
 def handle_impact_analysis(arguments: dict) -> dict:
     target = arguments.get("target", "")
@@ -150,6 +196,7 @@ TOOL_HANDLERS = {
     "devcore_endday": handle_endday,
     "devcore_diagnose": handle_diagnose,
     "devcore_check": handle_check,
+    "devcore_project_context": handle_project_context,
     "devcore_event_emit": handle_event_emit,
     "devcore_dashboard_refresh": handle_dashboard_refresh,
     "devcore_health_check": handle_health_check,
@@ -166,29 +213,49 @@ def dispatch_tool(tool_name: str, arguments: dict) -> dict:
 # Tool definitions
 TOOLS = [
     {
+        "name": "devcore_project_context",
+        "description": "Charge fiche et décisions applicables du projet explicite, avec plafond en octets UTF-8 (pas tokens), omissions et fraîcheur. Aucun accès SQLite.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "project": {"type": "string"},
+                "budget_bytes": {"type": "integer", "minimum": 256, "maximum": 65536},
+                "query": {"type": "string", "maxLength": 4096}
+            },
+            "required": ["project"],
+            "additionalProperties": False
+        }
+    },
+    {
         "name": "devcore_launch",
         "description": "Lance le script de demarrage quotidien DEV_CORE",
         "input_schema": {"type": "object", "properties": {}}
     },
     {
         "name": "devcore_task_scan",
-        "description": "Scan automatique git + specs + prompts pour la detection des taches",
-        "input_schema": {"type": "object", "properties": {}}
+        "description": "Analyse les suggestions historiques pour un projet explicite",
+        "input_schema": {"type": "object", "properties": {"project": {"type": "string"}}, "required": ["project"], "additionalProperties": False}
     },
     {
         "name": "devcore_task_sync",
-        "description": "Synchronise les taches detectees dans tasks.json",
-        "input_schema": {"type": "object", "properties": {}}
+        "description": "Importe les suggestions de taches dans SQLite",
+        "input_schema": {"type": "object", "properties": {"project": {"type": "string"}}, "required": ["project"]}
     },
     {
         "name": "devcore_task_status",
         "description": "Retourne le statut du board de taches",
-        "input_schema": {"type": "object", "properties": {}}
+        "input_schema": {"type": "object", "properties": {"project": {"type": "string"}}, "required": ["project"]}
     },
     {
         "name": "devcore_task_done",
-        "description": "Marque la tache active comme completee et passe a la suivante",
-        "input_schema": {"type": "object", "properties": {}}
+        "description": "Clôture la tâche nommée du projet, avec version attendue optionnelle. Une version exige task_id. Sans task_id, conserve la sélection et l'avancement historiques.",
+        "input_schema": {
+            "type": "object", "properties": {
+                "project": {"type": "string"},
+                "task_id": {"type": "string", "minLength": 1, "maxLength": 128},
+                "expected_version": {"type": "integer", "minimum": 1}
+            }, "required": ["project"], "additionalProperties": False
+        }
     },
     {
         "name": "devcore_endday",
@@ -203,7 +270,7 @@ TOOLS = [
     {
         "name": "devcore_check",
         "description": "Verifie l'état des services (Qdrant, Ollama, tasks, memory)",
-        "input_schema": {"type": "object", "properties": {}}
+        "input_schema": {"type": "object", "properties": {"project": {"type": "string"}}, "required": ["project"]}
     },
     {
         "name": "devcore_event_emit",
@@ -211,10 +278,11 @@ TOOLS = [
         "input_schema": {
             "type": "object",
             "properties": {
+                "project": {"type": "string"},
                 "event_type": {"type": "string"},
                 "payload": {"type": "object"}
             },
-            "required": ["event_type"]
+            "required": ["project", "event_type"]
         }
     },
     {
@@ -224,8 +292,8 @@ TOOLS = [
     },
     {
         "name": "devcore_health_check",
-        "description": "Vérifie la santé complète du pipeline (tasks.json, encoding, dashboard sync)",
-        "input_schema": {"type": "object", "properties": {}}
+        "description": "Vérifie l'intégrité des tâches pour le projet explicite et le dépôt configuré côté serveur",
+        "input_schema": {"type": "object", "properties": {"project": {"type": "string"}}, "required": ["project"], "additionalProperties": False}
     },
     {
         "name": "devcore_impact_analysis",

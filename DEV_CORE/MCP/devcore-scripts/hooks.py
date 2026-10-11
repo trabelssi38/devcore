@@ -2,6 +2,7 @@
 # Implements pre-hook and post-hook interceptors for MCP tools (telemetry, audit, circuit breaker, RTK compression)
 
 import os
+import sys
 import time
 import json
 import traceback
@@ -10,14 +11,13 @@ from pathlib import Path
 from typing import Dict, Any, List, Callable
 
 DEVCORE_ROOT = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", "C:/devcore/DEV_CORE"))
-try:
-    from devcore_engine.db import get_data_root, get_local_data_root
-    DEVCORE_DATA = get_data_root()
-    DEVCORE_LOCAL = get_local_data_root()
-except Exception:
-    DEVCORE_DATA = Path(os.environ.get("DEVCORE_DATA_ROOT", "C:/devcore/DEV_CORE_DATA"))
-    env_loc = os.environ.get("DEVCORE_LOCAL_ROOT")
-    DEVCORE_LOCAL = Path(env_loc) if env_loc else DEVCORE_DATA
+if not DEVCORE_ROOT.exists():
+    DEVCORE_ROOT = Path(__file__).resolve().parents[2]
+if str(DEVCORE_ROOT) not in sys.path:
+    sys.path.insert(0, str(DEVCORE_ROOT))
+from devcore_engine.db import get_data_root, get_local_data_root
+DEVCORE_DATA = get_data_root()
+DEVCORE_LOCAL = get_local_data_root()
 CONFIG_PATH = DEVCORE_ROOT / "Config" / "mcp_hooks.json"
 
 class CircuitBreakerOpenError(Exception):
@@ -155,7 +155,11 @@ def post_token_usage_log(tool_name: str, arguments: dict, result: dict, context:
     return result
 
 def post_quality_score_update(tool_name: str, arguments: dict, result: dict, context: dict) -> dict:
-    if result.get("success") is False:
+    expected_rejection = result.get("code") in {
+        "stale_task_version", "invalid_arguments", "task_not_found",
+        "project_not_found", "task_version_unavailable",
+    }
+    if result.get("success") is False and not expected_rejection:
         circuit_breaker_instance.record_failure(tool_name)
     else:
         circuit_breaker_instance.record_success(tool_name)

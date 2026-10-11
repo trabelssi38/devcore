@@ -35,12 +35,21 @@ def build_bootstrap_only_payload(
 def build_french_launch_payload(
     prompt_fr: str,
     cwd: str,
+    project_id: str | None = None,
+    mission_id: str | None = None,
 ) -> dict:
     from devcore.ask_cli import build_ask_launch_payload
     return build_ask_launch_payload(
         prompt_fr=prompt_fr,
         cwd=Path(cwd),
+        project_id=project_id,
+        mission_id=mission_id,
     )
+
+
+def prepare_french_launch_payload(interpretation: dict, mission_id: str | None = None) -> dict:
+    from devcore.ask_cli import prepare_ask_launch_payload
+    return prepare_ask_launch_payload(interpretation=interpretation, mission_id=mission_id)
 
 
 def build_prepare_payload(

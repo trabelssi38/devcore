@@ -1,21 +1,51 @@
 from datetime import datetime, timedelta
-from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field, ConfigDict
+from typing import Optional, List, Dict, Any, Literal
+from pydantic import BaseModel, Field, ConfigDict, model_validator, field_validator
 from zoneinfo import ZoneInfo
 import logging
 
 logger = logging.getLogger(__name__)
 
 try:
-    from croniter import croniter
+    from croniter import croniter, CroniterBadDateError
     HAS_CRONITER = True
 except ImportError:
     HAS_CRONITER = False
 
 
+MAX_INTERVAL_MINUTES = 525600  # One year; avoid arbitrary/overflowing durations.
+MAX_CRON_SEARCH_YEARS = 8
+
+
+def _interval_minutes(expr: str) -> int:
+    if not isinstance(expr, str) or len(expr) > 64:
+        raise ValueError('Interval must be 1..525600 integer minutes')
+    try:
+        value = int(expr)
+    except ValueError as exc:
+        raise ValueError('Interval must be 1..525600 integer minutes') from exc
+    _validate_interval(value)
+    return value
+
+
+def _validate_interval(value: int) -> None:
+    if type(value) is not int or not 1 <= value <= MAX_INTERVAL_MINUTES:
+        raise ValueError('Interval must be 1..525600 integer minutes')
+
+
 class SchedulerJobSchedule(BaseModel):
-    kind: str  # "cron", "interval", "once"
-    expr: str  # e.g., "0 10 * * *", "30" (for minutes), or ISO timestamp
+    kind: Literal['cron', 'interval', 'once']
+    expr: str = Field(min_length=1, max_length=256)
+
+    @model_validator(mode='after')
+    def validate_interval(self):
+        if self.kind == 'interval':
+            _interval_minutes(self.expr)
+        elif self.kind == 'once':
+            datetime.fromisoformat(self.expr)
+        elif not HAS_CRONITER or not croniter.is_valid(self.expr):
+            raise ValueError('Cron requires croniter and a valid expression')
+        return self
 
 
 class SchedulerJobCommand(BaseModel):
@@ -30,7 +60,16 @@ class SchedulerJobState(BaseModel):
     last_run_at: Optional[str] = None
     last_status: Optional[str] = None  # "ok", "error", "skipped"
     last_error: Optional[str] = None
-    completed_count: int = Field(default=0, alias="completed")
+    completed_count: int = Field(default=0, alias="completed", strict=True, ge=0)
+
+    @field_validator('next_run_at', 'last_run_at')
+    @classmethod
+    def validate_timestamp(cls, value):
+        if value is not None:
+            if len(value) > 128:
+                raise ValueError('Scheduler timestamp too long')
+            datetime.fromisoformat(value)
+        return value
 
 
 class SchedulerJob(BaseModel):
@@ -42,8 +81,17 @@ class SchedulerJob(BaseModel):
     schedule: SchedulerJobSchedule
     command: SchedulerJobCommand
     state: SchedulerJobState = Field(default_factory=SchedulerJobState)
-    policy: str = "skip"  # "skip", "run_once", "catch_up"
-    timezone: str = "Europe/Paris"
+    policy: Literal['skip', 'run_once', 'catch_up'] = 'skip'
+    timezone: str = Field(default='Europe/Paris', min_length=1, max_length=128)
+
+    @field_validator('timezone')
+    @classmethod
+    def validate_timezone(cls, value):
+        try:
+            ZoneInfo(value)
+        except (KeyError, ValueError) as exc:
+            raise ValueError('Unknown scheduler timezone') from exc
+        return value
 
 
 def _ensure_aware(dt: datetime, tz_name: str) -> datetime:
@@ -57,7 +105,7 @@ def _ensure_aware(dt: datetime, tz_name: str) -> datetime:
 def get_missed_cron_slots(expr: str, last_run: datetime, now: datetime, tz_name: str, max_lookback_days: int = 30) -> List[datetime]:
     """Get all cron execution slots in the past, between last_run and now."""
     if not HAS_CRONITER:
-        return []
+        raise ValueError('Cron requires croniter')
     tz = ZoneInfo(tz_name)
     last_run_tz = _ensure_aware(last_run, tz_name)
     now_tz = _ensure_aware(now, tz_name)
@@ -67,7 +115,7 @@ def get_missed_cron_slots(expr: str, last_run: datetime, now: datetime, tz_name:
     if last_run_tz < clamp_base:
         last_run_tz = clamp_base
 
-    cron = croniter(expr, last_run_tz)
+    cron = croniter(expr, last_run_tz, max_years_between_matches=MAX_CRON_SEARCH_YEARS)
     slots = []
     # Avoid infinite loops by limiting iterations
     for _ in range(1000):
@@ -81,6 +129,7 @@ def get_missed_cron_slots(expr: str, last_run: datetime, now: datetime, tz_name:
 
 def get_missed_interval_slots(interval_minutes: int, last_run: datetime, now: datetime, tz_name: str, max_lookback_days: int = 30) -> List[datetime]:
     """Get all interval execution slots in the past, between last_run and now."""
+    _validate_interval(interval_minutes)
     last_run_tz = _ensure_aware(last_run, tz_name)
     now_tz = _ensure_aware(now, tz_name)
 
@@ -139,60 +188,67 @@ def compute_next_run(job: SchedulerJob, now: datetime) -> Optional[datetime]:
             return None
 
     elif kind == "interval":
-        try:
-            interval_mins = int(expr)
-        except ValueError:
-            return None
+        interval_mins = _interval_minutes(expr)
+        delta = timedelta(minutes=interval_mins)
 
         if job.policy == "skip":
             # Fast forward to next future slot
             if last_run_dt:
-                next_run = last_run_dt + timedelta(minutes=interval_mins)
-                while next_run <= now_tz:
-                    next_run += timedelta(minutes=interval_mins)
-                return next_run
+                steps = max(1, (now_tz - last_run_dt) // delta + 1)
+                return last_run_dt + steps * delta
             else:
                 return now_tz + timedelta(minutes=interval_mins)
 
         elif job.policy == "run_once":
             # If there are missed runs, return the most recent missed one.
             # Otherwise return the next future run.
-            missed = get_missed_interval_slots(interval_mins, base_time, now_tz, tz_name)
-            if missed:
-                # Return the most recent missed one
-                return missed[-1]
-            return base_time + timedelta(minutes=interval_mins)
+            # Same 30-day lookback as before, without truncation at 1000 slots.
+            bounded_base = max(base_time, now_tz - timedelta(days=30))
+            steps = (now_tz - bounded_base) // delta
+            if steps >= 1:
+                return bounded_base + steps * delta
+            return base_time + delta
 
         elif job.policy == "catch_up":
             # Return the first missed run in the past.
             # If none, return the next future run.
-            missed = get_missed_interval_slots(interval_mins, base_time, now_tz, tz_name)
-            if missed:
-                return missed[0]
-            return base_time + timedelta(minutes=interval_mins)
+            bounded_base = max(base_time, now_tz - timedelta(days=30))
+            first = bounded_base + delta
+            if first <= now_tz:
+                return first
+            return base_time + delta
 
     elif kind == "cron":
         if not HAS_CRONITER:
-            logger.warning("croniter is not installed, cannot compute cron next run.")
-            return None
+            raise ValueError('Cron requires croniter')
 
         if job.policy == "skip":
             # Fast forward to next cron slot strictly in the future of now
-            cron = croniter(expr, now_tz)
+            cron = croniter(expr, now_tz, max_years_between_matches=MAX_CRON_SEARCH_YEARS)
             return cron.get_next(datetime)
 
         elif job.policy == "run_once":
-            missed = get_missed_cron_slots(expr, base_time, now_tz, tz_name)
-            if missed:
-                return missed[-1]
-            cron = croniter(expr, base_time)
+            bounded_base = max(base_time, now_tz - timedelta(days=30))
+            if bounded_base < now_tz:
+                # Include a slot exactly at now, without enumerating missed slots.
+                cron = croniter(expr, now_tz + timedelta(microseconds=1),
+                    max_years_between_matches=MAX_CRON_SEARCH_YEARS)
+                try:
+                    latest = cron.get_prev(datetime)
+                except CroniterBadDateError:
+                    latest = None  # No previous slot within the bounded search.
+                if latest is not None and bounded_base < latest <= now_tz:
+                    return latest
+            # No missed slot in the lookback: choose a future occurrence, never
+            # one from before the lookback or from a last-run already applied.
+            cron = croniter(expr, max(base_time, now_tz), max_years_between_matches=MAX_CRON_SEARCH_YEARS)
             return cron.get_next(datetime)
 
         elif job.policy == "catch_up":
             missed = get_missed_cron_slots(expr, base_time, now_tz, tz_name)
             if missed:
                 return missed[0]
-            cron = croniter(expr, base_time)
+            cron = croniter(expr, base_time, max_years_between_matches=MAX_CRON_SEARCH_YEARS)
             return cron.get_next(datetime)
 
     return None

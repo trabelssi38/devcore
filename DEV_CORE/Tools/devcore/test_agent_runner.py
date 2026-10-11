@@ -41,6 +41,7 @@ def test_recommend_engine_rules(monkeypatch, tmp_path):
     dummy_paths = DevCorePaths(
         platform_root=tmp_path,
         data_root=tmp_path,
+        local_root=tmp_path,
         bus_root=tmp_path,
         session_root=tmp_path,
         vault_root=tmp_path,
@@ -55,6 +56,8 @@ def test_recommend_engine_rules(monkeypatch, tmp_path):
         scoring_log_root=tmp_path
     )
     monkeypatch.setattr(router, "get_paths", lambda: dummy_paths)
+    from devcore import contracts
+    monkeypatch.setattr(contracts, "get_paths", lambda: dummy_paths)
 
     # 1. Matches rule (architecture -> reasoning -> gemini)
     decision = recommend_engine("architecture", "normal", "small")
@@ -85,7 +88,9 @@ def test_agent_runner_backends(tmp_path):
         json.dump({"services": {"hermes_daemon": True}}, f)
         
     hermes_runner = HermesAgentRunner(settings_file, tmp_path)
-    assert hermes_runner.report_status()["status"] == "OK"
+    assert hermes_runner.report_status()["status"] == "DOWN"
+    assert hermes_runner.run({"id": "T-100"})["status"] == "failed"
+    assert hermes_runner.checkpoint({})["checkpoint_saved"] is False
 
     # 2. Hermes disabled
     with open(settings_file, "w", encoding="utf-8") as f:
@@ -97,12 +102,14 @@ def test_agent_runner_backends(tmp_path):
 
     # 3. Local process runner
     local_runner = LocalProcessAgentRunner(tmp_path)
-    assert local_runner.report_status()["status"] == "OK"
-    assert local_runner.run({"id": "T-100", "title": "Test"})["runner"] == "local_process"
+    assert local_runner.report_status()["status"] == "DOWN"
+    assert local_runner.run({"id": "T-100", "title": "Test"})["status"] == "failed"
+    assert local_runner.checkpoint({})["checkpoint_saved"] is False
 
     # 4. Codex manual runner
-    codex_runner = CodexManualAgentRunner(tmp_path)
+    codex_runner = CodexManualAgentRunner(tmp_path / "shared", session_root=tmp_path / "local" / "Sessions")
     assert codex_runner.report_status()["status"] == "OK"
-    receipt = codex_runner.run({"id": "T-101", "title": "Test Manual"})
+    receipt = codex_runner.run({"id": "T-101", "project_id": "alpha", "title": "Test Manual"})
     assert receipt["runner"] == "codex_manual"
     assert Path(receipt["prompt_path"]).exists()
+    assert receipt["executed"] is False

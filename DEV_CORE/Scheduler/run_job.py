@@ -14,6 +14,11 @@ from devcore.paths import get_paths
 
 
 def main() -> None:
+    if len(sys.argv) > 1 and sys.argv[1] == "--devcore-gated":
+        # No command is spawned until the parent has assigned this wrapper to a job.
+        if sys.stdin.readline(16) != "START\n":
+            sys.exit(5)
+        del sys.argv[1]
     if len(sys.argv) < 3:
         print("Usage: python run_job.py <command_type: python|powershell> <script_path> [args...]", file=sys.stderr)
         sys.exit(1)

@@ -8,6 +8,8 @@ from typing import List, Dict, Any
 
 # Setup paths dynamically
 scheduler_dir = Path(__file__).resolve().parent
+if str(scheduler_dir) not in sys.path:
+    sys.path.insert(0, str(scheduler_dir))
 platform_root = scheduler_dir.parent
 tools_dir = platform_root / "Tools"
 if str(tools_dir) not in sys.path:
@@ -15,19 +17,32 @@ if str(tools_dir) not in sys.path:
 
 from devcore.paths import get_paths
 from scheduler_contract import SchedulerJob, compute_next_run
+from scheduler_lock import SchedulerLeaseLock
+from scheduler_storage import write_json
 
 logging.basicConfig(level=logging.INFO, format="[%(asctime)s] [%(levelname)s] %(message)s")
 logger = logging.getLogger("scheduler_sync")
 
 
-def sync_registry(platform_dir: Path, data_dir: Path) -> None:
+def sync_registry(platform_dir: Path, data_dir: Path) -> bool:
+    """Nonblocking update on the local root, serialized with scheduler work."""
+    lock = SchedulerLeaseLock(Path(data_dir) / "Scheduler" / "scheduler.lock", "registry-sync")
+    try:
+        with lock.registry_guard():
+            return _sync_registry(platform_dir, data_dir)
+    except (OSError, ValueError, TypeError, KeyError) as exc:
+        logger.error("Registry synchronization refused: %s", exc)
+        return False
+
+
+def _sync_registry(platform_dir: Path, data_dir: Path) -> bool:
     """Synchronize static jobs.devcore.json definitions with dynamic jobs.json state."""
     static_path = platform_dir / "Scheduler" / "jobs.devcore.json"
     dynamic_path = data_dir / "Scheduler" / "jobs.json"
 
     if not static_path.exists():
         logger.error(f"Static jobs file not found at {static_path}")
-        return
+        return False
 
     logger.info(f"Syncing scheduler registry. Static: {static_path} | Dynamic: {dynamic_path}")
 
@@ -41,10 +56,15 @@ def sync_registry(platform_dir: Path, data_dir: Path) -> None:
         try:
             with open(dynamic_path, "r", encoding="utf-8") as f:
                 dynamic_data = json.load(f)
+            if not isinstance(dynamic_data, list):
+                raise ValueError("Scheduler state must be a list")
             for item in dynamic_data:
+                if (not isinstance(item, dict) or not isinstance(item.get("id"), str)
+                        or not item["id"] or item["id"] in dynamic_jobs_map):
+                    raise ValueError("Invalid or duplicate scheduler job id")
                 dynamic_jobs_map[item["id"]] = item
         except Exception as e:
-            logger.error(f"Failed to load dynamic jobs.json: {e}. Starting fresh state.")
+            raise ValueError("Invalid dynamic scheduler state; preserved without reset") from e
 
     # 3. Merge
     merged_jobs: List[Dict[str, Any]] = []
@@ -84,15 +104,9 @@ def sync_registry(platform_dir: Path, data_dir: Path) -> None:
         merged_jobs.append(job.model_dump(by_alias=True))
 
     # 4. Save merged jobs atomically
-    dynamic_path.parent.mkdir(parents=True, exist_ok=True)
-    temp_path = dynamic_path.with_suffix(".tmp")
-    with open(temp_path, "w", encoding="utf-8") as f:
-        json.dump(merged_jobs, f, indent=2)
-
-    if dynamic_path.exists():
-        os.remove(dynamic_path)
-    os.rename(temp_path, dynamic_path)
+    write_json(dynamic_path, merged_jobs)
     logger.info(f"Successfully synchronized {len(merged_jobs)} jobs.")
+    return True
 
 
 def SchedulerJobState_dict_to_model(state_dict: Dict[str, Any]) -> Any:
@@ -107,4 +121,4 @@ def SchedulerJobState_dict_to_model(state_dict: Dict[str, Any]) -> Any:
 
 if __name__ == "__main__":
     paths = get_paths()
-    sync_registry(paths.platform_root, paths.data_root)
+    sys.exit(0 if sync_registry(paths.platform_root, paths.local_root) else 1)

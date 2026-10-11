@@ -137,9 +137,9 @@ def test_cli_scheduler_status(capsys, monkeypatch, tmp_path):
     with open(jobs_file, "w", encoding="utf-8") as f:
         json.dump(jobs_data, f)
 
-    # Monkeypatch get_data_root to point to tmp_path
+    # Scheduler state belongs to the local root, independently of shared data.
     import dc
-    monkeypatch.setattr(dc, "get_data_root", lambda: tmp_path)
+    monkeypatch.setattr(dc, "get_local_root", lambda: tmp_path)
 
     # Run command
     dc.cmd_scheduler_status(None)

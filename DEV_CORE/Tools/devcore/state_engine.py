@@ -2,6 +2,7 @@ import os
 import sys
 import uuid
 import json
+import re
 from datetime import datetime, UTC
 from pathlib import Path
 from typing import Optional, Union, List, Dict, Any
@@ -29,6 +30,7 @@ class StepDefinition(BaseModel):
 
 class WorkflowDefinition(BaseModel):
     name: str = Field(min_length=1)
+    project: Optional[str] = None
     description: Optional[str] = None
     steps: List[StepDefinition] = Field(min_length=1)
 
@@ -40,8 +42,11 @@ class InvalidStateTransition(ValueError):
 class StateEngine:
     """State engine manager for DEV_CORE workflow executions."""
 
-    def __init__(self, name: str, description: Optional[str] = None, run_id: Optional[str] = None):
+    def __init__(self, name: str, description: Optional[str] = None, run_id: Optional[str] = None, project: Optional[str] = None):
+        if project is not None and (not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}", project) or ".." in project):
+            raise ValueError("Invalid workflow project")
         self.run_id = run_id or f"wf-{uuid.uuid4()}"
+        self.project = project
         self.name = name
         self.description = description or ""
         self.status = "pending"  # pending, running, paused, succeeded, failed, cancelled
@@ -77,13 +82,13 @@ class StateEngine:
         defn = WorkflowDefinition(**parsed)
 
         # Build state engine instance
-        engine = cls(name=defn.name, description=defn.description)
+        engine = cls(name=defn.name, description=defn.description, project=defn.project)
         engine.add_step_definitions([step.model_dump() for step in defn.steps])
         return engine
 
     def to_dict(self) -> Dict[str, Any]:
         """Serialize current state engine metadata."""
-        return {
+        state = {
             "run_id": self.run_id,
             "name": self.name,
             "description": self.description,
@@ -94,6 +99,9 @@ class StateEngine:
             "step_definitions": self.step_definitions,
             "steps": self.steps
         }
+        if self.project is not None:
+            state["project"] = self.project
+        return state
 
     def persist(self, filepath: Optional[Path] = None) -> Path:
         """Write the serialized state to disk."""
@@ -115,7 +123,8 @@ class StateEngine:
         engine = cls(
             name=data["name"],
             description=data.get("description"),
-            run_id=data["run_id"]
+            run_id=data["run_id"],
+            project=data.get("project"),
         )
         engine.status = data["status"]
         engine.created_at = data["created_at"]

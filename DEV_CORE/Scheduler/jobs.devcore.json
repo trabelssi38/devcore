@@ -3,7 +3,7 @@
     "schema_version": 1,
     "id": "daily_launch",
     "name": "DEV_CORE Daily Launch",
-    "enabled": true,
+    "enabled": false,
     "no_agent": true,
     "schedule": {
       "kind": "cron",
@@ -28,7 +28,7 @@
     "schema_version": 1,
     "id": "daily_endday",
     "name": "DEV_CORE Daily Endday",
-    "enabled": true,
+    "enabled": false,
     "no_agent": true,
     "schedule": {
       "kind": "cron",
@@ -53,7 +53,7 @@
     "schema_version": 1,
     "id": "weekly_maintenance",
     "name": "DEV_CORE Weekly Maintenance",
-    "enabled": true,
+    "enabled": false,
     "no_agent": true,
     "schedule": {
       "kind": "cron",
@@ -78,7 +78,7 @@
     "schema_version": 1,
     "id": "periodic_task_scan",
     "name": "DEV_CORE Periodic Task Scan",
-    "enabled": true,
+    "enabled": false,
     "no_agent": true,
     "schedule": {
       "kind": "cron",

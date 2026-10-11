@@ -84,5 +84,18 @@ class TestMCPToolHooks(unittest.TestCase):
         self.assertTrue(res.get("circuit_breaker_open"))
         self.assertIn("Circuit breaker OPEN", res.get("error", ""))
 
+    def test_task_version_conflicts_are_not_infrastructure_failures(self):
+        name = "devcore_task_done"
+        for _ in range(3):
+            result = self.manager.run_post_hooks(name, {},
+                {"success": False, "code": "stale_task_version", "error": "Changed task"}, {})
+            self.assertFalse(result["success"])
+        circuit_breaker_instance.check(name)
+        for _ in range(3):
+            self.manager.run_post_hooks(name, {},
+                {"success": False, "code": "task_store_unavailable", "error": "Broken store"}, {})
+        with self.assertRaises(CircuitBreakerOpenError):
+            circuit_breaker_instance.check(name)
+
 if __name__ == "__main__":
     unittest.main()

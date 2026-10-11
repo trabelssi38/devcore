@@ -1,142 +1,162 @@
+"""Local scheduler lease: serialized read/modify/write, never shared via sync."""
+from contextlib import contextmanager
+from datetime import datetime, timedelta, timezone
 import json
 import os
-import time
-import random
 from pathlib import Path
-from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
+import tempfile
+import errno
+
+
+class SchedulerGuardBusy(OSError):
+    """The opened guard's nonblocking OS lock is held by another participant."""
 
 
 class SchedulerLeaseLock:
     def __init__(self, lock_path: Path, owner_id: str, lease_duration_seconds: int = 30):
-        self.lock_path = lock_path
+        if not isinstance(owner_id, str) or not owner_id or len(owner_id) > 256:
+            raise ValueError('Invalid scheduler owner')
+        if type(lease_duration_seconds) is not int or not 1 <= lease_duration_seconds <= 3600:
+            raise ValueError('Invalid scheduler lease duration')
+        self.lock_path = Path(lock_path)
         self.owner_id = owner_id
         self.lease_duration_seconds = lease_duration_seconds
 
-    def _read_lock(self) -> Optional[Dict[str, Any]]:
-        """Read the lock file and return its parsed contents if valid."""
-        if not self.lock_path.exists():
-            return None
-        try:
-            with open(self.lock_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-            # Validate schema
-            if "owner" in data and "expires_at" in data:
-                return data
-        except Exception:
-            # Corrupted lock file behaves as expired/deleted
-            pass
-        return None
-
-    def _write_lock(self, expires_at: datetime) -> None:
-        """Write owner and expiration info to the lock file."""
+    @contextmanager
+    def _guard(self):
         self.lock_path.parent.mkdir(parents=True, exist_ok=True)
-        payload = {
-            "owner": self.owner_id,
-            "expires_at": expires_at.isoformat()
-        }
-        # Atomic file write to avoid partial writes
-        temp_path = self.lock_path.with_suffix(".tmp")
-        with open(temp_path, "w", encoding="utf-8") as f:
-            json.dump(payload, f)
-        
-        # Windows-safe rename fallback
-        if self.lock_path.exists():
+        # This persistent guard must never be replaced or unlinked by writers.
+        with open(self.lock_path.with_suffix(self.lock_path.suffix + '.guard'), 'a+b') as guard:
+            guard.seek(0, os.SEEK_END)
+            if guard.tell() == 0:
+                guard.write(b'0')
+                guard.flush()
+            guard.seek(0)
             try:
-                os.remove(self.lock_path)
-            except Exception:
-                pass
-        os.rename(temp_path, self.lock_path)
+                if os.name == 'nt':
+                    import msvcrt
+                    msvcrt.locking(guard.fileno(), msvcrt.LK_NBLCK, 1)
+                else:
+                    import fcntl
+                    fcntl.flock(guard.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError as exc:
+                if exc.errno in (errno.EACCES, errno.EAGAIN, errno.EDEADLK):
+                    raise SchedulerGuardBusy('Scheduler guard busy') from exc
+                raise
+            try:
+                yield
+            finally:
+                guard.seek(0)
+                if os.name == 'nt':
+                    msvcrt.locking(guard.fileno(), msvcrt.LK_UNLCK, 1)
+                else:
+                    fcntl.flock(guard.fileno(), fcntl.LOCK_UN)
 
-    def is_active(self) -> bool:
-        """Check if the lock is currently held by an active owner."""
-        lock = self._read_lock()
-        if not lock:
-            return False
+    def _read_lock(self):
         try:
-            expires_at = datetime.fromisoformat(lock["expires_at"])
-            return expires_at > datetime.now()
-        except Exception:
-            return False
-
-    def get_owner(self) -> Optional[str]:
-        """Get the ID of the current active owner, or None if expired/free."""
-        lock = self._read_lock()
-        if not lock:
+            with open(self.lock_path, 'rb') as stream:
+                raw = stream.read(65537)
+        except FileNotFoundError:
             return None
+        if len(raw) > 65536:
+            raise ValueError('Oversized scheduler lease')
+        data = json.loads(raw)
+        if not isinstance(data, dict) or not isinstance(data.get('owner'), str) or not data['owner'] or len(data['owner']) > 256:
+            raise ValueError('Invalid scheduler lease')
+        expiry = datetime.fromisoformat(data['expires_at'])
+        return data, expiry
+
+    @staticmethod
+    def _active(expiry):
+        # Existing naive timestamps remain local time; new timestamps use UTC.
+        return expiry > datetime.now(expiry.tzinfo)
+
+    def _write_lock(self):
+        payload = {'owner': self.owner_id, 'expires_at':
+            (datetime.now(timezone.utc) + timedelta(seconds=self.lease_duration_seconds)).isoformat()}
+        temporary = None
         try:
-            expires_at = datetime.fromisoformat(lock["expires_at"])
-            if expires_at > datetime.now():
-                return lock["owner"]
-        except Exception:
-            pass
-        return None
+            with tempfile.NamedTemporaryFile(mode='w', encoding='utf-8', dir=self.lock_path.parent,
+                    prefix=self.lock_path.name + '.', suffix='.tmp', delete=False) as stream:
+                temporary = Path(stream.name)
+                json.dump(payload, stream)
+                stream.flush()
+                os.fsync(stream.fileno())
+            os.replace(temporary, self.lock_path)
+        finally:
+            if temporary is not None:
+                temporary.unlink(missing_ok=True)
 
-    def acquire(self) -> bool:
-        """
-        Attempt to acquire the lease lock.
-        Returns True if acquired, False otherwise.
-        """
-        lock = self._read_lock()
-        now = datetime.now()
+    def get_owner(self):
+        try:
+            with self._guard():
+                row = self._read_lock()
+                return row[0]['owner'] if row and self._active(row[1]) else None
+        except (OSError, ValueError, TypeError, KeyError):
+            return None
 
-        if lock:
-            try:
-                expires_at = datetime.fromisoformat(lock["expires_at"])
-                if expires_at > now:
-                    # Lock is held by another active instance
-                    if lock["owner"] == self.owner_id:
-                        # We already own it, renew it
-                        return self.renew()
+    def is_active(self):
+        return self.get_owner() is not None
+
+    def acquire(self):
+        try:
+            with self._guard():
+                row = self._read_lock()
+                if row and self._active(row[1]) and row[0]['owner'] != self.owner_id:
                     return False
-            except Exception:
-                pass
+                self._write_lock()
+                return True
+        except (OSError, ValueError, TypeError, KeyError):
+            return False
 
-        # Write lock file
-        expires_at = now + timedelta(seconds=self.lease_duration_seconds)
+    @contextmanager
+    def hold(self):
+        """Keep the OS guard throughout work, even if the timed lease expires.
+
+        Callers must not invoke lease methods recursively inside this scope.
+        All participating schedulers must use this protocol before activation.
+        """
+        with self._guard():
+            row = self._read_lock()
+            if not row or row[0]['owner'] != self.owner_id or not self._active(row[1]):
+                raise RuntimeError('Scheduler lease unavailable before execution')
+            yield
+            self._write_lock()
+
+    @contextmanager
+    def registry_guard(self):
+        """Serialize registry updates with executing scheduler cycles."""
+        with self._guard():
+            self._read_lock()  # Invalid lease is never silently bypassed.
+            yield
+
+    @contextmanager
+    def maintenance_guard(self):
+        """Exclude participating cycles and refuse an unexpired scheduler lease."""
+        with self._guard():
+            row = self._read_lock()
+            if row and self._active(row[1]):
+                raise RuntimeError('Stop the scheduler and wait for its lease before maintenance')
+            yield
+
+    def renew(self):
         try:
-            self._write_lock(expires_at)
-        except Exception:
+            with self._guard():
+                row = self._read_lock()
+                if not row or row[0]['owner'] != self.owner_id or not self._active(row[1]):
+                    return False
+                self._write_lock()
+                return True
+        except (OSError, ValueError, TypeError, KeyError):
             return False
 
-        # Sleep a small randomized jitter to resolve collision race conditions
-        time.sleep(random.uniform(0.05, 0.15))
-
-        # Verify that we succeeded and still hold the lock
-        lock_verify = self._read_lock()
-        if lock_verify and lock_verify["owner"] == self.owner_id:
-            return True
-        return False
-
-    def renew(self) -> bool:
-        """
-        Renew the lease lock if we are the current owner.
-        Returns True if renewed, False otherwise.
-        """
-        lock = self._read_lock()
-        if not lock or lock["owner"] != self.owner_id:
-            return False
-        
-        now = datetime.now()
-        expires_at = now + timedelta(seconds=self.lease_duration_seconds)
+    def release(self):
         try:
-            self._write_lock(expires_at)
-            return True
-        except Exception:
-            return False
-
-    def release(self) -> bool:
-        """
-        Release the lease lock. Only succeeds if we own it.
-        Returns True if released, False otherwise.
-        """
-        lock = self._read_lock()
-        if not lock or lock["owner"] != self.owner_id:
-            return False
-
-        try:
-            if self.lock_path.exists():
-                os.remove(self.lock_path)
-            return True
-        except Exception:
+            with self._guard():
+                row = self._read_lock()
+                if not row or row[0]['owner'] != self.owner_id:
+                    return False
+                self.lock_path.unlink()
+                return True
+        except (OSError, ValueError, TypeError, KeyError):
             return False

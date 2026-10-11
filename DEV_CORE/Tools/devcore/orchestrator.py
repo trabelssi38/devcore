@@ -151,14 +151,16 @@ class WorkflowExecutor:
                 # Build mock/minimal task dictionary
                 task_dict = {
                     "id": step_id,
+                    "project_id": self.state.project,
                     "title": step_def.get("title", f"Task {step_id}"),
                     "mode": step_def.get("harness_profile", "coding")
                 }
                 
                 receipt = runner.run(task_dict, timeout=step_def.get("timeout", 300))
-                if receipt.get("status") not in ("ok", "manual", "noop"):
+                if receipt.get("status") != "ok":
                     success = False
-                    error_msg = f"Agent task failed: {receipt.get('error', 'unknown error')}"
+                    error_msg = f"Agent task not executed: {receipt.get('error', receipt.get('status', 'unknown error'))}"
+                    output_metadata = receipt
                 else:
                     output_metadata = receipt
                     
