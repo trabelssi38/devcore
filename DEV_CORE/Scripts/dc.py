@@ -7,8 +7,15 @@ import time
 import socket
 import sqlite3
 import subprocess
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
+
+# Handle the individual API command before historical path discovery/imports.
+if __name__ == "__main__" and sys.argv[1:2] == ["individual"]:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from devcore_engine.clients.individual_cli import main as individual_main
+    raise SystemExit(individual_main(sys.argv[2:]))
 
 # Setup paths to import devcore package
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -17,13 +24,6 @@ TOOLS_DIR = DEV_CORE / "Tools"
 
 if str(TOOLS_DIR) not in sys.path:
     sys.path.append(str(TOOLS_DIR))
-
-# Safe import of paths
-try:
-    from devcore.paths import get_paths
-    DEV_CORE_PATHS = get_paths()
-except ImportError:
-    DEV_CORE_PATHS = None
 
 # ANSI colors helper
 def print_color(text, color="gray"):
@@ -43,59 +43,24 @@ def print_color(text, color="gray"):
     sys.stdout.write(f"{colors.get(color, colors['gray'])}{text}{colors['reset']}\n")
 
 def get_active_project():
-    # Cache lookup
-    current_pwd = os.getcwd()
-    system_dirs = {"documents", "desktop", "downloads", "onedrive", "system32", "users", "windows", "temp", "appdata", "local", "trb_m", "home", Path.home().name.lower()}
-    if os.environ.get("DEVCORE_ACTIVE_PROJECT_PWD") == current_pwd:
-        cached_name = os.environ.get("DEVCORE_ACTIVE_PROJECT_NAME")
-        if cached_name and cached_name.lower() not in system_dirs:
-            return cached_name
+    # Resolve each invocation from the nearest explicit local manifest.
+    if str(DEV_CORE) not in sys.path:
+        sys.path.insert(0, str(DEV_CORE))
+    from devcore_engine.context import project_from_directory
+    return project_from_directory()
 
-    project_name = None
-    try:
-        # Check .devcore/project.json in current directory or parents
-        dir_path = Path(current_pwd)
-        while dir_path and dir_path != dir_path.parent:
-            pjson = dir_path / ".devcore" / "project.json"
-            if pjson.exists():
-                try:
-                    data = json.loads(pjson.read_text(encoding="utf-8-sig"))
-                    if data and data.get("name"):
-                        project_name = data["name"]
-                        break
-                except Exception:
-                    pass
-            dir_path = dir_path.parent
-    except Exception:
-        pass
 
-    if not project_name:
-        try:
-            # Get git root parent name
-            git_dir = subprocess.check_output(
-                ["git", "rev-parse", "--show-toplevel"],
-                stderr=subprocess.DEVNULL,
-                text=True
-            ).strip()
-            abs_git = os.path.abspath(git_dir)
-            project_name = os.path.basename(abs_git)
-        except Exception:
-            pass
-
-    if not project_name:
-        project_name = os.path.basename(current_pwd)
-
-    # Exclude system folders
-    if project_name.lower() in system_dirs:
-        project_name = "devcore"
-
-    # Replace bad characters
-    project_name = "".join(c if c not in '\\/:*?"<>|' else '_' for c in project_name)
-
-    # Set cache env vars
-    os.environ["DEVCORE_ACTIVE_PROJECT_PWD"] = current_pwd
-    os.environ["DEVCORE_ACTIVE_PROJECT_NAME"] = project_name
-    return project_name
+def load_scoped_legacy_board(data_path, project):
+    """Read a compatibility snapshot only when it names the selected project."""
+    if not project:
+        return None
+    board_path = data_path / "Memory" / project / "tasks.json"
+    if not board_path.is_file():
+        return None
+    board = json.loads(board_path.read_text(encoding="utf-8-sig"))
+    if not isinstance(board, dict) or board.get("project") != project:
+        raise ValueError("Task board project mismatch")
+    return board
 
 def get_data_root():
     return Path(os.environ.get("DEVCORE_DATA_ROOT", str(Path(__file__).resolve().parents[2] / "DEV_CORE_DATA")))
@@ -119,64 +84,39 @@ def get_platform_title():
     return "DEV_CORE v10.0"
 
 def resolve_routing_profile(mode):
-    # Fallback default
+    # Workflow mode is not permission to replace a native model/provider.
     profile = {
-        "requested_mode": mode,
-        "mode": "coding",
-        "budget": "8k tokens",
-        "profile": "implementation",
-        "model": "gemini-2.5-pro",
-        "gemini_model": "gemini-2.5-pro",
-        "codex_behavior": "implementation",
-        "hint": "Skill dev-methodology. TDD. Commit [T-XX] apres chaque etape validee."
+        "requested_mode": mode, "mode": "coding", "budget": "8k tokens",
+        "profile": "implementation", "model": None, "gemini_model": None,
+        "route": "native", "endpoint": "http://127.0.0.1:8787/v1",
+        "preserve_requested_model": True, "codex_behavior": "implementation", "hint": "",
     }
-
-    try:
-        routing_json = DEV_CORE / "Config" / "routing_profiles.json"
-        capability_json = DEV_CORE / "Config" / "ai_capability_registry.json"
-
-        if routing_json.exists():
-            r_data = json.loads(routing_json.read_text(encoding="utf-8-sig"))
-            requested = mode.lower().strip() if mode else r_data.get("default_mode", "coding")
-            
-            # Resolve alias
-            resolved = requested
-            if "aliases" in r_data and requested in r_data["aliases"]:
-                resolved = r_data["aliases"][requested]
-            
-            if "profiles" in r_data and resolved in r_data["profiles"]:
-                p_data = r_data["profiles"][resolved]
-                profile["mode"] = p_data.get("mode", "coding")
-                profile["budget"] = p_data.get("budget", "8k tokens")
-                profile["profile"] = p_data.get("profile", "implementation")
-                profile["model"] = p_data.get("model", "gemini-2.5-pro")
-                profile["gemini_model"] = p_data.get("gemini_model", "gemini-2.5-pro")
-                profile["codex_behavior"] = p_data.get("codex_behavior", "implementation")
-                profile["hint"] = p_data.get("hint", "")
-
-        # Try capability registry override
-        if capability_json.exists():
-            c_data = json.loads(capability_json.read_text(encoding="utf-8-sig"))
-            candidate_id = "devcore-coding"
-            
-            # Resolve candidate id
-            req_model = profile["model"].lower().strip()
-            if "aliases" in c_data and req_model in c_data["aliases"]:
-                candidate_id = c_data["aliases"][req_model]
-            elif "candidates" in c_data and req_model in c_data["candidates"]:
-                candidate_id = req_model
-            elif "mode_defaults" in c_data and profile["mode"] in c_data["mode_defaults"]:
-                candidate_id = c_data["mode_defaults"][profile["mode"]]
-            else:
-                candidate_id = c_data.get("default_candidate", "devcore-coding")
-            
-            if "candidates" in c_data and candidate_id in c_data["candidates"]:
-                candidate = c_data["candidates"][candidate_id]
-                if candidate.get("enabled", True):
-                    profile["gemini_model"] = candidate.get("backend_model", profile["gemini_model"])
-    except Exception:
-        pass
-
+    routing_json = DEV_CORE / "Config" / "routing_profiles.json"
+    if not routing_json.exists():
+        return profile
+    config = json.loads(routing_json.read_text(encoding="utf-8-sig"))
+    requested = str(mode or config.get("default_mode", "coding")).lower().strip()
+    resolved = config.get("aliases", {}).get(requested, requested)
+    item = config.get("profiles", {}).get(resolved)
+    if item is None:
+        raise ValueError(f"Unknown routing profile: {requested}")
+    profile.update(item)
+    if profile["route"] == "native":
+        if profile["model"] is not None or profile["gemini_model"] is not None:
+            raise ValueError("Native workflow profiles must preserve the application's model")
+    elif profile["route"] == "auxiliary":
+        try:
+            from .router.policy import validate_auxiliary, MODEL_MAP
+        except ImportError:
+            from router.policy import validate_auxiliary, MODEL_MAP
+        validate_auxiliary({"model": profile["model"]})
+        if profile["gemini_model"] != MODEL_MAP[profile["model"]]:
+            raise ValueError("Auxiliary profile disagrees with the router allowlist")
+    else:
+        raise ValueError("Unknown route")
+    expected = "http://127.0.0.1:8787/v1" if profile["route"] == "native" else "http://127.0.0.1:8789/v1"
+    if profile["endpoint"] != expected:
+        raise ValueError("Profile endpoint disagrees with its route")
     return profile
 
 def publish_event(event_type, task, payload=None):
@@ -187,6 +127,8 @@ def publish_event(event_type, task, payload=None):
         return
     try:
         project = get_active_project()
+        if not project:
+            return
         task_id = task.get("id", "")
         corr_id = f"{project}-{task_id}-{event_type}"
         
@@ -213,147 +155,66 @@ def publish_event(event_type, task, payload=None):
         pass
 
 def cmd_next_task(args):
-    project = get_active_project()
-    data_root = get_data_root()
-    proj_dir = data_root / "Memory" / project
-    tasks_file = proj_dir / "tasks.json"
+    """Select the next task in local SQL without writing a shared JSON board."""
+    if str(DEV_CORE) not in sys.path:
+        sys.path.insert(0, str(DEV_CORE))
+    from devcore_engine.context import project_from_directory, validate_project_id
+    from devcore_engine.services.tasks import TaskService
 
-    if not tasks_file.exists():
-        print_color("  Aucun tasks.json -- dc new task 'titre'", "yellow")
-        sys.exit(0)
-
+    project = args.project or project_from_directory()
+    if not project:
+        print("Project required: --project or .devcore/project.json", file=sys.stderr)
+        raise SystemExit(2)
     try:
-        board = json.loads(tasks_file.read_text(encoding="utf-8-sig"))
-    except Exception as e:
-        print_color(f"  Erreur lors de la lecture de tasks.json: {e}", "red")
-        sys.exit(1)
+        project = validate_project_id(project)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        raise SystemExit(2) from exc
 
-    tasks = board.get("tasks", [])
-    current = next((t for t in tasks if t.get("status") == "active"), None)
+    api_url = os.environ.get("DEVCORE_API_URL")
+    if os.environ.get("DEVCORE_CLIENT_MODE") == "1" and not api_url:
+        print("Direct database access is forbidden in client mode; configure DEVCORE_API_URL", file=sys.stderr)
+        raise SystemExit(2)
 
-    # Transition from todo to active if none active
-    if not current:
-        done_ids = {t["id"] for t in tasks if t.get("status") == "done"}
-        current = next((t for t in tasks if t.get("status") == "todo" and 
-                        (not t.get("depends_on") or t["depends_on"] in done_ids)), None)
-        if current:
-            current["status"] = "active"
-            current["started_at"] = datetime.now().isoformat()
-            board["current_task"] = current["id"]
-            
-            # Save board
-            tasks_file.write_text(json.dumps(board, indent=4), encoding="utf-8-sig")
-            # Publish TaskStarted event
-            publish_event("TaskStarted", current, {"started_at": current["started_at"]})
+    if api_url:
+        import urllib.request
+        import urllib.error
+        req = urllib.request.Request(
+            f"{api_url.rstrip('/')}/api/v1/tasks/next",
+            data=json.dumps({"project": project}).encode("utf-8"),
+            headers={"Content-Type": "application/json", "Accept": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=10.0) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                task = data.get("task")
+                if task:
+                    print(f"Active task: [{task['id']}] {task['title']}")
+                else:
+                    print("No pending tasks available.")
+                return
+        except urllib.error.HTTPError as exc:
+            print(f"API error: {exc.code}", file=sys.stderr)
+            raise SystemExit(1)
+        except Exception as exc:
+            print(f"API connection failed: {exc}", file=sys.stderr)
+            raise SystemExit(1)
 
-    if not current:
-        done_count = sum(1 for t in tasks if t.get("status") == "done")
-        total_count = len(tasks)
-        if done_count == total_count and total_count > 0:
-            print_color("  Toutes les taches accomplies !", "green")
-        else:
-            print_color("  Aucune tache disponible -- verifier les dependances (dc ts)", "yellow")
-
-        # Write empty session context
-        proj_dir.mkdir(parents=True, exist_ok=True)
-        logs_dir = get_local_root() / "Logs" / "scripts"
-        logs_dir.mkdir(parents=True, exist_ok=True)
-        
-        ctx_txt = f"[DEV_CORE] Aucune tache active\n[DEV_CORE] Toutes les taches accomplies : {done_count}/{total_count}\n[DEV_CORE] Commencer par: dc new task 'description' -mode reasoning|coding|bulk"
-        (logs_dir / "session_context.txt").write_text(ctx_txt, encoding="utf-8-sig")
-        (proj_dir / "session_context.txt").write_text(ctx_txt, encoding="utf-8-sig")
-
-        ctx_toon = f"session:\n  active_task: null\n  status: no_active_task\n  done: {done_count}\n  total: {total_count}\n  project: {board.get('project', project)}"
-        (logs_dir / "session_context.toon").write_text(ctx_toon, encoding="utf-8-sig")
-        (proj_dir / "session_context.toon").write_text(ctx_toon, encoding="utf-8-sig")
-        sys.exit(0)
-
-    # Toonify task board to keep compat
+    service = TaskService()
     try:
-        toonify_script = SCRIPT_DIR / "toonify.ps1"
-        if toonify_script.exists():
-            subprocess.run(["powershell", "-NoProfile", "-Command", f"& '{toonify_script}' -InputFile '{tasks_file}'"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    except Exception:
-        pass
-
-    # Resolve routing profile details
-    routing = resolve_routing_profile(current.get("mode", "coding"))
-    next_task = next((t for t in tasks if t.get("status") == "todo" and t.get("id") != current["id"]), None)
-
-    # ASCII Display
-    print("")
-    print_color("  +------------------------------------------+", "cyan")
-    print_color(f"  |  TASK {current['id'].ljust(35)}|", "cyan")
-    print_color("  +------------------------------------------+", "cyan")
-    print_color(f"  |  {current.get('title', '').ljust(40)}  |", "white")
-    print_color("  +------------------------------------------+", "cyan")
-    print_color(f"  |  Mode   : {current.get('mode', 'coding').ljust(31)}|", "gray")
-    print_color(f"  |  Budget : {routing['budget'].ljust(31)}|", "gray")
-    print_color(f"  |  Profile: {routing['profile'].ljust(31)}|", "gray")
-    steps_str = f"{current.get('steps_done', 0)}/{current.get('steps_total', 1)}"
-    print_color(f"  |  Steps  : {steps_str.ljust(31)}|", "gray")
-    if next_task:
-        next_str = f"{next_task['id']} [{next_task.get('mode', 'coding')}]"
-        print_color(f"  |  Suivant: {next_str.ljust(31)}|", "darkgray")
-    print_color("  +------------------------------------------+", "cyan")
-    print("")
-    if routing.get("hint"):
-        print_color(f"  Hint : {routing['hint']}", "darkgray")
-        print("")
-
-    # Write session context files
-    ctx_txt = (
-        f"[DEV_CORE] Task active : {current['id']}\n"
-        f"[DEV_CORE] Titre  : {current.get('title', '')}\n"
-        f"[DEV_CORE] Mode   : {current.get('mode', 'coding')}\n"
-        f"[DEV_CORE] Profile: {routing['profile']}\n"
-        f"[DEV_CORE] Budget : {routing['budget']}\n"
-        f"[DEV_CORE] Model  : {routing['model']}\n"
-        f"[DEV_CORE] Gemini : {routing['gemini_model']}\n"
-        f"[DEV_CORE] Codex  : {routing['codex_behavior']}\n"
-        f"[DEV_CORE] Steps  : {steps_str}\n"
-        f"[DEV_CORE] Tag git: [{current['id']}]"
-    )
-    logs_dir = get_local_root() / "Logs" / "scripts"
-    logs_dir.mkdir(parents=True, exist_ok=True)
-    proj_dir.mkdir(parents=True, exist_ok=True)
-
-    (logs_dir / "session_context.txt").write_text(ctx_txt, encoding="utf-8-sig")
-    (proj_dir / "session_context.txt").write_text(ctx_txt, encoding="utf-8-sig")
-
-    ctx_toon = (
-        f"session:\n"
-        f"  active_task: {current['id']}\n"
-        f"  title: {current.get('title', '')}\n"
-        f"  mode: {current.get('mode', 'coding')}\n"
-        f"  resolved_mode: {routing['mode']}\n"
-        f"  profile: {routing['profile']}\n"
-        f"  budget: {routing['budget']}\n"
-        f"  model: {routing['model']}\n"
-        f"  gemini_model: {routing['gemini_model']}\n"
-        f"  codex_behavior: {routing['codex_behavior']}\n"
-        f"  steps_done: {current.get('steps_done', 0)}\n"
-        f"  steps_total: {current.get('steps_total', 1)}\n"
-        f"  git_tag: [{current['id']}]\n"
-        f"  project: {board.get('project', project)}"
-    )
-    (logs_dir / "session_context.toon").write_text(ctx_toon, encoding="utf-8-sig")
-    (proj_dir / "session_context.toon").write_text(ctx_toon, encoding="utf-8-sig")
-
-    # Generate dashboard
-    try:
-        gen_db = SCRIPT_DIR / "gen_dashboard.ps1"
-        if gen_db.exists():
-            subprocess.run(["powershell", "-NoProfile", "-Command", f"& '{gen_db}'"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    except Exception:
-        pass
+        task = service.next_task(project)
+    finally:
+        service.conn.close()
+    if task:
+        print(f"Active task: [{task['id']}] {task['title']}")
+    else:
+        print("No pending tasks available.")
 
 def ping_tcp(host, port, timeout=1.0):
     try:
-        socket.setdefaulttimeout(timeout)
-        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        s.connect((host, port))
-        s.close()
+        with socket.create_connection((host, port), timeout=timeout):
+            pass
         return True
     except Exception:
         return False
@@ -409,23 +270,12 @@ def cmd_doctor(args):
     for name, p in dirs.items():
         check(f"Dossier {name} present", "OK" if p.exists() else "WARN", f"mkdir {p}")
 
-    # 3. DB & FTS5 Check
-    db_file = data_path / "Memory" / "conversations.db"
-    if db_file.exists():
-        check("Base SQLite conversations.db trouvee", "OK")
-        fts_ok = False
-        try:
-            conn = sqlite3.connect(str(db_file))
-            c = conn.cursor()
-            c.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='conversations_fts';")
-            if c.fetchone():
-                fts_ok = True
-            conn.close()
-        except Exception:
-            pass
-        check("Table FTS5 SQLite conversations_fts OK", "OK" if fts_ok else "FAIL", "Relancer init_conversations_db.py")
-    else:
-        check("Base SQLite conversations.db absente", "FAIL", "python DEV_CORE/Scripts/init_conversations_db.py")
+    # 3. The historical shared conversation store is not a project health gate.
+    check(
+        "Base conversations globale non evaluee",
+        "WARN",
+        "Verifier une sauvegarde et la sante de l'instance active",
+    )
 
     # 4. Config & Embedding Mismatch
     emb_json = DEV_CORE / "Config" / "embedding.json"
@@ -484,10 +334,10 @@ def cmd_doctor(args):
 
     # 8. Tasks board integrity
     project = get_active_project()
-    t_file = data_path / "Memory" / project / "tasks.json"
-    if t_file.exists():
+    t_file = data_path / "Memory" / project / "tasks.json" if project else None
+    if t_file and t_file.is_file():
         try:
-            board = json.loads(t_file.read_text(encoding="utf-8-sig"))
+            board = load_scoped_legacy_board(data_path, project)
             active = next((t for t in board.get("tasks", []) if t.get("status") == "active"), None)
             if active:
                 check(f"Task active: {active['id']} ({active.get('steps_done', 0)}/{active.get('steps_total', 1)})", "OK")
@@ -502,8 +352,10 @@ def cmd_doctor(args):
                 check("Aucune task active", "WARN", "dc next task")
         except Exception:
             check("tasks.json illisible", "FAIL")
-    else:
+    elif project:
         check("tasks.json absent", "WARN", "dc new task [nom]")
+    else:
+        check("Projet local introuvable", "WARN", "Ajouter .devcore/project.json")
 
     # 9. Services & Ports check
     services = {
@@ -513,17 +365,12 @@ def cmd_doctor(args):
         "Repowise (Port 7337)": ("127.0.0.1", 7337, "tcp")
     }
 
-    # Verify vector DB (sqlite-vec or local Qdrant port 6333)
-    db_root = os.getenv("DEVCORE_LOCAL_ROOT")
-    db_file = (Path(db_root) / "devcore.db") if db_root else (Path.home() / ".gemini/antigravity/devcore.db")
-    has_sqlite_vec = db_file.exists()
-    qdrant_up = ping_http("http://localhost:6333/collections") if not has_sqlite_vec else False
-
-    check(
-        "Service Vector Memory (sqlite-vec / Qdrant)",
-        "OK" if (has_sqlite_vec or qdrant_up) else "WARN",
-        "Initialiser devcore.db local ou demarrer Qdrant"
-    )
+    # File existence and an unauthenticated HTTP probe do not establish vector readiness.
+    db_file = get_local_root() / "devcore.db"
+    check("Base SQLite locale presente", "OK" if db_file.is_file() else "WARN")
+    qdrant_up = ping_http("http://127.0.0.1:6333/collections")
+    check("Qdrant HTTP accessible", "OK" if qdrant_up else "WARN")
+    check("Memoire vectorielle non evaluee", "WARN", "Verifier collections et extensions sur l'instance")
 
     for name, (addr, port, p_type) in services.items():
         is_up = False
@@ -548,6 +395,7 @@ def cmd_doctor(args):
     else:
         print_color("  100% operationnel -- autonomie complete", "green")
     print("")
+    return 1 if fail_count else 0
 
 def cmd_benchmark(args):
     print("")
@@ -555,38 +403,23 @@ def cmd_benchmark(args):
     print_color("  =======================================", "darkgray")
     print("")
 
-    # Benchmark disk speed
-    temp_file = Path("C:/devcore/DEV_CORE_DATA/temp_bench.dat")
+    # Benchmark an isolated disposable directory, never an active data root.
     try:
-        data_block = b"x" * 1024 * 1024  # 1MB
-        t0 = time.perf_counter()
-        temp_file.write_bytes(data_block)
-        write_time = time.perf_counter() - t0
-        
-        t0 = time.perf_counter()
-        _ = temp_file.read_bytes()
-        read_time = time.perf_counter() - t0
-        
-        temp_file.unlink()
+        with tempfile.TemporaryDirectory(prefix="devcore-benchmark-") as scratch:
+            temp_file = Path(scratch) / "block.dat"
+            data_block = b"x" * 1024 * 1024  # 1MB
+            t0 = time.perf_counter()
+            temp_file.write_bytes(data_block)
+            write_time = time.perf_counter() - t0
+            t0 = time.perf_counter()
+            _ = temp_file.read_bytes()
+            read_time = time.perf_counter() - t0
         print_color(f"  Vitesse Ecriture 1MB : {write_time * 1000:.2f} ms", "green")
         print_color(f"  Vitesse Lecture  1MB : {read_time * 1000:.2f} ms", "green")
     except Exception as e:
         print_color(f"  Erreur benchmark Disque : {e}", "red")
 
-    # Benchmark SQLite query
-    db_path = get_data_root() / "Memory" / "conversations.db"
-    if db_path.exists():
-        try:
-            t0 = time.perf_counter()
-            conn = sqlite3.connect(str(db_path))
-            c = conn.cursor()
-            c.execute("SELECT count(*) FROM conversations;")
-            count = c.fetchone()[0]
-            conn.close()
-            query_time = time.perf_counter() - t0
-            print_color(f"  Lecture SQLite (Conversations={count}) : {query_time * 1000:.2f} ms", "green")
-        except Exception as e:
-            print_color(f"  Erreur benchmark SQLite : {e}", "red")
+    print_color("  SQLite : utiliser benchmark_sqlite_snapshot.py sur une sauvegarde verifiee", "yellow")
     print("")
 
 def cmd_profile(args):
@@ -607,7 +440,7 @@ def cmd_profile(args):
     t_proj = time.perf_counter() - t0
     
     t0 = time.perf_counter()
-    paths = get_paths() if DEV_CORE_PATHS else None
+    _ = (get_data_root(), get_local_root(), DEV_CORE)
     t_paths = time.perf_counter() - t0
 
     print_color(f"  Temps d'import des packages : {t_imports * 1000:.2f} ms", "green")
@@ -675,9 +508,11 @@ def cmd_scheduler_status(args):
 def main():
     parser = argparse.ArgumentParser(description="DEV_CORE CLI")
     subparsers = parser.add_subparsers(dest="command")
+    subparsers.add_parser("individual", help="Explicit individual API context/tasks/done/delete")
 
     # subcommand next task
     parser_nt = subparsers.add_parser("next task", aliases=["nt"])
+    parser_nt.add_argument("--project", help="Project ID; defaults to the local manifest")
     
     # subcommand doctor
     parser_doc = subparsers.add_parser("doctor")
@@ -706,7 +541,7 @@ def main():
     if args.command == "next task":
         cmd_next_task(args)
     elif args.command == "doctor":
-        cmd_doctor(args)
+        raise SystemExit(cmd_doctor(args))
     elif args.command == "benchmark":
         cmd_benchmark(args)
     elif args.command == "profile":

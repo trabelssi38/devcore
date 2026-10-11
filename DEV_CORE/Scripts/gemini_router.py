@@ -32,14 +32,21 @@ from router.providers import (
 
 from router.stream_parser import stream_generator
 
-from ai_capability_registry import load_capability_registry
+from router.policy import validate_auxiliary, route_headers, TASK_TYPES
+from router.request_body import read_json_body, BodyRefusal
+from router.admission import AdmissionGuard
+from router.observation import observation_lifespan
+from router import providers as provider_state
+from router.rate_limit import RateLimitRefusal
 
-app = FastAPI(title="Gemini Router with Fallback")
+app = FastAPI(title="Gemini Router with Fallback", lifespan=observation_lifespan)
+app.add_middleware(AdmissionGuard, max_requests=8)
 
 @app.get("/health")
 @app.get("/healthz")
 def health_check():
-    return {"status": "healthy", "service": "gemini-router", "port": 20130}
+    return {"status": "healthy", "service": "gemini-router", "port": 20130,
+            "route": "auxiliary", "policy_version": 2}
 
 def read_network_config() -> dict:
     if not NETWORK_CONFIG_PATH.exists():
@@ -69,19 +76,22 @@ def get_bind_host() -> str:
 
 @app.post("/v1/chat/completions")
 async def chat_completions(request: Request):
-    body = await request.json()
-    
-    # === MIDDLEWARE AUTO-BOOTSTRAP ===
-    status = check_protocol_compliance()
-    if not status.compliant:
-        body = inject_protocol_reminder(body, status)
-        log_protocol_violation(status)
-    # === FIN MIDDLEWARE ===
+    try:
+        body = await read_json_body(request)
+        validate_auxiliary(body, is_chat=request.url.path != "/v1/embeddings")
+    except ValueError as exc:
+        return Response(content=json.dumps({"error": {"type": "routing_policy_error", "message": str(exc)}}), status_code=exc.status if isinstance(exc, BodyRefusal) else 400, media_type="application/json")
     
     headers = dict(request.headers)
     is_stream = body.get("stream", False)
     
     if not is_stream:
+        observer = getattr(request.app.state, 'generation_observer', None)
+        factory = getattr(request.app.state, 'generation_event_factory', None)
+        if observer is not None and factory is not None:
+            return await observer.run(
+                lambda: call_with_fallback("chat/completions", body, headers, is_chat=True),
+                event_from_result=lambda result: factory(request, result))
         return await call_with_fallback("chat/completions", body, headers, is_chat=True)
         
     # Streaming route
@@ -105,15 +115,26 @@ async def chat_completions(request: Request):
         "Authorization": f"Bearer {API_KEY}",
         "Content-Type": "application/json"
     }
+
+    try:
+        estimated_tokens = max(100, len(json.dumps(gemini_body.get('messages', []))) // 4)
+        await provider_state.rate_limiter.wait_if_needed(estimated_tokens)
+    except RateLimitRefusal as exc:
+        return Response(content=json.dumps({'error': {'type': 'local_rate_limit',
+            'message': 'Local provider admission saturated'}}), status_code=429,
+            media_type='application/json', headers={'Retry-After': str(exc.retry_after)})
     
-    return StreamingResponse(stream_generator(gemini_body, gemini_headers), media_type="text/event-stream")
+    return StreamingResponse(stream_generator(gemini_body, gemini_headers, limiter=provider_state.rate_limiter,
+        estimated_tokens=estimated_tokens, accounting_mode=TASK_TYPES[body['model']]), media_type="text/event-stream",
+        headers={**route_headers(body, gemini_body["model"], "google-gemini"), "X-DevCore-Attribution": "unattributed"})
 
 @app.post("/v1/embeddings")
 async def embeddings(request: Request):
-    body = await request.json()
-    status = check_protocol_compliance()
-    if not status.compliant:
-        log_protocol_violation(status)
+    try:
+        body = await read_json_body(request)
+        validate_auxiliary(body, is_chat=request.url.path != "/v1/embeddings")
+    except ValueError as exc:
+        return Response(content=json.dumps({"error": {"type": "routing_policy_error", "message": str(exc)}}), status_code=exc.status if isinstance(exc, BodyRefusal) else 400, media_type="application/json")
     headers = dict(request.headers)
     return await call_with_fallback("embeddings", body, headers, is_chat=False)
 
@@ -132,10 +153,12 @@ async def routing_profiles():
         "object": "devcore.routing_profiles",
         "modes": MODE_MODEL_MAP,
         "models": MODEL_MAP,
-        "capability_registry": load_capability_registry(),
+        "route": "auxiliary",
+        "fallback": "explicit fallback_providers list; non-streaming only",
     }
 
 if __name__ == "__main__":
     bind_host = get_bind_host()
     print(f"Demarrage du Gemini Router sur {bind_host}:20130...")
-    uvicorn.run(app, host=bind_host, port=20130)
+    from service_runtime import run_managed
+    run_managed(app, host=bind_host, port=20130, service='router')

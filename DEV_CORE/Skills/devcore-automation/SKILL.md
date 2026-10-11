@@ -86,22 +86,22 @@ $taskId = ($b.tasks | Where-Object { $_.status -eq "active" } | Select-Object -F
 
 **Ou marquer une step manuellement :**
 ```powershell
-powershell -ExecutionPolicy Bypass -NonInteractive -File "C:\devcore\DEV_CORE\Scripts\task_step_done.ps1"
-# Auto-selectionne la prochaine step non-faite
+powershell -ExecutionPolicy Bypass -NonInteractive -File "C:\devcore\DEV_CORE\Scripts\task_step_done.ps1" -Project "<project-id>"
+# Sélectionne la prochaine étape non faite dans ce projet
 ```
 
 ---
 
 ## TRIGGER 4 -- Tache complete
 
-**Condition :** Le post-commit hook et post_tool_hook detectent automatiquement quand steps_done >= steps_total.
+**Condition :** La tache du projet est terminee selon son etat courant. Verifier la version avant de la clore.
 
-**Si detection automatique echoue :**
+**Action explicite :**
 ```powershell
-powershell -ExecutionPolicy Bypass -NonInteractive -File "C:\devcore\DEV_CORE\Scripts\task_done.ps1" -Force
+powershell -ExecutionPolicy Bypass -NonInteractive -File "C:\devcore\DEV_CORE\Scripts\task_done.ps1" -Project "<project-id>" -TaskId "<task-id>" -ExpectedVersion <version>
 ```
 
-**Auto-chainage :** task_done.ps1 charge automatiquement la tache suivante via task_next.ps1. Pas besoin de relancer `dc next task`.
+`post_tool_hook` enregistre la telemetrie du projet local, sans clore de tache. Pour prendre la tache suivante, utiliser explicitement `dc next task` dans le meme projet.
 
 ---
 
@@ -136,7 +136,7 @@ Apres chaque action automatique, une ligne de log :
 ```
 [DEV_CORE] launch.ps1 execute -- Task T-02 active
 [DEV_CORE] Commit [T-02] -- step 2/5 enregistree
-[DEV_CORE] task_done.ps1 -- T-02 done -- Auto-chainage T-03
+[DEV_CORE] task_done.ps1 -Project alpha -TaskId T-02 -- tache terminee
 [DEV_CORE] endday.ps1 -- lecons extraites -- Qdrant sync -- backup OK
 ```
 

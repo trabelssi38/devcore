@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # anthropic_adapter.py -- DEV_CORE v10.0
-# Traduit les requêtes Anthropic (port 8788) vers OpenAI (port 8787, Headroom)
+# Auxiliary translation only (8788 -> 8789). Native Claude -> 8787 directly.
 # Puis traduit les réponses d'OpenAI vers Anthropic pour l'agent.
 
 import uvicorn
@@ -10,10 +10,14 @@ import httpx
 import json
 import asyncio
 import os
+from router.policy import validate_auxiliary
+from router.request_body import read_json_body, BodyRefusal
+from router.admission import AdmissionGuard
 
 app = FastAPI(title="DEV_CORE Anthropic to OpenAI Adapter")
+app.add_middleware(AdmissionGuard, max_requests=8)
 
-HEADROOM_URL = os.environ.get("DEVCORE_HEADROOM_URL", "http://127.0.0.1:8787/v1")
+HEADROOM_URL = os.environ.get("DEVCORE_AUXILIARY_HEADROOM_URL", "http://127.0.0.1:8789/v1")
 client = httpx.AsyncClient(timeout=120.0)
 
 def translate_request_to_openai(anthropic_body: dict) -> dict:
@@ -68,6 +72,9 @@ def translate_request_to_openai(anthropic_body: dict) -> dict:
     if "stream" in anthropic_body:
         openai_body["stream"] = anthropic_body["stream"]
         
+    for key in ("fallback_providers", "task_type"):
+        if key in anthropic_body:
+            openai_body[key] = anthropic_body[key]
     return openai_body
 
 def translate_response_to_anthropic(openai_resp: dict, model_name: str) -> dict:
@@ -163,7 +170,11 @@ async def handle_streaming_translation(openai_stream, model_name: str, message_i
 
 @app.post("/v1/messages")
 async def messages_endpoint(request: Request):
-    body = await request.json()
+    try:
+        body = await read_json_body(request)
+        validate_auxiliary(body)
+    except ValueError as exc:
+        return Response(content=json.dumps({"error": {"type": "routing_policy_error", "message": str(exc)}}), status_code=exc.status if isinstance(exc, BodyRefusal) else 400, media_type="application/json")
     headers = dict(request.headers)
     
     # 1. Translate request to OpenAI format
@@ -183,7 +194,7 @@ async def messages_endpoint(request: Request):
         forward_headers["x-devcore-task"] = headers["x-devcore-task"]
         
     if is_stream:
-        # Stream from Headroom (port 8787)
+        # Auxiliary only; native Claude uses port 8787 /v1/messages directly
         async def stream_generator():
             try:
                 async with client.stream(

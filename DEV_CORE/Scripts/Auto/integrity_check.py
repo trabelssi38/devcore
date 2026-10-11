@@ -1,4 +1,5 @@
 # integrity_check.py -- Python implementation of integrity check
+import argparse
 import os
 import sys
 import json
@@ -9,14 +10,26 @@ from pathlib import Path
 DEV_CORE = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", str(Path(__file__).resolve().parents[4] / "DEV_CORE")))
 DATA_ROOT = Path(os.environ.get("DEVCORE_DATA_ROOT", str(Path(__file__).resolve().parents[4] / "DEV_CORE_DATA")))
 
-def get_active_project() -> str:
-    cached = os.environ.get("DEVCORE_ACTIVE_PROJECT_NAME")
-    if cached:
-        return cached
-    return "devcore"
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(description="Vérifie l'intégrité d'un projet explicite.")
+    parser.add_argument("--project", required=True, help="Identifiant du projet")
+    parser.add_argument("--repo", required=True, type=Path, help="Racine Git explicite du projet")
+    args = parser.parse_args(argv)
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,79}", args.project) or args.project in {".", ".."}:
+        parser.error("--project must be a simple project identifier")
+    if not args.repo.is_absolute():
+        parser.error("--repo must be an absolute path")
+    try:
+        args.repo = args.repo.resolve(strict=True)
+    except OSError:
+        parser.error("--repo must name an existing directory")
+    if not args.repo.is_dir():
+        parser.error("--repo must name a directory")
+    return args
 
-def main():
-    proj_name = get_active_project()
+def main(argv=None):
+    args = parse_args(argv)
+    proj_name = args.project
     t_file = DATA_ROOT / "Memory" / proj_name / "tasks.json"
     
     print("\n  ========================================")
@@ -58,10 +71,9 @@ def main():
     # Compare with git log
     try:
         # Run git log relative to repo root
-        git_dir = DEV_CORE.parent if DEV_CORE.exists() else Path(os.environ.get("DEVCORE_REPO_ROOT", "."))
         res = subprocess.run(
             ["git", "log", "--since=30 days ago", "--format=%H|%s|%ai"],
-            cwd=str(git_dir),
+            cwd=str(args.repo),
             capture_output=True,
             text=True,
             check=True

@@ -29,7 +29,7 @@ def main():
     print("==========================================")
 
     tests = [
-        ("Dashboard API Status", "http://127.0.0.1:20129/api/dashboard/tasks?limit=5"),
+        ("Dashboard API Status", "http://127.0.0.1:20129/api/status"),
         ("Gemini Router Health", "http://127.0.0.1:20130/health"),
         ("Qdrant Vector DB", "http://127.0.0.1:6333/"),
         ("Repowise Server", "http://127.0.0.1:7337/health"),

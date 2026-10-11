@@ -1,77 +1,27 @@
-# post_tool_hook.ps1 -- DEV_CORE v9.0 -- Full Autonomy
-# Declenche par le hook PostToolUse(Bash) / AfterTool(Gemini)
-# 1. Verifie si la tache active est complete
-# 2. Detecte les commits [T-XX] pour auto-incrementer steps
-# 3. Integrity check steps_done vs steps reellement done
-
-$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path (Join-Path $env:DEVCORE_PLATFORM_ROOT "Scripts\platform_version.ps1"))) {
-    $env:DEVCORE_PLATFORM_ROOT
-} elseif (Test-Path (Join-Path $PSScriptRoot "platform_version.ps1")) {
-    Split-Path -Parent $PSScriptRoot
-} elseif (Test-Path (Join-Path $PSScriptRoot "Scripts\platform_version.ps1")) {
-    $PSScriptRoot
-} elseif (Test-Path (Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE\Scripts\platform_version.ps1")) {
-    Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE"
+# Compatibility launcher for the project-local Python post-tool hook.
+# Project selection is made only from .devcore/project.json in the caller's cwd;
+# the machine-wide active-project setting and legacy tasks.json are never read.
+$platformRoot = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path -LiteralPath (Join-Path $env:DEVCORE_PLATFORM_ROOT 'devcore_engine\hooks\post_tool.py'))) {
+    [IO.Path]::GetFullPath($env:DEVCORE_PLATFORM_ROOT)
 } else {
-    Split-Path -Parent $PSScriptRoot
+    [IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
 }
-if ($DEV_CORE -match '[/\\]Scripts[/\\]?$') {
-    $DEV_CORE = Split-Path -Parent $DEV_CORE
-}
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { (Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE_DATA") }
-$tFile         = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
-
-if (-not (Test-Path $tFile)) { exit 0 }
-
-$board  = Get-Content $tFile -Raw | ConvertFrom-Json
-$active = $board.tasks | Where-Object { $_.status -eq "active" -or $_.status -eq "in_progress" -or $_.id -eq $board.current_task } | Select-Object -First 1
-
-if (-not $active) { exit 0 }
-
-# --- Integrity check (4.4) ---
-if ($active.steps -and $active.steps.Count -gt 0) {
-    $realDone = @($active.steps | Where-Object { $_.done }).Count
-    if ($active.steps_done -ne $realDone) {
-        $active.steps_done = $realDone
-    }
+$hook = Join-Path $platformRoot 'devcore_engine\hooks\post_tool.py'
+if (-not (Test-Path -LiteralPath $hook -PathType Leaf)) {
+    Write-Warning "Project-scoped post-tool hook unavailable: $hook"
+    exit 0
 }
 
-# --- Git commit detection (3.2) ---
-try {
-    $lastMsg = git log -1 --pretty=%B 2>&1
-    if ($lastMsg -match '\[T-(\d+)\]') {
-        $tagId = "T-{0:D2}" -f [int]$Matches[1]
-        if ($tagId -eq $active.id) {
-            # Le commit concerne la tache active : marquer la prochaine step
-            if ($active.steps -and $active.steps.Count -gt 0) {
-                $nextStep = $active.steps | Where-Object { -not $_.done } | Select-Object -First 1
-                if ($nextStep) {
-                    $nextStep.done = $true
-                    $active.steps_done = @($active.steps | Where-Object { $_.done }).Count
-                }
-            }
-        }
-    }
-} catch {}
-
-# --- Auto-backup avant ecriture (4.3) ---
-$bkpDir = "$DEV_CORE_DATA\Backups\auto"
-if (-not (Test-Path $bkpDir)) { New-Item -ItemType Directory -Path $bkpDir -Force | Out-Null }
-Copy-Item $tFile "$bkpDir\tasks_$(Get-Date -f 'yyyyMMdd_HHmmss').json" -Force -ErrorAction SilentlyContinue
-
-# --- Sauvegarder les corrections d'integrite ---
-$board | ConvertTo-Json -Depth 10 | Set-Content $tFile -Encoding UTF8
-
-# --- Auto-completion check ---
-if ($active.steps_done -ge $active.steps_total) {
-    $flagFile = "$DEV_CORE_DATA\Logs\scripts\task_complete_$($active.id).flag"
-    if (-not (Test-Path $flagFile)) {
-        New-Item -ItemType File -Path $flagFile -Force | Out-Null
-        & "$DEV_CORE\Scripts\task_done.ps1" -Force
-    }
+$pythonExe = if ($env:DEVCORE_PYTHON -and (Test-Path -LiteralPath $env:DEVCORE_PYTHON -PathType Leaf)) {
+    $env:DEVCORE_PYTHON
 } else {
-    # Mettre à jour le canvas pour la progression des steps
-    & "$DEV_CORE\Scripts\canvas_manager.ps1" -Action Update
+    $pythonCommand = Get-Command python -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($pythonCommand) { $pythonCommand.Source }
+}
+if (-not $pythonExe) {
+    Write-Warning 'Project-scoped post-tool hook skipped: Python runtime unavailable.'
+    exit 0
 }
 
-
+& $pythonExe $hook
+exit $LASTEXITCODE

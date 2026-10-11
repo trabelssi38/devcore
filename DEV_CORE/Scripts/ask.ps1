@@ -1,41 +1,69 @@
-# ask.ps1 — DEV_CORE v9.0 (migre vers tasks.json)
-param([Parameter(Mandatory=$true)][string]$PromptFr)
+# Prépare une demande en français dans le contexte SQL du projet sélectionné.
+param(
+    [Parameter(Mandatory=$true)][string]$PromptFr,
+    [string]$Project
+)
 
-$ErrorActionPreference = 'Stop'
-$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path (Join-Path $env:DEVCORE_PLATFORM_ROOT "Scripts\platform_version.ps1"))) {
+$ErrorActionPreference = "Stop"
+$platformRoot = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path -LiteralPath (Join-Path $env:DEVCORE_PLATFORM_ROOT "Scripts\platform_version.ps1"))) {
     $env:DEVCORE_PLATFORM_ROOT
-} elseif (Test-Path (Join-Path $PSScriptRoot "platform_version.ps1")) {
-    Split-Path -Parent $PSScriptRoot
-} elseif (Test-Path (Join-Path $PSScriptRoot "Scripts\platform_version.ps1")) {
-    $PSScriptRoot
-} elseif (Test-Path (Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE\Scripts\platform_version.ps1")) {
-    Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE"
 } else {
     Split-Path -Parent $PSScriptRoot
 }
-if ($DEV_CORE -match '[/\\]Scripts[/\\]?$') {
-    $DEV_CORE = Split-Path -Parent $DEV_CORE
+$projectCwd = (Get-Location).Path
+if ([string]::IsNullOrWhiteSpace($Project)) {
+    $Project = (& (Join-Path $PSScriptRoot "Get-ActiveProject.ps1") | Select-Object -Last 1).Trim()
 }
-$projectCwd    = (Get-Location).Path
-Set-Location $DEV_CORE
-$env:PYTHONPATH        = (Join-Path $DEV_CORE "Tools")
+if ([string]::IsNullOrWhiteSpace($Project)) { throw "Projet requis." }
+if ($Project -cnotmatch '^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$') { throw "Identifiant de projet invalide." }
+
+$toolsRoot = Join-Path $platformRoot "Tools"
+$env:PYTHONPATH = if ($env:PYTHONPATH) { "$toolsRoot;$platformRoot;$env:PYTHONPATH" } else { "$toolsRoot;$platformRoot" }
+. (Join-Path $PSScriptRoot "platform_version.ps1")
+$pythonExe = Get-DevCorePython
 $env:DEVCORE_ASK_PROMPT_FR = $PromptFr
-$env:DEVCORE_ASK_CWD       = $projectCwd
+$env:DEVCORE_ASK_CWD = $projectCwd
+$env:DEVCORE_ASK_PROJECT = $Project
+$env:DEVCORE_ASK_MISSION_ID = ""
 
-# Injecter task_id courant si disponible
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { (Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE_DATA") }
-$tFile = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
-if (Test-Path $tFile) {
-    $board = Get-Content $tFile -Raw | ConvertFrom-Json
-    $active = $board.tasks | Where-Object { $_.status -eq "active" -or $_.status -eq "in_progress" -or $_.id -eq $board.current_task } | Select-Object -First 1
-    if ($active) { $env:DEVCORE_MISSION_ID = $active.id }
+$boardJson = & $pythonExe -m devcore_engine.cli task board --project $Project --json
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+$board = ($boardJson | Out-String) | ConvertFrom-Json
+if ([string]$board.project -cne $Project) { throw "Board du mauvais projet : attendu $Project." }
+$selectedVersion = $null
+if ($board.current_task) {
+    $env:DEVCORE_ASK_MISSION_ID = [string]$board.current_task
+    $selected = @($board.tasks | Where-Object { [string]$_.id -ceq $env:DEVCORE_ASK_MISSION_ID })
+    if ($selected.Count -ne 1 -or $selected[0].status -cne 'in_progress' -or
+        [string]$selected[0].version -notmatch '^[1-9][0-9]*$') {
+        throw "Tâche active du board invalide."
+    }
+    $selectedVersion = [string]$selected[0].version
 }
 
-$json = python -c "import json,os; from devcore.cli import build_french_launch_payload; print(json.dumps(build_french_launch_payload(prompt_fr=os.environ['DEVCORE_ASK_PROMPT_FR'],cwd=os.environ['DEVCORE_ASK_CWD']),ensure_ascii=False))"
-$payload = $json | ConvertFrom-Json
+$code = "import json,os; from devcore.cli import build_french_launch_payload; print(json.dumps(build_french_launch_payload(prompt_fr=os.environ['DEVCORE_ASK_PROMPT_FR'],cwd=os.environ['DEVCORE_ASK_CWD'],project_id=os.environ['DEVCORE_ASK_PROJECT'],mission_id=os.environ.get('DEVCORE_ASK_MISSION_ID') or None),ensure_ascii=False))"
+$json = & $pythonExe -c $code
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+$payload = ($json | Out-String) | ConvertFrom-Json
 Write-Output $payload.confirmation_text
 $confirm = Read-Host
 if ($confirm -match "^n$|^N$") { Write-Output "Launch cancelled."; exit 0 }
-Write-Output ($payload.prepare | ConvertTo-Json -Depth 5)
-
-
+$latestBoardJson = & $pythonExe -m devcore_engine.cli task board --project $Project --json
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+$latestBoard = ($latestBoardJson | Out-String) | ConvertFrom-Json
+if ([string]$latestBoard.project -cne $Project) { throw "Board du mauvais projet après confirmation : attendu $Project." }
+if ([string]$latestBoard.current_task -ne $env:DEVCORE_ASK_MISSION_ID) {
+    throw "La tâche active du projet a changé pendant la confirmation. Relancez la demande."
+}
+if ($selectedVersion) {
+    $latestTask = @($latestBoard.tasks | Where-Object { [string]$_.id -ceq $env:DEVCORE_ASK_MISSION_ID })
+    if ($latestTask.Count -ne 1 -or $latestTask[0].status -cne 'in_progress' -or
+        [string]$latestTask[0].version -cne $selectedVersion) {
+        throw "La version de la tâche active a changé pendant la confirmation. Relancez la demande."
+    }
+}
+$env:DEVCORE_ASK_INTERPRETATION = $payload.interpretation | ConvertTo-Json -Depth 5 -Compress
+$prepareCode = "import json,os; from devcore.cli import prepare_french_launch_payload; print(json.dumps(prepare_french_launch_payload(interpretation=json.loads(os.environ['DEVCORE_ASK_INTERPRETATION']),mission_id=os.environ.get('DEVCORE_ASK_MISSION_ID') or None),ensure_ascii=False))"
+$prepareJson = & $pythonExe -c $prepareCode
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+Write-Output (($prepareJson | Out-String) | ConvertFrom-Json | ConvertTo-Json -Depth 5)

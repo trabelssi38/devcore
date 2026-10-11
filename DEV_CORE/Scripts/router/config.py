@@ -44,25 +44,10 @@ NVIDIA_API_KEY = load_nvidia_key()
 
 PUBLIC_BIND_HOSTS = {"0.0.0.0", "::", ""}
 
-MODEL_MAP = {
-    "claude-3-5-sonnet": "gemini-2.5-flash",
-    "claude-3-5-sonnet-20241022": "gemini-2.5-flash",
-    "claude-3-opus": "gemini-2.5-flash",
-    "claude-3-haiku": "gemini-2.5-flash",
-    "gpt-4o": "gemini-2.5-flash",
-    "gpt-4o-mini": "gemini-2.5-flash",
-    "devcore-always-on": "gemini-2.5-flash",
-    "devcore-reasoning": "gemini-2.5-flash",
-    "devcore-coding": "gemini-2.5-flash",
-    "devcore-bulk": "gemini-2.5-flash",
-}
+from .policy import MODEL_MAP
 
-MODE_MODEL_MAP = {
-    "reasoning": "devcore-reasoning",
-    "coding": "devcore-coding",
-    "bulk": "devcore-bulk",
-    "plan": "devcore-reasoning",
-}
+# Modes describe auxiliary tasks only; a model alias is still mandatory.
+MODE_MODEL_MAP = {name.removeprefix("devcore-"): name for name in MODEL_MAP}
 
 BUDGET_THRESHOLDS = {
     "coding": 500000,
@@ -72,14 +57,13 @@ BUDGET_THRESHOLDS = {
 
 GEMINI_BASE_URL = os.environ.get(
     "GEMINI_BASE_URL",
-    "https://generativelanguage.googleapis.com/v1beta/openai/v1",
+    "https://generativelanguage.googleapis.com/v1beta/openai",
 )
+GEMINI_BASE_URL = GEMINI_BASE_URL.rstrip("/")
+if GEMINI_BASE_URL != "https://generativelanguage.googleapis.com/v1beta/openai":
+    raise ValueError("Gemini Router requires the native Google OpenAI-compatible endpoint; provider changes require an explicit fallback request")
 
-# Paths resolving via env variables correctly
-ACTIVE_PROJECT_PATH = Path(DEV_CORE_DATA) / "Runtime" / "active_project.txt"
-TASKS_DIR = Path(DEV_CORE_DATA) / "Memory"
+# Auxiliary accounting paths. No machine-global active project is consulted.
 ALERTS_LOG = Path(DEV_CORE_DATA) / "Logs" / "scripts" / "alerts.log"
-STATS_PATH = Path(DEV_CORE_DATA) / "Metrics" / "headroom_stats.json"
-EPHEMERAL_PATH = Path(DEV_CORE_DATA) / "Runtime" / "ephemeral_session.json"
-PROTOCOL_LOG = Path(DEV_CORE_DATA) / "Logs" / "scripts" / "protocol_violations.log"
+STATS_PATH = Path(DEV_CORE_DATA) / "Metrics" / "gemini_auxiliary_stats.json"
 NETWORK_CONFIG_PATH = Path(DEV_CORE) / "Config" / "network.json"

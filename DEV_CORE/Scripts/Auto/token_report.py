@@ -1,7 +1,10 @@
 import argparse
+import base64
+from contextlib import closing
 import json
 import os
 import re
+import sqlite3
 import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -22,45 +25,47 @@ DEFAULT_PRICING_PROFILE = {
 }
 
 
-def record_metric(metric_type, value, unit, payload=None, project="devcore", task_id=""):
+def record_metric(metric_type, value, unit, payload=None, *, project, task_id=""):
     platform_root = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", Path(__file__).resolve().parents[2]))
     metrics_script = platform_root / "Scripts" / "metrics_service.ps1"
     if not metrics_script.exists():
-        return
+        return False
     try:
-        subprocess.run(
-            [
-                "powershell.exe",
-                "-NoProfile",
-                "-NonInteractive",
-                "-ExecutionPolicy",
-                "Bypass",
-                "-File",
-                str(metrics_script),
-                "-Action",
-                "Record",
-                "-Source",
-                "token_report",
-                "-Project",
-                project,
-                "-TaskId",
-                task_id,
-                "-MetricType",
-                metric_type,
-                "-Value",
-                str(float(value or 0)),
-                "-Unit",
-                unit,
-                "-PayloadJson",
-                json.dumps(payload or {}, ensure_ascii=False),
-            ],
+        command = ["powershell.exe", "-NoProfile", "-NonInteractive",
+                   "-ExecutionPolicy", "Bypass", "-File", str(metrics_script),
+                   "-Action", "Record", "-Source", "token_report", "-Project", project]
+        if task_id:
+            command.extend(("-TaskId", task_id))
+        command.extend(("-MetricType", metric_type, "-Value", str(float(value or 0)),
+                        "-Unit", unit, "-PayloadBase64",
+                        base64.b64encode(json.dumps(payload or {}, ensure_ascii=False).encode("utf-8")).decode("ascii")))
+        result = subprocess.run(
+            command,
             capture_output=True,
             text=True,
             timeout=10,
             check=False,
         )
+        return result.returncode == 0
     except Exception:
-        pass
+        return False
+
+
+def record_metric_batch(records):
+    platform_root = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", Path(__file__).resolve().parents[2]))
+    metrics_script = platform_root / "Scripts" / "metrics_service.ps1"
+    if not metrics_script.exists():
+        return False
+    try:
+        encoded = base64.b64encode(json.dumps(records, ensure_ascii=False).encode("utf-8")).decode("ascii")
+        result = subprocess.run(
+            ["powershell.exe", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+             "-File", str(metrics_script), "-Action", "RecordBatch", "-PayloadBase64", encoded],
+            capture_output=True, text=True, timeout=15, check=False,
+        )
+        return result.returncode == 0
+    except Exception:
+        return False
 
 
 def format_duration(seconds):
@@ -356,6 +361,36 @@ def estimated_usage_from_text(text):
     }
 
 
+def codex_counter_delta(payload, previous):
+    """Read observed cumulative rollout counters, never sum repeated snapshots."""
+    info = payload.get("info")
+    raw = info.get("total_token_usage") if isinstance(info, dict) else None
+    if not isinstance(raw, dict):
+        return None, previous, "missing_cumulative_usage"
+    if not all(key in raw for key in ("input_tokens", "output_tokens", "total_tokens")):
+        return None, previous, "incomplete_cumulative_usage"
+    keys = ("input_tokens", "cached_input_tokens", "output_tokens", "total_tokens")
+    current = {key: raw.get(key, 0) for key in keys}
+    if any(type(value) is not int or value < 0 for value in current.values()):
+        return None, previous, "invalid_cumulative_usage"
+    if current["cached_input_tokens"] > current["input_tokens"]:
+        return None, previous, "invalid_cached_input"
+    if previous is not None and any(current[key] < previous[key] for key in keys):
+        return None, current, "cumulative_usage_decreased"
+    delta = {key: current[key] - (previous[key] if previous else 0) for key in keys}
+    if not any(delta.values()):
+        return None, current, None
+    usage = {
+        "tokens": delta["total_tokens"],
+        "cache_hits": delta["cached_input_tokens"],
+        "output_tokens": delta["output_tokens"],
+        "turns": 1,
+        "estimated": False,
+        "measurement_source": "codex_cumulative_counter",
+    }
+    return usage, current, None
+
+
 def add_usage(left, right):
     left["tokens"] += int(right.get("tokens", 0))
     left["cache_hits"] += int(right.get("cache_hits", 0))
@@ -449,6 +484,29 @@ def empty_stats_bucket(include_sessions=False):
     return bucket
 
 
+def record_project_metrics(summary, report_date):
+    """Publish snapshots only for projects that own the reported usage."""
+    records = []
+    for project, usage in sorted(summary.get("projects", {}).items()):
+        if not project or project in SYSTEM_DIR_NAMES:
+            continue
+        payload = {"date": report_date, "attribution": "session_heuristic"}
+        for name, value, unit in (
+            ("tokens", usage.get("tokens", 0), "tokens"),
+            ("cache_hits", usage.get("cache_hits", 0), "tokens"),
+            ("cost", usage.get("cost_usd", 0), "usd"),
+            ("sessions", usage.get("sessions", 0), "count"),
+        ):
+            records.append({"source": "token_report", "project": project,
+                            "task_id": "", "metric_type": name, "value": value,
+                            "unit": unit, "payload": payload})
+    if not records:
+        return True
+    # Keep each base64 command comfortably below Windows' command-line limit.
+    return all(record_metric_batch(records[start:start + 32])
+               for start in range(0, len(records), 32))
+
+
 SYSTEM_DIR_NAMES = {
     "trb_m", "users", "documents", "desktop", "downloads", "onedrive",
     "system32", "windows", "temp", "appdata", "local", "archive",
@@ -457,35 +515,52 @@ SYSTEM_DIR_NAMES = {
 }
 
 
+def _local_task_db():
+    env_local = os.getenv("DEVCORE_LOCAL_ROOT")
+    if env_local:
+        return Path(env_local) / "devcore.db"
+    local_app_data = os.getenv("LOCALAPPDATA")
+    return Path(local_app_data) / "DEV_CORE_LOCAL" / "devcore.db" if local_app_data else None
+
+
+def _verified_board(path, project):
+    board = json.loads(path.read_text(encoding="utf-8-sig"))
+    if not isinstance(board, dict) or str(board.get("project", "")).lower() != project.lower():
+        return None
+    tasks = board.get("tasks")
+    if not isinstance(tasks, list):
+        return None
+    return board
+
+
+def _board_tasks(board, project):
+    return [task for task in board["tasks"] if isinstance(task, dict)
+            and (not task.get("project") or str(task["project"]).lower() == project.lower())]
+
+
 def discover_projects(memory_path):
     valid_projects = ["devcore", "cea_dashboard", "job_tracker", "dashboard_recette_br", "oracle_plsq_dependency_analyzer"]
     task_to_project = {}
 
     # 1. Read tasks from devcore.db
-    devcore_data = Path(memory_path).parent
-    env_local = os.getenv("DEVCORE_LOCAL_ROOT")
-    local_dir = Path(env_local) if env_local else (Path(os.getenv("LOCALAPPDATA", "")) / "DEV_CORE_LOCAL" if os.getenv("LOCALAPPDATA") else devcore_data)
-    db_path = local_dir / "devcore.db"
-    if not db_path.exists():
-        db_path = devcore_data / "devcore.db"
-    if db_path.exists():
+    db_path = _local_task_db()
+    if db_path and db_path.is_file():
         try:
-            conn = sqlite3.connect(db_path)
-            cur = conn.cursor()
-            cols = [c[1] for c in cur.execute("PRAGMA table_info(tasks)").fetchall()]
-            p_col = "project_id" if "project_id" in cols else "project"
-            cur.execute(f"SELECT id, {p_col} FROM tasks")
-            for tid, proj in cur.fetchall():
-                p_lower = proj.lower() if proj else ""
-                if p_lower and p_lower not in SYSTEM_DIR_NAMES and p_lower not in valid_projects:
-                    valid_projects.append(p_lower)
-                tid_upper = tid.upper()
-                if tid_upper not in task_to_project:
-                    task_to_project[tid_upper] = []
-                if p_lower and p_lower not in SYSTEM_DIR_NAMES and p_lower not in task_to_project[tid_upper]:
-                    task_to_project[tid_upper].append(p_lower)
-            conn.close()
-        except Exception as e:
+            with closing(sqlite3.connect(f"file:{db_path.as_posix()}?mode=ro", uri=True)) as conn:
+                cur = conn.cursor()
+                cols = [c[1] for c in cur.execute("PRAGMA table_info(tasks)").fetchall()]
+                p_col = "project_id" if "project_id" in cols else "project"
+                cur.execute(f"SELECT id, {p_col} FROM tasks")
+                for tid, proj in cur.fetchall():
+                    p_lower = proj.lower() if proj else ""
+                    if p_lower and p_lower not in SYSTEM_DIR_NAMES and p_lower not in valid_projects:
+                        valid_projects.append(p_lower)
+                    tid_upper = tid.upper()
+                    if tid_upper not in task_to_project:
+                        task_to_project[tid_upper] = []
+                    if p_lower and p_lower not in SYSTEM_DIR_NAMES and p_lower not in task_to_project[tid_upper]:
+                        task_to_project[tid_upper].append(p_lower)
+        except Exception:
             pass
 
     # 2. Read tasks from Memory directory
@@ -502,8 +577,10 @@ def discover_projects(memory_path):
             if not tasks_file.exists():
                 continue
             try:
-                board = json.loads(tasks_file.read_text(encoding="utf-8-sig"))
-                for task in board.get("tasks", []):
+                board = _verified_board(tasks_file, name)
+                if board is None:
+                    continue
+                for task in _board_tasks(board, name):
                     tid = task.get("id")
                     if tid:
                         tid_upper = tid.upper()
@@ -601,45 +678,45 @@ _active_task_cache = {}
 
 
 def get_active_task_for_project(project, is_recent=True):
-    if not project or project in SYSTEM_DIR_NAMES or not is_recent:
+    if (not project or not is_recent or str(project).lower() in SYSTEM_DIR_NAMES
+            or any(part in str(project) for part in ("/", "\\", ":", ".."))):
         return None
     proj_key = str(project).lower()
     if proj_key in _active_task_cache:
         return _active_task_cache[proj_key]
     
-    devcore_data = Path(os.environ.get("DEVCORE_DATA_ROOT", Path(__file__).resolve().parents[2] / "DEV_CORE_DATA"))
+    devcore_data = Path(os.environ.get("DEVCORE_DATA_ROOT", Path(__file__).resolve().parents[3] / "DEV_CORE_DATA"))
     task_id = None
     tasks_file = devcore_data / "Memory" / project / "tasks.json"
     if tasks_file.exists():
         try:
-            board = json.loads(tasks_file.read_text(encoding="utf-8-sig"))
-            if isinstance(board, dict):
+            board = _verified_board(tasks_file, project)
+            if board is not None:
+                tasks = _board_tasks(board, project)
                 curr = board.get("current_task")
                 if curr:
-                    task_id = curr
+                    task_id = next((t.get("id") for t in tasks if t.get("id") == curr
+                                    and t.get("status") in ("active", "in_progress", "todo")), None)
                 else:
-                    for t in board.get("tasks", []):
-                        if t.get("status") in ("active", "todo"):
+                    for t in tasks:
+                        if t.get("status") in ("active", "in_progress", "todo"):
                             task_id = t.get("id")
                             break
         except Exception:
             pass
 
     if not task_id:
-        env_local = os.getenv("DEVCORE_LOCAL_ROOT")
-        local_dir = Path(env_local) if env_local else (Path(os.getenv("LOCALAPPDATA", "")) / "DEV_CORE_LOCAL" if os.getenv("LOCALAPPDATA") else devcore_data)
-        db_path = local_dir / "devcore.db"
-        if not db_path.exists():
-            db_path = devcore_data / "devcore.db"
-        if db_path.exists():
+        db_path = _local_task_db()
+        if db_path and db_path.is_file():
             try:
-                conn = sqlite3.connect(db_path)
-                cur = conn.cursor()
-                cur.execute("SELECT id FROM tasks WHERE (LOWER(project_id)=? OR LOWER(project)=?) AND status IN ('active', 'todo') ORDER BY created_at DESC LIMIT 1", (proj_key, proj_key))
-                row = cur.fetchone()
-                if row and row[0]:
-                    task_id = row[0]
-                conn.close()
+                with closing(sqlite3.connect(f"file:{db_path.as_posix()}?mode=ro", uri=True)) as conn:
+                    row = conn.execute(
+                        "SELECT id FROM tasks WHERE LOWER(project_id)=? "
+                        "AND status IN ('active', 'in_progress', 'todo') "
+                        "ORDER BY created_at DESC LIMIT 1", (proj_key,)
+                    ).fetchone()
+                    if row and row[0]:
+                        task_id = row[0]
             except Exception:
                 pass
 
@@ -664,6 +741,15 @@ def parse_source(source, valid_projects, task_to_project, pricing_registry=None)
     session_model_usage = {}
     prompt_model_turns = []
     current_model = None
+    has_codex_counters = client == "codex" and any(
+        row.get("type") == "event_msg" and isinstance(row.get("payload"), dict)
+        and row["payload"].get("type") == "token_count"
+        and row["payload"].get("info") is not None
+        for row in read_jsonl(source["path"])
+    )
+    previous_counter = None
+    measurement_warnings = set()
+    observed_tokens = estimated_tokens = 0
 
     for row in read_jsonl(source["path"]):
         payload = row.get("payload") if isinstance(row.get("payload"), dict) else row
@@ -728,11 +814,22 @@ def parse_source(source, valid_projects, task_to_project, pricing_registry=None)
         if is_user:
             user_turns += 1
 
-        usage = usage_from_payload(payload)
-        if not usage and is_model:
+        if has_codex_counters:
+            usage = None
+            if row.get("type") == "event_msg" and payload.get("type") == "token_count" and payload.get("info") is not None:
+                usage, previous_counter, warning = codex_counter_delta(payload, previous_counter)
+                if warning:
+                    measurement_warnings.add(warning)
+        else:
+            usage = usage_from_payload(payload)
+        if not usage and is_model and not has_codex_counters:
             usage = estimated_usage_from_text(content)
 
         if usage:
+            if usage.get("estimated"):
+                estimated_tokens += usage["tokens"]
+            else:
+                observed_tokens += usage["tokens"]
             explicit_model = detect_model(payload, row)
             client_default_model = default_model_for_client(client, app, pricing_registry)
             detected_model, model_source = resolve_turn_model(explicit_model, current_model, client_default_model)
@@ -764,11 +861,12 @@ def parse_source(source, valid_projects, task_to_project, pricing_registry=None)
                     "output_tokens": int(usage.get("output_tokens", 0)),
                     "cost_usd": round(float(usage.get("cost_usd") or 0), 4),
                     "estimated": bool(usage.get("estimated")),
+                    "measurement_source": usage.get("measurement_source", "text_estimate" if usage.get("estimated") else "message_usage"),
                     "tasks": targets,
                 }
             )
             share = max(len(targets), 1)
-            for task_id in targets:
+            for target_index, task_id in enumerate(targets):
                 task_proj = detected_project
                 proj_list = task_to_project.get(task_id.upper())
                 if proj_list:
@@ -787,15 +885,15 @@ def parse_source(source, valid_projects, task_to_project, pricing_registry=None)
                         "cost_usd": 0.0,
                         "model_usage": {},
                     }
-                task_tokens[task_id]["tokens"] += usage["tokens"] // share
-                task_tokens[task_id]["cache_hits"] += usage["cache_hits"] // share
-                task_tokens[task_id]["output_tokens"] += usage["output_tokens"] // share
+                allocated = {key: usage[key] // share + int(target_index < usage[key] % share)
+                             for key in ("tokens", "cache_hits", "output_tokens")}
+                task_tokens[task_id]["tokens"] += allocated["tokens"]
+                task_tokens[task_id]["cache_hits"] += allocated["cache_hits"]
+                task_tokens[task_id]["output_tokens"] += allocated["output_tokens"]
                 task_tokens[task_id]["turns"] += max(usage["turns"] // share, 1)
                 task_tokens[task_id]["cost_usd"] += usage["cost_usd"] / share
                 split_usage = {
-                    "tokens": usage["tokens"] // share,
-                    "cache_hits": usage["cache_hits"] // share,
-                    "output_tokens": usage["output_tokens"] // share,
+                    **allocated,
                     "turns": max(usage["turns"] // share, 1),
                     "cost_usd": usage["cost_usd"] / share,
                     "pricing_profile": pricing_profile_id,
@@ -831,6 +929,13 @@ def parse_source(source, valid_projects, task_to_project, pricing_registry=None)
         "pricing_profiles": sorted(session_pricing_profiles),
         "model_usage": finalize_model_usage(session_model_usage),
         "model_turns": prompt_model_turns,
+        "usage_measurement": {
+            "observed_tokens": observed_tokens,
+            "estimated_tokens": estimated_tokens,
+            "source": "codex_cumulative_counter" if has_codex_counters else "message_usage_or_estimate",
+            "warnings": sorted(measurement_warnings),
+            "task_attribution": "heuristic",
+        },
         "_task_tokens": task_tokens,
     }
 
@@ -1032,16 +1137,13 @@ def main():
     userprofile = os.environ.get("USERPROFILE") or str(Path.home())
     devcore_data = os.environ.get("DEVCORE_DATA_ROOT", str(Path(__file__).resolve().parents[4] / "DEV_CORE_DATA"))
     env_local = os.environ.get("DEVCORE_LOCAL_ROOT")
-    local_dir = Path(env_local) if env_local else (Path(os.getenv("LOCALAPPDATA", "")) / "DEV_CORE_LOCAL" if os.getenv("LOCALAPPDATA") else Path(devcore_data))
+    local_app_data = os.getenv("LOCALAPPDATA")
+    if not env_local and not local_app_data:
+        parser.error("DEVCORE_LOCAL_ROOT is required when LOCALAPPDATA is unavailable")
+    local_dir = Path(env_local) if env_local else Path(local_app_data) / "DEV_CORE_LOCAL"
     reports_dir = local_dir / "Logs" / "token_reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
     
-    # Also ensure secondary copy directory exists in shared data_root if different
-    shared_reports_dir = Path(devcore_data) / "Logs" / "token_reports"
-    try:
-        shared_reports_dir.mkdir(parents=True, exist_ok=True)
-    except Exception:
-        pass
     memory_path = Path(devcore_data) / "Memory"
 
     valid_projects, task_to_project = discover_projects(memory_path)
@@ -1104,15 +1206,12 @@ def main():
                 result_summary["clients"]["headroom-proxy"]["cache_hits"] += h_cache
                 result_summary["clients"]["headroom-proxy"]["output_tokens"] += h_out
                 result_summary["clients"]["headroom-proxy"]["cost_usd"] += h_cost
-                result_summary["clients"]["headroom-proxy"]["sessions"] += 1
-                
-                # Add to project "devcore"
-                if "devcore" not in result_summary["projects"]:
-                    result_summary["projects"]["devcore"] = empty_stats_bucket(include_sessions=True)
-                result_summary["projects"]["devcore"]["tokens"] += h_tokens
-                result_summary["projects"]["devcore"]["cache_hits"] += h_cache
-                result_summary["projects"]["devcore"]["output_tokens"] += h_out
-                result_summary["projects"]["devcore"]["cost_usd"] += h_cost
+                # Untagged proxy usage is instance-level, never owned by devcore.
+                result_summary["unattributed"] = {
+                    "source": "headroom-proxy", "tokens": h_tokens,
+                    "cache_hits": h_cache, "output_tokens": h_out,
+                    "cost_usd": round(h_cost, 4),
+                }
                 
                 print(f"[TokenReport] Merged {h_tokens:,} headroom-proxy tokens for untagged tasks.")
         except Exception as e:
@@ -1145,18 +1244,9 @@ def main():
     json_str = json.dumps(result_summary, indent=2, ensure_ascii=False)
     summary_path.write_text(json_str, encoding="utf-8")
     print(f"[SUCCESS] Resume consolide ecrit dans {summary_path}")
-    if shared_reports_dir != reports_dir:
-        try:
-            (shared_reports_dir / "token_metrics_summary.json").write_text(json_str, encoding="utf-8")
-        except Exception:
-            pass
-
     write_html_report(result_summary, reports_dir, tdate)
-    totals = result_summary.get("totals", {})
-    record_metric("tokens", totals.get("tokens", 0), "tokens", {"date": tdate, "clients": list(result_summary.get("clients", {}).keys())})
-    record_metric("cache_hits", totals.get("cache_hits", 0), "tokens", {"date": tdate})
-    record_metric("cost", totals.get("cost_usd", 0), "usd", {"date": tdate, "models": result_summary.get("model_costs", {}).get("global", {})})
-    record_metric("sessions", len(result_summary.get("sessions", [])), "count", {"date": tdate})
+    if not record_project_metrics(result_summary, tdate):
+        print("[WARNING] Project metric events unavailable; local JSON summary remains authoritative.")
 
 
 if __name__ == "__main__":

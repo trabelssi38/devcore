@@ -8,10 +8,17 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
-DEV_CORE_DATA = Path(os.environ.get("DEVCORE_DATA_ROOT", str(Path(__file__).resolve().parents[3] / "DEV_CORE_DATA")))
+def _local_root():
+    configured = os.environ.get("DEVCORE_LOCAL_ROOT")
+    if configured:
+        return Path(configured)
+    local_app_data = os.environ.get("LOCALAPPDATA")
+    if local_app_data:
+        return Path(local_app_data) / "DEV_CORE_LOCAL"
+    raise ValueError("DEVCORE_LOCAL_ROOT is required when LOCALAPPDATA is unavailable")
 
-def rotate_script_logs(max_days=30):
-    logs_dir = DEV_CORE_DATA / "Logs" / "scripts"
+def rotate_script_logs(max_days=30, root=None):
+    logs_dir = (Path(root) if root is not None else _local_root()) / "Logs" / "scripts"
     if not logs_dir.exists():
         return 0
     cutoff = time.time() - (max_days * 86400)
@@ -26,8 +33,8 @@ def rotate_script_logs(max_days=30):
     print(f"[rotate] Logs rotation complete: {removed} file(s) older than {max_days} days removed.")
     return removed
 
-def rotate_auto_backups(keep_max=5):
-    backups_dir = DEV_CORE_DATA / "Backups" / "auto"
+def rotate_auto_backups(keep_max=5, root=None):
+    backups_dir = (Path(root) if root is not None else _local_root()) / "Backups" / "auto"
     if not backups_dir.exists():
         return 0
     
@@ -51,8 +58,9 @@ def rotate_auto_backups(keep_max=5):
     print(f"[rotate] Auto backups rotation complete: {removed} old backup file(s) removed.")
     return removed
 
-def bound_token_metrics(days_keep=7):
-    token_json = DEV_CORE_DATA / "Logs" / "token_reports" / "token_metrics_summary.json"
+def bound_token_metrics(days_keep=7, root=None):
+    reports_dir = (Path(root) if root is not None else _local_root()) / "Logs" / "token_reports"
+    token_json = reports_dir / "token_metrics_summary.json"
     if not token_json.exists():
         return
     try:
@@ -73,7 +81,7 @@ def bound_token_metrics(days_keep=7):
                 archived_sessions.append(s)
 
         if archived_sessions:
-            archive_dir = DEV_CORE_DATA / "Logs" / "token_reports" / "archive"
+            archive_dir = reports_dir / "archive"
             archive_dir.mkdir(parents=True, exist_ok=True)
             archive_file = archive_dir / f"archive_tokens_{datetime.now().strftime('%Y_%m')}.json"
             
@@ -92,11 +100,12 @@ def bound_token_metrics(days_keep=7):
     except Exception as e:
         print(f"[rotate] Warning: Token metrics rotation error: {e}")
 
-def main():
-    print(f"[rotate] Starting DEV_CORE data rotation for {DEV_CORE_DATA}...")
-    rotate_script_logs(max_days=30)
-    rotate_auto_backups(keep_max=5)
-    bound_token_metrics(days_keep=7)
+def main(root=None):
+    selected_root = Path(root) if root is not None else _local_root()
+    print(f"[rotate] Starting DEV_CORE local rotation for {selected_root}...")
+    rotate_script_logs(max_days=30, root=selected_root)
+    rotate_auto_backups(keep_max=5, root=selected_root)
+    bound_token_metrics(days_keep=7, root=selected_root)
     print("[rotate] Data rotation completed successfully.")
 
 if __name__ == "__main__":

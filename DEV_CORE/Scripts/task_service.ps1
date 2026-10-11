@@ -1,22 +1,35 @@
-# Delegator wrapper for Python devcore_engine task service
-$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path (Join-Path $env:DEVCORE_PLATFORM_ROOT "Scripts\platform_version.ps1"))) {
-    $env:DEVCORE_PLATFORM_ROOT
-} elseif (Test-Path (Join-Path $PSScriptRoot "platform_version.ps1")) {
-    Split-Path -Parent $PSScriptRoot
-} elseif (Test-Path (Join-Path $PSScriptRoot "Scripts\platform_version.ps1")) {
-    $PSScriptRoot
-} elseif (Test-Path (Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE\Scripts\platform_version.ps1")) {
-    Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE"
-} else {
-    Split-Path -Parent $PSScriptRoot
-}
-if ($DEV_CORE -match '[/\\]Scripts[/\\]?$') {
-    $DEV_CORE = Split-Path -Parent $DEV_CORE
-}
-if (-not $env:PYTHONPATH -or $env:PYTHONPATH -notlike "*$DEV_CORE*") {
-    $env:PYTHONPATH = if ($env:PYTHONPATH) { "$DEV_CORE;$env:PYTHONPATH" } else { $DEV_CORE }
+# Structured PowerShell adapter for project-scoped SQLite task operations.
+param(
+    [Parameter(Mandatory=$true)][ValidateSet("Edit", "Pause", "Skip", "Resume")][string]$Action,
+    [Parameter(Mandatory=$true)][ValidateNotNullOrEmpty()][string]$Project,
+    [string]$Id,
+    [string]$Title,
+    [ValidateSet("coding", "reasoning", "bulk")][string]$Mode,
+    [int]$Steps,
+    [int]$ExpectedVersion,
+    [string]$Reason = ""
+)
+
+$ErrorActionPreference = "Stop"
+$platformRoot = Split-Path -Parent $PSScriptRoot
+if (-not $env:PYTHONPATH -or $env:PYTHONPATH -notlike "*$platformRoot*") {
+    $env:PYTHONPATH = if ($env:PYTHONPATH) { "$platformRoot;$env:PYTHONPATH" } else { $platformRoot }
 }
 . (Join-Path $PSScriptRoot "platform_version.ps1")
 $pythonExe = Get-DevCorePython
-& $pythonExe -m devcore_engine.cli task $args
+
+$taskArgs = @("-m", "devcore_engine.cli", "task", $Action.ToLowerInvariant())
+if ($Id) { $taskArgs += $Id }
+$taskArgs += @("--project", $Project)
+if ($Action -eq "Edit") {
+    if (-not $Id) { throw "Id requis pour Edit." }
+    if ($PSBoundParameters.ContainsKey("Title")) { $taskArgs += @("--title", $Title) }
+    if ($PSBoundParameters.ContainsKey("Mode")) { $taskArgs += @("--mode", $Mode) }
+    if ($PSBoundParameters.ContainsKey("Steps")) { $taskArgs += @("--steps", [string]$Steps) }
+} elseif ($Action -eq "Skip" -and $Reason) {
+    $taskArgs += @("--reason", $Reason)
+}
+if ($PSBoundParameters.ContainsKey("ExpectedVersion")) { $taskArgs += @("--expected-version", [string]$ExpectedVersion) }
+
+& $pythonExe @taskArgs
 exit $LASTEXITCODE

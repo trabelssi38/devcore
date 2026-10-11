@@ -1,3 +1,8 @@
+param(
+    [Parameter(Mandatory=$true)][string]$Project,
+    [string]$RepoPath
+)
+
 # task_spec_parser.ps1 -- DEV_CORE v9.0 Auto layer
 # Parser les fichiers de spec pour extraire des taches candidates
 
@@ -19,8 +24,9 @@ $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     
 $DEV_CORE_LOCAL = if ($env:DEVCORE_LOCAL_ROOT) { $env:DEVCORE_LOCAL_ROOT } elseif ($env:LOCALAPPDATA) { "$env:LOCALAPPDATA\DEV_CORE_LOCAL" } else { $DEV_CORE_DATA }
 $TODAY         = Get-Date -Format "yyyy-MM-dd"
 $LOG           = "$DEV_CORE_DATA\Logs\scripts\task_spec_parser_$TODAY.log"
-$projName      = & "$PSScriptRoot\..\Get-ActiveProject.ps1"
-$QUEUE         = "$DEV_CORE_DATA\Memory\$projName\task_spec_queue.jsonl"
+if (-not $Project.Trim() -or $Project -match '[/\\:]|\.\.') { throw "Un projet explicite valide est requis." }
+$QUEUE         = "$DEV_CORE_DATA\Memory\$Project\task_spec_queue.jsonl"
+New-Item -ItemType Directory -Force -Path (Split-Path -Parent $LOG), (Split-Path -Parent $QUEUE) | Out-Null
 
 function Log { param($msg,$color="Gray")
     $l = "[$(Get-Date -f HH:mm:ss)] $msg"
@@ -40,9 +46,12 @@ Log "task_spec_parser -- analyse fichiers spec" "Cyan"
 
 $specDirs = @("$DEV_CORE_DATA\Vault\docs\superpowers\specs")
 
-# Trouver le depot git du projet actif pour y chercher des specs locales
-$gitRootRes = git rev-parse --show-toplevel 2>&1
-$gitRoot = if ($LASTEXITCODE -eq 0 -and $gitRootRes -and $gitRootRes -notmatch "fatal:") { $gitRootRes.Trim() } else { $null }
+# Trouver les specs dans le dépôt explicite du projet, ou dans le dépôt courant
+$gitRoot = $RepoPath
+if (-not $gitRoot) {
+    $gitRootRes = git rev-parse --show-toplevel 2>&1
+    $gitRoot = if ($LASTEXITCODE -eq 0 -and $gitRootRes -and $gitRootRes -notmatch "fatal:") { $gitRootRes.Trim() } else { $null }
+}
 if ($gitRoot) {
     $specDirs += "$gitRoot\docs\superpowers\specs"
     $specDirs += "$gitRoot\DEV_CORE\docs\superpowers\specs"

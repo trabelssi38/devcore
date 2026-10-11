@@ -1,157 +1,51 @@
-# Get-ActiveProject.ps1
-# Détecte automatiquement le projet actif sans configuration
-# Basé sur le répertoire racine Git, ou à défaut le répertoire courant.
-# Utilise un cache en mémoire pour la session PowerShell courante.
+# Resolve the project for this invocation without shared mutable state.
+# A local manifest is authoritative. A new ordinary Git repository may use its
+# directory name until session_start.ps1 creates .devcore/project.json.
+param([string]$Project)
 
-. (Join-Path $PSScriptRoot "platform_version.ps1")
+$ErrorActionPreference = "Stop"
 
-$currentPwd = (Get-Location).Path
+function Test-ProjectId {
+    param([string]$Value)
+    return (-not [string]::IsNullOrWhiteSpace($Value) -and
+            $Value -notmatch '[\\/:]' -and $Value -notmatch '\.\.')
+}
 
-# Retourner le cache si le dossier courant n'a pas changé
-if ($env:DEVCORE_ACTIVE_PROJECT_PWD -eq $currentPwd -and $env:DEVCORE_ACTIVE_PROJECT_NAME) {
-    Write-Output $env:DEVCORE_ACTIVE_PROJECT_NAME
+if ($PSBoundParameters.ContainsKey("Project")) {
+    $candidate = $Project.Trim()
+    if (-not (Test-ProjectId $candidate)) { Write-Error "Identifiant de projet invalide."; exit 1 }
+    Write-Output $candidate
     exit 0
 }
 
-try {
-    # 0. Vérifier s'il y a un fichier .devcore/project.json dans le dossier courant ou ses parents (très utile en sandbox/worktree)
-    $dir = Get-Item .
-    $projectName = $null
-    $worktreeName = "main"
-    while ($dir) {
-        $projectJsonPath = Join-Path $dir.FullName ".devcore\project.json"
-        if (Test-Path -LiteralPath $projectJsonPath) {
-            try {
-                $projObj = Get-Content -Raw -LiteralPath $projectJsonPath -ErrorAction SilentlyContinue | ConvertFrom-Json
-                if ($projObj -and $projObj.name) {
-                    $projectName = $projObj.name
-                    break
-                }
-            } catch {}
-        }
-        $dir = $dir.Parent
-    }
-
-    # 1. Fallback sur le dépôt Git ou le dossier courant
-    if (-not $projectName) {
-        $dir = Get-Item .
-        $gitDir = $null
-        while ($dir) {
-            $testPath = Join-Path $dir.FullName ".git"
-            if (Test-Path -LiteralPath $testPath) {
-                $gitDir = $testPath
-                break
-            }
-            $dir = $dir.Parent
-        }
-
-        if ($gitDir) {
-            if (Test-Path -LiteralPath $gitDir -PathType Container) {
-                $projectName = (Get-Item -Force -LiteralPath $gitDir).Parent.Name
-            $worktreeName = "main"
-        } else {
-            # C'est un fichier worktree
-            $worktreeName = (Get-Item -Force -LiteralPath $gitDir).Parent.Name
-            try {
-                $content = Get-Content -Path $gitDir -Raw -ErrorAction SilentlyContinue
-                if ($content -match "gitdir:\s*(.*)\.git/worktrees/") {
-                    $projectName = (Get-Item -Force -LiteralPath $Matches[1]).Name
-                } else {
-                    $projectName = $worktreeName
-                }
-            } catch {
-                $projectName = $worktreeName
-            }
-        }
-        } else {
-            # 2. Fallback: on prend le nom du dossier courant
-            $projectName = (Get-Item -Force .).Name
-            $worktreeName = "main"
-        }
-    }
-
-    # Nettoyer les noms pour être valides
-    $projectName = $projectName -replace '[\\/:*?"<>|]', '_'
-    $worktreeName = $worktreeName -replace '[\\/:*?"<>|]', '_'
-    
-    # Exclure les répertoires système et personnels courants du mécanisme de secours
-    $systemDirs = @("Documents", "Desktop", "Downloads", "OneDrive", "System32", "Users", "Windows", "Temp", "AppData", "Local", "trb_m", "home")
-    if ($env:USERNAME) { $systemDirs += $env:USERNAME }
-    if ($systemDirs -contains $projectName) {
-        $projectName = "devcore"
-    }
-    
-    # Mettre en cache
-    $env:DEVCORE_ACTIVE_PROJECT_PWD = $currentPwd
-    $env:DEVCORE_ACTIVE_PROJECT_NAME = $projectName
-    $env:DEVCORE_ACTIVE_WORKTREE_NAME = $worktreeName
-
-    # Enregistrer dans un fichier persistant pour les daemons Python
-    $devCoreLocal = if ($env:DEVCORE_LOCAL_ROOT) { $env:DEVCORE_LOCAL_ROOT } elseif ($env:LOCALAPPDATA) { "$env:LOCALAPPDATA\DEV_CORE_LOCAL" } else { Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE_DATA" }
-    $runtimeDir = "$devCoreLocal\Runtime"
-    if (-not (Test-Path $runtimeDir)) {
-        New-Item -ItemType Directory -Path $runtimeDir -Force | Out-Null
-    }
-    # Valider le projet par rapport à projects.json
-    $isValid = $false
-    $configPath = if ($env:DEVCORE_CONFIG_ROOT) { Join-Path $env:DEVCORE_CONFIG_ROOT "projects.json" } else { Join-Path (Split-Path -Parent $PSScriptRoot) "Config\projects.json" }
-    if (Test-Path $configPath) {
+$cursor = Get-Item -LiteralPath (Get-Location).Path
+while ($cursor) {
+    $manifest = Join-Path $cursor.FullName ".devcore\project.json"
+    if (Test-Path -LiteralPath $manifest -PathType Leaf) {
         try {
-            $projectsJson = Get-Content -Raw -Path $configPath -ErrorAction SilentlyContinue | ConvertFrom-Json
-            $validNames = $projectsJson.projects.name
-            if ($validNames -contains $projectName) {
-                $isValid = $true
-            }
-        } catch {}
-    }
-    
-    # Si le projet a un .devcore/project.json ou .git et n'est pas dans systemDirs, il est valide et auto-enregistre
-    if (-not $isValid -and ($projectName -notin $systemDirs) -and $projectName -ne "app") {
-        if ((Test-Path (Join-Path $currentPwd ".devcore\project.json")) -or (Test-Path (Join-Path $currentPwd ".git"))) {
-            $isValid = $true
-            try {
-                if (Test-Path $configPath) {
-                    $registry = Get-Content $configPath -Raw -Encoding UTF8 | ConvertFrom-Json
-                } else {
-                    $registry = [pscustomobject]@{ projects = @() }
-                }
-                $existing = @()
-                if ($registry.projects) {
-                    $existing = @($registry.projects | Where-Object { $_.name -ne $projectName })
-                }
-                $existing += [pscustomobject]@{
-                    name = $projectName
-                    path = ($currentPwd -replace "\\", "/")
-                }
-                [pscustomobject]@{ projects = @($existing | Sort-Object name) } |
-                    ConvertTo-Json -Depth 5 |
-                    Set-Content $configPath -Encoding UTF8
-            } catch {}
+            $metadata = Get-Content -Raw -LiteralPath $manifest -Encoding UTF8 | ConvertFrom-Json
+            $candidate = [string]$metadata.name
+            if (-not (Test-ProjectId $candidate)) { throw "Identifiant de projet invalide." }
+            Write-Output $candidate
+            exit 0
+        } catch {
+            Write-Error "Manifeste de projet invalide : $manifest"
+            exit 1
         }
     }
-
-    # Si le projet détecté est invalide (comme 'app' dans le sandbox), restaurer la valeur précédente si elle est valide
-    $activeTxtPath = "$runtimeDir\active_project.txt"
-    if (-not $isValid -and (Test-Path $activeTxtPath)) {
-        $prevValue = (Get-Content -Path $activeTxtPath -ErrorAction SilentlyContinue).Trim()
-        # strip BOM if any
-        $prevValue = $prevValue -replace '^\xEF\xBB\xBF'
-        if ($validNames -contains $prevValue) {
-            $projectName = $prevValue
-            $isValid = $true
-        }
+    $gitMarker = Join-Path $cursor.FullName ".git"
+    if (Test-Path -LiteralPath $gitMarker -PathType Container) {
+        $candidate = $cursor.Name
+        if (-not (Test-ProjectId $candidate)) { Write-Error "Nom de depot invalide."; exit 1 }
+        Write-Output $candidate
+        exit 0
     }
-    
-    # Fallback ultime si toujours invalide
-    if (-not $isValid) {
-        $projectName = "devcore"
+    if (Test-Path -LiteralPath $gitMarker -PathType Leaf) {
+        Write-Error "Worktree sans manifeste .devcore/project.json."
+        exit 1
     }
-
-    Set-Content -Path "$runtimeDir\active_project.txt" -Value $projectName -Encoding UTF8 -ErrorAction SilentlyContinue
-
-    # Retourner uniquement le nom canonique
-    Write-Output $projectName
-} catch {
-    # Par sécurité, utiliser 'devcore' en cas d'erreur inattendue
-    Write-Output "devcore"
+    $cursor = $cursor.Parent
 }
+
+Write-Error "Projet introuvable : fournir -Project ou .devcore/project.json."
+exit 1

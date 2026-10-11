@@ -1,49 +1,43 @@
-# task_step_done.ps1 -- DEV_CORE v9.0 -- Marquer une step individuelle
-# Usage : dc step done [N]  ou  dc sd [N]
-# Si N=0 ou absent, marque la prochaine step non-faite
-param([int]$StepNumber = 0)
+# Marque une étape dans le projet donné, via le service transactionnel.
+param(
+    [int]$StepNumber = 0,
+    [Parameter(Mandatory=$true)]
+    [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$')]
+    [ValidateNotNullOrEmpty()]
+    [string]$Project,
+    [string]$TaskId,
+    [int]$ExpectedVersion
+)
 
-$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path (Join-Path $env:DEVCORE_PLATFORM_ROOT "Scripts\platform_version.ps1"))) {
+$ErrorActionPreference = "Stop"
+if ($StepNumber -lt 0) { throw "StepNumber doit être positif ou nul." }
+
+$platformRoot = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path -LiteralPath (Join-Path $env:DEVCORE_PLATFORM_ROOT "Scripts\platform_version.ps1"))) {
     $env:DEVCORE_PLATFORM_ROOT
-} elseif (Test-Path (Join-Path $PSScriptRoot "platform_version.ps1")) {
-    Split-Path -Parent $PSScriptRoot
-} elseif (Test-Path (Join-Path $PSScriptRoot "Scripts\platform_version.ps1")) {
-    $PSScriptRoot
-} elseif (Test-Path (Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE\Scripts\platform_version.ps1")) {
-    Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE"
 } else {
     Split-Path -Parent $PSScriptRoot
 }
-if ($DEV_CORE -match '[/\\]Scripts[/\\]?$') {
-    $DEV_CORE = Split-Path -Parent $DEV_CORE
+if ([string]::IsNullOrWhiteSpace($Project)) { throw "Projet requis." }
+
+if (-not $env:PYTHONPATH -or $env:PYTHONPATH -notlike "*$platformRoot*") {
+    $env:PYTHONPATH = if ($env:PYTHONPATH) { "$platformRoot;$env:PYTHONPATH" } else { $platformRoot }
 }
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { (Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE_DATA") }
-$tFile         = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
+. (Join-Path $PSScriptRoot "platform_version.ps1")
+$pythonExe = Get-DevCorePython
+$stepArgs = @("--project", $Project, "--json")
+if ($TaskId) { $stepArgs += $TaskId }
+if ($StepNumber -gt 0) { $stepArgs += @("--step-number", [string]$StepNumber) }
+if ($PSBoundParameters.ContainsKey("ExpectedVersion")) { $stepArgs += @("--expected-version", [string]$ExpectedVersion) }
 
-if (-not (Test-Path $tFile)) { Write-Host "  Aucun tasks.json." -ForegroundColor Red; exit 1 }
-
-$resultJson = & "$PSScriptRoot\task_service.ps1" -Action Step -StepNumber $StepNumber -Json
-$result = if ($resultJson -and (($resultJson -join "`n").Trim()) -ne "null") {
-    ($resultJson | Out-String) | ConvertFrom-Json
-} else {
-    $null
+$resultJson = & $pythonExe -m devcore_engine.cli task step @stepArgs
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+$result = ($resultJson | Out-String) | ConvertFrom-Json
+if (-not $result.task) {
+    Write-Host "  Aucune tâche active ou en attente pour $Project." -ForegroundColor Yellow
+    return
 }
 
-if (-not $result) { Write-Host "  Aucune tache active." -ForegroundColor Yellow; exit 0 }
-
-Write-Host "  [OK] $($result.message)" -ForegroundColor Green
-Write-Host "  Progress : $($result.task.steps_done)/$($result.task.steps_total)" -ForegroundColor Cyan
-
-# Auto-backup avant ecriture
-$bkpDir = "$DEV_CORE_DATA\Backups\auto"
-if (-not (Test-Path $bkpDir)) { New-Item -ItemType Directory -Path $bkpDir -Force | Out-Null }
-Copy-Item $tFile "$bkpDir\tasks_$(Get-Date -f 'yyyyMMdd_HHmmss').json" -Force -ErrorAction SilentlyContinue
-
-# Auto-complete si toutes les steps sont faites
+Write-Host "  [OK] $($result.task.id) : $($result.task.steps_done)/$($result.task.steps_total) étapes" -ForegroundColor Green
 if ($result.complete) {
-    Write-Host "  [AUTO] Toutes les steps terminees ! Validation automatique..." -ForegroundColor Cyan
-    & "$DEV_CORE\Scripts\task_done.ps1" -Force
+    Write-Host "  [OK] Tâche terminée dans SQLite." -ForegroundColor Cyan
 }
-
-
-Start-Process powershell -ArgumentList "-NoProfile -NonInteractive -ExecutionPolicy Bypass -File `"$PSScriptRoot\gen_dashboard.ps1`"" -WindowStyle Hidden

@@ -71,13 +71,6 @@ def main():
     except Exception as e:
         print(f"[profile_performance] Could not benchmark gen_dashboard: {e}")
 
-    # 4. Profile Log Rotation Engine
-    try:
-        from rotate_logs_and_backups import main as rotate_main
-        results.append(profile_function("Log_Backup_Rotation", rotate_main, iterations=3))
-    except Exception as e:
-        print(f"[profile_performance] Could not benchmark rotate_logs_and_backups: {e}")
-
     report = {
         "timestamp": datetime.now().isoformat(),
         "python_version": sys.version.split()[0],

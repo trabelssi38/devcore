@@ -1,5 +1,13 @@
 # task_git_scanner.ps1 -- DEV_CORE v9.0 Auto layer
 # Scan git commits pour detecter les tags [T-XX] manquants
+param(
+    [Parameter(Mandatory=$true)]
+    [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$')]
+    [string]$Project,
+    [Parameter(Mandatory=$true)]
+    [ValidateNotNullOrEmpty()]
+    [string]$RepoPath
+)
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path (Join-Path $env:DEVCORE_PLATFORM_ROOT "Scripts\platform_version.ps1"))) {
@@ -16,12 +24,23 @@ $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path (Join-Path $env:DEVCO
 if ($DEV_CORE -match '[/\\]Scripts[/\\]?$') {
     $DEV_CORE = Split-Path -Parent $DEV_CORE
 }
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) "DEV_CORE_DATA") }
+$DEV_CORE_DATA = $env:DEVCORE_DATA_ROOT
+if ([string]::IsNullOrWhiteSpace($DEV_CORE_DATA) -or -not [IO.Path]::IsPathRooted($DEV_CORE_DATA)) {
+    throw "An absolute DEVCORE_DATA_ROOT is required"
+}
 $DEV_CORE_LOCAL = if ($env:DEVCORE_LOCAL_ROOT) { $env:DEVCORE_LOCAL_ROOT } elseif ($env:LOCALAPPDATA) { "$env:LOCALAPPDATA\DEV_CORE_LOCAL" } else { $DEV_CORE_DATA }
 $TODAY         = Get-Date -Format "yyyy-MM-dd"
-$LOG           = "$DEV_CORE_DATA\Logs\scripts\task_git_scanner_$TODAY.log"
-$projName      = & "$PSScriptRoot\..\Get-ActiveProject.ps1"
-$QUEUE         = "$DEV_CORE_DATA\Memory\$projName\task_git_queue.jsonl"
+$LOG_DIR       = Join-Path $DEV_CORE_DATA "Logs\scripts\$Project"
+$LOG           = Join-Path $LOG_DIR "task_git_scanner_$TODAY.log"
+$PROJECT_DATA  = Join-Path $DEV_CORE_DATA "Memory\$Project"
+$QUEUE         = Join-Path $PROJECT_DATA "task_git_queue.jsonl"
+$resolvedRepo  = Resolve-Path -LiteralPath $RepoPath -ErrorAction Stop
+$repoRootRes   = git -C $resolvedRepo.Path rev-parse --show-toplevel 2>&1
+if ($LASTEXITCODE -ne 0 -or -not $repoRootRes -or $repoRootRes -match "fatal:") {
+    throw "-RepoPath must identify an existing Git working tree"
+}
+$gitRoot = (Resolve-Path -LiteralPath $repoRootRes.Trim()).Path
+New-Item -ItemType Directory -Force -Path $LOG_DIR, $PROJECT_DATA | Out-Null
 
 function Log { param($msg,$color="Gray")
     $l = "[$(Get-Date -f HH:mm:ss)] $msg"
@@ -44,10 +63,7 @@ function Set-TaskProperty {
 
 Log "task_git_scanner -- analyse commits" "Cyan"
 
-# Résoudre le dépôt du projet actif
-$gitRootRes = git rev-parse --show-toplevel 2>&1
-$gitRoot = if ($LASTEXITCODE -eq 0 -and $gitRootRes -and $gitRootRes -notmatch "fatal:") { $gitRootRes.Trim() } else { $null }
-if ($gitRoot) { Push-Location $gitRoot } else { Push-Location (Split-Path -Parent $DEV_CORE) }
+Push-Location $gitRoot
 try {
     # 1. Lire les commits des 30 derniers jours
     $commits = git log --since="30 days ago" --format="%H|%s|%ai" 2>&1
@@ -83,7 +99,7 @@ try {
     }
 
     # 3. Lire tasks.json en UTF8 de manière robuste
-    $tFile = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\..\Get-ActiveProject.ps1")\tasks.json"
+    $tFile = Join-Path $PROJECT_DATA "tasks.json"
     if (-not (Test-Path $tFile)) {
         Log "tasks.json absent - creation" "Yellow"
         @{

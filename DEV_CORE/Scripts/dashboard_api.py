@@ -9,9 +9,19 @@ import sys
 import hmac
 import hashlib
 import secrets
+import sqlite3
+from contextlib import closing
 from datetime import datetime
 import time
 import random
+
+sys.path.append(str(Path(__file__).resolve().parent))
+from dashboard.snapshots import resolve_snapshot, read_snapshot_artifact, pin_snapshot
+from dashboard.refresh_coordinator import RefreshCoordinator
+from dashboard.input_watcher import InputWatcher
+from dashboard.error_reporter import SseErrorReporter
+from dashboard.stream_admission import AdmittedStreamingResponse, StreamCapacityExceeded, StreamSlots
+from dashboard.sse_cursor import parse_snapshot_cursor, event_frame
 
 PORT = 20129
 PLATFORM_ROOT = os.getenv("DEVCORE_PLATFORM_ROOT", str(Path(__file__).resolve().parent.parent))
@@ -21,13 +31,19 @@ DASHBOARD_COMMAND_TIMEOUT_SEC = 90.0
 PLUGIN_ID_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]*$")
 SAFE_ID_PATTERN = re.compile(r"^[a-zA-Z0-9][a-zA-Z0-9._-]*$")
 PUBLIC_BIND_HOSTS = {"0.0.0.0", "::", ""}
-PUBLIC_PATHS = {"/", "/index.html", "/index_terminal.html", "/favicon.ico", "/api/status", "/api/dashboard", "/api/dashboard/stream", "/api/dashboard/tasks", "/api/dashboard/events", "/api/dashboard/tokens", "/api/memory/search"}
+PUBLIC_PATHS = {"/", "/index.html", "/index_terminal.html", "/favicon.ico", "/api/status", "/api/dashboard", "/api/dashboard/stream", "/api/dashboard/events", "/api/dashboard/tokens", "/api/memory/search"}
 TOKEN_BYTES = 32
 CSRF_BYTES = 32
 CSRF_HEADER = "X-CSRF-Token"
 DEFAULT_ALLOWED_ORIGINS = ["http://127.0.0.1:20129", "http://localhost:20129"]
 DEFAULT_MAX_REQUEST_BODY_BYTES = 1024 * 1024
 DEFAULT_DASHBOARD_RESOURCE_PAGE_SIZE = 20
+DASHBOARD_AUTH_PROFILE = os.environ.get("DEVCORE_DASHBOARD_AUTH_PROFILE", "legacy").strip()
+if DASHBOARD_AUTH_PROFILE not in {"legacy", "individual"}:
+    raise ValueError("Unknown DEVCORE_DASHBOARD_AUTH_PROFILE")
+HTTP_CONTEXT_MAX_BYTES = int(os.environ.get("DEVCORE_HTTP_CONTEXT_MAX_BYTES", "12000"))
+if not 256 <= HTTP_CONTEXT_MAX_BYTES <= 65536:
+    raise ValueError("DEVCORE_HTTP_CONTEXT_MAX_BYTES must be 256..65536")
 MAX_DASHBOARD_RESOURCE_PAGE_SIZE = 100
 CACHE_CONTROL_HEADER = "private, max-age=5, must-revalidate"
 GZIP_MIN_RESPONSE_BYTES = 1024
@@ -436,6 +452,10 @@ def validate_api_token(token):
 
 
 def requires_authentication(path):
+    if os.getenv("DEVCORE_REQUIRE_AUTH_ALL") == "1":
+        return path not in {"/", "/index.html", "/index_terminal.html", "/favicon.ico"}
+    if path == "/api/dashboard/tasks":
+        return True
     if path.startswith("/api/dashboard"):
         return False
     return path not in PUBLIC_PATHS
@@ -461,6 +481,8 @@ def is_csrf_authorized(headers):
 
 
 def inject_auth_fetch(html_content):
+    if DASHBOARD_AUTH_PROFILE == "individual" or os.getenv("DEVCORE_SUPPRESS_HTML_TOKEN") == "1":
+        return html_content
     token = ensure_api_token()
     csrf_token = ensure_csrf_token()
     if not token:
@@ -563,6 +585,10 @@ def get_dashboard_read_model_path():
 
 
 def get_cached_dashboard_payload_path():
+    """Unreserved diagnostic/setup path; use pinned reads for production contents."""
+    snapshot = resolve_snapshot(get_local_path("Dashboard"))
+    if snapshot is not None:
+        return snapshot[0] / "dashboard_payload.json"
     return get_local_path("Dashboard", "dashboard_payload.json")
 
 
@@ -581,19 +607,31 @@ def build_fallback_dashboard_payload():
         "task_details": {},
         "token_metrics": {},
         "read_model": load_dashboard_read_model(),
-        "cache": {"hit": False},
+        "cache": {"hit": False, "snapshot_cursor": None},
     }
 
 
 def read_cached_dashboard_payload():
-    cache_path = get_cached_dashboard_payload_path()
-    if not cache_path.exists():
-        return None
-    payload = read_json_with_retry(cache_path)
+    snapshot_cursor = None
+    with pin_snapshot(get_local_path("Dashboard")) as snapshot:
+        if snapshot is not None:
+            cache_path = snapshot.directory / "dashboard_payload.json"
+            snapshot_cursor = "snapshot:" + snapshot.manifest["generation"]
+            payload = json.loads(read_snapshot_artifact(snapshot, "dashboard_payload.json"))
+            modified_at = os.fstat(snapshot.streams["dashboard_payload.json"].fileno()).st_mtime
+        else:
+            cache_path = get_local_path("Dashboard", "dashboard_payload.json")
+            try:
+                with cache_path.open("r", encoding="utf-8") as stream:
+                    payload = json.load(stream)
+                    modified_at = os.fstat(stream.fileno()).st_mtime
+            except FileNotFoundError:
+                return None
     if payload.get("schema_version") != API_SCHEMA_VERSION:
         raise RuntimeError(f"Unsupported dashboard schema: {payload.get('schema_version')}")
     payload["read_model"] = load_dashboard_read_model()
-    payload["cache"] = {"hit": True, "path": str(cache_path)}
+    payload["cache"] = {"hit": True, "path": str(cache_path), "modified_at": modified_at,
+                        "snapshot_cursor": snapshot_cursor}
     return payload
 
 
@@ -661,15 +699,13 @@ def build_dashboard_resource(resource_name, page=1, page_size=DEFAULT_DASHBOARD_
 
 
 def build_dashboard_payload():
-    cache_path = get_cached_dashboard_payload_path()
-    # If cache exists and is fresh (< 5 seconds), use cached payload, otherwise regenerate on the fly
-    if cache_path.exists():
-        age = datetime.now().timestamp() - cache_path.stat().st_mtime
-        if age < 5:
-            cached = read_cached_dashboard_payload()
-            if cached:
-                return cached
-    
+    cached = read_cached_dashboard_payload()
+    if cached:
+        # Timestamp and contents were read from the same open file descriptor.
+        age = datetime.now().timestamp() - cached["cache"]["modified_at"]
+        if 0 <= age < 5:
+            return cached
+
     try:
         refresh_dashboard_payload_cache()
         cached = read_cached_dashboard_payload()
@@ -705,10 +741,8 @@ def refresh_dashboard_payload_cache():
     payload = json.loads(payload_text)
     if payload.get("schema_version") != API_SCHEMA_VERSION:
         raise RuntimeError(f"Unsupported dashboard schema: {payload.get('schema_version')}")
+    # The locked generator owns the cache and its hash. Enrichment is response-only.
     payload["read_model"] = load_dashboard_read_model()
-    cache_path = get_cached_dashboard_payload_path()
-    cache_path.parent.mkdir(parents=True, exist_ok=True)
-    write_json_with_retry(cache_path, payload)
     return payload
 
 # Standalone functions extracted from DashboardAPIHandler
@@ -741,147 +775,46 @@ def save_settings(data):
     active_client = data.get("active_client")
     write_active_client(active_client)
 
-def complete_task(project, task_id):
-    tasks_file = get_project_tasks_file(project)
-    if not tasks_file.exists():
-        return False, f"Project board not found: {tasks_file}"
+from devcore_engine.services.task_mutations import (
+    TaskMutationConflict,
+    complete_task_usecase,
+    transition_task_usecase,
+    delete_task_usecase,
+)
 
-    try:
-        print(f"[DashboardAPI] Completing task {task_id} on project {project}...")
-        board = read_json_with_retry(tasks_file)
 
-        task_found = False
-        is_active = False
-        target_task_id = task_id
-        for task in board.get("tasks", []):
-            if str(task.get("id")).lower() == str(task_id).lower():
-                task_found = True
-                target_task_id = task.get("id")
-                is_active = (task.get("status") in ["active", "in_progress"] or str(board.get("current_task")).lower() == str(task_id).lower())
-                task["status"] = "done"
-                task["steps_done"] = task.get("steps_total", 1)
-                task["completed_at"] = datetime.now().isoformat()
-                if str(board.get("current_task")).lower() == str(task_id).lower():
-                    board["current_task"] = None
-                break
+def complete_task(project, task_id, expected_version=None, *, context=None):
+    return complete_task_usecase(
+        project,
+        task_id,
+        expected_version=expected_version,
+        context=context,
+        db_path=get_local_path("devcore.db"),
+    )
 
-        if not task_found:
-            return False, f"Task {task_id} not found in project {project}"
 
-        write_json_with_retry(tasks_file, board)
-        print(f"[DashboardAPI] Successfully saved completed task status in tasks.json.")
+def transition_individual_task(project, task_id, expected_version, *, operation, context):
+    return transition_task_usecase(
+        project,
+        task_id,
+        operation,
+        expected_version=expected_version,
+        context=context,
+        db_path=get_local_path("devcore.db"),
+    )
 
-        # Update SQLite database if present
-        db_path = get_local_path("devcore.db")
-        if db_path.exists():
-            try:
-                import sqlite3
-                conn = sqlite3.connect(str(db_path))
-                cur = conn.cursor()
-                cols = [col[1] for col in cur.execute("PRAGMA table_info(tasks)").fetchall()]
-                proj_col = "project_id" if "project_id" in cols else "project"
-                conn.execute(
-                    f"UPDATE tasks SET status = 'done', steps_done = steps_total, completed_at = datetime('now'), updated_at = datetime('now') WHERE LOWER({proj_col}) = LOWER(?) AND LOWER(id) = LOWER(?)",
-                    (project, task_id)
-                )
-                conn.commit()
-                conn.close()
-            except Exception as dbe:
-                print(f"[DashboardAPI] Warning: Failed to update task completion in SQLite: {dbe}")
 
-        creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) if os.name == "nt" else 0
-
-        if is_active:
-            task_done_script = get_platform_path("Scripts", "task_done.ps1")
-            ps_exe = shutil.which("powershell.exe") or shutil.which("powershell") or shutil.which("pwsh") or r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
-            cmd = [ps_exe, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", 
-                   str(task_done_script), "-Force"]
-            print(f"[DashboardAPI] Running task_done.ps1 for active task completion (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
-            try:
-                subprocess.run(cmd, capture_output=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC, creationflags=creationflags)
-            except Exception as se:
-                print(f"[DashboardAPI] Warning running task_done.ps1: {se}")
-
-        # Always run gen_dashboard.py to guarantee the dashboard payload is regenerated
-        dashboard_script = get_platform_path("Scripts", "gen_dashboard.py")
-        cmd = [sys.executable, str(dashboard_script)]
-        print(f"[DashboardAPI] Running gen_dashboard.py for dashboard refresh (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
-        subprocess.run(cmd, capture_output=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC, creationflags=creationflags)
-        return True, f"Task {target_task_id} completed successfully"
-
-    except subprocess.TimeoutExpired as te:
-        print(f"[DashboardAPI] Timeout expired executing completion script: {te}")
-        return True, f"Task {task_id} completed but post-completion command timed out"
-    except Exception as e:
-        print(f"[DashboardAPI] Error completing task: {e}")
-        return False, str(e)
-
-def delete_task(project, task_id):
-    try:
-        tasks_file = get_project_tasks_file(project)
-        deleted_from_json = False
-        target_task_id = task_id
-
-        if tasks_file.exists():
-            try:
-                print(f"[DashboardAPI] Deleting task {task_id} on project {project} in tasks.json...")
-                board = read_json_with_retry(tasks_file)
-
-                matching_tasks = [t for t in board.get("tasks", []) if str(t.get("id")).lower() == str(task_id).lower()]
-                if matching_tasks:
-                    target_task_id = matching_tasks[0].get("id", task_id)
-                    board["tasks"] = [t for t in board.get("tasks", []) if str(t.get("id")).lower() != str(task_id).lower()]
-
-                    if str(board.get("current_task")).lower() == str(task_id).lower():
-                        board["current_task"] = None
-
-                    write_json_with_retry(tasks_file, board)
-                    print(f"[DashboardAPI] Successfully saved deleted task in tasks.json.")
-                    deleted_from_json = True
-            except Exception as je:
-                print(f"[DashboardAPI] Warning: Failed to delete from tasks.json: {je}")
-
-        deleted_from_db = False
-        db_path = get_local_path("devcore.db")
-        if db_path.exists():
-            try:
-                import sqlite3
-                conn = sqlite3.connect(str(db_path))
-                cur = conn.cursor()
-                cols = [col[1] for col in cur.execute("PRAGMA table_info(tasks)").fetchall()]
-                proj_col = "project_id" if "project_id" in cols else "project"
-                
-                # Check if task exists in SQLite
-                cur.execute(f"SELECT COUNT(*) FROM tasks WHERE LOWER({proj_col}) = LOWER(?) AND LOWER(id) = LOWER(?)", (project, task_id))
-                count = cur.fetchone()[0]
-                if count > 0:
-                    conn.execute(f"DELETE FROM tasks WHERE LOWER({proj_col}) = LOWER(?) AND LOWER(id) = LOWER(?)", (project, task_id))
-                    conn.commit()
-                    print(f"[DashboardAPI] Successfully deleted task {target_task_id} from SQLite database.")
-                    deleted_from_db = True
-                conn.close()
-            except Exception as dbe:
-                print(f"[DashboardAPI] Warning: Failed to delete task from SQLite: {dbe}")
-
-        if not deleted_from_json and not deleted_from_db:
-            return False, f"Task {task_id} not found in project {project} tasks.json or SQLite database"
-
-        dashboard_script = get_platform_path("Scripts", "gen_dashboard.py")
-        cmd = [sys.executable, str(dashboard_script)]
-        print(f"[DashboardAPI] Running gen_dashboard.py for dashboard refresh (timeout={DASHBOARD_COMMAND_TIMEOUT_SEC:.0f}s)...")
-        creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) if os.name == "nt" else 0
-        subprocess.run(cmd, capture_output=True, timeout=DASHBOARD_COMMAND_TIMEOUT_SEC, creationflags=creationflags)
-        return True, f"Task {target_task_id} deleted successfully"
-
-    except subprocess.TimeoutExpired as te:
-        print(f"[DashboardAPI] Timeout expired executing delete refresh script: {te}")
-        return True, f"Task {task_id} deleted but dashboard refresh timed out"
-    except Exception as e:
-        print(f"[DashboardAPI] Error deleting task: {e}")
-        return False, str(e)
+def delete_task(project, task_id, expected_version=None, *, context=None):
+    return delete_task_usecase(
+        project,
+        task_id,
+        expected_version=expected_version,
+        context=context,
+        db_path=get_local_path("devcore.db"),
+    )
 
 # FastAPI imports and Application Setup
-from fastapi import FastAPI, Request, HTTPException, Response
+from fastapi import FastAPI, Request, HTTPException, Response, Query
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
@@ -904,7 +837,122 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def individual_project_access(request: Request, call_next):
+    """Opt-in qualification profile: scoped tasks and registered project context.
+
+    Global HTML/projections/SSE/search remain closed until their ACL adapters
+    and browser sessions are qualified. Legacy mode is preserved for cutover.
+    """
+    if DASHBOARD_AUTH_PROFILE != "individual":
+        return await call_next(request)
+    path, method = request.url.path, request.method
+    # Let the CORS middleware answer preflights before the project-route
+    # allowlist. The actual mutation still passes this guard.
+    if method == "OPTIONS":
+        return await call_next(request)
+    if path == "/api/status" and method == "GET":
+        return await call_next(request)
+    if path == "/api/auth/session" and method in {"GET", "POST", "DELETE"}:
+        return await call_next(request)
+    if path in {"/project", "/project.js"} and method == "GET":
+        return await call_next(request)
+    supported = {("GET", "/api/dashboard/tasks"), ("GET", "/api/project/context"), ("GET", "/api/project/task-audit"),
+                 ("POST", "/api/done"), ("DELETE", "/api/delete"),
+                 ("POST", "/api/pause"), ("POST", "/api/resume")}
+    if (method, path) not in supported:
+        return JSONResponse(status_code=403, content={"detail": {"code": "individual_route_unavailable", "message": "Route not qualified for individual access"}})
+    authorization = request.headers.get("Authorization", "")
+    browser_secret = request.cookies.get("devcore_session") if not authorization else None
+    if not authorization.startswith("Bearer ") and not browser_secret:
+        return JSONResponse(status_code=401, content={"detail": {"code": "individual_credential_required", "message": "Individual credential required"}}, headers={"WWW-Authenticate": "Bearer"})
+    # Browser task access requires the scoped cookie and session CSRF checks.
+    if not browser_secret and request.headers.get("Origin"):
+        return JSONResponse(status_code=403, content={"detail": {"code": "browser_session_unavailable", "message": "Browser sessions not qualified"}})
+    try:
+        if method == "GET":
+            project = validate_safe_id(request.query_params.get("project"), "project")
+        else:
+            if is_request_too_large(request.headers):
+                raise RequestTooLarge()
+            body = await request.body()
+            if len(body) > get_max_request_body_bytes():
+                raise RequestTooLarge()
+            data = json.loads(body)
+            if not isinstance(data, dict):
+                raise ValueError("JSON object required")
+            project = validate_safe_id(data.get("project"), "project")
+            version = data.get("expected_version")
+            if type(version) is not int or version < 1:
+                raise ValueError("Positive expected_version required")
+    except RequestTooLarge:
+        return JSONResponse(status_code=413, content={"detail": "Request body too large"})
+    except (ValueError, TypeError, UnicodeError):
+        return JSONResponse(status_code=400, content={"detail": {"code": "invalid_arguments", "message": "Explicit project and valid task arguments required"}})
+    engine_source = str(Path(__file__).resolve().parent.parent)
+    if engine_source not in sys.path:
+        sys.path.insert(0, engine_source)
+    from devcore_engine.security.identity import (
+        SqliteIdentityProvider, AuthenticationRequired, ProjectAccessDenied,
+        IdentityUnavailable, READ, WRITE, CONTEXT_READ, AUDIT_READ,
+    )
+    identity_path = os.environ.get("DEVCORE_IDENTITY_STORE", str(get_local_path("Security", "individual_identity.db")))
+    action = ({"/api/project/context": CONTEXT_READ, "/api/project/task-audit": AUDIT_READ}.get(path, READ)
+              if method == "GET" else WRITE)
+    try:
+        provider = SqliteIdentityProvider(identity_path)
+        if browser_secret:
+            from devcore_engine.security.browser_sessions import authorize_session
+            origin = trusted_session_origin(request, require_origin=method != "GET")
+            session = await asyncio.to_thread(
+                authorize_session, identity_path, browser_secret, project,
+                action, origin,
+                csrf=request.headers.get(CSRF_HEADER), mutate=method != "GET",
+            )
+            principal = session.principal
+            request.state.browser_session = session
+        else:
+            principal = await asyncio.to_thread(provider.authorize, authorization, project, action)
+    except AuthenticationRequired:
+        return JSONResponse(status_code=401, content={"detail": {"code": "invalid_individual_credential", "message": "Invalid or expired individual credential"}}, headers={"WWW-Authenticate": "Bearer"})
+    except ProjectAccessDenied:
+        return JSONResponse(status_code=403, content={"detail": {"code": "project_access_denied", "message": "Project action denied"}})
+    except HTTPException as exc:
+        return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+    except (IdentityUnavailable, ValueError, sqlite3.Error):
+        return JSONResponse(status_code=503, content={"detail": {"code": "identity_unavailable", "message": "Individual identity store unavailable"}})
+    request.state.principal = principal
+    response = await call_next(request)
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+class IndividualBodyLimitMiddleware:
+    """Bound received bytes before Starlette collects or parses the JSON body."""
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if DASHBOARD_AUTH_PROFILE != "individual" or scope["type"] != "http" or scope["method"] not in {"POST", "DELETE"}:
+            return await self.app(scope, receive, send)
+        limit, received = get_max_request_body_bytes(), 0
+        async def bounded_receive():
+            nonlocal received
+            message = await receive()
+            if message["type"] == "http.request":
+                received += len(message.get("body", b""))
+                if received > limit:
+                    raise RequestTooLarge()
+            return message
+        return await self.app(scope, bounded_receive, send)
+
+
+app.add_middleware(IndividualBodyLimitMiddleware)
+
 def check_auth(request: Request) -> bool:
+    if DASHBOARD_AUTH_PROFILE == "individual":
+        return getattr(request.state, "principal", None) is not None
     path = request.url.path
     if not requires_authentication(path):
         return True
@@ -916,6 +964,10 @@ def check_auth(request: Request) -> bool:
     return validate_api_token(token)
 
 def check_csrf(request: Request, method: str) -> bool:
+    if DASHBOARD_AUTH_PROFILE == "individual":
+        return getattr(request.state, "principal", None) is not None and (
+            getattr(request.state, "browser_session", None) is not None or not request.headers.get("Origin")
+        )
     path = request.url.path
     if not requires_csrf(method, path):
         return True
@@ -925,40 +977,152 @@ def check_csrf(request: Request, method: str) -> bool:
         return False
     return validate_csrf_token(csrf_header)
 
-def get_last_modified_timestamp():
-    # Watch tasks.json, devcore.db, and events.jsonl
-    projName = "devcore" # Default project
+
+def trusted_session_origin(request, *, require_origin=False):
+    origin = f"{request.url.scheme}://{request.url.netloc}"
+    supplied = request.headers.get("Origin")
+    if (require_origin and not supplied) or (supplied and supplied != origin) or not is_origin_allowed(origin):
+        raise HTTPException(403, detail="Invalid session origin")
+    if request.url.scheme != "https" and request.url.hostname not in {"localhost", "127.0.0.1", "::1"}:
+        raise HTTPException(403, detail="Session requires HTTPS or loopback")
+    return origin
+
+
+@app.api_route("/api/auth/session", methods=["GET", "POST", "DELETE"])
+async def browser_session_route(request: Request):
+    if DASHBOARD_AUTH_PROFILE != "individual":
+        raise HTTPException(403, detail="Individual profile required")
+    engine_source = str(Path(__file__).resolve().parent.parent)
+    if engine_source not in sys.path:
+        sys.path.insert(0, engine_source)
+    from devcore_engine.security.identity import AuthenticationRequired, ProjectAccessDenied, IdentityUnavailable
+    from devcore_engine.security.browser_sessions import (
+        COOKIE, create_session, csrf_for_session, session_info, authorize_session, revoke_session,
+    )
+    origin = trusted_session_origin(request, require_origin=request.method != "GET")
+    identity_path = os.environ.get("DEVCORE_IDENTITY_STORE", str(get_local_path("Security", "individual_identity.db")))
+    secret = request.cookies.get(COOKIE)
     try:
-        proj_script = get_platform_path("Scripts", "Get-ActiveProject.ps1")
-        if proj_script.exists():
-            ps_exe = shutil.which("powershell.exe") or shutil.which("powershell") or shutil.which("pwsh") or r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
-            creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) if os.name == "nt" else 0
-            res = subprocess.run([ps_exe, "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(proj_script)], capture_output=True, text=True, timeout=2, creationflags=creationflags)
-            if res.returncode == 0 and res.stdout.strip():
-                projName = res.stdout.strip()
-    except Exception:
-        pass
-    
-    files_to_watch = [
-        get_data_path("Memory", projName, "tasks.json"),
-        get_local_path("devcore.db"),
-        get_local_path("Bus", "events.jsonl")
-    ]
-    
-    mtimes = []
-    for f in files_to_watch:
-        if f.exists():
-            try:
-                mtimes.append(f.stat().st_mtime)
-            except Exception:
-                pass
-    return max(mtimes) if mtimes else 0.0
+        if request.method == "POST":
+            if is_request_too_large(request.headers):
+                raise RequestTooLarge()
+            data = json.loads(await request.body())
+            if not isinstance(data, dict):
+                raise ValueError("JSON object required")
+            project = validate_safe_id(data.get("project"), "project")
+            authorization = request.headers.get("Authorization")
+            if authorization:
+                if "user_id" in data or "password" in data:
+                    raise ValueError("Mixed authentication methods")
+                session, secret = await asyncio.to_thread(
+                    create_session, identity_path, authorization, project, origin, previous=secret,
+                )
+            else:
+                from devcore_engine.security.passwords import create_password_session, LoginBusy
+                user_id = validate_safe_id(data.get("user_id"), "user")
+                try:
+                    session, secret = await asyncio.to_thread(
+                        create_password_session, identity_path, user_id, data.get("password"), project, origin, previous=secret,
+                    )
+                except LoginBusy:
+                    raise HTTPException(429, detail="Login capacity reached", headers={"Retry-After": "1"})
+        else:
+            session = await asyncio.to_thread(session_info, identity_path, secret, origin)
+            if request.method == "DELETE":
+                await asyncio.to_thread(authorize_session, identity_path, secret, session.project_id, "task.read", origin,
+                    csrf=request.headers.get(CSRF_HEADER), mutate=True)
+                await asyncio.to_thread(revoke_session, identity_path, secret)
+        content = {"user_id": session.principal.user_id, "project": session.project_id,
+                   "expires_at": session.expires_at, "csrf_token": csrf_for_session(secret),
+                   "actions": list(session.actions)}
+        response = JSONResponse(content={"status": "logged_out"} if request.method == "DELETE" else content,
+                                headers={"Cache-Control": "no-store"})
+        if request.method == "POST":
+            response.set_cookie(COOKIE, secret, max_age=max(0, int(session.expires_at - time.time())),
+                                httponly=True, secure=request.url.scheme == "https", samesite="strict", path="/")
+        elif request.method == "DELETE":
+            response.delete_cookie(COOKIE, path="/", httponly=True, secure=request.url.scheme == "https", samesite="strict")
+        return response
+    except RequestTooLarge:
+        raise HTTPException(413, detail="Request body too large")
+    except AuthenticationRequired:
+        raise HTTPException(401, detail="Invalid credentials or session")
+    except ProjectAccessDenied:
+        raise HTTPException(403, detail="Session project action denied")
+    except (IdentityUnavailable, sqlite3.Error):
+        raise HTTPException(503, detail="Browser session store unavailable")
+    except (ValueError, TypeError, UnicodeError):
+        raise HTTPException(400, detail="Invalid session arguments")
+
+
+@app.get("/project")
+@app.get("/project.js")
+def individual_project_page(request: Request):
+    """Public shell only; project data is fetched through session-checked APIs."""
+    if DASHBOARD_AUTH_PROFILE != "individual":
+        raise HTTPException(403, detail="Individual profile required")
+    from fastapi.responses import Response
+    filename = "project_tasks.js" if request.url.path == "/project.js" else "project.html"
+    path = Path(__file__).resolve().parent.parent / "Dashboard" / filename
+    return Response(path.read_text(encoding="utf-8"),
+                    media_type="text/javascript" if filename.endswith(".js") else "text/html",
+                    headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff",
+                             "Referrer-Policy": "no-referrer",
+                             "Content-Security-Policy": "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"})
+
+def get_dashboard_input_signature():
+    """Metadata-only probe of local SQL/WAL and the historical event file.
+
+    No active-project lookup, subprocess, global preference or JSON task source.
+    Missing/replaced/truncated files change the signature; other I/O fails.
+    """
+    import stat
+    signature = []
+    for path in (get_local_path("devcore.db"), get_local_path("devcore.db-wal"),
+                 get_local_path("Bus", "events.jsonl")):
+        try:
+            info = path.stat()
+        except FileNotFoundError:
+            signature.append((str(path), None))
+            continue
+        if not stat.S_ISREG(info.st_mode):
+            raise RuntimeError("Dashboard watched input is not a regular file")
+        signature.append((str(path), info.st_mtime_ns, info.st_size, info.st_ino))
+    return tuple(signature)
+
+
+_sse_inputs = InputWatcher()
+_sse_publications = InputWatcher()
+_sse_refresh = RefreshCoordinator()
+_sse_errors = SseErrorReporter()
+_sse_slots = StreamSlots(limit=32)
+
+
+def get_dashboard_snapshot_cursor():
+    with pin_snapshot(get_local_path("Dashboard")) as snapshot:
+        if snapshot is None:
+            return None
+        return "snapshot:" + snapshot.manifest["generation"]
+
 
 async def event_generator(request: Request):
-    # Emit initial connection event
-    yield "event: message\ndata: Connected\n\n"
-    
-    last_ts = get_last_modified_timestamp()
+    previous = parse_snapshot_cursor(getattr(request, "headers", {}).get("last-event-id"))
+    # Establish the input baseline before reading/announcing the generation.
+    # Changes while the handshake is being consumed must remain observable.
+    last_ts = await _sse_inputs.revision(get_dashboard_input_signature)
+    last_publication_revision, _ = await _sse_publications.snapshot(get_dashboard_snapshot_cursor)
+    current_cursor = await asyncio.to_thread(get_dashboard_snapshot_cursor)
+    needs_snapshot = previous is not None and previous != current_cursor
+    # Do not advance the browser cursor before the resynchronization frame.
+    yield event_frame("message", "Connected", None if needs_snapshot else current_cursor)
+    if needs_snapshot:
+        yield event_frame("dashboard.delta", {
+            "schema_version": 1, "generated_at": datetime.now().isoformat(),
+            "has_changes": True, "changed_keys": ["all"],
+            "snapshot_required": True, "recovery": "reload_snapshot",
+            "cursor": current_cursor, "read_model": {},
+        }, current_cursor)
+
     last_heartbeat = asyncio.get_event_loop().time()
     
     while True:
@@ -968,14 +1132,15 @@ async def event_generator(request: Request):
         await asyncio.sleep(1.0)
         
         try:
-            current_ts = get_last_modified_timestamp()
+            current_ts = await _sse_inputs.revision(get_dashboard_input_signature)
             if current_ts > last_ts:
-                last_ts = current_ts
                 # Regenerate dashboard to refresh server cache
                 try:
-                    refresh_dashboard_payload_cache()
+                    await _sse_refresh.refresh(current_ts, refresh_dashboard_payload_cache)
                 except Exception as e:
-                    print(f"[DashboardAPI-SSE] Error updating cache: {e}")
+                    _sse_errors.report('cache', e)
+                    continue  # Do not announce a failed publication.
+                last_ts = current_ts
                 
                 # Emit delta with has_changes=True to trigger client refresh
                 delta = {
@@ -986,30 +1151,51 @@ async def event_generator(request: Request):
                     "fingerprint": f"ts_{current_ts}",
                     "read_model": {},
                 }
-                yield f"event: dashboard.delta\ndata: {json.dumps(delta)}\n\n"
+                current_cursor = await asyncio.to_thread(get_dashboard_snapshot_cursor)
+                delta["cursor"] = current_cursor
+                yield event_frame("dashboard.delta", delta, current_cursor)
                 last_heartbeat = asyncio.get_event_loop().time()
                 
-            elif asyncio.get_event_loop().time() - last_heartbeat >= DASHBOARD_SSE_HEARTBEAT_SECONDS:
-                yield ": heartbeat\n\n"
-                last_heartbeat = asyncio.get_event_loop().time()
+            else:
+                # Another writer can publish without changing watched inputs.
+                # Notify from the committed generation without regenerating it.
+                publication_revision, published_cursor = await _sse_publications.snapshot(get_dashboard_snapshot_cursor)
+                publication_changed = publication_revision > last_publication_revision
+                last_publication_revision = publication_revision
+                if publication_changed and published_cursor != current_cursor:
+                    current_cursor = published_cursor
+                    yield event_frame("dashboard.delta", {
+                        "schema_version": 1, "generated_at": datetime.now().isoformat(),
+                        "has_changes": True, "changed_keys": ["all"],
+                        "snapshot_required": True, "recovery": "reload_snapshot",
+                        "cursor": current_cursor, "read_model": {},
+                    }, current_cursor)
+                    last_heartbeat = asyncio.get_event_loop().time()
+                elif asyncio.get_event_loop().time() - last_heartbeat >= DASHBOARD_SSE_HEARTBEAT_SECONDS:
+                    yield ": heartbeat\n\n"
+                    last_heartbeat = asyncio.get_event_loop().time()
         except Exception as e:
-            print(f"[DashboardAPI-SSE] Error in loop: {e}")
+            _sse_errors.report('loop', e)
+
+def read_dashboard_html(name):
+    with pin_snapshot(get_local_path("Dashboard")) as snapshot:
+        if snapshot is not None:
+            return read_snapshot_artifact(snapshot, name)
+    path = get_platform_path("Dashboard", name)
+    if not path.exists():
+        raise HTTPException(status_code=404, detail=f"{name} not found")
+    return path.read_text(encoding="utf-8")
+
 
 @app.get("/")
 @app.get("/index.html", response_class=HTMLResponse)
 async def serve_index(request: Request):
-    index_path = get_platform_path("Dashboard", "index.html")
-    if not index_path.exists():
-        raise HTTPException(status_code=404, detail="index.html not found")
-    html_content = index_path.read_text(encoding="utf-8")
+    html_content = await asyncio.to_thread(read_dashboard_html, "index.html")
     return HTMLResponse(content=inject_auth_fetch(html_content))
 
 @app.get("/index_terminal.html", response_class=HTMLResponse)
 async def serve_terminal_index(request: Request):
-    term_path = get_platform_path("Dashboard", "index_terminal.html")
-    if not term_path.exists():
-        raise HTTPException(status_code=404, detail="index_terminal.html not found")
-    html_content = term_path.read_text(encoding="utf-8")
+    html_content = await asyncio.to_thread(read_dashboard_html, "index_terminal.html")
     return HTMLResponse(content=inject_auth_fetch(html_content))
 
 @app.get("/api/status")
@@ -1039,7 +1225,7 @@ async def get_dashboard_route(request: Request, limit: int = None):
         raise HTTPException(status_code=401, detail="Unauthorized")
     
     try:
-        payload = build_dashboard_payload()
+        payload = await asyncio.to_thread(build_dashboard_payload)
         if limit is not None:
             if isinstance(payload.get("events_raw"), list):
                 payload["events_raw"] = payload["events_raw"][:limit]
@@ -1056,35 +1242,149 @@ async def get_dashboard_route(request: Request, limit: int = None):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/api/project/context")
+def get_project_context_route(request: Request, project: str,
+                              budget_bytes: int | None = Query(default=None, ge=256, le=65536),
+                              query: str = Query(default="", max_length=4096)):
+    """Return the exact measured JSON line after individual project admission."""
+    if DASHBOARD_AUTH_PROFILE != "individual":
+        raise HTTPException(status_code=403, detail="Individual context admission required")
+    from devcore_engine.security.identity import CONTEXT_READ
+    from devcore_engine.services.project_context import ContextBudgetExceeded, encode_context
+    from devcore_engine.services.registered_project_context import (
+        ProjectContextUnavailable, load_registered_project_context,
+    )
+    principal = getattr(request.state, "principal", None)
+    if (principal is None
+            or principal.project_id != project or principal.action != CONTEXT_READ):
+        raise HTTPException(status_code=403, detail="Individual context admission required")
+    budget = HTTP_CONTEXT_MAX_BYTES if budget_bytes is None else budget_bytes
+    if budget > HTTP_CONTEXT_MAX_BYTES:
+        raise HTTPException(status_code=422, detail="Requested budget exceeds server context limit")
+    try:
+        result = load_registered_project_context(get_local_path("devcore.db"), principal,
+                                                 budget_bytes=budget, query=query)
+    except ContextBudgetExceeded as exc:
+        raise HTTPException(status_code=413, detail=str(exc)) from exc
+    except ProjectContextUnavailable as exc:
+        raise HTTPException(status_code=503, detail="Registered project context unavailable") from exc
+    return Response(content=(encode_context(result) + "\n").encode("utf-8"),
+                    media_type="application/json", headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/project/task-audit")
+async def task_audit_route(request: Request, project: str):
+    from devcore_engine.security.identity import AUDIT_READ
+    from devcore_engine.services.project_context import encode_context
+    from devcore_engine.services.task_audit import InvalidAuditCursor, TaskAuditUnavailable, read_task_audit
+    principal = getattr(request.state, "principal", None)
+    if (DASHBOARD_AUTH_PROFILE != "individual" or principal is None
+            or principal.project_id != project or principal.action != AUDIT_READ):
+        raise HTTPException(status_code=403, detail="Individual task audit admission required")
+    try:
+        if set(request.query_params) - {"project", "limit", "before_id", "task_id"}:
+            raise ValueError("Unsupported audit arguments")
+        limit_text = request.query_params.get("limit", "20")
+        if len(limit_text) > 3 or not limit_text.isascii() or not limit_text.isdigit():
+            raise ValueError("Invalid limit")
+        result = await asyncio.to_thread(read_task_audit, get_local_path("devcore.db"), principal,
+            limit=int(limit_text), before_id=request.query_params.get("before_id"), task_id=request.query_params.get("task_id"))
+    except (InvalidAuditCursor, ValueError):
+        raise HTTPException(status_code=400, detail={"code": "invalid_audit_arguments", "message": "Invalid scoped audit arguments"})
+    except TaskAuditUnavailable:
+        raise HTTPException(status_code=503, detail={"code": "task_audit_unavailable", "message": "Qualified task audit unavailable"})
+    return Response(content=(encode_context(result) + "\n").encode("utf-8"), media_type="application/json",
+                    headers={"Cache-Control": "no-store"})
+
+
 @app.get("/api/dashboard/tasks")
-async def get_dashboard_tasks_route(request: Request, project: str = "", limit: int = 20, offset: int = 0):
+def get_dashboard_tasks_route(request: Request, project: str, limit: int = 20, offset: int = 0):
     if not check_auth(request):
         raise HTTPException(status_code=401, detail="Unauthorized")
     
     try:
+        project = validate_safe_id(project, "project")
+        if not 1 <= limit <= 100 or offset < 0:
+            raise ValueError("Invalid pagination")
         db_path = get_local_path("devcore.db")
+        if not db_path.is_file():
+            raise FileNotFoundError(f"Task database not found: {db_path}")
         import sqlite3
-        conn = sqlite3.connect(db_path)
-        cur = conn.cursor()
-        cols = [col[1] for col in cur.execute("PRAGMA table_info(tasks)").fetchall()]
-        proj_col = "project_id" if "project_id" in cols else "project"
-        if project:
-            cur.execute(f"SELECT id, {proj_col}, title, status, mode, steps_total, steps_done, started_at, completed_at FROM tasks WHERE {proj_col} = ? ORDER BY CAST(SUBSTR(id, 3) AS INTEGER) DESC LIMIT ? OFFSET ?", (project, limit, offset))
-        else:
-            cur.execute(f"SELECT id, {proj_col}, title, status, mode, steps_total, steps_done, started_at, completed_at FROM tasks ORDER BY CAST(SUBSTR(id, 3) AS INTEGER) DESC LIMIT ? OFFSET ?", (limit, offset))
-
-        rows = cur.fetchall()
+        with closing(sqlite3.connect(db_path.resolve().as_uri() + "?mode=ro", uri=True, timeout=30.0)) as conn:
+            columns = {row[1] for row in conn.execute("PRAGMA table_info(tasks)")}
+            version_column = "version" if "version" in columns else "NULL AS version"
+            rows = conn.execute(
+                f"SELECT id, project_id, title, status, mode, steps_total, steps_done, started_at, completed_at, {version_column} "
+                "FROM tasks WHERE project_id = ? AND status <> 'deleted' "
+                "ORDER BY created_at DESC, id DESC LIMIT ? OFFSET ?",
+                (project, limit, offset),
+            ).fetchall()
         tasks = []
         for r in rows:
             tasks.append({
                 "id": r[0], "project": r[1], "title": r[2], "status": r[3],
                 "mode": r[4], "steps_total": r[5], "steps_done": r[6],
-                "started_at": r[7], "completed_at": r[8]
+                "started_at": r[7], "completed_at": r[8], "version": r[9]
             })
-        conn.close()
         return tasks
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+async def task_mutation_arguments(request: Request):
+    try:
+        data = await request.json()
+        if not isinstance(data, dict):
+            raise ValueError("Expected a JSON object")
+        project = validate_safe_id(data.get("project", ""), "project")
+        task_id = validate_safe_id(data.get("id", ""), "task id")
+        version = data.get("expected_version")
+        if version is not None and (type(version) is not int or version < 1):
+            raise ValueError("expected_version must be a positive integer")
+        return project, task_id, version
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+def task_actor_context(request: Request, project: str):
+    """Use only the principal admitted by middleware, never JSON actor fields."""
+    if DASHBOARD_AUTH_PROFILE != "individual":
+        return None
+    from devcore_engine.context import RequestContext
+    from devcore_engine.security.identity import WRITE
+    principal = getattr(request.state, "principal", None)
+    if principal is None or principal.project_id != project or principal.action != WRITE:
+        raise HTTPException(status_code=403, detail="Missing project mutation principal")
+    session = getattr(request.state, "browser_session", None)
+    return RequestContext(project_id=project, user_id=principal.user_id,
+                          session_id=session.session_id if session else None)
+
+
+
+@app.post("/api/pause")
+@app.post("/api/resume")
+async def post_task_transition_route(request: Request):
+    # New routes require individual admission, including when the legacy profile is active.
+    if DASHBOARD_AUTH_PROFILE != "individual":
+        raise HTTPException(403, detail={"code": "individual_route_required"})
+    if not check_auth(request):
+        raise HTTPException(401, detail="Unauthorized")
+    if not check_csrf(request, "POST"):
+        raise HTTPException(403, detail="Invalid CSRF Token")
+    project, task_id, version = await task_mutation_arguments(request)
+    try:
+        success = await asyncio.to_thread(
+            transition_individual_task, project, task_id, version,
+            operation="pause" if request.url.path == "/api/pause" else "resume",
+            context=task_actor_context(request, project))
+    except TaskMutationConflict as exc:
+        raise HTTPException(409, detail={"code": exc.code, "message": str(exc)}) from exc
+    except (sqlite3.Error, OSError):
+        raise HTTPException(500, detail={"code": "task_transition_unavailable"}) from None
+    if not success:
+        raise HTTPException(404, detail={"code": "task_not_found"})
+    return {"status": "success", "message": "Task transition completed"}
 
 @app.post("/api/done")
 async def post_done_route(request: Request):
@@ -1093,17 +1393,16 @@ async def post_done_route(request: Request):
     if not check_csrf(request, "POST"):
         raise HTTPException(status_code=403, detail="Invalid CSRF Token")
     
-    data = await request.json()
-    project = data.get("project", "")
-    task_id = data.get("id", "")
-    if not project or not task_id:
-        raise HTTPException(status_code=400, detail="Missing project or id")
-    
-    success, msg = complete_task(project, task_id)
+    project, task_id, version = await task_mutation_arguments(request)
+    try:
+        success, msg = await asyncio.to_thread(complete_task, project, task_id, version,
+                                              context=task_actor_context(request, project))
+    except TaskMutationConflict as exc:
+        raise HTTPException(status_code=409, detail={"code": exc.code, "message": str(exc)}) from exc
     if success:
         return {"status": "success", "message": msg}
     else:
-        raise HTTPException(status_code=500, detail=msg)
+        raise HTTPException(status_code=404 if "not found in project" in msg else 500, detail=msg)
 
 @app.delete("/api/delete")
 async def delete_route(request: Request):
@@ -1112,16 +1411,19 @@ async def delete_route(request: Request):
     if not check_csrf(request, "DELETE"):
         raise HTTPException(status_code=403, detail="Invalid CSRF Token")
     
-    data = await request.json()
-    project = data.get("project", "")
-    task_id = data.get("id", "")
-    if not project or not task_id:
-        raise HTTPException(status_code=400, detail="Missing project or id")
-    
-    success, msg = delete_task(project, task_id)
+    project, task_id, version = await task_mutation_arguments(request)
+    try:
+        success, msg = await asyncio.to_thread(delete_task, project, task_id, version,
+                                              context=task_actor_context(request, project))
+    except TaskMutationConflict as exc:
+        raise HTTPException(status_code=409, detail={"code": exc.code, "message": str(exc)}) from exc
     if success:
         return {"status": "success", "message": msg}
     else:
+        if "not found in project" in msg:
+            raise HTTPException(status_code=404, detail=msg)
+        if " is required by " in msg:
+            raise HTTPException(status_code=409, detail=msg)
         raise HTTPException(status_code=500, detail=msg)
 
 @app.post("/api/refresh")
@@ -1132,7 +1434,7 @@ async def post_refresh_route(request: Request):
         raise HTTPException(status_code=403, detail="Invalid CSRF Token")
     
     try:
-        payload = refresh_dashboard_payload_cache()
+        payload = await asyncio.to_thread(refresh_dashboard_payload_cache)
         return JSONResponse(content=payload)
     except subprocess.TimeoutExpired as te:
         print(f"[DashboardAPI] Timeout calling gen_dashboard.ps1: {te}")
@@ -1142,57 +1444,98 @@ async def post_refresh_route(request: Request):
 
 @app.get("/api/dashboard/stream")
 async def dashboard_stream_route(request: Request):
-    return StreamingResponse(event_generator(request), media_type="text/event-stream")
+    try:
+        parse_snapshot_cursor(request.headers.get("last-event-id"))
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid Last-Event-ID snapshot cursor")
+    try:
+        return AdmittedStreamingResponse(event_generator(request), _sse_slots, media_type="text/event-stream")
+    except StreamCapacityExceeded:
+        raise HTTPException(status_code=503, detail="SSE connection capacity reached", headers={"Retry-After": "5"})
 
-async def search_qdrant_collection_async(client, collection: str, query: str, limit: int = 5, qdrant_url: str = "http://127.0.0.1:6333") -> dict:
-    url = f"{qdrant_url}/collections/{collection}/points/search"
-    payload = {
-        "vector": [0.0] * 384,
-        "limit": limit,
-        "with_payload": True
-    }
-    if client is not None:
-        try:
-            resp = await client.post(url, json=payload, timeout=3.0)
-            if resp.status_code == 200:
-                data = resp.json()
-                return {"collection": collection, "hits": data.get("result", []), "status": "ok"}
-        except Exception as exc:
-            return {"collection": collection, "hits": [], "status": "offline", "error": str(exc)}
-    return {"collection": collection, "hits": [], "status": "empty"}
+def memory_search_arguments(query, collections, limit):
+    allowed = {'decisions', 'lessons', 'patterns', 'codebase'}
+    if not isinstance(query, str) or not query.strip() or len(query.encode('utf-8')) > 8192:
+        raise HTTPException(status_code=400, detail='Query must be nonempty UTF-8 text <=8192 bytes')
+    if type(limit) is not int or not 1 <= limit <= 20:
+        raise HTTPException(status_code=400, detail='Memory limit must be 1..20')
+    collections = ['decisions', 'lessons', 'patterns', 'codebase'] if collections is None else collections
+    if not isinstance(collections, list) or not 1 <= len(collections) <= 4 or any(type(col) is not str or col not in allowed for col in collections) or len(set(collections)) != len(collections):
+        raise HTTPException(status_code=400, detail='Invalid memory collections')
+    return collections
 
-async def search_memory_pipeline_async(query: str, collections: list = None, limit: int = 5) -> dict:
-    if collections is None:
-        collections = ["decisions", "lessons", "patterns", "codebase"]
-    
-    if httpx is not None:
-        async with httpx.AsyncClient() as client:
-            tasks = [search_qdrant_collection_async(client, col, query, limit) for col in collections]
-            results = await asyncio.gather(*tasks, return_exceptions=True)
-    else:
-        results = await asyncio.gather(*[search_qdrant_collection_async(None, col, query, limit) for col in collections], return_exceptions=True)
-    
-    formatted_results = {}
-    total_hits = 0
-    for res in results:
-        if isinstance(res, dict) and "collection" in res:
-            col = res["collection"]
-            hits = res.get("hits", [])
-            formatted_results[col] = {
-                "status": res.get("status", "error"),
-                "count": len(hits),
-                "hits": hits
-            }
-            total_hits += len(hits)
-        elif isinstance(res, Exception):
-            print(f"[DashboardAPI-Memory] Error searching collection: {res}")
-            
-    return {
-        "query": query,
-        "total_hits": total_hits,
-        "collections": formatted_results,
-        "timestamp": datetime.now().isoformat()
-    }
+
+def memory_embedding_service():
+    engine_source = str(Path(__file__).resolve().parents[1])
+    if engine_source not in sys.path:
+        sys.path.insert(0, engine_source)
+    from devcore_engine.services.embedding import EmbeddingService
+    return EmbeddingService
+
+
+async def search_qdrant_collection_async(client, collection: str, query: str, limit: int = 5,
+                                         qdrant_url: str = 'http://127.0.0.1:6333', *, vector=None) -> dict:
+    memory_search_arguments(query, [collection], limit)
+    if client is None or vector is None:
+        return {'collection': collection, 'hits': [], 'status': 'degraded', 'reason': 'embedding_unavailable'}
+    memory_embedding_service().validate_vector(vector, context='memory_query')
+    url = f'{qdrant_url}/collections/{collection}/points/search'
+    payload = {'vector': vector, 'limit': limit, 'with_payload': True}
+    try:
+        async with client.stream('POST', url, json=payload, timeout=3.0,
+            headers={'Accept-Encoding': 'identity'}, follow_redirects=False) as response:
+            if response.status_code != 200 or response.headers.get('content-encoding', 'identity').lower() != 'identity':
+                raise ValueError('Memory backend unavailable')
+            raw = bytearray()
+            chunks = 0
+            async for chunk in response.aiter_raw():
+                if len(raw) + len(chunk) > 1024 * 1024:
+                    raise ValueError('Memory response exceeds capacity')
+                raw.extend(chunk)
+                chunks += 1
+                if chunks % 64 == 0:
+                    await asyncio.sleep(0)
+        from devcore_engine.services.memory_results import decode_memory_hits
+        hits = await decode_memory_hits(raw, limit)
+        return {'collection': collection, 'hits': hits, 'status': 'ok'}
+    except Exception:
+        return {'collection': collection, 'hits': [], 'status': 'degraded', 'reason': 'memory_backend_unavailable'}
+
+
+async def search_memory_pipeline_async(query: str, collections: list = None, limit: int = 5, *, client=None) -> dict:
+    collections = memory_search_arguments(query, collections, limit)
+    result = {'query': query, 'total_hits': 0, 'collections': {},
+              'timestamp': datetime.now().isoformat(), 'search_mode': 'unavailable', 'degraded': True}
+    async def run(owned_client):
+        service = memory_embedding_service()
+        vector = await service.embed_query(owned_client, query)
+        results = await asyncio.gather(*[search_qdrant_collection_async(owned_client, col, query, limit,
+            vector=vector) for col in collections])
+        result['embedding'] = {'model': service.QUERY_MODEL, 'dimensions': service.DIMENSIONS,
+                               'version': service.CONTRACT_VERSION}
+        result['search_mode'] = 'vector'
+        result['degraded'] = any(item['status'] != 'ok' for item in results)
+        for item in results:
+            result['collections'][item['collection']] = {key: value for key, value in item.items() if key != 'collection'}
+            result['collections'][item['collection']]['count'] = len(item['hits'])
+            result['total_hits'] += len(item['hits'])
+    try:
+        async with asyncio.timeout(5.0):
+            if client is not None:
+                await run(client)
+            elif httpx is not None:
+                async with httpx.AsyncClient(trust_env=False, follow_redirects=False) as owned_client:
+                    await run(owned_client)
+            else:
+                raise ValueError('HTTP client unavailable')
+    except Exception:
+        result['degraded'] = True
+        result['search_mode'] = 'unavailable'
+        result['total_hits'] = 0
+        result.pop('embedding', None)
+        result['collections'] = {col: {'status': 'degraded', 'reason': 'embedding_or_deadline_unavailable',
+            'count': 0, 'hits': []} for col in collections}
+    return result
 
 @app.get("/api/memory/search")
 async def get_memory_search_route(request: Request, q: str = "", limit: int = 5):
@@ -1206,6 +1549,8 @@ async def post_memory_search_route(request: Request):
     if not check_auth(request):
         raise HTTPException(status_code=401, detail="Unauthorized")
     data = await request.json()
+    if not isinstance(data, dict):
+        raise HTTPException(status_code=400, detail="Expected memory query object")
     query = data.get("query", "")
     collections = data.get("collections")
     limit = data.get("limit", 5)
@@ -1214,17 +1559,21 @@ async def post_memory_search_route(request: Request):
 
 def main():
     if "--rotate-token" in sys.argv:
+        if DASHBOARD_AUTH_PROFILE == "individual":
+            raise ValueError("Shared token rotation is disabled in individual profile")
         token = rotate_api_token()
         print(token)
         return
 
-    ensure_api_token()
-    ensure_csrf_token()
+    if DASHBOARD_AUTH_PROFILE == "legacy":
+        ensure_api_token()
+        ensure_csrf_token()
     
     bind_host = get_bind_host()
     print(f"DEV_CORE Dashboard API Server listening on {bind_host}:{PORT}...")
     try:
-        uvicorn.run(app, host=bind_host, port=PORT, log_level="warning")
+        from service_runtime import run_managed
+        run_managed(app, host=bind_host, port=PORT, service='dashboard', log_level="warning")
     except KeyboardInterrupt:
         print("\nShutting down API Server.")
         sys.exit(0)

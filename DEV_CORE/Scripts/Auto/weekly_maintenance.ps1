@@ -1,4 +1,9 @@
 # weekly_maintenance.ps1 - DEV_CORE v9.0 Auto layer
+param([switch]$RunLegacySharedMaintenance)
+if (-not $RunLegacySharedMaintenance) {
+    Write-Error "Maintenance partagee historique desactivee ; utilisez -RunLegacySharedMaintenance explicitement."
+    exit 1
+}
 $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path (Join-Path $env:DEVCORE_PLATFORM_ROOT "Scripts\platform_version.ps1"))) {
     $env:DEVCORE_PLATFORM_ROOT
 } elseif (Test-Path (Join-Path $PSScriptRoot "platform_version.ps1")) {
@@ -15,12 +20,13 @@ if ($DEV_CORE -match '[/\\]Scripts[/\\]?$') {
 }
 . "$DEV_CORE\Scripts\platform_version.ps1"
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { (Join-Path $DEV_CORE "DEV_CORE_DATA") }
-$DEV_CORE_LOCAL = if ($env:DEVCORE_LOCAL_ROOT) { $env:DEVCORE_LOCAL_ROOT } elseif ($env:LOCALAPPDATA) { "$env:LOCALAPPDATA\DEV_CORE_LOCAL" } else { $DEV_CORE_DATA }
+$DEV_CORE_LOCAL = if ($env:DEVCORE_LOCAL_ROOT) { $env:DEVCORE_LOCAL_ROOT } elseif ($env:LOCALAPPDATA) { "$env:LOCALAPPDATA\DEV_CORE_LOCAL" } else { throw 'DEVCORE_LOCAL_ROOT requis sans LOCALAPPDATA' }
 $TODAY         = Get-Date -Format "yyyy-MM-dd"
-$LOG           = "$DEV_CORE_DATA\Logs\scripts\weekly_maintenance_$TODAY.log"
+$LOG           = "$DEV_CORE_LOCAL\Logs\scripts\weekly_maintenance_$TODAY.log"
+New-Item -ItemType Directory -Path (Split-Path -Parent $LOG) -Force | Out-Null
 function Log { param($msg,$color="Gray"); $l="[$(Get-Date -f HH:mm:ss)] $msg"; Add-Content $LOG $l -ErrorAction SilentlyContinue; Write-Host "    $l" -ForegroundColor $color }
 Log "weekly_maintenance - audit complet" "Cyan"
-$rptDir = "$DEV_CORE_DATA\Logs\token_reports"
+$rptDir = "$DEV_CORE_LOCAL\Logs\token_reports"
 New-Item -ItemType Directory -Path $rptDir -Force | Out-Null
 
 # 1. Memory audit
@@ -32,7 +38,7 @@ if (Test-Path $memPath) { Log "  MEMORY.md : $((Get-Content $memPath).Count) lig
 Log "2/6 Vector DB check" "Cyan"
 $dbFile = Join-Path $DEV_CORE_LOCAL "devcore.db"
 if (Test-Path $dbFile) {
-    Log "  Base vectorielle sqlite-vec OK" "Green"
+    Log "  Base SQLite locale presente ; vecteurs non evalues" "Yellow"
 } else {
     try {
         $q = Invoke-RestMethod "http://localhost:6333/collections" -TimeoutSec 1
@@ -95,7 +101,11 @@ Log "  Rapport : $rptDir\$week-weekly.html" "Green"
 
 # 6. Backup vault
 Log "6/6 Backup" "Cyan"
-$bkp = "$DEV_CORE_DATA\Backups\auto\MEMORY_weekly_$TODAY.md"
-if (Test-Path $memPath) { Copy-Item $memPath $bkp -Force; Log "  Backup MEMORY.md OK" "Green" }
+$bkp = "$DEV_CORE_LOCAL\Backups\auto\MEMORY_weekly_$TODAY.md"
+if (Test-Path $memPath) {
+    New-Item -ItemType Directory -Path (Split-Path -Parent $bkp) -Force | Out-Null
+    Copy-Item $memPath $bkp -Force
+    Log "  Backup MEMORY.md OK" "Green"
+}
 
 Log "weekly_maintenance termine" "Green"

@@ -7,10 +7,8 @@ param(
 )
 
 # --- Portable DEVCORE_DATA_ROOT Auto-Detection ---
-$_isDefaultOrMissing = (-not $env:DEVCORE_DATA_ROOT) -or
-                       ($env:DEVCORE_DATA_ROOT -like "*C:\devcore\DEV_CORE_DATA*") -or
-                       ($env:DEVCORE_DATA_ROOT -like "*\DEV_CORE\DEV_CORE_DATA*") -or
-                       (-not (Test-Path -LiteralPath $env:DEVCORE_DATA_ROOT))
+$_isDefaultOrMissing = [string]::IsNullOrWhiteSpace($env:DEVCORE_DATA_ROOT) -or
+                       ($env:DEVCORE_DATA_ROOT -ieq "C:\devcore\DEV_CORE_DATA")
 
 if ($_isDefaultOrMissing) {
     # Dropbox stores info.json in LOCALAPPDATA on modern installs, fallback to APPDATA
@@ -26,7 +24,6 @@ if ($_isDefaultOrMissing) {
                 if ($_dbPath -and (Test-Path -LiteralPath $_dbPath)) {
                     $_dropboxData = Join-Path $_dbPath "DEV_CORE_DATA"
                     $env:DEVCORE_DATA_ROOT = $_dropboxData
-                    [System.Environment]::SetEnvironmentVariable("DEVCORE_DATA_ROOT", $_dropboxData, "User")
                     break
                 }
             } catch {}

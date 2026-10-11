@@ -19,9 +19,11 @@ if (-not (Test-Path -LiteralPath $metricsServiceScript)) {
 
 $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("devcore-metrics-service-" + [guid]::NewGuid().ToString("N"))
 $oldDataRoot = $env:DEVCORE_DATA_ROOT
+$oldLocalRoot = $env:DEVCORE_LOCAL_ROOT
 
 try {
-    $env:DEVCORE_DATA_ROOT = $tempRoot
+    $env:DEVCORE_DATA_ROOT = Join-Path $tempRoot 'shared'
+    $env:DEVCORE_LOCAL_ROOT = Join-Path $tempRoot 'local'
 
     $healthJson = powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $metricsServiceScript -Action Health -Json | Out-String
     $health = $healthJson | ConvertFrom-Json
@@ -29,12 +31,13 @@ try {
     Assert-True (Test-Path -LiteralPath $health.metrics_dir) "Metrics Service health should create metrics dir"
 
     $payload = '{"api_key":"supersecret","model":"gpt-5.5","tokens":42}'
-    powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $metricsServiceScript -Action Record -Source test -Project devcore -TaskId T-119 -MetricType tokens -Value 42 -Unit tokens -PayloadJson $payload | Out-Null
+    $payloadBase64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($payload))
+    powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $metricsServiceScript -Action Record -Source test -Project devcore -TaskId T-119 -MetricType tokens -Value 42 -Unit tokens -PayloadBase64 $payloadBase64 | Out-Null
     powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $metricsServiceScript -Action Record -Source test -Project devcore -TaskId T-119 -MetricType duration -Value 3.5 -Unit seconds | Out-Null
     powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $metricsServiceScript -Action Record -Source token_report -Project devcore -TaskId T-119 -MetricType cost -Value 10 -Unit usd | Out-Null
     powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $metricsServiceScript -Action Record -Source token_report -Project devcore -TaskId T-119 -MetricType cost -Value 12 -Unit usd | Out-Null
 
-    $metricsFile = Get-ChildItem -LiteralPath (Join-Path $tempRoot "Logs\metrics") -Filter "metrics-*.jsonl" | Select-Object -First 1
+    $metricsFile = Get-ChildItem -LiteralPath (Join-Path $env:DEVCORE_LOCAL_ROOT "Logs\metrics") -Filter "metrics-*.jsonl" | Select-Object -First 1
     Assert-True ($null -ne $metricsFile) "Metrics Service should create a daily JSONL file"
 
     $lines = @(Get-Content -LiteralPath $metricsFile.FullName -Encoding UTF8)
@@ -70,6 +73,15 @@ try {
     } else {
         $env:DEVCORE_DATA_ROOT = $oldDataRoot
     }
+    if ($null -eq $oldLocalRoot) {
+        Remove-Item Env:\DEVCORE_LOCAL_ROOT -ErrorAction SilentlyContinue
+    } else {
+        $env:DEVCORE_LOCAL_ROOT = $oldLocalRoot
+    }
 
-    Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
+    $tempBase = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
+    $resolved = [IO.Path]::GetFullPath($tempRoot)
+    if ($resolved.StartsWith($tempBase, [StringComparison]::OrdinalIgnoreCase)) {
+        Remove-Item -LiteralPath $resolved -Recurse -Force -ErrorAction SilentlyContinue
+    }
 }

@@ -3,6 +3,8 @@ import os
 import re
 import sys
 import json
+import argparse
+import tempfile
 import urllib.request
 import urllib.error
 from datetime import datetime
@@ -10,20 +12,44 @@ from pathlib import Path
 
 PLATFORM_ROOT = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", str(Path(__file__).resolve().parents[4] / "DEV_CORE")))
 DATA_ROOT = Path(os.environ.get("DEVCORE_DATA_ROOT", str(Path(__file__).resolve().parents[4] / "DEV_CORE_DATA")))
-ROUTER_URL = os.environ.get("DEVCORE_ROUTER_URL", "http://127.0.0.1:20130/v1/chat/completions")
+AUXILIARY_URL = "http://127.0.0.1:8789/v1/chat/completions"
 
-LESSONS_PATH = DATA_ROOT / "Memory" / "LESSONS.md"
-ARCHIVE_DIR = DATA_ROOT / "Memory" / "archive"
+PROJECT_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
 
-def create_backup():
-    if not LESSONS_PATH.exists():
+
+def project_lessons_paths(project_id: str) -> tuple[Path, Path]:
+    if not isinstance(project_id, str) or not PROJECT_ID_RE.fullmatch(project_id):
+        raise ValueError("A simple project id is required")
+    if not DATA_ROOT.is_absolute():
+        raise ValueError("DEVCORE_DATA_ROOT must be absolute")
+    project_root = DATA_ROOT / "Memory" / project_id
+    return project_root / "LESSONS.md", project_root / "archive"
+
+
+def atomic_write_text(path: Path, content: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = None
+    try:
+        with tempfile.NamedTemporaryFile("w", encoding="utf-8", newline="\n", dir=path.parent,
+                                         prefix=f".{path.name}.", suffix=".tmp", delete=False) as stream:
+            temp_path = Path(stream.name)
+            stream.write(content)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temp_path, path)
+    finally:
+        if temp_path is not None:
+            temp_path.unlink(missing_ok=True)
+
+
+def create_backup(lessons_path: Path, archive_dir: Path):
+    if not lessons_path.exists():
         print("[memory_compactor] LESSONS.md not found, skipping backup.")
         return None
-    ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
-    today_str = datetime.now().strftime("%Y-%m-%d")
-    backup_path = ARCHIVE_DIR / f"LESSONS_pre_compaction_{today_str}.md"
-    content = LESSONS_PATH.read_text(encoding="utf-8")
-    backup_path.write_text(content, encoding="utf-8")
+    today_str = datetime.now().strftime("%Y-%m-%d_%H%M%S_%f")
+    backup_path = archive_dir / f"LESSONS_pre_compaction_{today_str}.md"
+    content = lessons_path.read_text(encoding="utf-8")
+    atomic_write_text(backup_path, content)
     print(f"[memory_compactor] Backup created at: {backup_path}")
     return backup_path
 
@@ -43,7 +69,9 @@ Format de réponse attendu : Retourne UNIQUEMENT la liste des leçons sous forme
 """
 
     payload = {
-        "model": "gemini-2.5-flash",
+        "model": "devcore-summary",
+        "task_type": "summary",
+        "fallback_providers": [],
         "messages": [
             {"role": "user", "content": prompt}
         ],
@@ -52,12 +80,20 @@ Format de réponse attendu : Retourne UNIQUEMENT la liste des leçons sous forme
 
     try:
         req = urllib.request.Request(
-            ROUTER_URL,
+            AUXILIARY_URL,
             data=json.dumps(payload).encode("utf-8"),
             headers={"Content-Type": "application/json"}
         )
-        with urllib.request.urlopen(req, timeout=30) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
+        # Do not inherit an HTTP proxy or follow a redirect to another provider.
+        class NoRedirect(urllib.request.HTTPRedirectHandler):
+            def redirect_request(self, req, fp, code, msg, headers, newurl):
+                return None
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect())
+        with opener.open(req, timeout=30) as resp:
+            raw = resp.read(1024 * 1024 + 1)
+            if len(raw) > 1024 * 1024:
+                raise ValueError("Compaction response exceeds 1 MiB")
+            data = json.loads(raw.decode("utf-8"))
             content = data["choices"][0]["message"]["content"].strip()
             compacted_lines = [line.strip() for line in content.splitlines() if line.strip().startswith("-")]
             if compacted_lines:
@@ -67,14 +103,16 @@ Format de réponse attendu : Retourne UNIQUEMENT la liste des leçons sous forme
     
     return lines  # Fallback to original if LLM call fails
 
-def compact_lessons_file():
-    if not LESSONS_PATH.exists():
+def compact_lessons_file(project_id: str):
+    lessons_path, archive_dir = project_lessons_paths(project_id)
+    lessons_path.parent.mkdir(parents=True, exist_ok=True)
+    if not lessons_path.exists():
         print("[memory_compactor] LESSONS.md does not exist.")
         return
 
-    create_backup()
+    create_backup(lessons_path, archive_dir)
 
-    raw_text = LESSONS_PATH.read_text(encoding="utf-8")
+    raw_text = lessons_path.read_text(encoding="utf-8")
     lines = raw_text.splitlines()
 
     header_lines = []
@@ -123,8 +161,19 @@ def compact_lessons_file():
         total_compacted += len(item_lines)
 
     final_text = "\n".join(compacted_content).strip() + "\n"
-    LESSONS_PATH.write_text(final_text, encoding="utf-8")
+    atomic_write_text(lessons_path, final_text)
     print(f"[memory_compactor] Compaction complete. LESSONS.md rewritten with {total_compacted} total entries.")
 
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="Compact lessons for one DevCore project")
+    parser.add_argument("--project", required=True, help="Project id whose lessons may be rewritten")
+    args = parser.parse_args(argv)
+    try:
+        compact_lessons_file(args.project)
+    except ValueError as exc:
+        parser.error(str(exc))
+
+
 if __name__ == "__main__":
-    compact_lessons_file()
+    main()

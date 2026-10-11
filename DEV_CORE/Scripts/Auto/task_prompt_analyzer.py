@@ -1,7 +1,7 @@
 import os
+import argparse
 import json
 import re
-import subprocess
 from datetime import datetime, timedelta
 import time
 import random
@@ -41,38 +41,13 @@ def write_file_with_retry(file_path, content, mode="w", retries=5, delay=0.05):
             else:
                 raise
 
-def get_active_project(dev_core, dev_core_data):
-    system_dirs = {"documents", "desktop", "downloads", "onedrive", "system32", "users", "windows", "temp", "appdata", "local"}
-    
-    env_name = os.environ.get("DEVCORE_ACTIVE_PROJECT_NAME")
-    if env_name and env_name.lower() not in system_dirs:
-        return env_name
-        
-    try:
-        git_dir = subprocess.check_output(
-            "git rev-parse --git-common-dir",
-            stderr=subprocess.DEVNULL,
-            shell=True
-        ).decode("utf-8").strip()
-        if git_dir:
-            abs_git_dir = os.path.abspath(git_dir)
-            if abs_git_dir.endswith(".git") or abs_git_dir.endswith(".git/"):
-                projectName = os.path.basename(os.path.dirname(abs_git_dir))
-            else:
-                projectName = os.path.basename(abs_git_dir)
-            if projectName and projectName.lower() not in system_dirs:
-                return re.sub(r'[\\/:*?"<>|]', '_', projectName)
-    except:
-        pass
-        
-    try:
-        parent_name = os.path.basename(os.path.dirname(dev_core))
-        if parent_name and parent_name.lower() not in system_dirs:
-            return re.sub(r'[\\/:*?"<>|]', '_', parent_name)
-    except:
-        pass
-        
-    return "devcore"
+def parse_project(argv=None):
+    parser = argparse.ArgumentParser(description="Analyze suggestions for one explicit DevCore project")
+    parser.add_argument("--project", required=True, help="registered project id supplied by the caller")
+    project = parser.parse_args(argv).project.strip()
+    if not project or any(value in project for value in ("/", "\\", ":", "..")):
+        parser.error("invalid project id")
+    return project
 
 def clean_accomplishment(text):
     text = text.strip().rstrip(".?!,;*:\n").strip()
@@ -453,12 +428,13 @@ def parse_session_files_and_accomplishments(overview_path) -> tuple:
         pass
     return modified_files, accomplishments
 
-def main():
+def main(argv=None):
+    # Fail before creating logs or queues: background suggestions must never
+    # infer a tenant from cwd, a Git checkout name, or a shared default.
+    active_proj = parse_project(argv)
     dev_core = os.environ.get("DEVCORE_PLATFORM_ROOT", str(Path(__file__).resolve().parents[4] / "DEV_CORE"))
     dev_core_data = os.environ.get("DEVCORE_DATA_ROOT", str(Path(__file__).resolve().parents[4] / "DEV_CORE_DATA"))
     today_str = datetime.now().strftime("%Y-%m-%d")
-    
-    active_proj = get_active_project(dev_core, dev_core_data)
     
     queue_dir = os.path.join(dev_core_data, "Memory", active_proj)
     os.makedirs(queue_dir, exist_ok=True)

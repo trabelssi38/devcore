@@ -1,7 +1,8 @@
 import os
 import json
 import re
-import subprocess
+import argparse
+from pathlib import Path
 from datetime import datetime
 
 def clean_word(word):
@@ -34,38 +35,16 @@ def decline_french_verb(verb):
         
     return list(variations)
 
-def get_active_project(dev_core, dev_core_data):
-    env_name = os.environ.get("DEVCORE_ACTIVE_PROJECT_NAME")
-    if env_name:
-        return env_name
-        
-    try:
-        git_dir = subprocess.check_output(
-            "git rev-parse --git-common-dir",
-            stderr=subprocess.DEVNULL,
-            shell=True
-        ).decode("utf-8").strip()
-        if git_dir:
-            abs_git_dir = os.path.abspath(git_dir)
-            if abs_git_dir.endswith(".git") or abs_git_dir.endswith(".git/"):
-                projectName = os.path.basename(os.path.dirname(abs_git_dir))
-            else:
-                projectName = os.path.basename(abs_git_dir)
-            if projectName:
-                return re.sub(r'[\\/:*?"<>|]', '_', projectName)
-    except:
-        pass
-        
-    try:
-        parent_name = os.path.basename(os.path.dirname(dev_core))
-        if parent_name:
-            return re.sub(r'[\\/:*?"<>|]', '_', parent_name)
-    except:
-        pass
-        
-    return "devcore"
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(description="Apprend les intentions pour un projet explicite.")
+    parser.add_argument("--project", required=True, help="Identifiant du projet")
+    args = parser.parse_args(argv)
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,79}", args.project) or args.project in {".", ".."}:
+        parser.error("--project must be a simple project identifier")
+    return args
 
-def main():
+def main(argv=None):
+    args = parse_args(argv)
     dev_core = os.environ.get("DEVCORE_PLATFORM_ROOT", str(Path(__file__).resolve().parents[4] / "DEV_CORE"))
     dev_core_data = os.environ.get("DEVCORE_DATA_ROOT", str(Path(__file__).resolve().parents[4] / "DEV_CORE_DATA"))
     today_str = datetime.now().strftime("%Y-%m-%d")
@@ -87,7 +66,7 @@ def main():
             print(f"    {safe_line}")
 
     # 1. Get active project name dynamically
-    active_proj = get_active_project(dev_core, dev_core_data)
+    active_proj = args.project
     log(f"Starting DevCore Intent Learning Loop for project: '{active_proj}'", "INIT")
 
     tasks_file = os.path.join(dev_core_data, "Memory", active_proj, "tasks.json")
@@ -95,14 +74,16 @@ def main():
         log(f"Tasks database not found: {tasks_file}", "WARNING")
         return
 
-    # 2. Load patterns registry
-    registry_path = os.path.join(dev_core, "Config", "intent_patterns.json")
-    if not os.path.exists(registry_path):
-        log(f"Registry not found at: {registry_path}", "ERROR")
+    # Seed from the platform defaults, then read/write only the project copy.
+    default_registry_path = os.path.join(dev_core, "Config", "intent_patterns.json")
+    registry_path = os.path.join(dev_core_data, "Memory", active_proj, "intent_patterns.json")
+    if not os.path.exists(default_registry_path):
+        log(f"Default registry not found at: {default_registry_path}", "ERROR")
         return
         
     try:
-        with open(registry_path, "r", encoding="utf-8-sig") as f:
+        source_path = registry_path if os.path.exists(registry_path) else default_registry_path
+        with open(source_path, "r", encoding="utf-8-sig") as f:
             registry = json.load(f)
     except Exception as e:
         log(f"Error loading registry: {e}", "ERROR")

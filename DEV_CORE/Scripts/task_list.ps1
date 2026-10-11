@@ -1,6 +1,6 @@
-# task_list.ps1 -- Thin wrapper for devcore_engine task board
+# task_list.ps1 -- SQL task board for one project
 param(
-    [string]$Project = "devcore"
+    [string]$Project
 )
 
 $DEV_CORE_ROOT = Split-Path -Parent $PSScriptRoot
@@ -11,5 +11,7 @@ if (-not $env:PYTHONPATH -or $env:PYTHONPATH -notlike "*$DEV_CORE_ROOT*") {
 . (Join-Path $PSScriptRoot "platform_version.ps1")
 $pythonExe = Get-DevCorePython
 
-& $pythonExe -m devcore_engine task board --project $Project
+$taskArgs = @("-m", "devcore_engine", "task", "board")
+if ($Project) { $taskArgs += @("--project", $Project) }
+& $pythonExe @taskArgs
 exit $LASTEXITCODE

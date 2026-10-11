@@ -3,7 +3,6 @@ import os
 import sys
 import json
 import sqlite3
-import time
 
 import argparse
 import subprocess
@@ -11,59 +10,6 @@ import hashlib
 from datetime import datetime
 from pathlib import Path
 
-
-# ---------------------------------------------------------------------------
-# File-based lock: sérialise les appels concurrents à gen_dashboard.py
-# (post-commit hook, task_sync.ps1, repowise_update.py, dashboard_api.py...)
-# Utilise O_CREAT | O_EXCL pour une création atomique cross-platform (Windows + Linux)
-# ---------------------------------------------------------------------------
-class DashboardLock:
-    """Context manager qui acquiert un lock fichier exclusif avant génération."""
-    LOCK_FILENAME = "gen_dashboard.lock"
-    WAIT_TIMEOUT  = 30   # secondes max pour attendre la libération du lock
-    STALE_TIMEOUT = 120  # secondes après lesquelles un lock est considéré périmé
-
-    def __init__(self):
-        lock_root = os.environ.get("DEVCORE_LOCAL_ROOT")
-        if lock_root:
-            lock_dir = Path(lock_root) / "Runtime"
-        elif os.name == "nt" and os.getenv("LOCALAPPDATA"):
-            lock_dir = Path(os.getenv("LOCALAPPDATA")) / "DEV_CORE_LOCAL" / "Runtime"
-        else:
-            lock_dir = Path(os.environ.get("DEVCORE_DATA_ROOT",
-                            str(Path(__file__).resolve().parents[2] / "DEV_CORE_DATA"))) / "Runtime"
-        lock_dir.mkdir(parents=True, exist_ok=True)
-        self.lock_path = lock_dir / self.LOCK_FILENAME
-
-    def __enter__(self):
-        deadline = time.monotonic() + self.WAIT_TIMEOUT
-        while True:
-            try:
-                # Création exclusive atomique : échoue si le fichier existe déjà
-                fd = os.open(str(self.lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-                os.write(fd, str(os.getpid()).encode())
-                os.close(fd)
-                return self
-            except FileExistsError:
-                # Vérifie si le lock est périmé (processus mort)
-                try:
-                    mtime = self.lock_path.stat().st_mtime
-                    if time.time() - mtime > self.STALE_TIMEOUT:
-                        self.lock_path.unlink(missing_ok=True)
-                        continue
-                except OSError:
-                    pass
-                if time.monotonic() >= deadline:
-                    print("[gen_dashboard.py] Lock timeout (autre processus toujours actif). Skip.",
-                          file=sys.stderr)
-                    raise SystemExit(0)
-                time.sleep(0.5)
-
-    def __exit__(self, *_):
-        try:
-            self.lock_path.unlink(missing_ok=True)
-        except OSError:
-            pass
 
 # Add parent directory to path so we can import from dashboard package
 sys.path.append(str(Path(__file__).resolve().parent))
@@ -74,6 +20,8 @@ from dashboard.utils import (
     get_task_datetime,
     get_task_id_number,
     get_active_project,
+    render_active_project,
+    render_dashboard_data,
     load_project_paths,
     check_port,
     DATA_ROOT,
@@ -94,6 +42,14 @@ from dashboard.html_renderer import (
     get_metrics_service_summary_html,
     get_knowledge_graph_summary_html,
     get_plugin_status_html
+)
+from dashboard.generation_lock import DashboardLock
+from dashboard.publication import atomic_write_text
+from dashboard.snapshots import publish_snapshot, check_snapshot_capacity, collect_snapshots
+from dashboard.task_actions import render_task_action_buttons
+from dashboard.task_interactions import (
+    index_task_events, index_git_files, repository_project,
+    scoped_task_metrics, task_identity,
 )
 
 def get_platform_version(platform_root):
@@ -117,22 +73,21 @@ def main():
     parser.add_argument("-SkipTokenRefresh", "--skip-token-refresh", action="store_true")
     args = parser.parse_args()
 
-    # Sérialiser les appels concurrents via lock fichier
-    # (en mode --json le lock est ignoré pour ne pas bloquer l'API)
-    if not args.json:
-        lock = DashboardLock()
-        lock.__enter__()
-        import atexit
-        atexit.register(lock.__exit__, None, None, None)
-
-    # If running in JSON mode, redirect standard prints to stderr to keep stdout completely clean
     original_stdout = sys.stdout
-    if args.json:
-        sys.stdout = sys.stderr
+    # JSON callers contend without waiting; HTML workers have a bounded wait.
+    with DashboardLock(wait_timeout=0 if args.json else None):
+        try:
+            if args.json:
+                sys.stdout = sys.stderr
+            return _generate_dashboard(args, original_stdout)
+        finally:
+            sys.stdout = original_stdout
 
+
+def _generate_dashboard(args, original_stdout):
     generated_at = datetime.now().isoformat()
     memory_dir = DATA_ROOT / "Memory"
-    
+
     # Refresh token metrics unless explicitly skipped
     if not getattr(args, "skip_token_refresh", False):
         try:
@@ -147,7 +102,7 @@ def main():
             print(f"[WARNING] Error running token_report.py: {err}")
 
     # Load token metrics, plugins registry, and project tasks
-    token_metrics = load_token_metrics(DATA_ROOT)
+    token_metrics = load_token_metrics(LOCAL_ROOT)
     plugins_registry = load_plugins_registry(DATA_ROOT)
     projects, task_details = load_projects_and_tasks(DATA_ROOT, PLATFORM_ROOT, token_metrics)
 
@@ -243,11 +198,11 @@ def main():
             active_task_html = '<span style="color:#64748b">Aucune</span>'
         else:
             active_task_html = f"<span style='color:#a5b4fc; font-weight:600;'>{esc_html(p['active_task'])}</span> <span style='font-size:9px; color:#64748b;'>({esc_html(p['mode'])})</span>"
-            
+
         tokens_block = ""
         if p.get("tokens"):
             tokens_block = f"<div style='font-size:9px; color:#475569; padding-left:16px; margin-top:2px; font-family:\\'JetBrains Mono\\',monospace;'>{esc_html(p['tokens'])}</div>"
-            
+
         cards_html += f"""
   <div class="project-row" data-project="{esc_attr(p['name'])}" onclick="toggleProjectFilter(this, '{esc_attr(p['name'])}')" title="Cliquer pour filtrer les taches du projet : {esc_attr(p['name'])} | progression : {p['progress']}%">
     <div style="display:flex; flex-direction:column; gap:4px; flex:1; min-width:0; padding-right:12px;">
@@ -273,68 +228,34 @@ def main():
 
     # Build task_interactions_map
     events_by_task = {}
-    commit_msgs_by_task = {}
+    event_subjects = {}
     sqlite_db_path = LOCAL_ROOT / "devcore.db"
     if sqlite_db_path.exists():
         try:
-            conn = sqlite3.connect(sqlite_db_path)
-            cur = conn.cursor()
-            rows = cur.execute("SELECT id, event_type, project, task_id, payload, created_at FROM bus_events ORDER BY rowid DESC LIMIT 300").fetchall()
-            for r in rows:
-                evt_type, proj, t_id, payload_raw, ts = r[1], r[2], r[3], r[4], r[5]
-                p_data = {}
-                if payload_raw:
-                    try:
-                        p_data = json.loads(payload_raw) if isinstance(payload_raw, str) else payload_raw
-                    except Exception:
-                        pass
-                if not t_id and isinstance(p_data, dict):
-                    t_id = p_data.get("task_id")
-                if t_id:
-                    t_key = t_id.upper()
-                    if t_key not in events_by_task:
-                        events_by_task[t_key] = []
-                    details_str = (p_data.get("commit_msg") or p_data.get("title") or evt_type) if isinstance(p_data, dict) else str(p_data)
-                    events_by_task[t_key].append({
-                        "event_type": evt_type,
-                        "created_at": ts,
-                        "details": details_str
-                    })
-                    if isinstance(p_data, dict):
-                        if p_data.get("commit_msg"):
-                            commit_msgs_by_task[p_data["commit_msg"].strip().lower()] = t_key
-                        if p_data.get("title"):
-                            commit_msgs_by_task[p_data["title"].strip().lower()] = t_key
-            conn.close()
+            from contextlib import closing
+            with closing(sqlite3.connect(f"{sqlite_db_path.resolve().as_uri()}?mode=ro", uri=True)) as conn:
+                rows = conn.execute("SELECT id, event_type, project, task_id, payload, created_at FROM bus_events ORDER BY rowid DESC LIMIT 300").fetchall()
+            events_by_task, event_subjects = index_task_events(rows)
         except Exception as e:
             print(f"[gen_dashboard] Warning fetching bus_events for interactions: {e}", file=sys.stderr)
 
-    task_titles_map = {}
-    for p in projects:
-        for t_item in p.get("tasks", []):
-            if t_item.get("title") and t_item.get("id"):
-                task_titles_map[t_item["title"].strip().lower()] = t_item["id"].upper()
-
     git_files_by_task = {}
-    try:
-        git_out = subprocess.check_output(['git', 'log', '-n', '100', '--name-only', '--oneline'], text=True, cwd=str(PLATFORM_ROOT.parent))
-        cur_t = None
-        for line in git_out.splitlines():
-            line = line.strip()
-            if not line: continue
-            if re.match(r'^[0-9a-f]{7,40}\s', line):
-                parts = line.split(' ', 1)
-                subj = parts[1] if len(parts) > 1 else ''
-                m = re.search(r'\[?(T-\d+)\]?', subj, re.IGNORECASE)
-                if m:
-                    cur_t = m.group(1).upper()
-                else:
-                    cur_t = commit_msgs_by_task.get(subj.strip().lower()) or task_titles_map.get(subj.strip().lower())
-            elif cur_t:
-                if cur_t not in git_files_by_task: git_files_by_task[cur_t] = []
-                if line not in git_files_by_task[cur_t]: git_files_by_task[cur_t].append(line)
-    except Exception:
-        pass
+    repo_root = PLATFORM_ROOT.parent.resolve()
+    git_project = repository_project(repo_root)
+    if git_project in {p["name"] for p in projects}:
+        try:
+            actual_root = subprocess.check_output(
+                ['git', 'rev-parse', '--show-toplevel'], text=True,
+                cwd=str(repo_root), timeout=5,
+            ).strip()
+            if actual_root and Path(actual_root).resolve() == repo_root:
+                git_out = subprocess.check_output(
+                    ['git', 'log', '-n', '100', '--name-only', '--oneline'],
+                    text=True, cwd=str(repo_root), timeout=5,
+                )
+                git_files_by_task = index_git_files(git_out, git_project, projects, event_subjects)
+        except (OSError, subprocess.SubprocessError, ValueError):
+            pass
 
     task_interactions_map = {}
 
@@ -343,20 +264,20 @@ def main():
     for p in projects:
         from collections import defaultdict
         worktree_groups = defaultdict(list)
-        
+
         project_tasks = p["tasks"]
         active_t = [t for t in project_tasks if t.get("status") in ["active", "in_progress", "todo", "paused"]]
         completed_t = [t for t in project_tasks if t.get("status") not in ["active", "in_progress", "todo", "paused"]]
         completed_t.sort(key=lambda t: (get_task_datetime(t), get_task_id_number(t)), reverse=True)
         bounded_tasks = active_t + completed_t[:20]
-        
+
         for t in bounded_tasks:
             wt = t.get("worktree") or "main"
             worktree_groups[wt].append(t)
-            
+
         for wt in worktree_groups:
             worktree_groups[wt].sort(key=lambda t: (get_task_datetime(t), get_task_id_number(t)), reverse=True)
-            
+
         sorted_worktrees = sorted(
             worktree_groups.keys(),
             key=lambda wt: max((get_task_datetime(t), get_task_id_number(t)) for t in worktree_groups[wt]),
@@ -365,19 +286,19 @@ def main():
 
 
         tasks_html += f"<details open class='project-tasks-group' data-project='{esc_attr(p['name'])}'><summary><h2 style='color:#6366f1; cursor:pointer; padding:5px; background:#1a1d27; border-radius:4px;'>Projet : {esc_html(p['name'])}</h2></summary><div style='padding: 10px 0;'>\n"
-        
+
         for wt in sorted_worktrees:
             tasks_html += f"<details open style='margin-left: 15px; margin-bottom: 10px; border-left: 2px solid #2d3148; padding-left: 12px;'><summary><h3 style='font-size:11px; color:#94a3b8; margin-bottom:8px;'>Worktree: {esc_html(wt)}</h3></summary>\n"
             for t in worktree_groups[wt]:
                 p_name = p["name"]
                 t_id = t.get("id", "")
                 t_status = t.get("status", "")
-                
+
                 badge_class = "done" if t_status == "done" else ("active" if t_status == "active" else "todo")
                 badge_text = t_status.upper()
                 active_class = "active-task" if t_status == "active" else ""
                 steps_str = f"{t.get('steps_done', 0)}/{t.get('steps_total', 1)} steps" if t.get("steps_total", 0) > 1 else ""
-                
+
                 # Task tokens and costs
                 task_tokens_str = ""
                 task_cost_str = ""
@@ -385,33 +306,9 @@ def main():
                 task_stats = None
                 if token_metrics and "tasks" in token_metrics:
                     tasks_stats_dict = token_metrics["tasks"]
-                    lower_dict = {k.lower(): v for k, v in tasks_stats_dict.items()}
-                    
-                    if task_key in tasks_stats_dict:
-                        task_stats = tasks_stats_dict[task_key]
-                    elif task_key.lower() in lower_dict:
-                        task_stats = lower_dict[task_key.lower()]
-                    elif t_id in tasks_stats_dict:
-                        task_stats = tasks_stats_dict[t_id]
-                    elif t_id.lower() in lower_dict:
-                        task_stats = lower_dict[t_id.lower()]
-                    else:
-                        if t_id.upper().startswith("T-"):
-                            try:
-                                num = int(t_id[2:])
-                                alt_ids = [f"T-{num}", f"T-{num:02d}"]
-                                for alt_id in alt_ids:
-                                    alt_key = f"{p_name}_{alt_id}".lower()
-                                    if alt_key in lower_dict:
-                                        task_stats = lower_dict[alt_key]
-                                        break
-                                    elif alt_id.lower() in lower_dict:
-                                        task_stats = lower_dict[alt_id.lower()]
-                                        break
-                            except ValueError:
-                                pass
+                    task_stats = scoped_task_metrics(tasks_stats_dict, p_name, t_id)
 
-                
+
                 if task_stats:
                     try:
                         t_tokens = float(task_stats.get("tokens", 0))
@@ -440,8 +337,9 @@ def main():
                 t_cst = float(task_stats.get("cost_usd", 0)) if task_stats else 0
                 c_pct = round((t_hit / max(1.0, t_tok)) * 100, 1)
 
-                files_list = git_files_by_task.get(t_id.upper(), [])
-                
+                identity = task_identity(p_name, t_id)
+                files_list = git_files_by_task.get(identity, [])
+
                 # Deduce system modules & subsystems interacted with
                 modules_set = set()
                 for f in files_list:
@@ -483,7 +381,7 @@ def main():
                         "cost_usd": round(t_cst, 4),
                         "cache_hit_pct": c_pct
                     },
-                    "events": events_by_task.get(t_id.upper(), [])
+                    "events": events_by_task.get(identity, [])
                 }
 
                 steps_detail_html = ""
@@ -519,10 +417,9 @@ def main():
                 if date_items:
                     dates_html = f"<div style='font-size:9px;color:#475569;margin-top:2px;font-family:monospace'>{' | '.join(date_items)}</div>"
 
-                done_button = ""
-                if t_status != "done":
-                    done_button = f"<button class='btn-action btn-done' title='Clôturer' onclick='completeTask(\"{esc_attr(p_name)}\", \"{esc_attr(t_id)}\", event)'>&#10004;</button>"
-                delete_button = f"<button class='btn-action btn-delete' title='Supprimer' onclick='deleteTask(\"{esc_attr(p_name)}\", \"{esc_attr(t_id)}\", event)'>&#128465;</button>"
+                done_button, delete_button = render_task_action_buttons(
+                    p_name, t_id, t_status, t.get("version")
+                )
 
                 if t_id.startswith("T-GIT-"):
                     short_hash = t_id.replace("T-GIT-", "").lower()
@@ -567,14 +464,14 @@ def main():
             tot_tokens = float(totals.get("tokens", 0))
             tot_cache = float(totals.get("cache_hits", 0))
             tot_cost = float(totals.get("cost_usd", 0))
-            
+
             if tot_tokens > 1000000:
                 tot_tokens_str = f"{round(tot_tokens/1000000, 2)}M"
             else:
                 tot_tokens_str = f"{round(tot_tokens/1000, 1)}K"
-                
+
             tot_cache_pct = int(round((tot_cache / tot_tokens) * 100)) if tot_tokens > 0 else 0
-            
+
             # Project allocation bar
             project_alloc_html = ""
             projects_data = token_metrics.get("projects", {})
@@ -583,9 +480,9 @@ def main():
                 proj_list = [(k, v) for k, v in projects_data.items() if k not in excluded_projects]
                 visible_token_total = sum(float(proj_val.get("tokens", 0)) for proj_name, proj_val in proj_list)
                 project_token_total = visible_token_total if visible_token_total > 0 else tot_tokens
-                
+
                 colors = ["#6366f1", "#10b981", "#fbbf24", "#ec4899", "#8b5cf6"]
-                
+
                 project_alloc_html += '<div class="project-bar-container" style="display:flex; height:6px; border-radius:3px; overflow:hidden; background:#1e293b; margin:12px 0 8px;">'
                 idx = 0
                 for proj_name, proj_val in proj_list:
@@ -596,7 +493,7 @@ def main():
                         project_alloc_html += f"<div style='width:{pct}%; background:{col};' title='{proj_name}: {pct}% ({int(tokens_val/1000)}k tks)'></div>"
                         idx += 1
                 project_alloc_html += '</div>'
-                
+
                 project_alloc_html += '<div style="display:flex; flex-wrap:wrap; gap:10px; font-size:10px; color:#94a3b8; margin-bottom:16px;">'
                 idx = 0
                 for proj_name, proj_val in proj_list:
@@ -607,7 +504,7 @@ def main():
                         project_alloc_html += f"<span style='display:flex; align-items:center; gap:4px;'><span style='width:6px; height:6px; border-radius:50%; background:{col};'></span>{proj_name} ({pct}%)</span>"
                         idx += 1
                 project_alloc_html += '</div>'
-                
+
             # Cost by model
             model_cost_html = ""
             global_cost_by_model = None
@@ -616,14 +513,14 @@ def main():
                 global_cost_by_model = model_costs_data["global"]
             elif totals and "cost_by_model" in totals:
                 global_cost_by_model = totals["cost_by_model"]
-                
+
             if global_cost_by_model:
                 fallback_model_names = []
                 if model_costs_data and "unregistered" in model_costs_data:
                     fallback_model_names = [str(m) for m in model_costs_data["unregistered"]]
                 elif totals and "unregistered_models" in totals:
                     fallback_model_names = [str(m) for m in totals["unregistered_models"]]
-                    
+
                 sorted_models = sorted(global_cost_by_model.items(), key=lambda x: float(x[1]), reverse=True)
                 for model_name, model_cost_val in sorted_models:
                     model_cost_formatted = f"{float(model_cost_val):.2f}"
@@ -631,10 +528,10 @@ def main():
                     if model_name in fallback_model_names:
                         fallback_badge = "<span style='font-size:8px; color:#f59e0b; border:1px solid rgba(245,158,11,0.35); border-radius:3px; padding:1px 3px; flex-shrink:0;'>fallback</span>"
                     model_cost_html += f"<div class='model-cost-row' style='display:flex; justify-content:space-between; gap:10px; padding:5px 0; border-bottom:1px solid rgba(255,255,255,0.04); font-size:10px;'><span style='color:#cbd5e1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:flex; align-items:center; gap:5px;' title='{model_name}'><span style='overflow:hidden; text-overflow:ellipsis; white-space:nowrap;'>{model_name}</span>{fallback_badge}</span><span style='color:#fbbf24; font-family:monospace; flex-shrink:0;'>${model_cost_formatted}</span></div>"
-                    
+
             if not model_cost_html:
                 model_cost_html = "<div style='font-size:10px; color:#64748b; padding:6px 0;'>Aucun coût par modèle disponible.</div>"
-                
+
             # Sessions
             sessions_html = ""
             sessions_data = token_metrics.get("sessions", [])
@@ -653,14 +550,14 @@ def main():
                     tasks_joined = ", ".join(tasks) if tasks else "Sans tâche (Session Libre)"
                     is_free_session = not tasks or tasks_joined == "Sans tâche" or "Sans tâche" in tasks_joined
                     s_model_str = s.get("model") or (", ".join(s.get("models", [])) if s.get("models") else "N/A")
-                    
+
                     if is_free_session and (s_tokens > 500000 or s_cost > 0.50):
                         status_badge = '<span style="background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); font-size: 9px; padding: 1px 6px; border-radius: 4px; font-weight: 700; margin-left: 6px;">ALERTE (Hors Tâche)</span>'
                     elif is_free_session:
                         status_badge = '<span style="background: rgba(234, 179, 8, 0.15); color: #facc15; border: 1px solid rgba(234, 179, 8, 0.3); font-size: 9px; padding: 1px 6px; border-radius: 4px; font-weight: 600; margin-left: 6px;">OK (Session Libre)</span>'
                     else:
                         status_badge = '<span style="background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); font-size: 9px; padding: 1px 6px; border-radius: 4px; font-weight: 600; margin-left: 6px;">OK</span>'
-                    
+
                     sessions_html += f"""
       <div class="session-row" data-project="{s.get('project')}" style="background: rgba(30, 41, 59, 0.2); border: 1px solid rgba(255,255,255,0.03); border-radius: 6px; padding: 8px 12px; display: flex; justify-content: space-between; align-items: center; transition: transform 0.15s ease, opacity 0.15s ease, border-color 0.15s ease; font-size: 11px; margin-bottom: 6px;">
         <div style="flex: 1; min-width: 0; padding-right: 8px;">
@@ -708,14 +605,14 @@ def main():
       <div style="font-size:9px; color:#64748b;">Bulk: 15M tks</div>
     </div>
   </div>
-  
+
   <div id="token-report-alloc-container">
     {project_alloc_html}
   </div>
-  
+
   <h3 id="model-cost-title" style="font-size:11px; color:#94a3b8; margin: 12px 0 8px;">R&eacute;partition des Co&ucirc;ts par Mod&egrave;le</h3>
   <div id="token-report-model-costs" style="max-height:220px; overflow-y:auto; padding-right:6px; margin-bottom:16px; border:1px solid rgba(255,255,255,0.05); border-radius:6px; background:rgba(15,23,42,0.3); padding-left:8px;">{model_cost_html}</div>
-  
+
   <h3 style="font-size:11px; color:#94a3b8; margin: 12px 0 8px;">Sessions R&eacute;centes</h3>
   <div style="max-height:280px; overflow-y:auto; padding-right:4px;">
     {sessions_html}
@@ -740,7 +637,7 @@ def main():
                 alerts_list.reverse()
         except Exception:
             pass
-            
+
     if alerts_list:
         for alert in alerts_list:
             alerts_html += f"""
@@ -755,11 +652,11 @@ def main():
     protocol_html = "<h2>Conformit&eacute; Protocole Agent</h2>"
     ephemeral_path = LOCAL_ROOT / "Runtime" / "ephemeral_session.json"
     violations_path = LOCAL_ROOT / "Logs" / "scripts" / "protocol_violations.log"
-    
+
     status_color = "#22c55e"
     status_label = "🟢 CONFORME"
     ephemeral_text = "Aucune session &eacute;ph&eacute;m&egrave;re active."
-    
+
     if ephemeral_path.exists():
         try:
             eph_data = json.loads(ephemeral_path.read_text(encoding="utf-8"))
@@ -770,7 +667,7 @@ def main():
             ephemeral_text = f"Session {sid} en cours avec {vcount} requ&ecirc;tes sans t&acirc;che active."
         except Exception:
             pass
-            
+
     v_count_24h = 0
     if violations_path.exists():
         try:
@@ -781,7 +678,7 @@ def main():
                 status_label = "🔴 VIOLATIONS R&Eacute;P&Eacute;T&Eacute;ES"
         except Exception:
             pass
-            
+
     protocol_html += f"""
     <div style="padding:8px; background:#1a1d27; border:1px solid #2d3148; border-radius:6px; font-size:11px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
@@ -804,7 +701,7 @@ def main():
             ev_src = ev.get("source", "system")
             task_id_val = ev.get("task_id")
             proj_val = ev.get("project")
-            
+
             if task_id_val:
                 badge_html = f'<span class="token-reduction" style="color:#38bdf8; font-weight:600;" title="{esc_attr(ev_src)}">{esc_html(str(task_id_val))}</span>'
             elif proj_val and proj_val != "devcore":
@@ -825,7 +722,7 @@ def main():
                     time_str = ev_ts
             else:
                 time_str = "-"
-                
+
             event_bus_html += f'    <div class="token-layer"><span class="token-name">{esc_html(time_str)} {esc_html(ev_type)}</span>{badge_html}</div>\n'
     else:
         event_bus_html += "    <div style='font-size:10px; color:#64748b; padding:8px 0;'>Aucun evenement recent.</div>\n"
@@ -859,96 +756,89 @@ def main():
     # Save JSON payload cache
     cache_path = LOCAL_ROOT / "Dashboard" / "dashboard_payload.json"
     cache_path.parent.mkdir(parents=True, exist_ok=True)
-    payload_str = json.dumps(payload, indent=2, ensure_ascii=False)
-    try:
-        cache_path.write_text(payload_str, encoding="utf-8")
-    except Exception as e_cache:
-        import time as _time
-        _written = False
-        for _ in range(3):
-            _time.sleep(0.1)
-            try:
-                cache_path.write_text(payload_str, encoding="utf-8")
-                _written = True
-                break
-            except Exception:
-                pass
-        if not _written:
-            print(f"[gen_dashboard.py] Cache payload write warning: {e_cache}")
+    payload_str = json.dumps(payload, indent=2, ensure_ascii=False, allow_nan=False)
 
-    # Save payload hash
+    # Separate atomic artifacts, not a transaction across cache/hash/pages.
     hash_path = LOCAL_ROOT / "Dashboard" / "payload_hash.txt"
     payload_hash = hashlib.sha256(payload_str.encode("utf-8")).hexdigest()
-    try:
-        hash_path.write_text(payload_hash, encoding="utf-8")
-    except Exception:
-        pass
 
     # Render template.html -> index.html
     template_file = PLATFORM_ROOT / "Dashboard" / "template.html"
     output_file = PLATFORM_ROOT / "Dashboard" / "index.html"
     version = get_platform_version(PLATFORM_ROOT)
-    if template_file.exists():
-        try:
-            template = template_file.read_text(encoding="utf-8")
-            template = template.replace('{{PROJECT_CARDS}}', cards_html)
-            template = template.replace('{{TASKS_PIPELINE}}', tasks_html)
-            template = template.replace('{{SERVICES_MONITORING}}', services_html)
-            template = template.replace('{{ACTIVE_PROJECT_NAME}}', get_active_project())
-            template = template.replace('{{AUTOMATION_HOOKS}}', hooks_html)
-            template = template.replace('{{TOKEN_ACTIVITY_REPORT}}', token_activity_html)
-            template = template.replace('{{CONTEXT_COMPOSITION}}', context_composition_html)
-            template = template.replace('{{METRICS_SERVICE_SUMMARY}}', metrics_service_summary_html)
-            template = template.replace('{{EVENT_BUS_RECENT}}', event_bus_html + "<div style='margin-top:12px;'></div>" + alerts_html)
-            template = template.replace('{{KNOWLEDGE_GRAPH_SUMMARY}}', knowledge_graph_summary_html)
-            template = template.replace('{{PLUGIN_STATUS}}', plugin_status_html)
-            template = template.replace('{{TASK_DETAILS_MAP}}', json.dumps(task_details))
-            template = template.replace('{{TASK_INTERACTIONS_MAP}}', json.dumps(task_interactions_map))
-            template = template.replace('{{TOKEN_METRICS_JSON}}', json.dumps(token_metrics))
-            template = template.replace('{{VERSION}}', version)
-            legacy_v9 = "DEV_CORE " + "v9.0"
-            template = template.replace(legacy_v9 + ' Cockpit', f'DEV_CORE v{version} — Cockpit')
-            template = template.replace(legacy_v9 + ' —', f'DEV_CORE v{version} —')
+    try:
+        template = template_file.read_text(encoding="utf-8")
+        template = template.replace('{{PROJECT_CARDS}}', cards_html)
+        template = template.replace('{{TASKS_PIPELINE}}', tasks_html)
+        template = template.replace('{{SERVICES_MONITORING}}', services_html)
+        template = render_active_project(template)
+        template = template.replace('{{AUTOMATION_HOOKS}}', hooks_html)
+        template = template.replace('{{TOKEN_ACTIVITY_REPORT}}', token_activity_html)
+        template = template.replace('{{CONTEXT_COMPOSITION}}', context_composition_html)
+        template = template.replace('{{METRICS_SERVICE_SUMMARY}}', metrics_service_summary_html)
+        template = template.replace('{{EVENT_BUS_RECENT}}', event_bus_html + "<div style='margin-top:12px;'></div>" + alerts_html)
+        template = template.replace('{{KNOWLEDGE_GRAPH_SUMMARY}}', knowledge_graph_summary_html)
+        template = template.replace('{{PLUGIN_STATUS}}', plugin_status_html)
+        template = render_dashboard_data(template, task_details, task_interactions_map, token_metrics)
+        template = template.replace('{{VERSION}}', version)
+        legacy_v9 = "DEV_CORE " + "v9.0"
+        template = template.replace(legacy_v9 + ' Cockpit', f'DEV_CORE v{version} — Cockpit')
+        template = template.replace(legacy_v9 + ' —', f'DEV_CORE v{version} —')
 
-            
-            output_file.write_text(template, encoding="utf-8")
-            try:
-                log_dir = DATA_ROOT / "Logs" / "scripts"
-                log_dir.mkdir(parents=True, exist_ok=True)
-                sync_log_file = log_dir / f"task_sync_{datetime.now().strftime('%Y-%m-%d')}.log"
-                sync_log_file.write_text(f"task_sync executed at {datetime.now().isoformat()}\n", encoding="utf-8")
-            except Exception as e:
-                print(f"[gen_dashboard.py] task_sync log write warning: {e}")
-            print("[gen_dashboard.py] Dashboard index.html generated successfully.")
-        except Exception as e:
-            print(f"[gen_dashboard.py] Error generating dashboard: {e}")
+
+    except Exception as e:
+        raise RuntimeError("Dashboard index.html publication failed") from e
 
     # Render template_terminal.html -> index_terminal.html
     term_template_file = PLATFORM_ROOT / "Dashboard" / "template_terminal.html"
     term_output_file = PLATFORM_ROOT / "Dashboard" / "index_terminal.html"
-    if term_template_file.exists():
-        try:
-            tterm = term_template_file.read_text(encoding="utf-8")
-            tterm = tterm.replace('{{PROJECT_CARDS}}', cards_html)
-            tterm = tterm.replace('{{TASKS_PIPELINE}}', tasks_html)
-            tterm = tterm.replace('{{SERVICES_MONITORING}}', services_html)
-            tterm = tterm.replace('{{ACTIVE_PROJECT_NAME}}', get_active_project())
-            tterm = tterm.replace('{{AUTOMATION_HOOKS}}', hooks_html)
-            tterm = tterm.replace('{{TOKEN_ACTIVITY_REPORT}}', token_activity_html)
-            tterm = tterm.replace('{{CONTEXT_COMPOSITION}}', context_composition_html)
-            tterm = tterm.replace('{{METRICS_SERVICE_SUMMARY}}', metrics_service_summary_html)
-            tterm = tterm.replace('{{EVENT_BUS_RECENT}}', event_bus_html + "<div style='margin-top:12px;'></div>" + alerts_html)
-            tterm = tterm.replace('{{KNOWLEDGE_GRAPH_SUMMARY}}', knowledge_graph_summary_html)
-            tterm = tterm.replace('{{PLUGIN_STATUS}}', plugin_status_html)
-            tterm = tterm.replace('{{TASK_DETAILS_MAP}}', json.dumps(task_details))
-            tterm = tterm.replace('{{TASK_INTERACTIONS_MAP}}', json.dumps(task_interactions_map))
-            tterm = tterm.replace('{{TOKEN_METRICS_JSON}}', json.dumps(token_metrics))
-            tterm = tterm.replace('{{VERSION}}', version)
-            term_output_file.write_text(tterm, encoding="utf-8")
-            print("[gen_dashboard.py] Terminal index_terminal.html generated successfully.")
-        except Exception as e:
-            print(f"[gen_dashboard.py] Error generating terminal dashboard: {e}")
+    try:
+        tterm = term_template_file.read_text(encoding="utf-8")
+        tterm = tterm.replace('{{PROJECT_CARDS}}', cards_html)
+        tterm = tterm.replace('{{TASKS_PIPELINE}}', tasks_html)
+        tterm = tterm.replace('{{SERVICES_MONITORING}}', services_html)
+        tterm = render_active_project(tterm)
+        tterm = tterm.replace('{{AUTOMATION_HOOKS}}', hooks_html)
+        tterm = tterm.replace('{{TOKEN_ACTIVITY_REPORT}}', token_activity_html)
+        tterm = tterm.replace('{{CONTEXT_COMPOSITION}}', context_composition_html)
+        tterm = tterm.replace('{{METRICS_SERVICE_SUMMARY}}', metrics_service_summary_html)
+        tterm = tterm.replace('{{EVENT_BUS_RECENT}}', event_bus_html + "<div style='margin-top:12px;'></div>" + alerts_html)
+        tterm = tterm.replace('{{KNOWLEDGE_GRAPH_SUMMARY}}', knowledge_graph_summary_html)
+        tterm = tterm.replace('{{PLUGIN_STATUS}}', plugin_status_html)
+        tterm = render_dashboard_data(tterm, task_details, task_interactions_map, token_metrics)
+        tterm = tterm.replace('{{VERSION}}', version)
+    except Exception as e:
+        raise RuntimeError("Dashboard index_terminal.html publication failed") from e
 
+    # All serialization and both HTML renders succeeded before publishing anything.
+    # These replacements are still independent, not a multi-file transaction.
+    artifacts = {
+        'dashboard_payload.json': payload_str, 'payload_hash.txt': payload_hash,
+        'index.html': template, 'index_terminal.html': tterm,
+    }
+    # Capacity refusal must also preserve the legacy compatibility exports.
+    collection = collect_snapshots(cache_path.parent)
+    if collection['deferred']:
+        print(f"[gen_dashboard.py] Snapshot collection deferred: {len(collection['deferred'])} generations.")
+    check_snapshot_capacity(cache_path.parent, artifacts)
+    atomic_write_text(cache_path, payload_str)
+    atomic_write_text(hash_path, payload_hash)
+    if not args.json:
+        atomic_write_text(output_file, template)
+        atomic_write_text(term_output_file, tterm)
+        try:
+            log_dir = DATA_ROOT / "Logs" / "scripts"
+            log_dir.mkdir(parents=True, exist_ok=True)
+            sync_log_file = log_dir / f"task_sync_{datetime.now().strftime('%Y-%m-%d')}.log"
+            sync_log_file.write_text(f"task_sync executed at {datetime.now().isoformat()}\n", encoding="utf-8")
+        except Exception as e:
+            print(f"[gen_dashboard.py] task_sync log write warning: {e}")
+
+    publish_snapshot(cache_path.parent, artifacts)
+
+    if not args.json:
+        print("[gen_dashboard.py] Dashboard index.html generated successfully.")
+        print("[gen_dashboard.py] Terminal index_terminal.html generated successfully.")
     if args.json:
         original_stdout.buffer.write(payload_str.encode("utf-8"))
         original_stdout.write("\n")

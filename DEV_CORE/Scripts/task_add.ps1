@@ -5,7 +5,8 @@ param(
     [ValidateSet("coding", "reasoning", "bulk")]
     [string]$Mode = "coding",
     [int]$Steps = 1,
-    [string]$Project = "devcore"
+    [string]$Project,
+    [string]$DependsOn
 )
 
 $DEV_CORE_ROOT = Split-Path -Parent $PSScriptRoot
@@ -16,5 +17,8 @@ if (-not $env:PYTHONPATH -or $env:PYTHONPATH -notlike "*$DEV_CORE_ROOT*") {
 . (Join-Path $PSScriptRoot "platform_version.ps1")
 $pythonExe = Get-DevCorePython
 
-& $pythonExe -m devcore_engine task add "$Title" --mode $Mode --steps $Steps --project $Project
+$taskArgs = @("-m", "devcore_engine", "task", "add", $Title, "--mode", $Mode, "--steps", [string]$Steps)
+if ($Project) { $taskArgs += @("--project", $Project) }
+if ($DependsOn) { $taskArgs += @("--depends-on", $DependsOn) }
+& $pythonExe @taskArgs
 exit $LASTEXITCODE

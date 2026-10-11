@@ -11,27 +11,17 @@ function Assert-True {
     if (-not $Condition) { throw $Message }
 }
 
-$coding = Resolve-DevCoreRoutingProfile -Mode "coding"
-Assert-True ($coding.mode -eq "coding") "coding should resolve to coding"
-Assert-True ($coding.budget -eq "8k tokens") "coding should keep 8k budget"
-Assert-True ($coding.model -eq "devcore-coding") "coding should expose devcore-coding model profile"
-Assert-True ($coding.gemini_model -eq "gemini-2.5-pro") "coding should target Gemini Pro"
-Assert-True ($coding.capability_candidate -eq "devcore-coding") "coding should select devcore-coding capability candidate"
-Assert-True ($coding.capability_context_tokens -ge 1000000) "coding should expose candidate context window"
-
-$bulk = Resolve-DevCoreRoutingProfile -Mode "bulk"
-Assert-True ($bulk.mode -eq "bulk") "bulk should resolve to bulk"
-Assert-True ($bulk.gemini_model -eq "gemini-2.5-flash") "bulk should target Gemini Flash"
-Assert-True ($bulk.capability_candidate -eq "devcore-bulk") "bulk should select bulk capability candidate"
-Assert-True ($bulk.capability_speed_tier -gt $bulk.capability_cost_tier) "bulk should favor speed/cost profile metadata"
-
-$plan = Resolve-DevCoreRoutingProfile -Mode "plan"
-Assert-True ($plan.requested_mode -eq "plan") "alias should keep requested mode"
-Assert-True ($plan.mode -eq "reasoning") "plan should alias to reasoning"
-Assert-True ($plan.model -eq "devcore-reasoning") "plan alias should expose reasoning model profile"
-Assert-True ($plan.capability_candidate -eq "devcore-reasoning") "plan should select reasoning capability candidate"
-
-$unknown = Resolve-DevCoreRoutingProfile -Mode "unknown"
-Assert-True ($unknown.mode -eq "coding") "unknown mode should fallback to default coding"
-
-Write-Host "[OK] routing profile unit tests passed" -ForegroundColor Green
+foreach ($mode in @('coding', 'reasoning', 'plan')) {
+    $native = Resolve-DevCoreRoutingProfile -Mode $mode
+    Assert-True ($native.route -eq 'native') "$mode must remain native"
+    Assert-True (-not $native.model -and -not $native.gemini_model) "$mode cannot replace the application model"
+    Assert-True ($native.preserve_requested_model) "$mode must preserve its model"
+    Assert-True ($native.endpoint -eq 'http://127.0.0.1:8787/v1') 'Native endpoint required'
+}
+$bulk = Resolve-DevCoreRoutingProfile -Mode 'bulk'
+Assert-True ($bulk.route -eq 'auxiliary' -and $bulk.model -eq 'devcore-bulk') 'Bulk is explicitly auxiliary'
+Assert-True ($bulk.endpoint -eq 'http://127.0.0.1:8789/v1') 'Auxiliary endpoint required'
+$refused = $false
+try { Resolve-DevCoreRoutingProfile -Mode 'unknown' | Out-Null } catch { $refused = $true }
+Assert-True $refused 'Unknown mode must be refused'
+Write-Output '[OK] Native/auxiliary PowerShell routing profiles'

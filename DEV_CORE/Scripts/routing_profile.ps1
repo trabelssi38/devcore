@@ -113,21 +113,32 @@ function Resolve-DevCoreRoutingProfile {
     }
 
     if (-not $config.profiles.PSObject.Properties[$resolved]) {
-        $resolved = [string]$config.default_mode
-    }
-    if (-not $config.profiles.PSObject.Properties[$resolved]) {
-        $resolved = "coding"
+        throw "Unknown routing profile: $requested"
     }
 
     $profile = $config.profiles.$resolved
-    $capability = Resolve-DevCoreCapabilityCandidate -Mode $resolved -Model ([string]$profile.model)
+    $capability = $null
+    if ($profile.route -eq 'native') {
+        if ($profile.model -or $profile.gemini_model -or $profile.endpoint -ne 'http://127.0.0.1:8787/v1') {
+            throw 'Native profiles must preserve the application model and native endpoint'
+        }
+    } elseif ($profile.route -eq 'auxiliary') {
+        if ($profile.model -notin @('devcore-writing','devcore-documentation','devcore-summary','devcore-bulk') -or $profile.endpoint -ne 'http://127.0.0.1:8789/v1') {
+            throw 'Explicit auxiliary alias and endpoint required'
+        }
+        if ($profile.gemini_model -ne 'gemini-2.5-flash') { throw 'Auxiliary model disagrees with the allowlist' }
+        $capability = Resolve-DevCoreCapabilityCandidate -Mode $resolved -Model ([string]$profile.model)
+    } else { throw 'Unknown route' }
     return [pscustomobject]@{
         requested_mode = $requested
         mode = [string]$profile.mode
         budget = [string]$profile.budget
         profile = [string]$profile.profile
         model = [string]$profile.model
-        gemini_model = if ($capability.backend_model) { [string]$capability.backend_model } else { [string]$profile.gemini_model }
+        gemini_model = [string]$profile.gemini_model
+        route = [string]$profile.route
+        endpoint = [string]$profile.endpoint
+        preserve_requested_model = [bool]$profile.preserve_requested_model
         capability_candidate = [string]$capability.id
         capability_provider = [string]$capability.provider
         capability_context_tokens = [int64]$capability.context_tokens

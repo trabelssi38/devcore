@@ -9,7 +9,26 @@ description = "DEV_CORE Native Unified AI Development Engine"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "sqlite-vec>=0.1.0"
+    "sqlite-vec>=0.1.0",
+    "fastapi>=0.138.0",
+    "pydantic>=2.12.0",
+    "httpx>=0.28.0",
+    "uvicorn>=0.38.0",
+    "websockets>=17.2,<18.0",
+    "PyYAML>=6.0.0",
+    "requests>=2.28.0",
+    "mcp>=1.29.0,<2.0",
+    "croniter>=2.0.0",
+    "tzdata>=2025.2; sys_platform == 'win32'",
+    "argon2-cffi>=25.1.0,<26.0",
+]
+
+[project.optional-dependencies]
+windows-service = ["pywin32>=312; sys_platform == 'win32'"]
+test = [
+    "pytest>=8.0.0",
+    "SQLAlchemy>=2.0.0",
+    "alembic>=1.18.0",
 ]
 
 [project.scripts]
@@ -18,3 +37,7 @@ dc = "devcore_engine.cli:main"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["devcore_engine*"]
+
+[tool.setuptools.package-data]
+"devcore_engine.security" = ["windows_secret_acl.ps1"]
+"devcore_engine.persistence" = ["schema.sql"]

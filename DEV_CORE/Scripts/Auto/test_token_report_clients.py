@@ -17,10 +17,9 @@ def test_multi_client_token_report(tmp_path):
     home = tmp_path / "home"
     data = tmp_path / "data"
     memory = data / "Memory" / "devcore"
-    reports = data / "Logs" / "token_reports"
+    reports = tmp_path / "local" / "Logs" / "token_reports"
     config = tmp_path / "DEV_CORE" / "Config"
     memory.mkdir(parents=True)
-    reports.mkdir(parents=True)
     config.mkdir(parents=True)
     (config / "model_pricing.json").write_text(
         json.dumps(
@@ -128,6 +127,7 @@ def test_multi_client_token_report(tmp_path):
     env = os.environ.copy()
     env["USERPROFILE"] = str(home)
     env["DEVCORE_DATA_ROOT"] = str(data)
+    env["DEVCORE_LOCAL_ROOT"] = str(tmp_path / "local")
     env["DEVCORE_PLATFORM_ROOT"] = str(tmp_path / "DEV_CORE")
 
     result = subprocess.run(
@@ -139,6 +139,7 @@ def test_multi_client_token_report(tmp_path):
         check=True,
     )
     assert "token_metrics_summary.json" in result.stdout
+    assert not (data / "Logs" / "token_reports").exists()
 
     summary = json.loads((reports / "token_metrics_summary.json").read_text(encoding="utf-8"))
     assert summary["tasks"]["devcore_T-96"]["tokens"] > 0

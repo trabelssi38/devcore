@@ -1,74 +1,76 @@
-﻿# event_watcher.ps1 -- DEV_CORE Hermes Event Bus Consumer
-$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path (Join-Path $env:DEVCORE_PLATFORM_ROOT "Scripts\platform_version.ps1"))) {
-    $env:DEVCORE_PLATFORM_ROOT
-} elseif (Test-Path (Join-Path $PSScriptRoot "platform_version.ps1")) {
-    Split-Path -Parent $PSScriptRoot
-} elseif (Test-Path (Join-Path $PSScriptRoot "Scripts\platform_version.ps1")) {
-    $PSScriptRoot
-} elseif (Test-Path (Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE\Scripts\platform_version.ps1")) {
-    Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE"
-} else {
-    Split-Path -Parent $PSScriptRoot
+# Consomme les evenements locaux avec un projet explicite.
+# Les anciens fichiers DEV_CORE_DATA/Bus ne sont pas une file transactionnelle.
+$ErrorActionPreference = "Stop"
+$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { Split-Path -Parent (Split-Path -Parent $PSScriptRoot) }
+. (Join-Path $DEV_CORE "Scripts\platform_version.ps1")
+$localRoot = if ($env:DEVCORE_LOCAL_ROOT) { $env:DEVCORE_LOCAL_ROOT } elseif ($env:LOCALAPPDATA) { Join-Path $env:LOCALAPPDATA "DEV_CORE_LOCAL" } else { Join-Path ([System.IO.Path]::GetTempPath()) "DEV_CORE_LOCAL" }
+$busRoot = Join-Path $localRoot "Bus"
+$eventsDir = Join-Path $busRoot "events"
+$processingDir = Join-Path $busRoot "processing"
+$processedDir = Join-Path $busRoot "processed"
+$rejectedDir = Join-Path $busRoot "rejected"
+$logDir = Join-Path $localRoot "Logs\scripts"
+foreach ($dir in @($eventsDir, $processingDir, $processedDir, $rejectedDir, $logDir)) {
+    New-Item -ItemType Directory -Path $dir -Force | Out-Null
 }
-if ($DEV_CORE -match '[/\\]Scripts[/\\]?$') {
-    $DEV_CORE = Split-Path -Parent $DEV_CORE
+$logPath = Join-Path $logDir ("event_watcher_" + (Get-Date -Format "yyyy-MM-dd") + ".log")
+function Log([string]$message) {
+    Add-Content -LiteralPath $logPath -Value "[$(Get-Date -Format HH:mm:ss)] $message"
 }
-. "$DEV_CORE\Scripts\platform_version.ps1"
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { (Join-Path $DEV_CORE "DEV_CORE_DATA") }
-$DEV_CORE_LOCAL = if ($env:DEVCORE_LOCAL_ROOT) { $env:DEVCORE_LOCAL_ROOT } elseif ($env:LOCALAPPDATA) { "$env:LOCALAPPDATA\DEV_CORE_LOCAL" } else { $DEV_CORE_DATA }
-$EVENTS_DIR    = "$DEV_CORE_DATA\Bus\events"
-$PROCESSED_DIR = "$DEV_CORE_DATA\Bus\processed"
-$LOG           = "$DEV_CORE_DATA\Logs\scripts\event_watcher_$(Get-Date -f 'yyyy-MM-dd').log"
-
-foreach ($d in @($EVENTS_DIR, $PROCESSED_DIR)) {
-    New-Item -ItemType Directory -Path $d -Force | Out-Null
-}
-
-function Log {
-    param($msg, $color = "Gray")
-    $line = "[$(Get-Date -f HH:mm:ss)] [EVENT_WATCHER] $msg"
-    Add-Content $LOG $line -ErrorAction SilentlyContinue
-    Write-Host "    $line" -ForegroundColor $color
+function Require-EventField($event, [string]$name) {
+    $value = [string]$event.$name
+    if ([string]::IsNullOrWhiteSpace($value)) { throw "INVALID: champ $name absent" }
+    return $value.Trim()
 }
 
-$events = Get-ChildItem "$EVENTS_DIR\*.json" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime
-if ($events.Count -eq 0) { exit 0 }
+$python = Get-DevCorePython
+if (-not $env:PYTHONPATH -or $env:PYTHONPATH -notlike "*$DEV_CORE*") {
+    $env:PYTHONPATH = if ($env:PYTHONPATH) { "$DEV_CORE;$env:PYTHONPATH" } else { $DEV_CORE }
+}
+$configRoot = if ($env:DEVCORE_CONFIG_ROOT) { $env:DEVCORE_CONFIG_ROOT } else { Join-Path $DEV_CORE "Config" }
+$registryPath = Join-Path $configRoot "projects.json"
 
-Log "Processing $($events.Count) events" "Cyan"
-
-$postCommitCount = 0
-
-foreach ($evtFile in $events) {
+foreach ($file in @(Get-ChildItem -LiteralPath $eventsDir -Filter "*.json" -File | Sort-Object LastWriteTime)) {
+    $claimed = Join-Path $processingDir $file.Name
     try {
-        $evt = Get-Content $evtFile.FullName -Raw -Encoding UTF8 | ConvertFrom-Json
-
-        switch ($evt.type) {
-            "post-commit" {
-                Log "POST-COMMIT: task=$($evt.task_id) msg=$($evt.commit_msg)" "Gray"
-                $postCommitCount += 1
-            }
+        [System.IO.File]::Move($file.FullName, $claimed)
+    } catch [System.IO.IOException] {
+        # Une autre instance a pris ce fichier ou un ancien traitement attend une revue.
+        continue
+    }
+    try {
+        try {
+            $event = Get-Content -LiteralPath $claimed -Raw -Encoding UTF8 | ConvertFrom-Json
+        } catch {
+            throw "INVALID: JSON illisible"
+        }
+        $project = Require-EventField $event "project"
+        switch ((Require-EventField $event "type")) {
             "task_completed" {
-                Log "TASK_COMPLETED: $($evt.task_id)" "Gray"
-                & "$DEV_CORE\Scripts\task_done.ps1" -Force 2>&1 | Out-Null
+                $taskId = Require-EventField $event "task_id"
+                & $python -m devcore_engine.cli task complete $taskId --project $project | Out-Null
+                if ($LASTEXITCODE -ne 0) { throw "Completion SQL echouee pour $project/$taskId" }
             }
-            "session_end" {
-                Log "SESSION_END" "Gray"
-                & "$DEV_CORE\Scripts\session_end.ps1" 2>&1 | Out-Null
+            "post-commit" {
+                if (-not (Test-Path -LiteralPath $registryPath)) { throw "Registre projets absent" }
+                $registry = Get-Content -LiteralPath $registryPath -Raw -Encoding UTF8 | ConvertFrom-Json
+                $matches = @($registry.projects | Where-Object { $_.name -eq $project })
+                if ($matches.Count -ne 1 -or -not $matches[0].path) { throw "INVALID: projet non enregistre : $project" }
+                & (Join-Path $DEV_CORE "Scripts\task_scan.ps1") -Project $project -RepoPath $matches[0].path | Out-Null
+                if ($LASTEXITCODE -ne 0) { throw "Scan Git echoue pour $project" }
             }
             default {
-                Log "Unknown event type: $($evt.type)" "Yellow"
+                throw "INVALID: type d'evenement non pris en charge : $($event.type)"
             }
         }
-
-        Move-Item $evtFile.FullName "$PROCESSED_DIR\$($evtFile.Name)" -Force
+        [System.IO.File]::Move($claimed, (Join-Path $processedDir $file.Name))
+        Log "Traite : $($file.Name) [$project]"
     } catch {
-        Log "ERROR processing $($evtFile.Name): $_" "Red"
+        $message = [string]$_
+        Log "Echec : $($file.Name) - $message"
+        $destination = if ($message -like '*INVALID:*') { Join-Path $rejectedDir $file.Name } else { $file.FullName }
+        if (-not (Test-Path -LiteralPath $destination)) {
+            [System.IO.File]::Move($claimed, $destination)
+        }
     }
-}
-
-if ($postCommitCount -gt 0) {
-    Log "Running one Scan + Sync + Dashboard for $postCommitCount post-commit events" "Cyan"
-    & "$DEV_CORE\Scripts\task_scan.ps1" 2>&1 | Out-Null
-    & "$DEV_CORE\Scripts\task_sync.ps1" 2>&1 | Out-Null
-    Log "Scan + Sync + Dashboard completed" "Green"
 }

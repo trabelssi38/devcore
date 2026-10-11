@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""repowise_update.py -- event-driven and scheduled repowise indexing.
-Determines active project, ensures .repowiseignore, and triggers repowise update.
+"""repowise_update.py -- project-scoped RepoWise indexing.
+Requires an explicit registered project, then triggers an index-only refresh.
 """
+import argparse
 import os
 import sys
 import json
@@ -11,8 +12,7 @@ from pathlib import Path
 
 # Paths
 PLATFORM_ROOT = Path(os.environ.get("DEVCORE_PLATFORM_ROOT", str(Path(__file__).resolve().parents[2] / "DEV_CORE")))
-DATA_ROOT = Path(os.environ.get("DEVCORE_DATA_ROOT", str(Path(__file__).resolve().parents[2] / "DEV_CORE_DATA")))
-PROJECTS_JSON = PLATFORM_ROOT / "Config" / "projects.json"
+PROJECTS_JSON = Path(os.environ.get("DEVCORE_CONFIG_ROOT", str(PLATFORM_ROOT / "Config"))) / "projects.json"
 TEMPLATE_IGNORE = Path(__file__).resolve().parents[2] / ".repowiseignore"
 
 def resolve_repowise_exe():
@@ -32,15 +32,6 @@ def resolve_repowise_exe():
         
     return "repowise"
 
-def get_active_project():
-    active_txt = DATA_ROOT / "Runtime" / "active_project.txt"
-    if active_txt.exists():
-        try:
-            return active_txt.read_text(encoding="utf-8-sig").strip()
-        except Exception:
-            pass
-    return "devcore"
-
 def get_project_path(project_name):
     if PROJECTS_JSON.exists():
         try:
@@ -48,19 +39,17 @@ def get_project_path(project_name):
             for proj in config.get("projects", []):
                 if proj.get("name") == project_name:
                     proj_path = proj.get("path")
-                    if proj_path and Path(proj_path).exists():
-                        return Path(proj_path)
+                    if proj_path and Path(proj_path).is_absolute() and Path(proj_path).is_dir():
+                        resolved = Path(proj_path).resolve()
+                        manifest = resolved / ".devcore" / "project.json"
+                        if manifest.is_file():
+                            metadata = json.loads(manifest.read_text(encoding="utf-8-sig"))
+                            if metadata.get("name") != project_name:
+                                return None
+                        return resolved
         except Exception as e:
             print(f"[RepowiseUpdate] Error reading projects.json: {e}")
             
-    # Fallbacks
-    if project_name == "devcore":
-        return Path(__file__).resolve().parents[2]
-    
-    c_src = Path(r"C:\src") / project_name
-    if c_src.exists():
-        return c_src
-        
     return None
 
 def ensure_repowise_ignore(proj_path):
@@ -80,25 +69,19 @@ def ensure_repowise_ignore(proj_path):
             except Exception as e:
                 print(f"[RepowiseUpdate] Error writing ignore file: {e}")
 
-def main():
-    try:
-        from sync_repowise_workspace import sync_workspace
-        sync_workspace()
-    except Exception as e:
-        print(f"[RepowiseUpdate] Warning: workspace sync failed: {e}")
-
-    project_name = get_active_project()
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--project", required=True, help="Registered project ID to index")
+    parser.add_argument("--refresh-dashboard", action="store_true", help="Also regenerate the shared legacy Dashboard")
+    args = parser.parse_args(argv)
+    project_name = args.project.strip()
+    if not project_name or any(part in project_name for part in ("/", "\\", ":", "..")):
+        parser.error("invalid project ID")
     proj_path = get_project_path(project_name)
     if not proj_path:
-        print(f"[RepowiseUpdate] Active project '{project_name}' path not resolved. Falling back to 'devcore'.")
-        project_name = "devcore"
-        proj_path = get_project_path("devcore")
-        
-    if not proj_path:
-        print(f"[RepowiseUpdate] ERROR: Fallback path 'devcore' not resolved. Exiting.")
-        sys.exit(1)
-        
-    print(f"[RepowiseUpdate] Active project: {project_name} -> {proj_path}")
+        parser.error(f"project '{project_name}' has no registered directory")
+
+    print(f"[RepowiseUpdate] Project: {project_name} -> {proj_path}")
     ensure_repowise_ignore(proj_path)
     
     repowise_exe = resolve_repowise_exe()
@@ -114,6 +97,7 @@ def main():
     
     env = os.environ.copy()
     env["REPOWISE_EMBEDDER"] = "mock"
+    env["REPOWISE_TELEMETRY_DISABLED"] = "1"
     
     creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000) if os.name == "nt" else 0
     try:
@@ -134,12 +118,6 @@ def main():
             sys.exit(result.returncode)
         else:
             print("[RepowiseUpdate] Repowise index updated successfully.")
-            # Resync workspace configuration to capture the newly indexed commit
-            try:
-                from sync_repowise_workspace import sync_workspace
-                sync_workspace()
-            except Exception as e:
-                print(f"[RepowiseUpdate] Warning: post-update workspace sync failed: {e}")
     except subprocess.TimeoutExpired:
         print("[RepowiseUpdate] ERROR: Repowise update timed out after 120s", file=sys.stderr)
         sys.exit(1)
@@ -150,7 +128,7 @@ def main():
     # Régénérer le dashboard APRÈS le scan Repowise pour avoir des données fraîches.
     # Le lock dans gen_dashboard.py sérialise automatiquement les appels concurrents
     # (task_sync.ps1 peut déjà avoir lancé une génération — elle se terminera d'abord).
-    if os.environ.get("DEVCORE_SKIP_DASHBOARD") != "1":
+    if args.refresh_dashboard and os.environ.get("DEVCORE_SKIP_DASHBOARD") != "1":
         gen_dash = Path(__file__).resolve().parent / "gen_dashboard.py"
         if gen_dash.exists():
             print("[RepowiseUpdate] Triggering dashboard regeneration after Repowise scan...")

@@ -66,6 +66,68 @@ dc check
 
 ---
 
+## 🧭 Flux de travail IDE et DevCore
+
+L'agent de l'IDE (Codex, Claude, Antigravity, etc.) garde la conduite du
+raisonnement, des éditions et des outils. DevCore fournit des services locaux
+qu'il consulte ou déclenche : contexte de projet, tâches, mémoire du code,
+routage LLM, exécution de commandes et observabilité.
+
+```mermaid
+flowchart TB
+    U["Utilisateur"] --> P["Prompt et objectif"]
+    P --> A["Agent dans l'IDE<br/>Codex · Claude · Antigravity"]
+
+    subgraph IDE["Travail piloté par l'IDE"]
+        A <--> L["Modèle utilisé par l'IDE<br/>raisonnement et génération"]
+        A --> O["Outils de l'IDE<br/>lecture · édition · terminal"]
+    end
+
+    subgraph PROJET["Projet partagé"]
+        O <--> C["Codebase et workspace Git"]
+        O --> V["Tests et artefacts"]
+        V --> A
+    end
+
+    subgraph DEVCORE["Services DevCore"]
+        ENT["Entrée MCP · CLI · API"]
+        AUT["Identité et droits<br/>par projet"]
+        CTX["Contexte du projet<br/>fiche · décisions"]
+        TASK["Tasks<br/>état · historique · progression"]
+        MEM["Mémoire et RepoWise<br/>recherche dans le code"]
+        RUN["Runs durables<br/>suivi d'une commande explicite"]
+        SCH["Scheduler<br/>jobs périodiques configurés"]
+        ROUTE["Router / Headroom<br/>appels LLM dirigés vers DevCore"]
+        OBS["Événements et métriques"]
+        DASH["Cockpit<br/>suivi · erreurs · reprise"]
+    end
+
+    A <-->|"consulte ou met à jour"| ENT
+    ENT --> AUT
+    AUT --> CTX
+    AUT --> TASK
+    AUT --> MEM
+    ENT -->|"soumission explicite"| RUN
+    RUN -->|"lance un processus local"| C
+    SCH -->|"exécute un job prévu"| C
+
+    A -.->|"si l'IDE utilise ce point d'entrée"| ROUTE
+    ROUTE <--> EXT["Fournisseur LLM externe"]
+
+    O -.->|"si hooks installés"| OBS
+    TASK --> OBS
+    RUN --> OBS
+    SCH --> OBS
+    OBS --> DASH
+    U -.->|"consulte"| DASH
+```
+
+Les flèches pointillées représentent des intégrations optionnelles. Un run
+DevCore peut exécuter une commande locale explicitement soumise, mais il ne
+démarre pas automatiquement une session d'agent dans l'IDE.
+
+---
+
 ## 📋 Workflow Tasks
 
 ```powershell
@@ -156,6 +218,42 @@ Voici la cartographie des ports réseau utilisés par les différents services d
 ---
 
 ## 📊 Cockpit Dashboard
+
+**État du service individuel L9 sur ce poste (11 octobre 2026)** :
+`http://127.0.0.1:20129/project` sert la page de connexion du profil de recette.
+Le Cockpit historique sur `/` et `/index_terminal.html` répond HTTP 403 dans ce profil.
+Le magasin d'identité actif est encore au schéma 1, sans comptes ni sessions navigateur :
+la page individuelle affiche « Service indisponible » jusqu'à la migration explicite
+de l'identité et au provisionnement d'un compte local autorisé pour un projet.
+Le mot de passe Windows n'est pas un identifiant DevCore.
+
+**Pilote sur copie (11 octobre 2026)** : `http://127.0.0.1:20132/project` ouvre
+une interface individuelle distincte. Utiliser le projet `devcore`, l'utilisateur
+`majdi` et le mot de passe DevCore défini dans la fenêtre locale à saisie masquée.
+Le compte a le rôle `contributor` sur les 29 projets du snapshot (l'archive
+technique exclue). La session porte sur un seul projet à la fois ; changer de
+projet demande une nouvelle connexion avec son identifiant exact. Les tâches
+et toute modification effectuée à cette adresse restent dans la copie de
+qualification, sans effet sur l'instance active. Ce processus pilote n'est pas
+un service à démarrage automatique ; l'adresse `20129` reste inchangée.
+Si ce processus manuel doit être relancé, la copie republiée et vérifiée
+`E:/DevCoreRuntime/qualification/clean-releases-v241/runtime/releases/devcore-py31316-20261011-l9-runfix-clean-v241`
+contient son propre bundle propre. Son précontrôle réussit sur les racines du
+pilote ; le processus déjà lancé sur 20132 continue de répondre. La copie
+v241 reste un artefact de qualification, sans installation dans le service SCM.
+
+**Aperçu du Cockpit historique sur copie (11 octobre 2026)** :
+`http://127.0.0.1:20134/` ouvre la vue graphique et
+`http://127.0.0.1:20134/index_terminal.html` ouvre la vue terminal de l'ancien
+Cockpit. Le snapshot contient les 1 378 tâches de la copie de qualification ;
+les projections affichées sont figées, avec un bandeau « lecture seule ».
+Le serveur d'aperçu refuse les écritures (HTTP 405), ne fournit ni session
+individuelle ni télémétrie en direct et n'est pas enregistré pour démarrer avec
+Windows. Pour lire et modifier les tâches de la copie avec le compte `majdi`,
+utiliser toujours l'interface individuelle sur le port 20132.
+
+Les adresses ci-dessous concernent le profil Cockpit historique, lorsqu'il est lancé
+dans un environnement où ses routes sont autorisées :
 
 Ouvrir dans un navigateur :
 - **Mode Cockpit** (Design graphique moderne) : `http://127.0.0.1:20129/`

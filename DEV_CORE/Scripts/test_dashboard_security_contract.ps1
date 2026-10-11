@@ -26,9 +26,12 @@ foreach ($required in @(
     "def validate_csrf_token",
     "def requires_csrf",
     "def is_request_too_large",
-    "send_csrf_error_response",
-    "send_payload_too_large_response",
-    "Access-Control-Allow-Origin",
+    "def check_csrf",
+    "Invalid CSRF Token",
+    "IndividualBodyLimitMiddleware",
+    "status_code=413",
+    "CORSMiddleware",
+    "allow_origins=allowed_origins",
     "X-CSRF-Token"
 )) {
     Assert-True ($source -match [regex]::Escape($required)) "dashboard_api.py missing security contract: $required"
@@ -36,4 +39,5 @@ foreach ($required in @(
 
 Assert-True (-not ($source -match "Access-Control-Allow-Origin', '\\*'")) "dashboard_api.py must not emit wildcard CORS"
 
+Assert-True (-not ($source -match 'allow_origins\s*=\s*\[\s*["'']\*["'']\s*\]')) "FastAPI CORS must not use wildcard origins"
 Write-Host "[OK] dashboard security contract tests passed" -ForegroundColor Green

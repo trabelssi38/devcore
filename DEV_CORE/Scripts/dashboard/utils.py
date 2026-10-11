@@ -184,20 +184,46 @@ def get_task_id_number(t) -> int:
     return 0
 
 def get_active_project(data_root: Path = DATA_ROOT) -> str:
-    # Use cached env var if present
-    cached = os.environ.get("DEVCORE_ACTIVE_PROJECT_NAME")
-    if cached:
-        return cached
-    # Read active_project.txt if present
-    try:
-        txt_file = LOCAL_ROOT / "Runtime" / "active_project.txt"
-        if not txt_file.exists():
-            txt_file = DATA_ROOT / "Runtime" / "active_project.txt"
-        if txt_file.exists():
-            return txt_file.read_text(encoding="utf-8-sig").strip()
-    except Exception:
-        pass
-    return "devcore"
+    """Selection belongs to this generator process, never a shared runtime file.
+
+    The unused data_root argument remains for legacy callers. No selection
+    means the aggregate view; this function grants no project access rights.
+    """
+    selected = os.environ.get("DEVCORE_ACTIVE_PROJECT_NAME")
+    if selected is None:
+        return ""
+    selected = selected.strip()
+    if not selected or any(part in selected for part in ("/", "\\", ":", "..")):
+        raise ValueError("Invalid explicit dashboard project")
+    return selected
+
+
+def script_safe_json(value) -> str:
+    """Serialize strict JSON without HTML script delimiters or JS separators."""
+    encoded = json.dumps(value, ensure_ascii=True, allow_nan=False)
+    return encoded.replace("<", "\\u003c").replace(">", "\\u003e").replace("&", "\\u0026")
+
+
+def render_dashboard_data(template: str, task_details, task_interactions, token_metrics) -> str:
+    """Encode all legacy JSON script data with the same HTML-safe policy."""
+    values = {
+        '{{TASK_DETAILS_MAP}}': task_details,
+        '{{TASK_INTERACTIONS_MAP}}': task_interactions,
+        '{{TOKEN_METRICS_JSON}}': token_metrics,
+    }
+    # Validate every payload before substituting any slot.
+    encoded = {marker: script_safe_json(value) for marker, value in values.items()}
+    pattern = '|'.join(re.escape(marker) for marker in encoded)
+    return re.sub(pattern, lambda match: encoded[match.group(0)], template)
+
+
+def render_active_project(template: str) -> str:
+    """Insert a script-safe JSON string into the legacy inline script slot."""
+    value = script_safe_json(get_active_project())
+    rendered = template.replace('"{{ACTIVE_PROJECT_NAME}}"', value)
+    if '{{ACTIVE_PROJECT_NAME}}' in rendered:
+        raise ValueError("Active project placeholder must be a complete quoted JavaScript value")
+    return rendered
 
 def map_project_path(path_str: str) -> str:
     if not path_str:

@@ -1,8 +1,26 @@
 # integrity_check.ps1 -- DEV_CORE v7
 # Vérifie la cohérence entre Git, tasks.json et le Dashboard
-# Appeler: dc check --integrity
+# Appeler: powershell -File integrity_check.ps1 -Project <nom> -RepoPath <chemin absolu>
+param(
+    [Parameter(Mandatory=$true)]
+    [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$')]
+    [string]$Project,
+    [Parameter(Mandatory=$true)]
+    [ValidateNotNullOrEmpty()]
+    [string]$RepoPath
+)
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+
+if (-not [System.IO.Path]::IsPathRooted($RepoPath)) {
+    throw "-RepoPath must be an absolute path"
+}
+$resolvedRepo = Resolve-Path -LiteralPath $RepoPath -ErrorAction Stop
+$repoRootRes = git -C $resolvedRepo.Path rev-parse --show-toplevel 2>&1
+if ($LASTEXITCODE -ne 0 -or -not $repoRootRes -or $repoRootRes -match "fatal:") {
+    throw "-RepoPath must identify an existing Git working tree"
+}
+$gitRoot = (Resolve-Path -LiteralPath $repoRootRes.Trim()).Path
 
 $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path (Join-Path $env:DEVCORE_PLATFORM_ROOT "Scripts\platform_version.ps1"))) {
     $env:DEVCORE_PLATFORM_ROOT
@@ -21,8 +39,8 @@ if ($DEV_CORE -match '[/\\]Scripts[/\\]?$') {
 . "$DEV_CORE\Scripts\platform_version.ps1"
 $DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT)     { $env:DEVCORE_DATA_ROOT }     else { (Join-Path $DEV_CORE "DEV_CORE_DATA") }
 $DEV_CORE_LOCAL = if ($env:DEVCORE_LOCAL_ROOT) { $env:DEVCORE_LOCAL_ROOT } elseif ($env:LOCALAPPDATA) { "$env:LOCALAPPDATA\DEV_CORE_LOCAL" } else { $DEV_CORE_DATA }
-$projName = & "$PSScriptRoot\..\Get-ActiveProject.ps1"
-$tFile = "$DEV_CORE_DATA\Memory\$projName\tasks.json"
+$projName = $Project
+$tFile = Join-Path $DEV_CORE_DATA "Memory\$projName\tasks.json"
 $issues = @()
 
 if (-not (Test-Path $tFile)) {
@@ -57,8 +75,7 @@ if ($board) {
 }
 
 # 2. Comparer avec Git
-$workspaceRoot = Split-Path -Parent $DEV_CORE
-Push-Location $workspaceRoot
+Push-Location $gitRoot
 try {
     $commits = git log --since="30 days ago" --format="%H|%s|%ai" 2>&1
     $gitTags = @{}

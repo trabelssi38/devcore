@@ -1,24 +1,45 @@
 # dc.ps1 -- DEV_CORE v6 -- Single client -- ASCII safe
 # Alias : Set-Alias dc 'C:\DEV_CORE\Scripts\dc.ps1'
-param([Parameter(ValueFromRemainingArguments=$true)][string[]]$Args)
+[CmdletBinding(PositionalBinding=$false)]
+param(
+    [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$')]
+    [string]$Project,
+    [string]$TaskId,
+    [int]$ExpectedVersion,
+    [Parameter(ValueFromRemainingArguments=$true)][string[]]$CommandWords
+)
 
 $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT) { $env:DEVCORE_PLATFORM_ROOT } else { "C:\DEV_CORE" }
 $SCRIPTS  = "$DEV_CORE\Scripts"
-$cmd = ($Args -join " ").ToLower().Trim()
+$cmd = ($CommandWords -join " ").ToLower().Trim()
+$taskDoneArgs = @{}
+if ($Project) { $taskDoneArgs.Project = $Project }
+if ($TaskId) { $taskDoneArgs.TaskId = $TaskId }
+if ($PSBoundParameters.ContainsKey('ExpectedVersion')) { $taskDoneArgs.ExpectedVersion = $ExpectedVersion }
+if ($cmd -match '^(next task|nt|task done|td|done|task status|ts|status|task pause|task skip|new task |next mission|nm|mission validee|mv|mission status|ms|launch$|endday$|ask )' -and -not $Project) {
+    Write-Error 'Projet requis : dc_v2.ps1 -Project <id> <commande>'
+    exit 2
+}
 
 switch -Regex ($cmd) {
 
     # -- TASKS (nouveau systeme single client)
-    "^next task$|^nt$"                          { & "$SCRIPTS\task_next.ps1" }
-    "^task done$|^td$|^done$"                   { & "$SCRIPTS\task_done.ps1" }
-    "^task status$|^ts$|^status$"               { & "$SCRIPTS\task_status.ps1" }
-    "^task pause$"                              { & "$SCRIPTS\task_pause.ps1" }
-    "^task skip$"                               { & "$SCRIPTS\task_skip.ps1" }
+    "^next task$|^nt$"                          { & "$SCRIPTS\task_next.ps1" --project $Project; exit $LASTEXITCODE }
+    "^task done$|^td$|^done$"                   {
+        if (-not $Project) { Write-Error 'Projet requis : dc_v2.ps1 -Project <id> task done'; exit 2 }
+        & "$SCRIPTS\task_done.ps1" @taskDoneArgs
+        exit $LASTEXITCODE
+    }
+    "^task status$|^ts$|^status$"               { & "$SCRIPTS\task_status.ps1" -Project $Project; exit $LASTEXITCODE }
+    "^task pause$"                              { & "$SCRIPTS\task_pause.ps1" -Project $Project -Id $TaskId; exit $LASTEXITCODE }
+    "^task skip$"                               { & "$SCRIPTS\task_skip.ps1" -Project $Project -Id $TaskId; exit $LASTEXITCODE }
     "^new task (.+) -(reasoning|coding|bulk)$"  {
-        & "$SCRIPTS\task_add.ps1" -Title $Matches[1] -Mode $Matches[2]
+        & "$SCRIPTS\task_add.ps1" -Title $Matches[1] -Mode $Matches[2] -Project $Project
+        exit $LASTEXITCODE
     }
     "^new task (.+)$"                           {
-        & "$SCRIPTS\task_add.ps1" -Title $Matches[1]
+        & "$SCRIPTS\task_add.ps1" -Title $Matches[1] -Project $Project
+        exit $LASTEXITCODE
     }
 
     # -- PROJET
@@ -33,28 +54,32 @@ switch -Regex ($cmd) {
     "^link project (.+)$" { & "$SCRIPTS\new_project.ps1" -Name $Matches[1] -Path (Get-Location).Path }
 
     # -- CYCLE JOURNALIER
-    "^launch$"  { & "$SCRIPTS\launch.ps1" }
-    "^endday$"  { & "$SCRIPTS\endday.ps1" }
-    "^weekly$"  { & "$SCRIPTS\Auto\weekly_maintenance.ps1" }
+    "^launch$"  { & "$SCRIPTS\launch.ps1" --project $Project; exit $LASTEXITCODE }
+    "^endday$"  { & "$SCRIPTS\endday.ps1" --project $Project; exit $LASTEXITCODE }
+    "^weekly$"  { & "$SCRIPTS\Auto\weekly_maintenance.ps1"; exit $LASTEXITCODE }
 
     # -- DIAGNOSTIC
-    "^check$"   { & "$SCRIPTS\diagnose.ps1" }
+    "^check$"   { & "$SCRIPTS\diagnose.ps1"; exit $LASTEXITCODE }
 
     # -- ASK (routing mode auto)
-    "^ask (.+)$" { & "$SCRIPTS\ask.ps1" -PromptFr $Matches[1] }
+    "^ask (.+)$" { & "$SCRIPTS\ask.ps1" -PromptFr $Matches[1] -Project $Project; exit $LASTEXITCODE }
 
     # -- COMPAT anciens alias missions (redirige vers tasks)
     "^next mission$|^nm$"                        {
         Write-Host "  [INFO] Redirected: dc next task (single client mode)" -ForegroundColor DarkGray
-        & "$SCRIPTS\task_next.ps1"
+        & "$SCRIPTS\task_next.ps1" --project $Project
+        exit $LASTEXITCODE
     }
     "^mission validee$|^mv$"                    {
         Write-Host "  [INFO] Redirected: dc task done (single client mode)" -ForegroundColor DarkGray
-        & "$SCRIPTS\task_done.ps1"
+        if (-not $Project) { Write-Error 'Projet requis : dc_v2.ps1 -Project <id> mission validee'; exit 2 }
+        & "$SCRIPTS\task_done.ps1" @taskDoneArgs
+        exit $LASTEXITCODE
     }
     "^mission status$|^ms$"                     {
         Write-Host "  [INFO] Redirected: dc task status (single client mode)" -ForegroundColor DarkGray
-        & "$SCRIPTS\task_status.ps1"
+        & "$SCRIPTS\task_status.ps1" -Project $Project
+        exit $LASTEXITCODE
     }
 
     # -- HELP
@@ -64,7 +89,7 @@ switch -Regex ($cmd) {
         Write-Host "  -------------------------------------------" -ForegroundColor DarkGray
         Write-Host "  TACHES" -ForegroundColor White
         Write-Host "  dc next task (nt)              Prochaine tache + mode auto" -ForegroundColor Gray
-        Write-Host "  dc task done (td)              Valide + sync memoire auto" -ForegroundColor Gray
+        Write-Host "  dc -Project <id> task done      Cloture la tache du projet" -ForegroundColor Gray
         Write-Host "  dc task status (ts)            Dashboard taches" -ForegroundColor Gray
         Write-Host "  dc task pause                  Pause sans valider" -ForegroundColor Gray
         Write-Host "  dc task skip                   Passe a la suivante" -ForegroundColor Gray

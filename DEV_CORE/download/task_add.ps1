@@ -1,32 +1,15 @@
-# task_add.ps1 -- DEV_CORE v6 single client
+# Legacy entry point: add a task in one explicit project through TaskService.
 param(
-    [Parameter(Mandatory=$true)][string]$Title,
-    [ValidateSet("reasoning","coding","bulk")][string]$Mode = "coding",
-    [string]$DependsOn = ""
+    [Parameter(Mandatory=$true)]
+    [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$')]
+    [string]$Project,
+    [Parameter(Mandatory=$true)][ValidateNotNullOrEmpty()][string]$Title,
+    [ValidateSet('reasoning', 'coding', 'bulk')][string]$Mode = 'coding',
+    [string]$DependsOn = ''
 )
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { "C:\DEV_CORE_DATA" }
-$tFile = "$DEV_CORE_DATA\Memory\tasks.json"
 
-if (-not (Test-Path $tFile)) {
-    @{ project="default"; current_task=$null; tasks=@() } |
-        ConvertTo-Json -Depth 5 | Set-Content $tFile -Encoding UTF8
-}
-
-$board = Get-Content $tFile -Raw | ConvertFrom-Json
-$nums  = $board.tasks | Where-Object { $_.id -match "^T-(\d+)$" } |
-         ForEach-Object { [int]($_.id -replace "T-","") }
-$next  = if ($nums) { ($nums | Measure-Object -Maximum).Maximum + 1 } else { 1 }
-$id    = "T-{0:D2}" -f $next
-
-$t = [PSCustomObject]@{
-    id         = $id
-    title      = $Title
-    mode       = $Mode
-    status     = "todo"
-    steps_total= 1
-    steps_done = 0
-    depends_on = if ($DependsOn) { "T-$DependsOn" } else { $null }
-}
-$board.tasks += $t
-$board | ConvertTo-Json -Depth 10 | Set-Content $tFile -Encoding UTF8
-Write-Host "  [OK] Tache ajoutee : $id [$Mode] -- $Title" -ForegroundColor Green
+$target = Join-Path (Split-Path -Parent $PSScriptRoot) 'Scripts\task_add.ps1'
+$taskArgs = @{ Project = $Project; Title = $Title; Mode = $Mode }
+if ($DependsOn) { $taskArgs.DependsOn = $DependsOn }
+& $target @taskArgs
+exit $LASTEXITCODE

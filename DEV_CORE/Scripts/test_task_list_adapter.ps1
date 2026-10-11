@@ -1,53 +1,58 @@
-# test_task_list_adapter.ps1 -- task_list compatibility adapter contract
+# Contrat : la liste PowerShell lit l'état SQL du projet demandé.
 $ErrorActionPreference = "Stop"
-
 $taskListScript = Join-Path $PSScriptRoot "task_list.ps1"
-$ciPowerShellTests = Join-Path $PSScriptRoot "ci_powershell_tests.ps1"
-
-function Assert-True {
-    param([bool]$Condition, [string]$Message)
-    if (-not $Condition) { throw $Message }
-}
-
-$tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("devcore-task-list-adapter-" + [guid]::NewGuid().ToString("N"))
-$oldDataRoot = $env:DEVCORE_DATA_ROOT
+$platformRoot = Split-Path -Parent $PSScriptRoot
+$tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("devcore-task-list-" + [guid]::NewGuid().ToString("N"))
+$savedData = $env:DEVCORE_DATA_ROOT
+$savedLocal = $env:DEVCORE_LOCAL_ROOT
+$savedPlatform = $env:DEVCORE_PLATFORM_ROOT
+$savedPython = $env:DEVCORE_PYTHON
+$savedPythonPath = $env:PYTHONPATH
 
 try {
-    $env:DEVCORE_DATA_ROOT = $tempRoot
-    $boardDir = Join-Path $tempRoot "Memory\devcore"
+    New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
+    $env:DEVCORE_DATA_ROOT = Join-Path $tempRoot "shared"
+    $env:DEVCORE_LOCAL_ROOT = Join-Path $tempRoot "local"
+    $env:DEVCORE_PLATFORM_ROOT = $platformRoot
+    $env:DEVCORE_PYTHON = (Get-Command python -ErrorAction Stop).Source
+    $env:PYTHONPATH = $platformRoot
+    New-Item -ItemType Directory -Path $env:DEVCORE_DATA_ROOT, $env:DEVCORE_LOCAL_ROOT -Force | Out-Null
+
+    $boardDir = Join-Path $env:DEVCORE_DATA_ROOT "Memory\alpha"
     New-Item -ItemType Directory -Path $boardDir -Force | Out-Null
     @{
-        project = "devcore"
-        current_task = "T-158"
-        tasks = @(
-            @{
-                id = "T-158"
-                title = "Adapter task list"
-                status = "active"
-                mode = "coding"
-                steps_done = 0
-                steps_total = 1
-            }
-        )
-    } | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $boardDir "tasks.json") -Encoding UTF8
+        project = "alpha"
+        tasks = @(@{ id = "T-01"; title = "Legacy stale"; status = "active"; mode = "coding" })
+    } | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $boardDir "tasks.json") -Encoding UTF8
 
-    $output = powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $taskListScript | Out-String
-    Assert-True ($output -match "T-158") "task_list adapter should render tasks from the Python port"
-    Assert-True ($output -match "Adapter task list") "task_list adapter should preserve task titles"
+    & $env:DEVCORE_PYTHON -m devcore_engine.cli task add "SQL task" --project alpha | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "SQL task setup failed" }
+    $output = & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $taskListScript -Project alpha | Out-String
+    if ($LASTEXITCODE -ne 0) { throw "task_list.ps1 failed" }
+    if ($output -notmatch "T-01" -or $output -notmatch "sql task") { throw "SQL task not shown" }
+    if ($output -match "Legacy stale") { throw "Stale JSON task shown" }
+    $adapter = Join-Path $platformRoot "API\compat_task_list.py"
+    $sqlBoard = (& $env:DEVCORE_PYTHON $adapter --project alpha --json | Out-String) | ConvertFrom-Json
+    if ($LASTEXITCODE -ne 0 -or $sqlBoard.tasks[0].title -ne "sql task") { throw "Compatibility adapter did not read SQLite" }
+    $legacyBoard = (& $env:DEVCORE_PYTHON $adapter --project alpha --json --legacy-json | Out-String) | ConvertFrom-Json
+    if ($LASTEXITCODE -ne 0 -or $legacyBoard.tasks[0].title -ne "Legacy stale") { throw "Explicit legacy mode failed" }
+    $legacy = Get-Content -LiteralPath (Join-Path $boardDir "tasks.json") -Raw
+    if ($legacy -notmatch "Legacy stale") { throw "Legacy JSON was modified" }
 
-    $source = Get-Content -LiteralPath $taskListScript -Raw -Encoding UTF8
-    Assert-True ($source -match "compat_task_list.py") "task_list.ps1 should delegate to the Python compatibility adapter"
-    Assert-True ($source -notmatch "Get-Content\\s+\\$tFile") "task_list.ps1 should not read tasks.json directly"
-
-    $ciSource = Get-Content -LiteralPath $ciPowerShellTests -Raw -Encoding UTF8
-    Assert-True ($ciSource -match "test_task_list_adapter.ps1") "PowerShell CI should run task list adapter contract"
-
-    Write-Host "[OK] task list adapter tests passed" -ForegroundColor Green
+    Write-Host "[OK] task_list reads project-scoped SQLite state" -ForegroundColor Green
 } finally {
-    if ($null -eq $oldDataRoot) {
-        Remove-Item Env:\DEVCORE_DATA_ROOT -ErrorAction SilentlyContinue
-    } else {
-        $env:DEVCORE_DATA_ROOT = $oldDataRoot
+    foreach ($entry in @(
+        @{ Name = "DEVCORE_DATA_ROOT"; Value = $savedData },
+        @{ Name = "DEVCORE_LOCAL_ROOT"; Value = $savedLocal },
+        @{ Name = "DEVCORE_PLATFORM_ROOT"; Value = $savedPlatform },
+        @{ Name = "DEVCORE_PYTHON"; Value = $savedPython },
+        @{ Name = "PYTHONPATH"; Value = $savedPythonPath }
+    )) {
+        if ($null -eq $entry.Value) {
+            Remove-Item -Path ("Env:" + $entry.Name) -ErrorAction SilentlyContinue
+        } else {
+            Set-Item -Path ("Env:" + $entry.Name) -Value $entry.Value
+        }
     }
-    Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue
+    if (Test-Path -LiteralPath $tempRoot) { Remove-Item -LiteralPath $tempRoot -Recurse -Force }
 }

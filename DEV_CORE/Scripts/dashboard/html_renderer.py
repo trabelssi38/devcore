@@ -2,6 +2,7 @@ import os
 import sys
 import time
 import json
+import math
 from datetime import datetime
 from pathlib import Path
 
@@ -354,7 +355,7 @@ def get_services_html(projects: list, token_metrics: dict) -> str:
             pass
 
     act_proj = get_active_project()
-    priority_names = [act_proj]
+    priority_names = [act_proj] if act_proj else []
     if "devcore" != act_proj:
         priority_names.append("devcore")
     other_names = [p["name"] for p in projects if p["name"] not in priority_names]
@@ -782,8 +783,6 @@ def get_metrics_service_status() -> dict:
     import datetime as _datetime
     try:
         metrics_dir = LOCAL_ROOT / "Logs" / "metrics"
-        if not metrics_dir.exists():
-            metrics_dir = DATA_ROOT / "Metrics"
         today_str = _datetime.date.today().strftime("%Y-%m-%d")
         metrics_file = metrics_dir / f"metrics-{today_str}.jsonl"
         
@@ -814,7 +813,15 @@ def get_metrics_service_status() -> dict:
                     if not line:
                         continue
                     try:
-                        events.append(json.loads(line))
+                        event = json.loads(line)
+                        if (not isinstance(event, dict) or event.get("event_type") != "MetricRecorded"
+                                or not all(isinstance(event.get(key), str) for key in
+                                           ("metric_type", "unit", "source", "project"))
+                                or isinstance(event.get("value"), bool)
+                                or not isinstance(event.get("value"), (int, float))
+                                or not math.isfinite(event["value"])):
+                            raise ValueError("Invalid metric event")
+                        events.append(event)
                     except Exception:
                         errors += 1
                         
@@ -822,6 +829,7 @@ def get_metrics_service_status() -> dict:
         projects = {}
         tasks = {}
         sources = {}
+        snapshot_values = {}
         
         def add_grouped_metric(table, m_type, m_unit, m_val, m_src):
             is_snapshot = (m_src == "token_report" and m_type in ["tokens", "cache_hits", "cost", "sessions"])
@@ -845,23 +853,40 @@ def get_metrics_service_status() -> dict:
             m_val = ev.get("value", 0.0)
             m_src = ev.get("source", "unknown")
             proj = ev.get("project", "unknown")
-            task_id = ev.get("task_id") or "none"
+            task_id = ev.get("task_id") or ""
+            if not task_id or task_id == "none":
+                task_key = "none"
+            elif task_id.startswith(f"{proj}_"):
+                task_key = task_id
+            else:
+                task_key = f"{proj}_{task_id}"
             
-            add_grouped_metric(totals, m_type, m_unit, m_val, m_src)
+            is_snapshot = m_src == "token_report" and m_type in ("tokens", "cache_hits", "cost", "sessions")
+            if is_snapshot:
+                snapshot_values[(proj, m_type, m_unit)] = m_val
+            else:
+                add_grouped_metric(totals, m_type, m_unit, m_val, m_src)
             
             if proj not in projects:
                 projects[proj] = {"events_count": 0, "totals": {}}
             projects[proj]["events_count"] += 1
             add_grouped_metric(projects[proj]["totals"], m_type, m_unit, m_val, m_src)
             
-            if task_id not in tasks:
-                tasks[task_id] = {"events_count": 0, "totals": {}}
-            tasks[task_id]["events_count"] += 1
-            add_grouped_metric(tasks[task_id]["totals"], m_type, m_unit, m_val, m_src)
+            if task_key not in tasks:
+                tasks[task_key] = {"events_count": 0, "totals": {}}
+            tasks[task_key]["events_count"] += 1
+            add_grouped_metric(tasks[task_key]["totals"], m_type, m_unit, m_val, m_src)
             
             if m_src not in sources:
                 sources[m_src] = {"events_count": 0}
             sources[m_src]["events_count"] += 1
+
+        snapshot_counts = {}
+        for (_, m_type, m_unit), value in snapshot_values.items():
+            add_grouped_metric(totals, m_type, m_unit, value, "project_snapshot")
+            snapshot_counts[(m_type, m_unit)] = snapshot_counts.get((m_type, m_unit), 0) + 1
+        for (m_type, m_unit), count in snapshot_counts.items():
+            totals[m_type][m_unit]["aggregation"] = "latest" if count == 1 else "latest_by_project"
             
         aggregate = {
             "schema_version": 1,

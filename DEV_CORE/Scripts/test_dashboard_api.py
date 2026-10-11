@@ -15,6 +15,11 @@ import pytest
 MODULE_PATH = Path(__file__).with_name("dashboard_api.py")
 
 
+@pytest.fixture(autouse=True)
+def isolated_dashboard_runtime(tmp_path, monkeypatch):
+    monkeypatch.setenv("DEVCORE_LOCAL_ROOT", str(tmp_path / "DEV_CORE_LOCAL"))
+
+
 def load_dashboard_api():
     spec = importlib.util.spec_from_file_location("dashboard_api_under_test", MODULE_PATH)
     module = importlib.util.module_from_spec(spec)
@@ -80,7 +85,7 @@ def test_build_dashboard_payload_rejects_unknown_schema(tmp_path):
 def test_load_dashboard_read_model_uses_runtime_snapshot(tmp_path):
     dashboard_api = load_dashboard_api()
     dashboard_api.DATA_ROOT = str(tmp_path)
-    snapshot_path = tmp_path / "Dashboard" / "read_model.json"
+    snapshot_path = dashboard_api.get_dashboard_read_model_path()
     snapshot_path.parent.mkdir(parents=True)
     snapshot_path.write_text(
         json.dumps(
@@ -102,7 +107,7 @@ def test_load_dashboard_read_model_uses_runtime_snapshot(tmp_path):
 def test_dashboard_resource_paginates_read_model_list(tmp_path):
     dashboard_api = load_dashboard_api()
     dashboard_api.DATA_ROOT = str(tmp_path)
-    snapshot_path = tmp_path / "Dashboard" / "read_model.json"
+    snapshot_path = dashboard_api.get_dashboard_read_model_path()
     snapshot_path.parent.mkdir(parents=True)
     snapshot_path.write_text(
         json.dumps(
@@ -206,7 +211,7 @@ def test_dashboard_cached_payload_response_stays_under_transport_budget(tmp_path
     dashboard_api.DATA_ROOT = str(tmp_path)
     payload_path = dashboard_api.get_cached_dashboard_payload_path()
     payload_path.parent.mkdir(parents=True, exist_ok=True)
-    (tmp_path / "Dashboard" / "read_model.json").write_text(
+    dashboard_api.get_dashboard_read_model_path().write_text(
         json.dumps({"schema_version": 1, "events": {"recent": [{"id": "evt-1"}]}}),
         encoding="utf-8",
     )
@@ -424,7 +429,7 @@ def test_dashboard_settings_separate_config_secrets_and_runtime_state(tmp_path):
     secrets = json.loads(
         (tmp_path / "DEV_CORE_DATA" / "Security" / "dashboard_settings_secrets.json").read_text(encoding="utf-8")
     )
-    active_client = (tmp_path / "DEV_CORE_DATA" / "Runtime" / "active_client.txt").read_text(encoding="utf-8")
+    active_client = dashboard_api.get_active_client_runtime_path().read_text(encoding="utf-8")
 
     assert "GEMINI_SECRET_VALUE" not in config_text
     assert "ANTHROPIC_SECRET_VALUE" not in config_text
@@ -526,6 +531,7 @@ def test_gen_dashboard_payload_includes_context_composition(tmp_path):
     env = os.environ.copy()
     env["DEVCORE_PLATFORM_ROOT"] = str(platform_root)
     env["DEVCORE_DATA_ROOT"] = str(data_root)
+    env["DEVCORE_DASHBOARD_LEGACY_JSON"] = "1"
 
     result = subprocess.run(
         [
@@ -575,6 +581,9 @@ def test_gen_dashboard_html_generation_writes_api_payload_cache(tmp_path):
     project_root = memory_root / "devcore"
     scenario_root = memory_root / "Scenarios"
     dashboard_root.mkdir(parents=True)
+    config_root = platform_root / "Config"
+    config_root.mkdir()
+    shutil.copyfile(source_platform_root / "Config" / "platform.json", config_root / "platform.json")
     project_root.mkdir(parents=True)
     scenario_root.mkdir(parents=True)
     shutil.copyfile(source_platform_root / "Dashboard" / "template.html", dashboard_root / "template.html")
@@ -604,8 +613,9 @@ def test_gen_dashboard_html_generation_writes_api_payload_cache(tmp_path):
     env = os.environ.copy()
     env["DEVCORE_PLATFORM_ROOT"] = str(platform_root)
     env["DEVCORE_DATA_ROOT"] = str(data_root)
+    env["DEVCORE_DASHBOARD_LEGACY_JSON"] = "1"
 
-    subprocess.run(
+    result = subprocess.run(
         [
             "powershell.exe",
             "-NoProfile",
@@ -624,8 +634,8 @@ def test_gen_dashboard_html_generation_writes_api_payload_cache(tmp_path):
         check=True,
     )
 
-    payload_path = data_root / "Dashboard" / "dashboard_payload.json"
-    assert (dashboard_root / "index.html").exists()
+    payload_path = Path(env["DEVCORE_LOCAL_ROOT"]) / "Dashboard" / "dashboard_payload.json"
+    assert (dashboard_root / "index.html").exists(), (result.stdout, result.stderr)
     assert payload_path.exists()
     payload = json.loads(payload_path.read_text(encoding="utf-8-sig"))
     assert payload["schema_version"] == 1
@@ -638,6 +648,25 @@ def test_gen_dashboard_html_generation_writes_api_payload_cache(tmp_path):
 def test_complete_task_active_task_updates_status_case_insensitively(tmp_path):
     dashboard_api = load_dashboard_api()
     dashboard_api.DATA_ROOT = str(tmp_path)
+    dashboard_api.LOCAL_ROOT = tmp_path / "local"
+
+    import sys
+    sys.path.insert(0, str(MODULE_PATH.parent.parent))
+    from devcore_engine.db import init_db
+
+    db_path = dashboard_api.get_local_path("devcore.db")
+    db_path.parent.mkdir()
+    with init_db(db_path) as conn:
+        conn.execute("INSERT INTO projects(id, name, root_path) VALUES ('devcore', 'devcore', '.')")
+        conn.execute("INSERT INTO projects(id, name, root_path) VALUES ('other', 'other', '.')")
+        conn.execute(
+            "INSERT INTO tasks(id, project_id, title, status, steps_total) "
+            "VALUES ('T-301', 'devcore', 'Active Task Test', 'in_progress', 2)"
+        )
+        conn.execute(
+            "INSERT INTO tasks(id, project_id, title, status, steps_total) "
+            "VALUES ('T-301', 'other', 'Other Task', 'in_progress', 1)"
+        )
 
     memory_root = tmp_path / "Memory" / "devcore"
     memory_root.mkdir(parents=True)
@@ -662,16 +691,48 @@ def test_complete_task_active_task_updates_status_case_insensitively(tmp_path):
     success, msg = dashboard_api.complete_task("devcore", "t-301")
     assert success is True
 
-    updated_board = json.loads(tasks_json.read_text(encoding="utf-8"))
-    task = updated_board["tasks"][0]
-    assert task["status"] == "done"
-    assert task["steps_done"] == 2
-    assert "completed_at" in task
+    legacy_board = json.loads(tasks_json.read_text(encoding="utf-8"))
+    assert legacy_board["tasks"][0]["status"] == "active"
+
+    import sqlite3
+    with sqlite3.connect(db_path) as conn:
+        assert conn.execute(
+            "SELECT status FROM tasks WHERE id = 'T-301' AND project_id = 'devcore'"
+        ).fetchone()[0] == "done"
+        assert conn.execute(
+            "SELECT status FROM tasks WHERE id = 'T-301' AND project_id = 'other'"
+        ).fetchone()[0] == "in_progress"
+
+    from fastapi.testclient import TestClient
+    client = TestClient(dashboard_api.app)
+    assert client.get("/api/dashboard/tasks").status_code == 422
+    assert client.get("/api/dashboard/tasks", params={"project": "devcore"}).status_code == 401
+    with patch.object(dashboard_api, "check_auth", return_value=True):
+        tasks = client.get("/api/dashboard/tasks", params={"project": "devcore"})
+    assert tasks.status_code == 200
+    assert len(tasks.json()) == 1
+    assert tasks.json()[0]["project"] == "devcore"
 
 
 def test_delete_task_case_insensitive_matching(tmp_path):
     dashboard_api = load_dashboard_api()
     dashboard_api.DATA_ROOT = str(tmp_path)
+    dashboard_api.LOCAL_ROOT = tmp_path / "local"
+
+    import sys
+    sys.path.insert(0, str(MODULE_PATH.parent.parent))
+    from devcore_engine.db import init_db
+
+    db_path = dashboard_api.get_local_path("devcore.db")
+    db_path.parent.mkdir()
+    with init_db(db_path) as conn:
+        conn.execute("INSERT INTO projects(id, name, root_path) VALUES ('devcore', 'devcore', '.')")
+        conn.execute("INSERT INTO projects(id, name, root_path) VALUES ('other', 'other', '.')")
+        conn.execute("INSERT INTO tasks(id, project_id, title) VALUES ('T-302', 'devcore', 'Task To Delete')")
+        conn.execute("INSERT INTO tasks(id, project_id, title) VALUES ('T-302', 'other', 'Other Task')")
+        conn.execute(
+            "INSERT INTO runs(id, project_id, task_id) VALUES ('run-302', 'devcore', 'T-302')"
+        )
 
     memory_root = tmp_path / "Memory" / "devcore"
     memory_root.mkdir(parents=True)
@@ -693,12 +754,101 @@ def test_delete_task_case_insensitive_matching(tmp_path):
         encoding="utf-8"
     )
 
-    success, msg = dashboard_api.delete_task("DEVCORE", "t-302")
+    success, msg = dashboard_api.delete_task("devcore", "t-302")
     assert success is True
 
-    updated_board = json.loads(tasks_json.read_text(encoding="utf-8"))
-    assert len(updated_board["tasks"]) == 0
-    assert updated_board["current_task"] is None
+    legacy_board = json.loads(tasks_json.read_text(encoding="utf-8"))
+    assert len(legacy_board["tasks"]) == 1
+    assert legacy_board["current_task"] == "T-302"
+
+    import sqlite3
+    with sqlite3.connect(db_path) as conn:
+        assert conn.execute(
+            "SELECT status FROM tasks WHERE id = 'T-302' AND project_id = 'devcore'"
+        ).fetchone()[0] == "deleted"
+        assert conn.execute(
+            "SELECT status FROM tasks WHERE id = 'T-302' AND project_id = 'other'"
+        ).fetchone()[0] == "todo"
+        assert conn.execute("SELECT task_id FROM runs WHERE id = 'run-302'").fetchone()[0] == "T-302"
+
+    from fastapi.testclient import TestClient
+    client = TestClient(dashboard_api.app)
+    with patch.object(dashboard_api, "check_auth", return_value=True):
+        tasks = client.get("/api/dashboard/tasks", params={"project": "devcore"})
+    assert tasks.status_code == 200
+    assert tasks.json() == []
+
+
+@pytest.mark.parametrize("method,path,target", [("POST", "/api/done", "done"), ("DELETE", "/api/delete", "deleted")])
+def test_task_http_mutations_refuse_stale_version_and_keep_other_project(tmp_path, method, path, target):
+    import sqlite3
+    from fastapi.testclient import TestClient
+    from devcore_engine.db import init_db
+    dashboard_api = load_dashboard_api()
+    dashboard_api.DATA_ROOT = str(tmp_path)
+    dashboard_api.LOCAL_ROOT = tmp_path / "local"
+    dashboard_api.LOCAL_ROOT.mkdir()
+    database = dashboard_api.LOCAL_ROOT / "devcore.db"
+    conn = init_db(database)
+    for project in ("alpha", "beta"):
+        conn.execute("INSERT INTO projects(id,name,root_path) VALUES (?,?,'.')", (project, project))
+        conn.execute("INSERT INTO tasks(id,project_id,title,status) VALUES ('T-01',?,?,'in_progress')", (project, project))
+    conn.commit()
+    conn.close()
+    client = TestClient(dashboard_api.app)
+    with patch.object(dashboard_api, "check_auth", return_value=True), patch.object(dashboard_api, "check_csrf", return_value=True):
+        first = client.get("/api/dashboard/tasks", params={"project": "alpha"}).json()[0]
+        assert first["version"] == 1
+        with sqlite3.connect(database) as writer:
+            writer.execute("UPDATE tasks SET title='Changed elsewhere' WHERE project_id='alpha'")
+        stale = client.request(method, path, json={"project": "alpha", "id": "t-01", "expected_version": first["version"]})
+        assert stale.status_code == 409
+        assert stale.json()["detail"]["code"] == "stale_task_version"
+        with sqlite3.connect(database) as check:
+            assert check.execute("SELECT status,version FROM tasks WHERE project_id='alpha'").fetchone() == ("in_progress", 2)
+            assert check.execute("SELECT COUNT(*) FROM bus_events").fetchone()[0] == 0
+        fresh = client.get("/api/dashboard/tasks", params={"project": "alpha"}).json()[0]
+        accepted = client.request(method, path, json={"project": "alpha", "id": "t-01", "expected_version": fresh["version"]})
+        assert accepted.status_code == 200
+    with sqlite3.connect(database) as check:
+        assert check.execute("SELECT status,version FROM tasks WHERE project_id='alpha'").fetchone() == (target, 3)
+        assert check.execute("SELECT status,version FROM tasks WHERE project_id='beta'").fetchone() == ("in_progress", 1)
+
+
+@pytest.mark.parametrize("expected", [True, 0, -1, "1", 1.5])
+def test_task_http_rejects_invalid_expected_version_before_mutation(tmp_path, expected):
+    from fastapi.testclient import TestClient
+    dashboard_api = load_dashboard_api()
+    client = TestClient(dashboard_api.app)
+    with patch.object(dashboard_api, "check_auth", return_value=True), patch.object(dashboard_api, "check_csrf", return_value=True), patch.object(dashboard_api, "complete_task") as mutation:
+        response = client.post("/api/done", json={"project": "alpha", "id": "T-01", "expected_version": expected})
+    assert response.status_code == 400
+    mutation.assert_not_called()
+
+
+def test_task_http_version_on_old_schema_is_refused_without_migration(tmp_path):
+    import sqlite3
+    from fastapi.testclient import TestClient
+    dashboard_api = load_dashboard_api()
+    dashboard_api.DATA_ROOT = str(tmp_path)
+    dashboard_api.LOCAL_ROOT = tmp_path / "local"
+    dashboard_api.LOCAL_ROOT.mkdir()
+    database = dashboard_api.LOCAL_ROOT / "devcore.db"
+    with sqlite3.connect(database) as conn:
+        conn.execute("""CREATE TABLE tasks(id TEXT, project_id TEXT, title TEXT, status TEXT,
+            mode TEXT, steps_total INTEGER, steps_done INTEGER, started_at TEXT,
+            completed_at TEXT, created_at TEXT)""")
+        conn.execute("INSERT INTO tasks VALUES ('T-01','alpha','Old task','todo','coding',1,0,NULL,NULL,'2026-01-01')")
+        schema = conn.execute("SELECT sql FROM sqlite_master ORDER BY name").fetchall()
+    client = TestClient(dashboard_api.app)
+    with patch.object(dashboard_api, "check_auth", return_value=True), patch.object(dashboard_api, "check_csrf", return_value=True):
+        assert client.get("/api/dashboard/tasks", params={"project": "alpha"}).json()[0]["version"] is None
+        response = client.request("DELETE", "/api/delete", json={"project": "alpha", "id": "T-01", "expected_version": 1})
+    assert response.status_code == 409
+    assert response.json()["detail"]["code"] == "task_version_unavailable"
+    with sqlite3.connect(database) as check:
+        assert check.execute("SELECT sql FROM sqlite_master ORDER BY name").fetchall() == schema
+        assert check.execute("SELECT status FROM tasks").fetchone()[0] == "todo"
 
 
 def test_async_memory_pipeline_structure():
@@ -706,11 +856,39 @@ def test_async_memory_pipeline_structure():
     dashboard_api = load_dashboard_api()
 
     async def run_test():
-        res = await dashboard_api.search_memory_pipeline_async("test query", collections=["decisions", "lessons"])
+        with patch.object(dashboard_api, "httpx", None):
+            res = await dashboard_api.search_memory_pipeline_async("test query", collections=["decisions", "lessons"])
+        assert res["degraded"] and res["search_mode"] == "unavailable"
         assert res["query"] == "test query"
         assert "collections" in res
         assert "decisions" in res["collections"]
         assert "lessons" in res["collections"]
+
+    asyncio.run(run_test())
+
+
+def test_dashboard_generation_does_not_block_event_loop():
+    import asyncio
+    dashboard_api = load_dashboard_api()
+    from starlette.requests import Request
+
+    request = Request({"type": "http", "method": "GET", "path": "/api/dashboard", "headers": []})
+
+    def slow_payload():
+        time.sleep(0.2)
+        return {"schema_version": 1}
+
+    async def run_test():
+        with patch.object(dashboard_api, "build_dashboard_payload", side_effect=slow_payload), patch.object(
+            dashboard_api,
+            "build_cached_json_response",
+            return_value={"status": 200, "headers": {}, "body": b"{}"},
+        ):
+            dashboard_task = asyncio.create_task(dashboard_api.get_dashboard_route(request))
+            await asyncio.sleep(0.02)
+            assert not dashboard_task.done()
+            response = await dashboard_task
+            assert response.status_code == 200
 
     asyncio.run(run_test())
 

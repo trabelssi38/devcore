@@ -1,91 +1,70 @@
-# obsidian_sync.ps1 -- DEV_CORE
-# Sync accomplishments vers Obsidian Daily Note
+# Synchronise les tâches terminées d'un seul projet vers sa note Obsidian.
+param(
+    [Parameter(Mandatory=$true)]
+    [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$')]
+    [ValidateNotNullOrEmpty()]
+    [string]$Project
+)
 
-$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path (Join-Path $env:DEVCORE_PLATFORM_ROOT "Scripts\platform_version.ps1"))) {
-    $env:DEVCORE_PLATFORM_ROOT
-} elseif (Test-Path (Join-Path $PSScriptRoot "platform_version.ps1")) {
-    Split-Path -Parent $PSScriptRoot
-} elseif (Test-Path (Join-Path $PSScriptRoot "Scripts\platform_version.ps1")) {
-    $PSScriptRoot
-} elseif (Test-Path (Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE\Scripts\platform_version.ps1")) {
-    Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE"
+$ErrorActionPreference = 'Stop'
+if (-not $env:DEVCORE_DATA_ROOT -or -not [IO.Path]::IsPathRooted($env:DEVCORE_DATA_ROOT)) {
+    throw 'DEVCORE_DATA_ROOT absolu requis pour les notes projet.'
+}
+$platformRoot = if ($env:DEVCORE_PLATFORM_ROOT -and
+    (Test-Path -LiteralPath (Join-Path $env:DEVCORE_PLATFORM_ROOT 'devcore_engine\cli.py') -PathType Leaf)) {
+    [IO.Path]::GetFullPath($env:DEVCORE_PLATFORM_ROOT)
 } else {
-    Split-Path -Parent $PSScriptRoot
+    [IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot))
 }
-if ($DEV_CORE -match '[/\\]Scripts[/\\]?$') {
-    $DEV_CORE = Split-Path -Parent $DEV_CORE
+if (-not $env:PYTHONPATH -or $env:PYTHONPATH -notlike "*$platformRoot*") {
+    $env:PYTHONPATH = if ($env:PYTHONPATH) { "$platformRoot;$env:PYTHONPATH" } else { $platformRoot }
 }
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { (Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE_DATA") }
-$TODAY = Get-Date -Format "yyyy-MM-dd"
-$NOTE_PATH = "$DEV_CORE_DATA\Vault\Daily Notes\$TODAY.md"
-. "$DEV_CORE\Scripts\platform_version.ps1"
-$PLATFORM = Get-DevCorePlatformInfo
-
-function Write-Log {
-    param([string]$msg, [string]$color="Gray")
-    $l = "[$(Get-Date -f HH:mm:ss)] $msg"
-    Write-Host "    $l" -ForegroundColor $color
+$pythonExe = if ($env:DEVCORE_PYTHON -and (Test-Path -LiteralPath $env:DEVCORE_PYTHON -PathType Leaf)) {
+    $env:DEVCORE_PYTHON
+} else {
+    $pythonCommand = Get-Command python -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($pythonCommand) { $pythonCommand.Source }
 }
+if (-not $pythonExe) { throw 'Runtime Python DevCore introuvable.' }
 
-Write-Host ""
-Write-Host "  $($PLATFORM.title) -- Obsidian Sync" -ForegroundColor Cyan
+$boardJson = & $pythonExe -m devcore_engine.cli task board --project $Project --json
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+$board = ($boardJson | Out-String) | ConvertFrom-Json
+if ($board.project -ne $Project) { throw 'Le board retourné ne correspond pas au projet demandé.' }
 
-# Create daily note if not exists
-if (-not (Test-Path $NOTE_PATH)) {
-    New-Item -ItemType Directory -Path (Split-Path $NOTE_PATH) -Force | Out-Null
-@"
----
-title: Daily Note $TODAY
-date: $TODAY
-tags: [daily, devcore]
----
+$today = Get-Date -Format 'yyyy-MM-dd'
+$noteDir = Join-Path (Join-Path $env:DEVCORE_DATA_ROOT 'Vault\Daily Notes') $Project
+$notePath = Join-Path $noteDir "$today.md"
+$doneTasks = @($board.tasks | Where-Object { $_.status -eq 'done' })
+$startMarker = '<!-- devcore:tasks:start -->'
+$endMarker = '<!-- devcore:tasks:end -->'
+$lines = @('## Taches accomplies', $startMarker)
+foreach ($task in $doneTasks) { $lines += "- [x] **$($task.id)**: $($task.title)" }
+$lines += $endMarker
+$section = $lines -join "`n"
 
-# $TODAY
-
-## Resume
-<!-- Auto-complete par endday -->
-
-## Taches accomplies
-
-## Decisions
-
-## Lecons
-
-## Next actions
-- [ ]
-"@ | Set-Content $NOTE_PATH -Encoding UTF8
-    Write-Log "Daily Note creee" "Green"
-}
-
-# Lire le board de taches
-$tFile = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
-if (Test-Path $tFile) {
-    $board = Get-Content $tFile -Raw | ConvertFrom-Json
-    $doneTasks = $board.tasks | Where-Object { $_.status -eq "done" }
-    Write-Log "Taches completees: $($doneTasks.Count)" "Green"
-
-    # Update Daily Note with accomplishments
-    if ($doneTasks.Count -gt 0) {
-        $note = Get-Content $NOTE_PATH -Raw
-
-        # Build accomplishments list
-        $accList = "## Taches accomplies`n`n"
-        foreach ($t in $doneTasks) {
-            $accList += "- [x] **$($t.id)**: $($t.title)`n"
-        }
-
-        # Replace or append section
-        if ($note -match "## Taches accomplies") {
-            $note = $note -replace "## Taches accomplies[\s\S]*?(?=\n##|$)", $accList
-        } else {
-            $note += "`n$accList"
-        }
-
-        $note | Set-Content $NOTE_PATH -Encoding UTF8
-        Write-Log "Daily Note mise a jour avec $($doneTasks.Count) taches" "Green"
+if (Test-Path -LiteralPath $notePath -PathType Leaf) {
+    $note = Get-Content -LiteralPath $notePath -Raw -Encoding UTF8
+    $startIndex = $note.IndexOf($startMarker, [StringComparison]::Ordinal)
+    $endIndex = $note.IndexOf($endMarker, [StringComparison]::Ordinal)
+    if ($startIndex -ge 0 -and $endIndex -gt $startIndex) {
+        $prefix = $note.Substring(0, $startIndex)
+        $suffix = $note.Substring($endIndex + $endMarker.Length)
+        $generated = (($lines | Select-Object -Skip 1) -join "`n")
+        $note = $prefix + $generated + $suffix
+    } else {
+        $note = $note.TrimEnd() + "`n`n" + $section + "`n"
     }
+} else {
+    $note = "---`ntitle: Daily Note $today`ndate: $today`nproject: $Project`n---`n`n# $today`n`n" + $section + "`n"
 }
 
-Write-Log "Obsidian sync termine" "Green"
-Write-Host ""
-
+New-Item -ItemType Directory -Path $noteDir -Force | Out-Null
+$temporary = Join-Path $noteDir ('.' + $today + '.' + [guid]::NewGuid().ToString('N') + '.tmp')
+try {
+    [IO.File]::WriteAllText($temporary, $note, [Text.UTF8Encoding]::new($false))
+    Move-Item -LiteralPath $temporary -Destination $notePath -Force
+} finally {
+    if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary -Force }
+}
+Write-Host "  [OK] Note $Project : $($doneTasks.Count) taches terminees" -ForegroundColor Green

@@ -30,6 +30,7 @@ DEV_CORE_DATA/Logs/**/endday_*.log
 DEV_CORE_DATA/Memory/*_queue.jsonl
 
 # Backups
+.codex/config.toml.backup-*
 DEV_CORE_DATA/Backups/
 DEV_CORE_DATA/Sessions/
 

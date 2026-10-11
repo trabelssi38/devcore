@@ -24,12 +24,141 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Install Python test dependencies
+      - name: Install locked Python test dependencies
         timeout-minutes: 5
         shell: pwsh
         run: |
-          python -m pip install --upgrade pip pytest
-          python -m pip install -r DEV_CORE\requirements-ci.txt
+          python -m pip install --require-hashes -r DEV_CORE\requirements-py313-windows.lock
+          python -m pip install --no-deps .\DEV_CORE
+          python -m pip check
+
+      - name: Check loaded SQLite before WAL qualification
+        timeout-minutes: 2
+        shell: pwsh
+        run: |
+          $sqliteProbeRoot = Join-Path $env:RUNNER_TEMP ('devcore-sqlite-probe-' + [guid]::NewGuid().ToString('N'))
+          $env:DEVCORE_LOCAL_ROOT = Join-Path $sqliteProbeRoot 'local'
+          $env:DEVCORE_DATA_ROOT = Join-Path $sqliteProbeRoot 'data'
+          $env:PYTHONPATH = Join-Path $env:GITHUB_WORKSPACE 'DEV_CORE'
+          python DEV_CORE/Scripts/check_sqlite_runtime.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pytest DEV_CORE/tests/test_sqlite_runtime.py DEV_CORE/tests/test_sqlite_wal_qualification.py DEV_CORE/tests/test_individual_bundle.py DEV_CORE/tests/test_individual_candidate_launcher.py DEV_CORE/tests/test_individual_mcp_launcher.py -q -s
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run LLM native and auxiliary routing admission tests
+        timeout-minutes: 2
+        shell: pwsh
+        run: |
+          $routingTestRoot = Join-Path $env:RUNNER_TEMP ('devcore-routing-' + [guid]::NewGuid().ToString('N'))
+          $env:DEVCORE_LOCAL_ROOT = Join-Path $routingTestRoot 'local'
+          $env:DEVCORE_DATA_ROOT = Join-Path $routingTestRoot 'data'
+          $env:DEVCORE_PLATFORM_ROOT = Join-Path $routingTestRoot 'platform'
+          $env:PYTHONPATH = Join-Path $env:GITHUB_WORKSPACE 'DEV_CORE'
+          python -m pytest DEV_CORE/tests/test_route_capacity.py DEV_CORE/tests/test_router_body_admission.py DEV_CORE/tests/test_llm_route_health.py DEV_CORE/tests/test_llm_route_separation.py DEV_CORE/tests/test_llm_route_liveness.py DEV_CORE/tests/test_llm_route_websocket.py DEV_CORE/tests/test_auxiliary_callers.py DEV_CORE/Scripts/test_gemini_router_routing_profile.py DEV_CORE/devcore_engine/tests/test_embedding_contract.py DEV_CORE/tests/test_memory_search_embeddings.py DEV_CORE/tests/test_qdrant_simulator_contract.py -q
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & DEV_CORE/Scripts/test_routing_profile.ps1
+          Remove-Item Env:DEVCORE_PLATFORM_ROOT
+
+      - name: Run bounded LLMOps client tests
+        timeout-minutes: 1
+        shell: pwsh
+        run: |
+          $llmOpsTestRoot = Join-Path $env:RUNNER_TEMP ('devcore-llmops-' + [guid]::NewGuid().ToString('N'))
+          $env:DEVCORE_LOCAL_ROOT = Join-Path $llmOpsTestRoot 'local'
+          $env:DEVCORE_DATA_ROOT = Join-Path $llmOpsTestRoot 'data'
+          $env:DEVCORE_PLATFORM_ROOT = Join-Path $llmOpsTestRoot 'platform'
+          python -m pytest DEV_CORE/tests/test_router_unattributed.py DEV_CORE/tests/test_router_stats_store.py DEV_CORE/tests/test_router_response_length.py DEV_CORE/tests/test_router_provider_json.py DEV_CORE/tests/test_router_stream_encoding.py DEV_CORE/tests/test_router_upstream_body.py DEV_CORE/tests/test_router_stream_volume.py DEV_CORE/tests/test_router_stream_deadline.py DEV_CORE/tests/test_router_provider_deadline.py DEV_CORE/tests/test_router_private_diagnostics.py DEV_CORE/tests/test_router_fallback_admission.py DEV_CORE/tests/test_router_stream_retries.py DEV_CORE/API/test_router_stream_admission.py DEV_CORE/tests/test_router_rate_limit.py DEV_CORE/tests/test_router_stream_usage.py DEV_CORE/tests/test_router_reported_usage.py DEV_CORE/API/test_router_observation_lifecycle.py DEV_CORE/API/test_router_generation.py DEV_CORE/API/test_llmops_generation.py DEV_CORE/API/test_otlp_worker.py DEV_CORE/API/test_otlp_export.py DEV_CORE/API/test_llmops_langfuse.py DEV_CORE/API/test_observability_instrumentation.py -q
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run bounded service restart and health probe tests
+        timeout-minutes: 3
+        shell: pwsh
+        run: |
+          $restartTestRoot = Join-Path $env:RUNNER_TEMP ('devcore-restarts-' + [guid]::NewGuid().ToString('N'))
+          $env:DEVCORE_LOCAL_ROOT = Join-Path $restartTestRoot 'local'
+          $env:DEVCORE_DATA_ROOT = Join-Path $restartTestRoot 'data'
+          $env:DEVCORE_PLATFORM_ROOT = Join-Path $restartTestRoot 'platform'
+          $env:PYTHONPATH = Join-Path $env:GITHUB_WORKSPACE 'DEV_CORE'
+          python -m pytest DEV_CORE/tests/test_restart_budget.py DEV_CORE/tests/test_launch_no_legacy_import.py DEV_CORE/tests/test_llm_route_health.py DEV_CORE/tests/test_scheduler_lease_atomic.py -q
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pytest DEV_CORE/tests/test_inspect_service_shutdown.py DEV_CORE/tests/test_service_drain.py DEV_CORE/tests/test_service_runtime.py DEV_CORE/tests/test_service_maintenance.py DEV_CORE/tests/test_scheduler_cooperative_stop.py DEV_CORE/tests/test_scheduler_supervision.py DEV_CORE/tests/test_scheduler_cron_latest.py DEV_CORE/tests/test_scheduler_config_validation.py DEV_CORE/tests/test_scheduler_interval_bounds.py DEV_CORE/tests/test_scheduler_registry_recovery.py DEV_CORE/tests/test_scheduler_claim_resolution.py DEV_CORE/tests/test_scheduler_claim_inspection.py DEV_CORE/tests/test_scheduler_history_failure.py DEV_CORE/tests/test_scheduler_process_tree.py DEV_CORE/Tools/devcore/test_scheduler_tick.py DEV_CORE/Tools/devcore/test_scheduler_contract.py DEV_CORE/Tools/devcore/test_scheduler_migration.py -q
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Remove-Item Env:DEVCORE_PLATFORM_ROOT
+
+      - name: Run individual identity, administration and audit tests
+        timeout-minutes: 12
+        shell: pwsh
+        run: |
+          $identityTestRoot = Join-Path $env:RUNNER_TEMP ('devcore-identity-' + [guid]::NewGuid().ToString('N'))
+          $env:DEVCORE_LOCAL_ROOT = Join-Path $identityTestRoot 'local'
+          $env:DEVCORE_DATA_ROOT = Join-Path $identityTestRoot 'data'
+          New-Item -ItemType Directory -Path $env:DEVCORE_LOCAL_ROOT,$env:DEVCORE_DATA_ROOT | Out-Null
+          python -m pytest DEV_CORE/tests/test_individual_identity.py DEV_CORE/tests/test_browser_sessions.py DEV_CORE/tests/test_local_passwords.py DEV_CORE/tests/test_instance_administration.py DEV_CORE/tests/test_local_admin_cli.py DEV_CORE/tests/test_windows_secret_files.py DEV_CORE/tests/test_private_identity_store.py DEV_CORE/tests/test_local_recovery.py DEV_CORE/tests/test_identity_backup.py DEV_CORE/tests/test_task_actor_audit.py DEV_CORE/Scripts/test_dashboard_individual_access.py DEV_CORE/Scripts/test_dashboard_individual_http.py DEV_CORE/Scripts/test_dashboard_browser_sessions.py DEV_CORE/Scripts/test_dashboard_password_login.py DEV_CORE/Scripts/test_dashboard_actor_audit.py DEV_CORE/Scripts/test_dashboard_pause_resume.py DEV_CORE/Scripts/test_dashboard_admin_compatibility.py -q
+
+      - name: Run individual project context tests
+        timeout-minutes: 4
+        shell: pwsh
+        run: |
+          $contextTestRoot = Join-Path $env:RUNNER_TEMP ('devcore-context-' + [guid]::NewGuid().ToString('N'))
+          $env:DEVCORE_LOCAL_ROOT = Join-Path $contextTestRoot 'local'
+          $env:DEVCORE_DATA_ROOT = Join-Path $contextTestRoot 'data'
+          New-Item -ItemType Directory -Path $env:DEVCORE_LOCAL_ROOT,$env:DEVCORE_DATA_ROOT | Out-Null
+          python -m pytest DEV_CORE/tests/test_project_context_resume.py DEV_CORE/Scripts/test_dashboard_project_context.py -q
+
+      - name: Run individual task audit consultation tests
+        timeout-minutes: 4
+        shell: pwsh
+        run: |
+          $auditTestRoot = Join-Path $env:RUNNER_TEMP ('devcore-task-audit-' + [guid]::NewGuid().ToString('N'))
+          $env:DEVCORE_LOCAL_ROOT = Join-Path $auditTestRoot 'local'
+          $env:DEVCORE_DATA_ROOT = Join-Path $auditTestRoot 'data'
+          New-Item -ItemType Directory -Path $env:DEVCORE_LOCAL_ROOT,$env:DEVCORE_DATA_ROOT | Out-Null
+          python -m pytest DEV_CORE/Scripts/test_dashboard_task_audit.py -q
+
+      - name: Run individual MCP API and stdio consultation tests
+        timeout-minutes: 10
+        shell: pwsh
+        run: |
+          $mcpTestRoot = Join-Path $env:RUNNER_TEMP ('devcore-mcp-' + [guid]::NewGuid().ToString('N'))
+          $env:DEVCORE_LOCAL_ROOT = Join-Path $mcpTestRoot 'local'
+          $env:DEVCORE_DATA_ROOT = Join-Path $mcpTestRoot 'data'
+          New-Item -ItemType Directory -Path $env:DEVCORE_LOCAL_ROOT,$env:DEVCORE_DATA_ROOT | Out-Null
+          $env:DEVCORE_TEST_BUILD_TOOLS = Join-Path $mcpTestRoot 'build-tools'
+          python -m pip install --target $env:DEVCORE_TEST_BUILD_TOOLS --no-deps --only-binary=:all: --require-hashes -r DEV_CORE/requirements-build-test.lock
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m pytest DEV_CORE/MCP/devcore-scripts/test_individual_context.py DEV_CORE/MCP/devcore-scripts/test_individual_tasks.py DEV_CORE/MCP/devcore-scripts/test_individual_cli.py DEV_CORE/MCP/devcore-scripts/test_individual_delete.py DEV_CORE/MCP/devcore-scripts/test_individual_transitions.py DEV_CORE/MCP/devcore-scripts/test_individual_audit.py DEV_CORE/MCP/devcore-scripts/test_stdio_protocol.py DEV_CORE/MCP/devcore-scripts/test_hooks.py -q
+
+      - name: Run explicit storage root and project isolation tests
+        timeout-minutes: 3
+        shell: pwsh
+        run: |
+          $rootTestDirectory = Join-Path $env:RUNNER_TEMP ('devcore-roots-' + [guid]::NewGuid().ToString('N'))
+          $env:DEVCORE_LOCAL_ROOT = Join-Path $rootTestDirectory 'local'
+          $env:DEVCORE_DATA_ROOT = Join-Path $rootTestDirectory 'data'
+          New-Item -ItemType Directory -Path $env:DEVCORE_LOCAL_ROOT,$env:DEVCORE_DATA_ROOT | Out-Null
+          python -m pytest DEV_CORE/tests/test_data_roots.py DEV_CORE/tests/test_request_context.py DEV_CORE/tests/test_project_isolation.py DEV_CORE/tests/test_task_event_atomicity.py DEV_CORE/Scripts/test_dashboard_project_selection.py DEV_CORE/Scripts/test_dashboard_publication.py DEV_CORE/Scripts/test_dashboard_generation_lock.py DEV_CORE/Scripts/test_dashboard_cache_writer.py DEV_CORE/Scripts/test_dashboard_refresh_coordinator.py DEV_CORE/Scripts/test_dashboard_input_watcher.py DEV_CORE/Scripts/test_dashboard_error_reporter.py DEV_CORE/Scripts/test_dashboard_stream_admission.py DEV_CORE/Scripts/test_dashboard_sse_cursor.py DEV_CORE/Scripts/test_dashboard_sse_templates.py DEV_CORE/Scripts/test_dashboard_snapshots.py DEV_CORE/Scripts/test_dashboard_task_actions.py DEV_CORE/devcore_engine/tests/test_multi_project_git_scanner.py -q
+
+      - name: Setup Node for project page tests
+        timeout-minutes: 3
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          package-manager-cache: false
+
+      - name: Run project page JavaScript tests
+        timeout-minutes: 2
+        run: node --test DEV_CORE/Scripts/test_project_tasks_ui.cjs
+
+      - name: Qualify dashboard SSE in isolated Edge browser when installed
+        timeout-minutes: 5
+        shell: pwsh
+        run: |
+          $browserTestDirectory = Join-Path $env:RUNNER_TEMP ('devcore-browser-' + [guid]::NewGuid().ToString('N'))
+          $env:DEVCORE_LOCAL_ROOT = Join-Path $browserTestDirectory 'local'
+          $env:DEVCORE_DATA_ROOT = Join-Path $browserTestDirectory 'data'
+          $env:DEVCORE_PLATFORM_ROOT = Join-Path $browserTestDirectory 'platform'
+          python -m pytest DEV_CORE/Scripts/test_dashboard_browser_stream.py DEV_CORE/Scripts/test_individual_browser_transitions.py -q -rP
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Lint PowerShell and Python
         timeout-minutes: 3

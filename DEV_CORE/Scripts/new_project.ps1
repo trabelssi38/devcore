@@ -2,7 +2,8 @@
 param(
     [Parameter(Mandatory=$true)][string]$Name,
     [string]$Stack = "generic",
-    [string]$Path = ""
+    [string]$Path = "",
+    [switch]$InitializeLegacyTaskBoard
 )
 
 if (-not $Path) {
@@ -48,7 +49,8 @@ $projData | ConvertTo-Json | Set-Content "$devcoreDir\project.json" -Encoding UT
 Write-Host "  [OK] .devcore/project.json cree" -ForegroundColor Green
 
 # 1.5. Mettre a jour le registre global des projets DEV_CORE
-$registryPath = "$DEV_CORE\Config\projects.json"
+$registryRoot = if ($env:DEVCORE_CONFIG_ROOT) { $env:DEVCORE_CONFIG_ROOT } else { Join-Path $DEV_CORE "Config" }
+$registryPath = Join-Path $registryRoot "projects.json"
 $registryDir = Split-Path $registryPath
 if (-not (Test-Path $registryDir)) {
     New-Item -ItemType Directory -Path $registryDir -Force | Out-Null
@@ -89,32 +91,26 @@ Initialise avec $($PLATFORM.title).
     Write-Host "  [OK] CLAUDE.md local cree" -ForegroundColor Green
 }
 
-# 3. Gerer tasks.json (chaque projet a son propre dossier isolé)
-$projDir = "$DEV_CORE_DATA\Memory\$Name"
-if (-not (Test-Path $projDir)) {
+# Les taches actives sont dans SQLite. L'ancien board partage ne se cree que
+# pour une migration historique demandee explicitement.
+if ($InitializeLegacyTaskBoard) {
+    $projDir = Join-Path (Join-Path $DEV_CORE_DATA "Memory") $Name
     New-Item -ItemType Directory -Path $projDir -Force | Out-Null
-}
-$tFile = "$projDir\tasks.json"
-
-if (-not (Test-Path $tFile)) {
-    # Creer un nouveau fichier vierge
-    $board = @{
-        project = $Name
-        current_task = $null
-        tasks = @()
-        detected_from_git = @()
+    $tFile = Join-Path $projDir "tasks.json"
+    if (-not (Test-Path -LiteralPath $tFile)) {
+        $board = @{
+            project = $Name
+            current_task = $null
+            tasks = @()
+            detected_from_git = @()
+        }
+        $board | ConvertTo-Json -Depth 5 | Set-Content -LiteralPath $tFile -Encoding UTF8
+        Write-Host "  [OK] Nouveau tasks.json historique initialise pour $Name" -ForegroundColor Green
     }
-    $board | ConvertTo-Json -Depth 5 | Set-Content $tFile -Encoding UTF8
-    Write-Host "  [OK] Nouveau tasks.json initialise pour le projet $Name" -ForegroundColor Green
-} else {
-    Write-Host "  [INFO] Contexte des taches deja actif pour $Name" -ForegroundColor DarkGray
 }
-
-# Convertir en TOON immediatement
-$SCRIPTS = Split-Path -Parent $MyInvocation.MyCommand.Definition
-& "$SCRIPTS\toonify.ps1" -InputFile $tFile | Out-Null
 
 # Synchroniser le workspace Repowise
+$SCRIPTS = Split-Path -Parent $MyInvocation.MyCommand.Definition
 if (Test-Path "$SCRIPTS\sync_repowise_workspace.py") {
     python "$SCRIPTS\sync_repowise_workspace.py" | Out-Null
     Write-Host "  [OK] Workspace Repowise synchronise pour $Name" -ForegroundColor Green

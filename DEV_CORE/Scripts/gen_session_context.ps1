@@ -1,118 +1,76 @@
-# gen_session_context.ps1 -- DEV_CORE v9.0
-# Genere le fichier session_context.txt
+# Contexte de session propre à un projet, généré depuis la base locale.
+param(
+    [Parameter(Mandatory=$true)]
+    [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$')]
+    [string]$Project
+)
 
-$DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path (Join-Path $env:DEVCORE_PLATFORM_ROOT "Scripts\platform_version.ps1"))) {
+$ErrorActionPreference = "Stop"
+$platformRoot = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path -LiteralPath (Join-Path $env:DEVCORE_PLATFORM_ROOT "Scripts\platform_version.ps1"))) {
     $env:DEVCORE_PLATFORM_ROOT
-} elseif (Test-Path (Join-Path $PSScriptRoot "platform_version.ps1")) {
-    Split-Path -Parent $PSScriptRoot
-} elseif (Test-Path (Join-Path $PSScriptRoot "Scripts\platform_version.ps1")) {
-    $PSScriptRoot
-} elseif (Test-Path (Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE\Scripts\platform_version.ps1")) {
-    Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE"
 } else {
     Split-Path -Parent $PSScriptRoot
 }
-if ($DEV_CORE -match '[/\\]Scripts[/\\]?$') {
-    $DEV_CORE = Split-Path -Parent $DEV_CORE
+if ([string]::IsNullOrWhiteSpace($Project)) { throw "Projet requis." }
+
+$localRoot = if ($env:DEVCORE_LOCAL_ROOT) {
+    $env:DEVCORE_LOCAL_ROOT
+} elseif ($env:LOCALAPPDATA) {
+    Join-Path $env:LOCALAPPDATA "DEV_CORE_LOCAL"
+} else {
+    Join-Path ([System.IO.Path]::GetTempPath()) "DEV_CORE_LOCAL"
 }
-$DEV_CORE_DATA = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { (Join-Path (Split-Path -Parent $PSScriptRoot) "DEV_CORE_DATA") }
-$CONTEXT_FILE = "$DEV_CORE_DATA\Logs\scripts\session_context.txt"
-$CONTEXT_BLOCK_MAX_CHARS = if ($env:DEVCORE_CONTEXT_BLOCK_MAX_CHARS) { [int]$env:DEVCORE_CONTEXT_BLOCK_MAX_CHARS } else { 10000 }
-
-function Resolve-ContextBlock {
-    param(
-        [string]$Content,
-        [string]$TaskId,
-        [string]$Type = "context"
-    )
-
-    if (-not $Content -or $Content.Length -le $CONTEXT_BLOCK_MAX_CHARS) {
-        return $Content
-    }
-
-    $offloadJson = & "$DEV_CORE\Scripts\context_service.ps1" -Action OffloadBlock -Content $Content -TaskId $TaskId -Type $Type -MaxChars $CONTEXT_BLOCK_MAX_CHARS -Json | Out-String
-    $offload = $offloadJson | ConvertFrom-Json
-    return $offload.content
+if (-not $env:PYTHONPATH -or $env:PYTHONPATH -notlike "*$platformRoot*") {
+    $env:PYTHONPATH = if ($env:PYTHONPATH) { "$platformRoot;$env:PYTHONPATH" } else { $platformRoot }
 }
+. (Join-Path $PSScriptRoot "platform_version.ps1")
+$pythonExe = Get-DevCorePython
+$taskJson = & $pythonExe -m devcore_engine.cli task board --project $Project --json
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+$board = ($taskJson | Out-String) | ConvertFrom-Json
+if ($board.project -ne $Project) { throw "Board d'un autre projet refusé." }
+$task = @($board.tasks | Where-Object { $_.id -eq $board.current_task -and $_.status -eq "in_progress" }) | Select-Object -First 1
 
-$tFile = "$DEV_CORE_DATA\Memory\$(& "$PSScriptRoot\Get-ActiveProject.ps1")\tasks.json"
-if (-not (Test-Path $tFile)) {
-    Write-Host "tasks.json absent" -ForegroundColor Yellow
-    exit 1
-}
+$sha = [System.Security.Cryptography.SHA256]::Create()
+$projectKey = [System.BitConverter]::ToString($sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($Project))).Replace('-', '').Substring(0, 16)
+$sha.Dispose()
+$contextDir = Join-Path (Join-Path $localRoot "Runtime\projects") $projectKey
+New-Item -ItemType Directory -Path $contextDir -Force | Out-Null
+$contextFile = Join-Path $contextDir "session_context.txt"
 
-$board = Get-Content $tFile -Raw | ConvertFrom-Json
-$active = $board.tasks | Where-Object { $_.status -eq "active" -or $_.status -eq "in_progress" -or $_.id -eq $board.current_task } | Select-Object -First 1
-
-if (-not $active) {
-    $done_ids = ($board.tasks | Where-Object { $_.status -eq "done" }).id
-    $todo = $board.tasks | Where-Object {
-        $_.status -eq "todo" -and (
-            -not $_.depends_on -or $done_ids -contains $_.depends_on
-        )
-    } | Select-Object -First 1
-    if ($todo) {
-        $board.current_task = $todo.id
-        $todo.status = "in_progress"
-        $board | ConvertTo-Json -Depth 10 | Set-Content $tFile -Encoding UTF8
-        $active = $todo
-        Write-Host "  [DEV_CORE] Activation auto: $($active.id)" -ForegroundColor Cyan
-    }
+if (-not $task) {
+    $content = "[DEV_CORE] Projet : $Project`n[DEV_CORE] Aucune tâche active`n"
+    $content | Set-Content -LiteralPath $contextFile -Encoding UTF8
+    Write-Host "  [DEV_CORE] Aucune tâche active pour $Project" -ForegroundColor Yellow
+    return
 }
 
-if (-not $active) {
-    if ($board.current_task) {
-        $board.current_task = $null
-        $board | ConvertTo-Json -Depth 10 | Set-Content $tFile -Encoding UTF8
-    }
-    Write-Host "  [DEV_CORE] Aucune tache active" -ForegroundColor Yellow
-    $projName = & "$DEV_CORE\Scripts\Get-ActiveProject.ps1"
-    $projDir = "$DEV_CORE_DATA\Memory\$projName"
-    New-Item -ItemType Directory -Path (Split-Path -Parent $CONTEXT_FILE) -Force | Out-Null
-    New-Item -ItemType Directory -Path $projDir -Force | Out-Null
-    @"
-[DEV_CORE] Aucune tache active
-[DEV_CORE] Commencer par: dc new task 'description' -mode reasoning|coding|bulk
-"@ | Set-Content $CONTEXT_FILE -Encoding UTF8
-    Copy-Item -LiteralPath $CONTEXT_FILE -Destination "$projDir\session_context.txt" -Force
-    exit 0
-}
-
-$budget = switch ($active.mode) {
+$budget = switch ($task.mode) {
     "reasoning" { "32k" }
     "coding"    { "8k" }
     "bulk"      { "16k" }
     default     { "16k" }
 }
-
-# Ensure directory exists
-$scriptDir = Split-Path -Parent $CONTEXT_FILE
-if (-not (Test-Path $scriptDir)) {
-    New-Item -ItemType Directory -Path $scriptDir -Force | Out-Null
-}
-
 $content = @"
-[DEV_CORE] Task active : $($active.id)
-[DEV_CORE] Titre  : $($active.title)
-[DEV_CORE] Mode   : $($active.mode)
+[DEV_CORE] Projet : $Project
+[DEV_CORE] Task active : $($task.id)
+[DEV_CORE] Titre  : $($task.title)
+[DEV_CORE] Mode   : $($task.mode)
 [DEV_CORE] Budget : $budget tokens
-[DEV_CORE] Steps  : $($active.steps_done)/$($active.steps_total)
-[DEV_CORE] Tag git: [$($active.id)]
+[DEV_CORE] Steps  : $($task.steps_done)/$($task.steps_total)
+[DEV_CORE] Tag git: [$($task.id)]
 "@
 
-$content | Set-Content $CONTEXT_FILE -Encoding UTF8
-
-# Mettre à jour et ajouter le canvas symbolique (Mermaid)
-$projName = & "$DEV_CORE\Scripts\Get-ActiveProject.ps1"
-if ($projName) {
-    & "$DEV_CORE\Scripts\canvas_manager.ps1" -Action Update
-    $canvasPath = "$DEV_CORE_DATA\Refs\$projName\canvas.md"
-    if (Test-Path $canvasPath) {
-        $canvas = Get-Content $canvasPath -Raw
-        $canvasContent = "`n[DEV_CORE] Context Canvas (Mermaid):`n" + $canvas
-        $canvasContent = Resolve-ContextBlock -Content $canvasContent -TaskId $active.id -Type "context"
-        $canvasContent | Add-Content $CONTEXT_FILE -Encoding UTF8
+$sharedRoot = if ($env:DEVCORE_DATA_ROOT) { $env:DEVCORE_DATA_ROOT } else { Join-Path $platformRoot "DEV_CORE_DATA" }
+$canvasPath = Join-Path (Join-Path (Join-Path $sharedRoot "Refs") $Project) "canvas.md"
+if (Test-Path -LiteralPath $canvasPath) {
+    $canvas = Get-Content -LiteralPath $canvasPath -Raw -Encoding UTF8
+    $limit = if ($env:DEVCORE_CONTEXT_BLOCK_MAX_CHARS) { [int]$env:DEVCORE_CONTEXT_BLOCK_MAX_CHARS } else { 10000 }
+    if ($limit -gt 0 -and $canvas.Length -gt $limit) {
+        $canvas = $canvas.Substring(0, $limit) + "`n[DEV_CORE] Canvas tronqué."
     }
+    $content += "`n[DEV_CORE] Context Canvas (Mermaid):`n$canvas"
 }
 
-Write-Host "  [DEV_CORE] Session context genere: $($active.id) - $($active.mode)" -ForegroundColor Green
+$content | Set-Content -LiteralPath $contextFile -Encoding UTF8
+Write-Host "  [DEV_CORE] Contexte local généré pour ${Project} : $($task.id)" -ForegroundColor Green

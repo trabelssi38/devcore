@@ -1,9 +1,33 @@
+
+
 [mcp_servers.repowise]
-command = 'C:\Program Files\Python313\Scripts\repowise.exe'
-args = [
-  'mcp',
-  'C:/devcore',
-  '--transport',
-  'stdio',
-]
+command = "C:\\Python314\\python.exe"
+args = ["E:\\src_python\\devcore\\DEV_CORE\\Scripts\\repowise_mcp_local.py", "E:\\src_python\\devcore"]
+cwd = "E:\\src_python\\devcore"
 startup_timeout_sec = 120
+tool_timeout_sec = 60
+enabled_tools = ["get_context", "get_symbol", "search_codebase", "get_overview", "get_health"]
+
+[mcp_servers.repowise.env]
+REPOWISE_EMBEDDER = "mock"
+REPOWISE_TELEMETRY_DISABLED = "1"
+
+[mcp_servers.devcore]
+command = "E:\\DevCoreRuntime\\releases\\devcore-py313-20261002\\Scripts\\python.exe"
+args = ["E:\\src_python\\devcore\\DEV_CORE\\MCP\\devcore-scripts\\server.py"]
+cwd = "E:\\src_python\\devcore"
+startup_timeout_sec = 30
+tool_timeout_sec = 30
+enabled_tools = ["devcore_task_status", "devcore_check", "devcore_project_context"]
+
+[mcp_servers.devcore.env]
+DEVCORE_PLATFORM_ROOT = "E:\\src_python\\devcore\\DEV_CORE"
+DEVCORE_LOCAL_ROOT = "C:\\Users\\Administrateur\\AppData\\Local\\DEV_CORE_LOCAL"
+DEVCORE_DATA_ROOT = "C:\\Users\\Administrateur\\Dropbox\\DEV_CORE_DATA"
+DEVCORE_MCP_PROJECT = "devcore"
+DEVCORE_MCP_READ_ONLY = "1"
+DEVCORE_CONTEXT_ROOT = "E:\\src_python\\devcore\\docs\\project-context"
+DEVCORE_CONTEXT_MAX_BYTES = "12000"
+
+[mcp_servers.devcore.tools.devcore_project_context]
+approval_mode = "approve"
