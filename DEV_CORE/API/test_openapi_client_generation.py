@@ -35,7 +35,7 @@ def test_openapi_export_generates_schema_and_typescript_client() -> None:
     assert "export class DevCoreApiClient" in client
     assert "async health()" in client
     assert "async contracts()" in client
-    assert "async tasks(project = \"devcore\")" in client
+    assert "async tasks(project: string)" in client
     assert "async githubWebhook(" in client
     assert "X-Hub-Signature-256" in client
     assert "X-Trace-Id" in client

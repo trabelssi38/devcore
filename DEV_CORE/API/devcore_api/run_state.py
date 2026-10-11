@@ -22,6 +22,9 @@ class RunStateMachine:
         ("running", "timeout"): "timed_out",
         ("running", "cancel"): "cancelled",
         ("running", "pause"): "paused",
+        ("running", "request_approval"): "waiting_approval",
+        ("waiting_approval", "approve"): "running",
+        ("waiting_approval", "cancel"): "cancelled",
         ("paused", "resume"): "running",
         ("paused", "cancel"): "cancelled",
     }

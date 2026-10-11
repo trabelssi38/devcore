@@ -147,3 +147,46 @@ def test_workspace_quota_rejects_negative_limits():
         assert "runs_per_day" in str(exc)
     else:
         raise AssertionError("WorkspaceQuotaContract should reject negative limits")
+
+
+def test_runner_model_and_knowledge_contracts():
+    from devcore_api.contracts import (
+        KnowledgeItemContract,
+        ModelRequestContract,
+        ModelResponseContract,
+        RunnerResultContract,
+    )
+
+    runner_res = RunnerResultContract(run_id="run-42", exit_code=0, stdout="ok", duration_seconds=1.5)
+    assert runner_res.schema_version == 1
+    assert runner_res.run_id == "run-42"
+    assert runner_res.exit_code == 0
+    assert runner_res.duration_seconds == 1.5
+
+    model_req = ModelRequestContract(prompt="hello world", model="gemini-2.0-flash", temperature=0.7)
+    assert model_req.prompt == "hello world"
+    assert model_req.temperature == 0.7
+
+    model_res = ModelResponseContract(text="greetings", model="gemini-2.0-flash", usage={"total_tokens": 12})
+    assert model_res.text == "greetings"
+    assert model_res.usage["total_tokens"] == 12
+
+    k_item = KnowledgeItemContract(id="k-100", project="devcore", title="Architecture", content="DevCore Multi-user", score=0.88)
+    assert k_item.id == "k-100"
+    assert k_item.project == "devcore"
+    assert k_item.score == 0.88
+
+    # Rejection of invalid limits
+    try:
+        RunnerResultContract(run_id="r1", exit_code=0, duration_seconds=-1.0)
+    except ValidationError as exc:
+        assert "duration_seconds" in str(exc)
+    else:
+        raise AssertionError("RunnerResultContract should reject negative duration")
+
+    try:
+        ModelRequestContract(prompt="test", temperature=3.5)
+    except ValidationError as exc:
+        assert "temperature" in str(exc)
+    else:
+        raise AssertionError("ModelRequestContract should reject temperature > 2.0")

@@ -27,7 +27,8 @@ def test_list_workflows_empty(mock_data_root):
     app = create_app()
     client = TestClient(app)
     
-    response = client.get("/api/v1/workflows")
+    assert client.get("/api/v1/workflows").status_code == 422
+    response = client.get("/api/v1/workflows", params={"project": "devcore"})
     assert response.status_code == 200
     assert response.json() == {"workflows": []}
 
@@ -37,7 +38,8 @@ def test_get_workflow_not_found(mock_data_root):
     app = create_app()
     client = TestClient(app)
     
-    response = client.get("/api/v1/workflows/wf-unknown")
+    assert client.get("/api/v1/workflows/wf-unknown").status_code == 422
+    response = client.get("/api/v1/workflows/wf-unknown", params={"project": "devcore"})
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "workflow_not_found"
 
@@ -53,6 +55,7 @@ def test_workflow_api_nominal_flow(mock_data_root):
     
     mock_workflow = {
         "run_id": "wf-12345",
+        "project": "devcore",
         "name": "Platform Boot",
         "description": "Bootstrap services",
         "status": "succeeded",
@@ -74,9 +77,14 @@ def test_workflow_api_nominal_flow(mock_data_root):
     
     state_file = workflows_dir / "wf-12345.state.json"
     state_file.write_text(json.dumps(mock_workflow), encoding="utf-8")
+    other_workflow = {**mock_workflow, "run_id": "wf-other", "project": "other", "name": "Private Other"}
+    (workflows_dir / "wf-other.state.json").write_text(json.dumps(other_workflow), encoding="utf-8")
+    legacy_workflow = {**mock_workflow, "run_id": "wf-legacy"}
+    legacy_workflow.pop("project")
+    (workflows_dir / "wf-legacy.state.json").write_text(json.dumps(legacy_workflow), encoding="utf-8")
 
     # 2. Test list workflows
-    list_resp = client.get("/api/v1/workflows")
+    list_resp = client.get("/api/v1/workflows", params={"project": "devcore"})
     assert list_resp.status_code == 200
     workflows = list_resp.json()["workflows"]
     assert len(workflows) == 1
@@ -85,14 +93,21 @@ def test_workflow_api_nominal_flow(mock_data_root):
     assert workflows[0]["status"] == "succeeded"
 
     # 3. Test get workflow details
-    detail_resp = client.get("/api/v1/workflows/wf-12345")
+    detail_resp = client.get("/api/v1/workflows/wf-12345", params={"project": "devcore"})
     assert detail_resp.status_code == 200
     detail = detail_resp.json()
     assert detail["run_id"] == "wf-12345"
+    assert detail["project"] == "devcore"
     assert detail["steps"]["step-1"]["status"] == "succeeded"
+    assert client.get("/api/v1/workflows/wf-other", params={"project": "devcore"}).status_code == 404
+    assert client.get("/api/v1/workflows/wf-legacy", params={"project": "devcore"}).status_code == 404
+    assert client.get("/api/v1/workflows/wf-12345", params={"project": "other"}).status_code == 404
+    assert client.get("/api/v1/workflows/bad..id", params={"project": "devcore"}).status_code == 400
 
     # 4. Test metrics integration
     metrics_resp = client.get("/api/v1/metrics")
     assert metrics_resp.status_code == 200
     assert "devcore_workflows_total" in metrics_resp.text
-    assert 'name="Platform Boot",status="succeeded"} 1' in metrics_resp.text
+    assert 'status="succeeded"} 3' in metrics_resp.text
+    assert "Platform Boot" not in metrics_resp.text
+    assert "Private Other" not in metrics_resp.text

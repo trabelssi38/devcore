@@ -34,6 +34,7 @@ class WorkflowStepState(BaseModel):
 
 class WorkflowRunDetail(BaseModel):
     run_id: str
+    project: str
     name: str
     description: Optional[str] = None
     status: str
@@ -46,3 +47,62 @@ class WorkflowRunDetail(BaseModel):
 
 class WorkflowListResponse(BaseModel):
     workflows: list[WorkflowRunDetail]
+
+
+class RouteInfo(BaseModel):
+    path: str
+    methods: list[str]
+    name: str
+    tags: list[str] = Field(default_factory=list)
+    deprecated: bool = False
+    description: Optional[str] = None
+
+
+class RouteCatalogResponse(BaseModel):
+    schema_version: Literal[1] = 1
+    api_version: Literal["v1"] = "v1"
+    total_routes: int
+    routes: list[RouteInfo]
+
+
+class RunSubmissionRequest(BaseModel):
+    project_id: str = Field(min_length=1)
+    title: str = Field(min_length=1)
+    command: list[str] | str
+    task_id: Optional[str] = None
+    timeout_seconds: float = Field(default=300.0, ge=1.0)
+    env: dict[str, str] = Field(default_factory=dict)
+    idempotency_key: Optional[str] = None
+    metadata: dict = Field(default_factory=dict)
+
+
+class RunDetailResponse(BaseModel):
+    schema_version: Literal[1] = 1
+    run_id: str
+    project_id: str
+    task_id: Optional[str] = None
+    title: str
+    status: str
+    command: list[str]
+    timeout_seconds: float
+    attempt_number: int
+    max_attempts: int
+    worker_token: Optional[str] = None
+    heartbeat_at: Optional[str] = None
+    cancellation_requested: bool = False
+    output: Optional[str] = None
+    error: Optional[str] = None
+    exit_code: Optional[int] = None
+    idempotency_key: Optional[str] = None
+    actor: str = "system"
+    created_at: str
+    started_at: Optional[str] = None
+    finished_at: Optional[str] = None
+    tracking_url: str
+
+
+class RunListResponse(BaseModel):
+    schema_version: Literal[1] = 1
+    total_count: int
+    runs: list[RunDetailResponse]
+

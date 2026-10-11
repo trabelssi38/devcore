@@ -402,7 +402,7 @@
       "TaskContract": {
         "properties": {
           "id": {
-            "pattern": "^T-\\d+$",
+            "pattern": "^T-(?:\\d+|GIT-[a-zA-Z0-9]+)$",
             "title": "Id",
             "type": "string"
           },
@@ -410,7 +410,9 @@
             "enum": [
               "reasoning",
               "coding",
-              "bulk"
+              "bulk",
+              "git",
+              "testing"
             ],
             "title": "Mode",
             "type": "string"
@@ -459,6 +461,18 @@
             "minLength": 1,
             "title": "Title",
             "type": "string"
+          },
+          "version": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version"
           }
         },
         "required": [
@@ -627,6 +641,10 @@
             "title": "Name",
             "type": "string"
           },
+          "project": {
+            "title": "Project",
+            "type": "string"
+          },
           "run_id": {
             "title": "Run Id",
             "type": "string"
@@ -664,6 +682,7 @@
         },
         "required": [
           "run_id",
+          "project",
           "name",
           "status",
           "created_at",
@@ -937,9 +956,8 @@
           {
             "in": "query",
             "name": "project",
-            "required": false,
+            "required": true,
             "schema": {
-              "default": "devcore",
               "title": "Project",
               "type": "string"
             }
@@ -976,6 +994,17 @@
     "/api/v1/workflows": {
       "get": {
         "operationId": "list_workflows_api_v1_workflows_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "title": "Project",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -986,6 +1015,16 @@
               }
             },
             "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
           }
         },
         "summary": "List Workflows",
@@ -1004,6 +1043,15 @@
             "required": true,
             "schema": {
               "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "project",
+            "required": true,
+            "schema": {
+              "title": "Project",
               "type": "string"
             }
           }

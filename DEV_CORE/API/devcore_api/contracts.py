@@ -5,8 +5,8 @@ from pydantic import BaseModel, Field
 
 
 TaskStatus = Literal["todo", "active", "paused", "done", "skipped"]
-TaskMode = Literal["reasoning", "coding", "bulk"]
-RunStatus = Literal["queued", "running", "paused", "succeeded", "failed", "cancelled", "timed_out"]
+TaskMode = Literal["reasoning", "coding", "bulk", "git", "testing"]
+RunStatus = Literal["queued", "running", "waiting_approval", "paused", "succeeded", "failed", "cancelled", "timed_out"]
 HealthStatus = Literal["ok", "degraded", "down"]
 WorkspaceStatus = Literal["active", "archived", "suspended"]
 UserStatus = Literal["active", "disabled"]
@@ -54,13 +54,14 @@ class WorkspaceQuotaContract(BaseModel):
 
 class TaskContract(BaseModel):
     schema_version: Literal[1] = 1
-    id: str = Field(pattern=r"^T-\d+$")
+    id: str = Field(pattern=r"^T-(?:\d+|GIT-[a-zA-Z0-9]+)$")
     title: str = Field(min_length=1)
     status: TaskStatus
     mode: TaskMode
     steps_done: int = Field(default=0, ge=0)
     steps_total: int = Field(default=1, ge=1)
     project: str | None = None
+    version: int | None = Field(default=None, ge=1, strict=True)
 
 
 class RunContract(BaseModel):
@@ -97,10 +98,46 @@ class HealthContract(BaseModel):
     checks: dict = Field(default_factory=dict)
 
 
+class RunnerResultContract(BaseModel):
+    schema_version: Literal[1] = 1
+    run_id: str = Field(min_length=1)
+    exit_code: int
+    stdout: str = ""
+    stderr: str = ""
+    duration_seconds: float = Field(default=0.0, ge=0.0)
+
+
+class ModelRequestContract(BaseModel):
+    schema_version: Literal[1] = 1
+    prompt: str = Field(min_length=1)
+    model: str | None = None
+    temperature: float = Field(default=0.0, ge=0.0, le=2.0)
+
+
+class ModelResponseContract(BaseModel):
+    schema_version: Literal[1] = 1
+    text: str
+    model: str
+    usage: dict = Field(default_factory=dict)
+
+
+class KnowledgeItemContract(BaseModel):
+    schema_version: Literal[1] = 1
+    id: str = Field(min_length=1)
+    project: str = Field(min_length=1)
+    title: str = Field(min_length=1)
+    content: str
+    score: float | None = None
+
+
 class TaskListResponse(BaseModel):
     schema_version: Literal[1] = 1
     project: str = Field(min_length=1)
     tasks: list[TaskContract]
+    total_count: int | None = None
+    offset: int | None = None
+    limit: int | None = None
+    has_more: bool | None = None
 
 
 class ContractCatalog(BaseModel):

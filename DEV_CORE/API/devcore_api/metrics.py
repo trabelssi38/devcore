@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import Counter
 from collections.abc import Callable
+import re
 
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import PlainTextResponse
@@ -11,7 +12,7 @@ class InMemoryMetricsRegistry:
     def __init__(self) -> None:
         self.http_requests: Counter[tuple[str, str, int]] = Counter()
         self.worker_runs: Counter[str] = Counter()
-        self.workflows: Counter[tuple[str, str]] = Counter()
+        self.workflows: Counter[str] = Counter()
 
     def record_http_request(self, *, method: str, path: str, status_code: int) -> None:
         self.http_requests[(method, path, status_code)] += 1
@@ -19,8 +20,8 @@ class InMemoryMetricsRegistry:
     def record_worker_run(self, *, result: str) -> None:
         self.worker_runs[result] += 1
 
-    def record_workflow_run(self, *, name: str, status: str) -> None:
-        self.workflows[(name, status)] += 1
+    def record_workflow_run(self, *, status: str) -> None:
+        self.workflows[status] += 1
 
     def render_prometheus(self) -> str:
         # Dynamically load and count workflows from storage before rendering
@@ -41,9 +42,10 @@ class InMemoryMetricsRegistry:
                 for state_file in workflows_dir.glob("*.state.json"):
                     try:
                         data = json.loads(state_file.read_text(encoding="utf-8"))
-                        name = data.get("name", "unknown")
-                        status = data.get("status", "unknown")
-                        self.record_workflow_run(name=name, status=status)
+                        status = str(data.get("status", "unknown"))
+                        if not re.fullmatch(r"[a-z_]{1,40}", status):
+                            status = "unknown"
+                        self.record_workflow_run(status=status)
                     except Exception:
                         pass
         except Exception:
@@ -72,8 +74,8 @@ class InMemoryMetricsRegistry:
                 "# TYPE devcore_workflows_total counter",
             ]
         )
-        for (name, status), value in sorted(self.workflows.items()):
-            lines.append(f'devcore_workflows_total{{name="{name}",status="{status}"}} {value}')
+        for status, value in sorted(self.workflows.items()):
+            lines.append(f'devcore_workflows_total{{status="{status}"}} {value}')
 
         return "\n".join(lines) + "\n"
 
@@ -94,7 +96,7 @@ def configure_metrics(app: FastAPI, *, registry: InMemoryMetricsRegistry | None 
         return response
 
     @app.get("/api/v1/metrics", include_in_schema=False)
-    async def metrics() -> PlainTextResponse:
+    def metrics() -> PlainTextResponse:
         return PlainTextResponse(registry.render_prometheus(), media_type="text/plain; version=0.0.4")
 
     app.state.metrics_registry = registry

@@ -108,6 +108,8 @@ export type TaskContract = {
   mode: string;
   steps_done: number;
   steps_total: number;
+  project?: string | null;
+  version?: number | null;
   depends_on?: string | null;
   worktree?: string | null;
 };
@@ -147,6 +149,7 @@ export type HealthContract = {
 };
 
 export type TaskListResponse = {
+  schema_version: number;
   project: string;
   tasks: TaskContract[];
 };
@@ -170,6 +173,7 @@ export type WorkflowStepState = {
 
 export type WorkflowRunDetail = {
   run_id: string;
+  project: string;
   name: string;
   description?: string | null;
   status: string;
@@ -210,7 +214,7 @@ export class DevCoreApiClient {
   readonly traceId?: string;
 
   constructor(baseUrl = "", traceId?: string) {
-    this.baseUrl = baseUrl.replace(/\/$/, "");
+    this.baseUrl = baseUrl.replace(/\\/$/, "");
     this.traceId = traceId;
   }
 
@@ -222,17 +226,19 @@ export class DevCoreApiClient {
     return this.request<ContractCatalog>("/api/v1/contracts");
   }
 
-  async tasks(project = "devcore"): Promise<TaskListResponse> {
+  async tasks(project: string): Promise<TaskListResponse> {
     const query = new URLSearchParams({ project });
     return this.request<TaskListResponse>(`/api/v1/tasks?${query.toString()}`);
   }
 
-  async listWorkflows(): Promise<WorkflowListResponse> {
-    return this.request<WorkflowListResponse>("/api/v1/workflows");
+  async listWorkflows(project: string): Promise<WorkflowListResponse> {
+    const query = new URLSearchParams({ project });
+    return this.request<WorkflowListResponse>(`/api/v1/workflows?${query.toString()}`);
   }
 
-  async getWorkflow(runId: string): Promise<WorkflowRunDetail> {
-    return this.request<WorkflowRunDetail>(`/api/v1/workflows/${runId}`);
+  async getWorkflow(runId: string, project: string): Promise<WorkflowRunDetail> {
+    const query = new URLSearchParams({ project });
+    return this.request<WorkflowRunDetail>(`/api/v1/workflows/${encodeURIComponent(runId)}?${query.toString()}`);
   }
 
   async githubWebhook(

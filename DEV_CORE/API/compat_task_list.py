@@ -6,8 +6,12 @@ from pathlib import Path
 API_ROOT = Path(__file__).resolve().parent
 if str(API_ROOT) not in sys.path:
     sys.path.insert(0, str(API_ROOT))
+PLATFORM_ROOT = API_ROOT.parent
+if str(PLATFORM_ROOT) not in sys.path:
+    sys.path.insert(0, str(PLATFORM_ROOT))
 
-from devcore_api.ports import FileTaskRepository, TaskBoardNotFound
+from devcore_api.ports import FileTaskRepository, SqliteTaskRepository, TaskBoardNotFound
+from devcore_engine.db import get_db_path
 
 
 def truncate(value: str, max_length: int = 40) -> str:
@@ -34,18 +38,25 @@ def render_table(project: str, tasks: list) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="DEV_CORE task list compatibility adapter")
-    parser.add_argument("--project", default="devcore")
+    parser.add_argument("--project", required=True)
     parser.add_argument("--json", action="store_true")
+    parser.add_argument("--legacy-json", action="store_true", help="Read the historical tasks.json explicitly")
     args = parser.parse_args()
 
-    repository = FileTaskRepository()
+    if args.legacy_json:
+        repository = FileTaskRepository()
+    else:
+        db_path = get_db_path()
+        if not db_path.is_file():
+            parser.error(f"Local task database not found: {db_path}")
+        repository = SqliteTaskRepository(db_path)
     try:
         tasks = repository.list_tasks(project=args.project)
     except TaskBoardNotFound:
         if args.json:
             print(json.dumps({"schema_version": 1, "project": args.project, "tasks": []}, ensure_ascii=False))
         else:
-            print("  Aucun tasks.json.")
+            print("  Aucun tasks.json historique.")
         return 0
 
     visible = [task for task in tasks if task.status in {"todo", "active", "paused", "in_progress"}]
