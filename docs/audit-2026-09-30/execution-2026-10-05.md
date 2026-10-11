@@ -1800,3 +1800,14 @@ non utilisés comme fixtures, changements existants préservés.
 - **Gel/bascule historique** : aucune écriture active modifiée ; la prochaine phase doit produire un gel traçable et un retour arrière sur copie avant toute bascule.
 - **PostgreSQL équipe** : aucun cluster réel déclaré ; l'installation, RLS, import dry-run, concurrence et restauration restent à qualifier.
 - **Réseau/OTLP/Langfuse** : le service individuel reste localhost ; l'ouverture réseau et l'ingestion distante restent conditionnées à l'authentification, la redaction, les délais et le drainage.
+## v274 — Inventaire de la pile globale après L9 (2026-10-11)
+
+Le contrôle du service `DevCoreIndividual` a été complété par un inventaire de
+la pile historique. Le cockpit individuel répond sur `20129`, mais les
+composants globaux déclarés dans `DEV_CORE/Config/network.json` (RepoWise
+`7337`, Gemini Router `20130`, API Gateway `20131`, Headroom `8787` et `8789`,
+ainsi que le Scheduler) ne sont pas démarrés sur ce poste au moment du
+contrôle. RepoWise MCP répond avec un index derrière `HEAD` (`b2349de` contre
+`0479d2f`). La remise en service coordonnée de cette pile est ajoutée aux
+prochaines étapes post-L9 ; aucune bascule globale n'est déclarée terminée.
+

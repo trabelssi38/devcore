@@ -64,6 +64,42 @@ OTLP/Langfuse :
   distant est indisponible ;
 - activer en continu seulement après ces preuves et une décision de rétention.
 
+## 4. Remise en service coordonnée de la pile globale
+
+Objectif : réactiver le mode global et ses dépendances historiques après la
+qualification L9, sans considérer le seul service `DevCoreIndividual` comme
+une qualification de la plateforme complète.
+
+Composants à démarrer et vérifier ensemble :
+
+- cockpit global `/index.html` et `/index_terminal.html` ;
+- RepoWise (index, serveur local et synchronisation) sur `7337` ;
+- Gemini Router sur `20130` ;
+- API Gateway sur `20131` ;
+- Headroom natif sur `8787` et auxiliaire sur `8789` ;
+- Scheduler et ses jobs persistants.
+
+Ordre d'exécution :
+
+1. démarrer la pile via le lanceur global prévu et enregistrer les PID, ports
+   et journaux de chaque composant ;
+2. vérifier les endpoints de santé et les identités de route, notamment le
+   fournisseur et le modèle réellement utilisés par chaque profil LLM ;
+3. vérifier que RepoWise est à jour avec le commit courant avant d'afficher
+   ses résultats dans le cockpit ;
+4. ouvrir les deux interfaces globales et vérifier leurs API, flux et actions
+   sur une copie isolée ;
+5. tester l'arrêt, le redémarrage et la reprise du Scheduler et des services
+   dépendants ;
+6. documenter explicitement les services démarrés automatiquement et ceux
+   restant manuels.
+
+Critères de sortie : tous les ports déclarés dans `Config/network.json` qui
+sont requis par le mode global répondent, chaque réponse de santé est liée au
+bon composant, RepoWise n'est pas en retard sur `HEAD`, les deux cockpits
+globaux sont utilisables sur copie, et une reprise après redémarrage est
+consignée. Le démarrage de `DevCoreIndividual` seul ne satisfait pas ce gate.
+
 ## État et décision
 
 Ces étapes sont des travaux à réaliser, pas des fonctionnalités déclarées
