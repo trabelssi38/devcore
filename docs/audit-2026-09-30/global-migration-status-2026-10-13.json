@@ -1,0 +1,82 @@
+{
+  "report_version": 1,
+  "created_utc": "2026-10-14T00:20:00Z",
+  "status": "global_migration_cutover_verified",
+  "ready_for_global_cutover": true,
+  "phases": {
+    "P0": {
+      "status": "passed_for_runtime_and_candidate",
+      "evidence": [
+        "global-migration-p0-qualification-2026-10-12.json"
+      ]
+    },
+    "P1": {
+      "status": "passed_for_independent_capture_and_rollback",
+      "evidence": [
+        "global-migration-p3-rehearsal-v5-2026-10-12.json"
+      ]
+    },
+    "P2": {
+      "status": "closed",
+      "evidence": [
+        "migration-decisions-validation-2026-10-12.json"
+      ],
+      "projects_reviewed": 3,
+      "task_conflicts_reviewed": 145,
+      "missing_projects": 0,
+      "missing_conflicts": 0,
+      "policy": "Roots and statuses approved; worktree=null without proven checkout; T-520=done/7; metadata merged with provenance; all heuristic graph attachments promoted with archive."
+    },
+    "P3": {
+      "status": "passed",
+      "candidate": "E:\\DevCoreRuntime\\qualification\\fusion-candidate-v5-heuristic-promoted-scoped-2026-10-13.db",
+      "evidence": [
+        "global-migration-p3-rehearsal-scoped-2026-10-13.json",
+        "fusion-candidate-v5-heuristic-promoted-scoped-validation-2026-10-13.json",
+        "graph-consumer-contract-scoped-2026-10-13.json"
+      ],
+      "integrity": "ok",
+      "foreign_key_violations": 0,
+      "project_review_required": 0,
+      "task_review_required": 0,
+      "quarantine_edges": 0,
+      "archived_quarantine_edges": 94185,
+      "active_edges": 696267
+    },
+    "P4": {
+      "status": "passed",
+      "evidence": [
+        "postgresql-cutover-qualification-2026-10-13.json",
+        "post-cutover-observation-2026-10-14.json"
+      ],
+      "service": "DevCoreIndividual",
+      "service_status": "Running",
+      "port": 20129,
+      "project_probe_http": 200,
+      "status_probe_http": 200,
+      "dashboard_authenticated_smoke": true
+    },
+    "global_local_smoke": {
+      "status": "router_headroom_passed",
+      "evidence": [
+        "global-stack-local-smoke-2026-10-13.json"
+      ],
+      "ports": [
+        20130,
+        8787,
+        8789
+      ],
+      "health_http": [
+        200,
+        200,
+        200
+      ],
+      "processes_stopped_after_smoke": true
+    }
+  },
+  "remaining_blockers": [],
+  "next_actions": [
+    "Poursuivre la surveillance périodique du service et le contrôle de non-régression documenté."
+  ],
+  "blockers": []
+}

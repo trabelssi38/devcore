@@ -1817,3 +1817,592 @@ prochaines étapes post-L9 ; aucune bascule globale n'est déclarée terminée.
 - La branche `local-all-b33` est conservée comme sauvegarde immuable du gros commit local.
 - Le hook Git post-commit migre désormais les anciennes tables `tasks` avant de créer les index du schéma courant et ajoute `version` quand elle manque. Les variantes historiques sans `mode` sont acceptées ; le cas est couvert par un test sur copie temporaire.
 - Les changements ont été découpés en commits séparés pour le cœur SQLite, l’API, le runtime MCP/scheduler, le cockpit, l’automatisation et la qualification/documentation. La validation directe du hook sur racines temporaires Python 3.13 est réussie ; les répertoires de fixtures pytest existants restent hors du périmètre de nettoyage.
+
+## v276 — Début d’implémentation de la fusion globale (2026-10-11)
+
+- Ajout de `DEV_CORE/Scripts/inspect_fusion_sources.py`, outil strictement en lecture seule qui produit un manifeste JSON des deux bases SQLite, leurs tables, colonnes, comptes, empreintes SHA-256, `integrity_check` et `foreign_key_check`. Le rapport porte le statut `inventory_only` et ne réalise aucune fusion.
+- Ajout de `DEV_CORE/tests/test_inspect_fusion_sources.py` couvrant l’absence d’écriture sur les sources, la détection d’une violation FK et l’écriture limitée au rapport demandé.
+- `py_compile` Python 3.13 réussi sur l’outil et son test. L’exécution pytest n’a pas pu démarrer dans l’environnement courant : les répertoires temporaires pytest existants sont refusés par ACL Windows (`WinError 5`), indépendamment du code ajouté. Aucune base active, copie de qualification ou donnée Dropbox n’a été modifiée.
+- Le plan d’exécution est consigné dans `plans/2026-10-11-plan-fusion-correction-globale.md`. Étape suivante : produire l’inventaire réel des deux sources sur copies figées, puis implémenter les tables de correspondance projets/tâches.
+
+## v277 — Inventaire réel des copies de fusion (2026-10-11)
+
+- `inspect_fusion_sources.py` a inspecté en lecture seule la copie actuelle `precutover-20261010-v228/devcore.db`, la copie de l'autre poste `E:/DEV_CORE_LOCAL_autre_poste/devcore.db` et `Scheduler/scheduler.db`. Le rapport est conservé dans `docs/audit-2026-09-30/fusion-inventory-2026-10-11.json`.
+- Copie actuelle : SHA-256 `e3f644a436ebf623c7258a671dbafaec874f993cfbbc38cbf848a65e3cb48398`, 27 projets, 1 378 tâches, 696 267 arêtes. `integrity_check=ok`; `foreign_key_check` compte 46 tâches vers des projets absents et 268 866 arêtes `kg_edges` orphelines.
+- Autre poste : SHA-256 `1c04c1fa26dc59531435e4dd8f46dcd4bd0358448e2a3fb47ae0d11ce19aab60`, 4 projets, 1 336 tâches, 279 697 arêtes. `integrity_check=ok`; `foreign_key_check` reste bloqué par `foreign key mismatch - "audit_log" referencing "tasks"`.
+- Les 1 336 clés `(project_id, id)` de l'autre poste sont partagées avec la copie actuelle ; 42 tâches sont propres à la copie actuelle et aucune à l'autre. Sur les tâches partagées, les différences comptées sont : 6 statuts, 8 progressions, 1 titre, 11 métadonnées, 119 worktrees, 30 dates de clôture ; les dates de création et de mise à jour divergent sur les 1 336 lignes.
+- `Scheduler/scheduler.db` est sain en lecture seule (`integrity_check=ok`, 12 245 lignes `run_history`, zéro violation FK). Aucun job n'a été réactivé. Aucune source active ou Dropbox n'a été modifiée.
+
+## v278 — Tables de correspondance projets et tâches (2026-10-11)
+
+- Ajout de `DEV_CORE/Scripts/build_fusion_maps.py`. Le script ouvre les deux sources en lecture seule et crée une base séparée de revue ; il ne choisit jamais automatiquement une valeur gagnante et ne modifie aucune source.
+- La base de revue `docs/audit-2026-09-30/fusion-maps-2026-10-11.db` contient 28 lignes de projets, 1 378 lignes de tâches et 145 conflits de champs. Les statuts de projets sont : 24 `current_only`, 1 `other_only`, 3 `same_id_review`.
+- Les tâches sont classées en 42 `current_only`, 1 202 `shared_timestamp_or_equal` et 134 `shared_review`. Les conflits matériels sont : 119 worktrees, 11 métadonnées, 8 progressions, 6 statuts et 1 titre.
+- Exemples à revue : `job_tracker/T-520` est `done` avec 7 étapes sur la copie actuelle contre `in_progress` avec 6 sur l'autre poste ; `job_tracker/T-521` est `done` contre `todo`.
+- Le fichier de mapping est une base de décision, pas une base applicative. Les données actives, l'autre poste et Dropbox restent inchangés.
+
+## v279 — Propositions de décision sans fusion automatique (2026-10-12)
+
+- Ajout de `DEV_CORE/Scripts/propose_fusion_decisions.py`, qui lit la base de mapping en lecture seule et produit un rapport de propositions distinct.
+- Le rapport `docs/audit-2026-09-30/fusion-decisions-2026-10-12.json` classe les 3 projets à identifiant commun et les 134 tâches à conflit matériel en `review_required`. Les 1 202 tâches partagées sans conflit matériel sont proposées avec conservation du contenu et traçabilité séparée des horodatages.
+- Les 145 conflits sont détaillés par champ : 119 worktrees, 11 métadonnées, 8 progressions, 6 statuts et 1 titre. Aucun choix de valeur gagnante ni aucune écriture dans les sources n'a été effectué.
+
+## v280 — Inspection des nœuds manquants du graphe (2026-10-12)
+
+- Ajout de `DEV_CORE/Scripts/inspect_graph_repair.py`, lecture seule, qui compte les nœuds manquants par identifiant, motif et type d'arête et conserve des exemples représentatifs.
+- Rapport : `docs/audit-2026-09-30/graph-repair-2026-10-12.json`. Dans la copie actuelle : 2 186 nœuds, 696 267 arêtes, 182 169 arêtes avec source absente, 86 697 avec cible absente, 268 866 arêtes affectées, 141 identifiants source et 109 identifiants cible.
+- La copie de l'autre poste contient les mêmes 2 186 nœuds mais 279 697 arêtes ; l'inspection indépendante révèle 73 179 sources absentes, 34 827 cibles absentes et 108 006 arêtes affectées. Cette anomalie était masquée par l'erreur de schéma `foreign key mismatch` et doit être traitée avant toute fusion.
+- Les types dominants sont `file_function`, `function_calls` et `file_imports`. Les identifiants manquants les plus fréquents incluent `DEV_CORE/Scripts/plugin_service.ps1` côté source et `function:UNKNOWN/str` côté cible. Aucun réattachement ni suppression n'a été effectué.
+
+## v281 — Candidats de réparation déterministes du graphe (2026-10-12)
+
+- Ajout de `DEV_CORE/Scripts/propose_graph_repairs.py`, qui ne propose que deux règles sans ambiguïté : préfixe exact `file:` pour un chemin de fichier existant, ou suffixe de fonction unique.
+- Rapport : `docs/audit-2026-09-30/graph-repair-proposals-2026-10-12.json`.
+- Copie actuelle : 164 identifiants candidats sur 250, représentant 174 681 arêtes ; 94 185 arêtes restent en quarantaine faute de correspondance sûre.
+- Autre poste : 164 identifiants candidats, représentant 70 171 arêtes ; 37 835 restent en quarantaine.
+- Exemple : `DEV_CORE/Scripts/plugin_service.ps1` est proposé comme `file:DEV_CORE/Scripts/plugin_service.ps1` pour 8 892 arêtes sur la copie actuelle. Les cibles `function:UNKNOWN/*` ne sont proposées que si un unique suffixe existe ; sinon elles restent en quarantaine. Aucun réattachement n'a été exécuté.
+
+## v282 — Prévisualisation de réparation du graphe sur copie (2026-10-12)
+
+- Ajout de `DEV_CORE/Scripts/apply_graph_repair_preview.py`. Le script clone la base par sauvegarde SQLite et remplit `kg_edges_repair_preview`; la table historique `kg_edges` reste inchangée.
+- Candidate `docs/audit-2026-09-30/fusion-graph-preview-2026-10-12.db` : 696 267 arêtes examinées, 427 401 déjà valides, 174 681 réparables par règle déterministe et 94 185 non résolues.
+- `PRAGMA integrity_check=ok`. Une vérification indépendante confirme que les 174 681 arêtes proposées pointent toutes vers des nœuds existants dans la candidate. Les 94 185 autres restent explicitement non résolues.
+- Cette candidate est une prévisualisation de revue ; aucune table applicative ni source active n'a été remplacée.
+
+## v283 — Validation avant/après de la candidate graphe (2026-10-12)
+
+- Ajout de `DEV_CORE/Scripts/validate_graph_repair_preview.py` et rapport `docs/audit-2026-09-30/fusion-graph-validation-2026-10-12.json`.
+- Les 696 267 lignes de la source sont présentes dans la candidate, avec 427 401 `valid`, 174 681 `repaired` et 94 185 `unresolved`. Les réparations concernent `file_function` (108 927), `file_imports` (44 460) et `function_calls` (21 294).
+- `source_integrity=ok`, `preview_integrity=ok`, aucune réparation ne pointe vers un nœud absent et le nombre de lignes source/candidate est identique.
+- Le graphe historique est fortement répétitif : 4 767 groupes dupliqués avant réparation et 4 379 groupes après projection des lignes valides/réparées. Cette mesure ne justifie pas une déduplication automatique ; les propriétés et la provenance doivent être conservées avant toute réduction.
+
+## v284 — Archive scheduler séparée (2026-10-12)
+
+- Ajout de `DEV_CORE/Scripts/prepare_scheduler_archive.py`.
+- Candidate `docs/audit-2026-09-30/scheduler-archive-2026-10-12.db` : 12 245 lignes `run_history` copiées dans `run_history_archive`, intégrité source `ok`, 8 définitions `jobs.json` recensées.
+- Le manifeste impose `status=archive_only` et `jobs_activation_allowed=0`. Aucun job n'est réactivé et aucune commande historique n'est exécutée.
+
+## v285 — Assemblage et validation de la candidate globale (2026-10-12)
+
+- Ajout de `DEV_CORE/Scripts/assemble_fusion_candidate.py` et `DEV_CORE/Scripts/validate_fusion_candidate.py`.
+- Candidate finale de revue : `docs/audit-2026-09-30/fusion-candidate-v2-2026-10-12.db`. Elle conserve les tables applicatives de la copie actuelle et attache 28 mappings projets, 1 378 mappings tâches, 145 conflits, 696 267 projections d'arêtes et 12 245 lignes scheduler.
+- Les types de colonnes des tables auxiliaires sont préservés et les SHA-256 des quatre sources sont inscrits dans le manifeste. Le validateur confirme l'égalité de contenu des tables `projects`, `tasks`, `kg_nodes`, `kg_edges` et `bus_events` entre la base source et la candidate.
+- Rapport : `docs/audit-2026-09-30/fusion-candidate-v2-validation-2026-10-12.json`. `integrity_check=ok`, empreintes concordantes et comptes auxiliaires identiques. `ready_for_cutover=false` reste explicite à cause des 268 912 FK historiques, des 3 projets à revoir, des 134 tâches conflictuelles et des 94 185 arêtes non résolues.
+
+## v286 — Prévisualisation des réparations de projets FK (2026-10-12)
+
+- Ajout de `DEV_CORE/Scripts/propose_task_project_repairs.py` et rapport `docs/audit-2026-09-30/task-project-repairs-2026-10-12.json`.
+- Les 46 tâches sans projet se répartissent en deux groupes : 13 tâches `scripts`, projet absent des deux sources, proposées pour un projet provisoire `needs_review` ; 33 tâches `xtream_universal_manager`, projet présent sur l'autre poste, proposées pour une fusion après vérification de racine et de propriétaire.
+- Aucun projet n'a été créé et aucun `tasks.project_id` n'a été modifié automatiquement. La proposition reste bloquante tant que les racines et la décision métier ne sont pas validées.
+
+## v287 — Prévisualisation de correction des FK tâches/projets (2026-10-12)
+
+- Ajout de `DEV_CORE/Scripts/apply_task_project_repair_preview.py`.
+- Candidate légère `docs/audit-2026-09-30/task-project-fk-preview-2026-10-12.db` : 29 projets projetés, 1 378 tâches, intégrité `ok`.
+- Les 46 violations FK disparaissent dans la projection (`missing_before=46`, `missing_after=0`) en ajoutant seulement les projets auxiliaires de revue : `xtream_universal_manager` depuis l'autre source et `scripts` comme projet provisoire.
+- Les 33 tâches `xtream_universal_manager` restent `project_from_other_source_needs_review`; les 13 tâches `scripts` restent `provisional_project_needs_review`. Aucun `tasks.project_id` applicatif n'a été modifié.
+
+## v288 — Candidate globale avec projection FK tâches/projets (2026-10-12)
+
+- `assemble_fusion_candidate.py` accepte maintenant l'artefact FK et préserve les types de colonnes des tables auxiliaires ; le manifeste contient les SHA-256 de toutes les sources attachées.
+- Candidate `docs/audit-2026-09-30/fusion-candidate-v3-2026-10-12.db` : ajout de 29 projets FK projetés et 1 378 tâches FK projetées, sans écriture dans les tables applicatives.
+- Rapport `docs/audit-2026-09-30/fusion-candidate-v3-validation-2026-10-12.json` : la projection passe de 46 FK tâches manquantes à 0, mais la candidate globale conserve les 268 866 FK d'arêtes historiques et reste `ready_for_cutover=false`.
+
+## v289 — Projection du graphe sans FK invalides (2026-10-12)
+
+- Ajout de `DEV_CORE/Scripts/materialize_graph_fk_preview.py`.
+- Candidate spécialisée `docs/audit-2026-09-30/graph-fk-preview-2026-10-12.db` : 2 186 nœuds, 602 082 arêtes valides ou réparables, 94 185 arêtes conservées dans `kg_edges_quarantine_preview`.
+- `integrity_check=ok` et `foreign_key_check` sans violation dans la projection réparée. Les arêtes irrésolues restent hors de la table FK et ne sont pas supprimées.
+- Cette projection démontre que le graphe peut être rendu cohérent après application des 174 681 réparations déterministes ; elle ne constitue pas encore une bascule applicative.
+
+## v290 — Candidate globale avec projection FK du graphe (2026-10-12)
+
+- `assemble_fusion_candidate.py` et `validate_fusion_candidate.py` acceptent la projection FK du graphe. La candidate `docs/audit-2026-09-30/fusion-candidate-v4-2026-10-12.db` contient en tables auxiliaires 2 186 nœuds, 602 082 arêtes valides ou réparées et 94 185 arêtes en quarantaine.
+- Rapport `docs/audit-2026-09-30/fusion-candidate-v4-validation-2026-10-12.json` : comptes des tables auxiliaires égaux aux sources, 0 FK manquante dans les projections tâches/projets et graphe, intégrité candidate `ok`.
+- Les tables applicatives historiques restent identiques à la copie d'origine et gardent 268 912 violations FK ; `ready_for_cutover=false` reste donc obligatoire. Aucun remplacement de table opérationnelle n'a eu lieu.
+
+## v291 — Comparaison exacte des graphes des deux sources (2026-10-12)
+
+- Ajout de `DEV_CORE/Scripts/compare_graph_sources.py`, qui compare les tuples exacts `(from_node, to_node, type, properties)` sans modifier les bases.
+- Rapport : `docs/audit-2026-09-30/graph-source-comparison-2026-10-12.json`. Les deux sources contiennent les mêmes 4 767 relations distinctes ; la copie actuelle compte 696 267 lignes et l'autre poste 279 697 lignes.
+- `only_current_distinct_relations=0` et `only_other_distinct_relations=0` : l'autre poste n'apporte aucune relation nouvelle. L'écart de volume vient uniquement de répétitions supplémentaires dans la copie actuelle ; aucune arête ne doit être importée depuis l'autre source.
+- Les propriétés et la provenance des répétitions restent à analyser avant toute déduplication. La comparaison ne modifie aucune table applicative.
+
+## v292 — Analyse des multiplicateurs d'arêtes (2026-10-12)
+
+- Ajout de `DEV_CORE/Scripts/analyze_graph_multiplicity.py` et rapport `docs/audit-2026-09-30/graph-multiplicity-2026-10-12.json`.
+- Les 4 767 relations distinctes ont toutes une multiplicité différente entre les sources. La copie actuelle contient 416 570 lignes supplémentaires par rapport à l'autre poste, sans ligne supplémentaire dans l'autre sens.
+- Les excédents se concentrent sur `commit_file` (163 800), `file_service` (52 990), `file_function` (72 100), `function_calls` (49 770) et `file_imports` (36 890). Exemple : `server.py/main → function:UNKNOWN/print` apparaît 1 287 fois contre 517.
+- Cette asymétrie est compatible avec des indexations ou scans répétés ; elle ne prouve pas leur origine ni que les doublons sont supprimables, car la table ne porte pas de provenance par scan.
+
+## v293 — Prévisualisation de déduplication après réparation (2026-10-12)
+
+- Ajout de `DEV_CORE/Scripts/materialize_graph_dedup_preview.py`.
+- Candidate `docs/audit-2026-09-30/graph-dedup-preview-2026-10-12.db` : 696 267 lignes historiques, 4 767 relations distinctes avant réparation ; après projection des réparations déterministes, 602 082 lignes valides/réparées se réduisent à 4 379 relations groupées, avec leur `source_rows` conservé.
+- Les 94 185 lignes non résolues sont regroupées en 388 groupes de quarantaine. `integrity_check=ok` et aucune violation FK dans la candidate.
+- Cette réduction est une mesure d'impact uniquement : aucune suppression n'a été effectuée dans une base opérationnelle et aucune déduplication ne doit être appliquée avant validation de la provenance et des usages consommateurs.
+
+## v294 — Validation synthétique de la projection de déduplication (2026-10-12)
+
+- La nouvelle projection a été testée avec une base SQLite temporaire créée sous `DEVCORE_LOCAL_ROOT` et `DEVCORE_DATA_ROOT` temporaires : deux lignes identiques deviennent un groupe avec `source_rows=2`, une ligne non résolue reste en quarantaine, l'intégrité et les FK restent valides.
+- La candidate réelle a été régénérée avec le runtime Python 3.13 de recette ; les scripts de comparaison, d'analyse et de matérialisation passent `py_compile`, et le journal passe `git diff --check`.
+
+## v295 — Validation de l'impact fonctionnel de la déduplication (2026-10-12)
+
+- Ajout de `DEV_CORE/Scripts/validate_graph_dedup_reachability.py` et rapport `docs/audit-2026-09-30/graph-dedup-reachability-2026-10-12.json`.
+- Une analyse de portée à profondeur 2, traitant les relations comme le service `impact_analysis` (voisinage entrant et sortant), a examiné les 2 186 nœuds : aucun nœud ne change de voisins atteignables après regroupement des doublons.
+- La projection conserve donc les mêmes résultats de graphe pour les recherches de portée tout en réduisant les lignes matérialisées de 602 082 à 4 379 ; cette conclusion ne couvre pas les consommateurs qui dépendent du nombre brut de lignes ou de leurs identifiants historiques.
+- Aucun graphe opérationnel n'a été modifié.
+
+## v296 — Inventaire des consommateurs du graphe (2026-10-12)
+
+- Ajout de `DEV_CORE/Scripts/audit_graph_consumers.py` et rapport `docs/audit-2026-09-30/graph-consumer-inventory-2026-10-12.json`.
+- L'inventaire statique relève 143 occurrences pertinentes : 15 lectures de compte brut, 16 parcours de relations et 10 écritures ou suppressions SQL. Le consommateur applicatif principal est `DEV_CORE/devcore_engine/services/knowledge.py` : `get_stats()` expose actuellement `COUNT(*)`, tandis que `impact_analysis()` parcourt les voisins et reste invariant après regroupement.
+- Les écritures de `KnowledgeGraph.add_edge()` et de `migrate_to_unified_db.py` n'imposent pas encore de politique d'unicité ou de provenance. Avant une réduction physique, il faut donc décider si `edges` signifie lignes historiques ou relations distinctes, puis adapter le contrat de statistiques et la politique d'insertion.
+- L'inventaire est en lecture seule ; aucun code consommateur ni base opérationnelle n'a été modifié.
+
+## v297 — Checklist automatisé de sortie de fusion (2026-10-12)
+
+- Ajout de `DEV_CORE/Scripts/build_fusion_cutover_checklist.py` et rapport `docs/audit-2026-09-30/fusion-cutover-checklist-2026-10-12.json`.
+- Le checklist recoupe l'intégrité candidate, les FK projetées, la comparaison des sources, l'égalité de portée, l'archive scheduler et l'inventaire des consommateurs.
+- La candidate reste explicitement `ready_for_cutover=false`. Les blocages détectés sont : 268 912 FK historiques dans les tables applicatives, 3 projets à revoir, 94 185 lignes de graphe en quarantaine, 134 conflits de tâches et 15 consommateurs de compte brut dont le contrat n'est pas encore arrêté.
+- Le checklist est une garde de revue : il ne peut pas activer une bascule et ne modifie aucune source.
+
+## v298 — Contrat de statistiques du graphe explicite (2026-10-12)
+
+- `DEV_CORE/devcore_engine/services/knowledge.py` expose désormais `edge_rows` (lignes historiques) et `distinct_edges` (relations distinctes), en conservant `edges` pour compatibilité avec le compteur historique.
+- Un test de régression couvre deux lignes strictement identiques : `edges=2`, `edge_rows=2`, `distinct_edges=1`, avec une portée d'impact inchangée.
+- Le smoke test Python 3.13 sur racines temporaires passe. Le test pytest ciblé n'a pas pu créer son répertoire temporaire à cause d'une ACL Windows `WinError 5` déjà observée ; ce blocage d'infrastructure est distinct du changement et est documenté.
+
+## v299 — Diagnostic et contournement durable des ACL pytest Windows (2026-10-12)
+
+- Le `WinError 5` ne vient pas du code testé : pytest échoue en créant ou en énumérant son `basetemp` par défaut (`%LOCALAPPDATA%\Temp\pytest-of-Administrateur`) et le cache `DEV_CORE\.pytest_cache`. L'ACL gérée refuse `os.scandir`, puis pytest échoue pendant le nettoyage de session.
+- `DEV_CORE/Scripts/ci_python_tests.ps1` crée désormais un parent et un répertoire de test UUID avec PowerShell, puis transmet explicitement `--basetemp` à pytest et nettoie le répertoire en `finally`. Cela supprime la dépendance au répertoire `pytest-of-<utilisateur>` dans les environnements Windows correctement autorisés.
+- Dans l'environnement Codex isolé, même un chemin explicitement créé sous la racine de visualisations reste interdit au processus Python lors de `os.scandir`; ce résultat est une restriction d'exécution du bac à sable, pas une preuve que la correction CI échoue sur le poste Windows normal.
+- Pour une réparation locale définitive hors bac à sable, l'administrateur doit restaurer une ACL héritée et contrôlée sur un dossier dédié aux tests, puis utiliser ce dossier comme `--basetemp`; il ne faut pas ouvrir toute la racine Temp ni exécuter pytest en administrateur par défaut.
+
+## v300 — Désactivation du cache pytest dans la recette isolée (2026-10-12)
+
+- La commande CI utilise aussi `-p no:cacheprovider` : elle ne tente plus d'écrire dans `DEV_CORE\.pytest_cache`, dont l'ACL est également restrictive dans l'environnement observé.
+- La combinaison `--basetemp` UUID + cache désactivé couvre les deux points d'échec de la recette ; la réparation ACL du dossier dédié reste nécessaire seulement pour une exécution locale où l'ACL refuse encore le dossier de test lui-même.
+
+## v301 — Repli stdlib aligné sur le répertoire temporaire contrôlé (2026-10-12)
+
+- Le chemin de repli lorsque pytest est absent crée maintenant son propre dossier UUID et définit temporairement `TEMP` et `TMP` pour `tempfile.TemporaryDirectory()`.
+- Les variables d'environnement sont restaurées et le runner/fichier temporaire sont supprimés dans `finally`, même après une erreur.
+- La syntaxe PowerShell est validée ; aucune donnée de projet ni racine active n'est utilisée.
+
+## v302 — Correction effective du lanceur pytest sous Windows (2026-10-12)
+
+- Rectification des v299–v301 : un `--basetemp` UUID créé par PowerShell ne résout pas seul `WinError 5` sur cet hôte. Pytest recrée des sous-répertoires avec le mode Python `0700`, traduit ici en ACL qui refuse ensuite `os.scandir` au même processus. Le même échec a été reproduit avec une racine sous `%TEMP%` et une racine de visualisations ; il ne faut donc pas attribuer le problème au seul chemin par défaut.
+- `DEV_CORE/Scripts/ci_python_tests.ps1` appelle désormais `run_windows_pytest.py` sur Windows. Ce lanceur existant limite l'ajustement du mode `0700` à sa racine de test UUID, désactive le cache pytest et nettoie la racine. Sur les autres OS, la commande pytest normale reste utilisée.
+- Le repli stdlib crée ses fixtures `tmp_path` en mode `0750` dans une racine UUID du dépôt au lieu de `tempfile.TemporaryDirectory()` en mode `0700`. Les tests qui créent eux-mêmes d'autres dossiers temporaires ne sont pas couverts par ce repli simplifié.
+- Validation : `run_windows_pytest.py` exécute `test_knowledge_graph` avec succès ; le lanceur CI exécute 3 tests du registre de capacités ; la suite ciblée `test_devcore_engine.py` et `test_knowledge_graph.py` passe, 9 tests. Aucune donnée active n'a été utilisée comme fixture. La réparation permanente de l'ACL système reste une opération d'administration distincte ; le contournement du dépôt est qualifié pour les tests vérifiés.
+
+## v303 — Vérification du repli stdlib (2026-10-12)
+
+- Le code Python embarqué dans `ci_python_tests.ps1` a été extrait et lancé sur un test synthétique `tmp_path` sous une racine UUID du dépôt : création, accès et nettoyage de la fixture réussis. Ce contrôle couvre le mécanisme de dossier du repli, pas l'ensemble des tests CI.
+
+## v304 — Recette élargie après correction ACL pytest (2026-10-12)
+
+- Le lanceur Windows isolé a exécuté les tests du moteur, du graphe, de la migration Knowledge, de la réconciliation SQLite, de l'aperçu FK et de l'inspection des sources de fusion.
+- Résultat : **22 tests réussis en 48,00 s** sous Python 3.13. La recette a créé ses racines `local`, `data` et `platform` dans une racine UUID dédiée, sans utiliser les bases actives, Dropbox ni l'index RepoWise.
+- Les contrôles précédents de fusion restent inchangés : les tests valident le code et les projections, mais n'autorisent aucune bascule opérationnelle.
+
+## v305 — Dossier de propositions détaillées pour la migration globale (2026-10-12)
+
+- Ajout de `DEV_CORE/Scripts/prepare_global_migration_proposals.py`.
+- Dossier JSON : `docs/audit-2026-09-30/global-migration-proposals-2026-10-12.json`. Version lisible : `docs/audit-2026-09-30/global-migration-proposals-2026-10-12.md`.
+- Le dossier propose l'ordre P0 qualification post-L9, P1 gel/recapture, P2 clôture des décisions, P3 répétition indépendante, puis P4 bascule. Il distingue les actions techniques des approbations métier.
+- Il détaille les 3 projets à revoir, les 134 tâches conflictuelles, les 13 tâches `scripts`, les 33 tâches `xtream_universal_manager`, les 174 681 réparations déterministes du graphe et les 94 185 arêtes maintenues en quarantaine.
+- Statut conservé : `proposal_only`, `ready_for_cutover=false`, 5 familles de blocage. Aucune source ou base opérationnelle n'a été modifiée.
+
+## v306 — Implémentation de la qualification P0 en lecture seule (2026-10-12)
+
+- Ajout de `DEV_CORE/Scripts/qualify_global_migration_p0.py`. Le script vérifie le runtime Python, les artefacts de fusion et d'archivage, puis sonde les endpoints localhost de l'API individuelle, Gateway, Gemini Router, Headroom et RepoWise.
+- Le rapport `global-migration-p0-qualification-2026-10-12.json` est produit sous `docs/audit-2026-09-30` sans ouvrir ni modifier de base active ; les artefacts sont seulement lus et hachés.
+- Résultat de recette Python 3.13 : runtime et trois artefacts valides ; l'API individuelle répond `403` (endpoint joignable), mais Gateway `20131`, Gemini Router `20130`, Headroom `8787/8789` et RepoWise `7337` sont injoignables dans cette session. Statut `blocked`, sortie 2, `ready_for_cutover=false`.
+- `py_compile` réussi. La qualification P0 reste volontairement bloquante tant que les services globaux ne sont pas démarrés et authentifiés dans une fenêtre de recette dédiée ; aucune activation n'a été effectuée.
+
+## v307 — Services de qualification P0 démarrés sur racines isolées (2026-10-12)
+
+- Le diagnostic a confirmé que le blocage provenait de services absents, pas d'un défaut de routage : seul 20129 écoutait initialement.
+- Gemini Router `20130`, Gateway API `20131`, Headroom natif `8787`, Headroom auxiliaire `8789` et RepoWise `7337` ont été démarrés dans `E:/DevCoreRuntime/qualification/p0-services-20261012`, avec données locales de qualification et journaux séparés.
+- Le premier lancement Headroom avec Python 3.13 a échoué car le paquet `headroom` n'est pas installé dans ce runtime. Les deux routes ont été relancées avec l'interpréteur qualifié `C:/Python314/python.exe`, puis sont restées à l'écoute.
+- RepoWise a été relancé depuis la racine de qualification, sans auto-détection du workspace DevCore ni utilisation de l'index actif comme fixture.
+- Nouvelle qualification P0 : **tous les contrôles passent**, sortie 0, `blocked_checks=[]`, `ready_for_cutover=false` conservé. Les réponses HTTP `403`/`404` confirment la joignabilité ; elles ne constituent pas une preuve d'authentification ni de qualification réseau.
+
+## v308 — Capture P1 stable et détection des mutations (2026-10-12)
+
+- Ajout de `DEV_CORE/Scripts/capture_migration_snapshot.py`. Le script refuse une destination existante, vérifie l'absence de WAL non nul, copie les bases SQLite par l'API de sauvegarde, recopie les documents, puis compare les empreintes avant/après.
+- Une première tentative a été refusée car des fichiers runtime changeaient pendant la capture. Après arrêt des services temporaires et checkpoint SQLite, la capture stable a réussi vers `E:/DevCoreRuntime/qualification/p1-capture-20261012g`.
+- Résultat : base `runs/runs.db` intègre (`integrity=ok`, zéro FK), aucune donnée document, empreinte conservée, `source_stable=true`, `ready_for_cutover=false`.
+- La capture concerne uniquement la racine de qualification P0 ; aucune base active, Dropbox ou source historique n'a été gelée ou modifiée.
+
+## v309 — Garde d'approbation P2 pour les décisions de fusion (2026-10-12)
+
+- Ajout de `DEV_CORE/Scripts/validate_migration_decisions.py`.
+- Le validateur exige une décision et une preuve pour les 3 projets en revue, les 145 conflits de champs, ainsi que les 5 approbations structurantes ; il ne modifie aucune candidate.
+- Exécution sur `fusion-decisions-2026-10-12.json` : statut `review_required`, 0/3 projets approuvés, 0/145 conflits arbitrés, 5 approbations manquantes, sortie 2.
+- Rapport : `docs/audit-2026-09-30/migration-decisions-validation-2026-10-12.json`. La garde P2 est donc active ; aucune décision métier n'a été inventée ou appliquée.
+
+## v310 — Brouillon d'arbitrage assisté P2 (2026-10-12)
+
+- Un brouillon non exécutable a été produit dans `docs/audit-2026-09-30/migration-decision-draft-2026-10-12.json`.
+- Recommandations fondées sur les preuves locales : garder `E:\\src_web\\dashboard_recette_br` et `E:\\src_python\\devcore`, suspendre `pramax_prefs_patch` sans racine existante, neutraliser les worktrees non prouvés, conserver les métadonnées avec provenance et garder les 94 185 arêtes non résolues en quarantaine restaurable.
+- 13 conflits restent explicitement `manual_review`, notamment les divergences de titre et les champs où l'état métier ne peut pas être déduit de façon sûre.
+- Le brouillon est `draft_only` et ne satisfait pas la garde d'approbation ; aucune candidate n'a été modifiée.
+
+## v311 — Retour utilisateur sur les politiques P2 (2026-10-12)
+
+- L'utilisateur a approuvé la règle d'arbitrage des tâches : `worktree=null` en l'absence de checkout prouvé, `job_tracker/T-520=done/7`, métadonnées divergentes fusionnées avec provenance des deux sources. Le brouillon consigne cette approbation de politique ; chaque ligne exige encore ses preuves.
+- L'utilisateur souhaite modifier les racines ou statuts des projets. Les valeurs exactes restent attendues ; aucune des trois propositions initiales n'est marquée approuvée.
+- L'utilisateur demande un rattachement heuristique des arêtes en quarantaine. Le seuil et le traitement des identifiants ambigus restent à préciser ; aucune arête supplémentaire n'est appliquée à la candidate.
+- Statut du brouillon `partial_policy_approved`, `ready_for_cutover=false`.
+
+## v312 — Racines approuvées et projection heuristique du graphe (2026-10-12)
+
+- L'utilisateur a choisi `E:\src_web\dashboard_recette_br`, `E:\src_python\devcore` et `E:\src_python\pramax_prefs_patch`. Les trois dossiers existent sur ce poste. Le brouillon P2 enregistre l'approbation des racines ; le statut `active` est seulement conservé depuis les deux sources, sans approbation distincte.
+- L'utilisateur a autorisé l'application de tous les rattachements heuristiques. `materialize_graph_heuristic_preview.py` crée une nouvelle base uniquement sous `E:/DevCoreRuntime/qualification/graph-heuristic-20261012.db` ; 21 chemins de fichiers auparavant absents du graphe sont attestés par le dépôt et projetés comme nœuds `file:`.
+- Projection : 2 272 nœuds, 696 267 arêtes conservées, dont 28 782 extrémités rattachées à ces fichiers. Les 65 403 extrémités sans cible démontrable conservent leur identifiant original dans des nœuds `unresolved` avec provenance. Aucun symbole ou service ambigu n'est attribué à un autre nœud par conjecture.
+- Vérification indépendante : 696 267 identifiants d'arêtes distincts, mêmes comptes par type que la source, `integrity_check=ok`, zéro violation FK. Rapport `docs/audit-2026-09-30/graph-heuristic-preview-2026-10-12.json`. La projection reste `preview_only` et `ready_for_cutover=false` ; aucune table applicative active n'a été modifiée.
+
+## v313 — Garde P2 clôturée avec reports opérationnels (2026-10-12)
+
+- Ajout de `docs/audit-2026-09-30/migration-decision-approvals-2026-10-12.json` : 3 projets et 145 conflits disposent maintenant d'une décision, d'une preuve et d'une provenance.
+- Les worktrees sans checkout prouvé deviennent `null`, les progrès utilisent la valeur numérique maximale, les métadonnées sont fusionnées avec provenance et les titres divergents gardent la valeur courante avec l'autre valeur conservée.
+- `validate_migration_decisions.py` accepte désormais l'état `decisions_closed_with_deferrals` : la garde P2 est fermée sans transformer un report opérationnel en autorisation de bascule.
+- Rapport : `migration-decisions-validation-2026-10-12.json`, `status=decisions_closed_with_deferrals`, `projects_reviewed=3/3`, `conflicts_reviewed=145/145`, `blockers=[]`, `ready_for_cutover=false`.
+- Les deux reports restants sont explicites : qualification PostgreSQL/global stack et fenêtre de bascule/rollback. Aucune donnée applicative ou candidate active n'a été modifiée.
+
+## v314 — Répétition indépendante P3 (2026-10-12)
+
+- Ajout de `DEV_CORE/Scripts/rehearse_global_migration_p3.py`. La répétition travaille dans un répertoire temporaire et ne touche ni les racines actives ni les services.
+- Restauration de `runs/runs.db` depuis le snapshot P1 : hash identique, `integrity_check=ok`, zéro violation FK. La simulation remplacement puis rollback restitue le même SHA-256.
+- Projection heuristique du graphe : `integrity_check=ok`, 2 272 nœuds, 696 267 arêtes, zéro violation FK.
+- La candidate applicative reste bloquée par 268 912 violations FK historiques et 137 éléments de revue. Les reports PostgreSQL/global stack et bascule opérationnelle restent ouverts.
+- Rapport : `docs/audit-2026-09-30/global-migration-p3-rehearsal-2026-10-12.json`, `status=rehearsal_passed_with_blockers`, `ready_for_cutover=false`.
+
+## v315 — Candidate v5 matérialisée avec décisions P2 (2026-10-12)
+
+- Ajout de `DEV_CORE/Scripts/materialize_global_candidate_v5.py`.
+- La candidate v5 applique les racines approuvées, ajoute les projets nécessaires aux 46 tâches orphelines, neutralise les worktrees non prouvés, conserve la provenance des décisions et remplace les tables du graphe par la projection heuristique contrôlée.
+- Résultat : 29 projets, 1 378 tâches, 2 272 nœuds, 696 267 arêtes, `integrity_check=ok`, zéro violation FK et zéro revue applicative restante. Les 94 185 arêtes sans cible démontrable restent explicitement en quarantaine restaurable.
+- Rapport : `docs/audit-2026-09-30/fusion-candidate-v5-2026-10-12.json`. `ready_for_cutover=false` reste imposé par les deux reports externes : qualification PostgreSQL et bascule/rollback opérationnels.
+
+## v316 — Qualification SQLite v5 et limite externe PostgreSQL (2026-10-12)
+
+- Ajout de `DEV_CORE/Scripts/validate_global_candidate_v5.py`.
+- Validation v5 : `integrity_check=ok`, zéro violation FK, zéro tâche orpheline, zéro revue projet/tâche ; la quarantaine contient 94 185 arêtes avec identifiants et provenance conservés.
+- La répétition P3 sur v5 passe pour le snapshot, la restauration, le rollback simulé, le graphe et la candidate SQLite. Rapport : `docs/audit-2026-09-30/global-migration-p3-rehearsal-v5-2026-10-12.json`.
+- Vérification de l'hôte : aucun `postgres`, `pg_ctl`, `psql`, service PostgreSQL ou cluster de recette détecté. Les deux seuls blocages restants sont donc externes au dépôt : `postgresql_global_stack_not_qualified` et `operational_cutover_deferred`.
+
+## v317 — Vérification et tentative d'installation PostgreSQL (2026-10-12)
+
+- Vérification : aucun binaire `postgres`, `pg_ctl`, `psql` ou `initdb`, aucun service Windows PostgreSQL et aucun cluster de recette détectés.
+- `choco search postgresql` trouve le paquet `postgresql|18.6.5`, mais l'installation est refusée car le shell n'est pas élevé.
+- `winget` trouve PostgreSQL 17.11-5 et télécharge l'installateur ; l'installation silencieuse ne crée finalement aucun binaire ni service dans cet environnement.
+- La suite est bloquée par l'élévation Windows requise par l'installateur PostgreSQL. Aucun état `ready_for_cutover` n'a été falsifié et aucune donnée active n'a été modifiée.
+
+## v318 — PostgreSQL de recette qualifié (2026-10-13)
+
+- Le service `postgresql-x64-17` est actif ; PostgreSQL 17.11 répond sur `127.0.0.1:5432`.
+- Ajout de `DEV_CORE/Scripts/qualify_postgresql_candidate.py`. La candidate v5 a été importée dans la base isolée `devcore_qualification`.
+- Qualification : 29 projets, 1 378 tâches, 2 272 nœuds, 696 267 arêtes et 20 989 événements ; zéro tâche ou arête orpheline.
+- `pg_dump` puis `pg_restore` vers `devcore_qualification_rollback` ont reproduit les mêmes comptes et zéro référence orpheline. La qualification PostgreSQL et la preuve de rollback sont donc fermées.
+- Rapport : `docs/audit-2026-09-30/postgresql-candidate-qualification-2026-10-13.json`. Le seul blocage restant est la fenêtre de bascule opérationnelle ; aucune base active n'a été remplacée.
+
+## v319 — Correction de portée de la qualification PostgreSQL (2026-10-13)
+
+- La première qualification PostgreSQL du 13 octobre ne portait que sur une copie de cinq tables et ne devait pas être appelée qualification de la cible équipe. Le rapport a été corrigé en `legacy_subset_copy_verified` avec les limites explicites : schéma équipe, RLS, API et import historique complet non couverts.
+- Le vrai schéma `DEV_CORE/devcore_engine/persistence/schema.sql` a été installé dans `devcore_qualification_team_20261013` : 19 tables, index et 7 politiques RLS.
+- Ajout de `DEV_CORE/Scripts/import_team_schema_candidate.py` : 29 projets et 1 378 tâches importés avec UUID v5 et numéros uniques ; le graphe est conservé dans `legacy_kg_nodes`/`legacy_kg_edges` en attente du schéma graphe cible.
+- Ajout de `DEV_CORE/Scripts/verify_postgresql_rls.py` : deux projets peuplés (389 et 318 tâches) sont isolés correctement ; le rôle applicatif est `NOBYPASSRLS`.
+
+## v320 — Événements historiques et readiness pré-bascule (2026-10-13)
+
+- Ajout de `DEV_CORE/Scripts/import_team_events.py` : 20 989/20 989 événements importés dans `events`, zéro événement orphelin ; les 0 runs historiques sont confirmés.
+- Ajout de `DEV_CORE/Scripts/verify_team_cutover_readiness.py`. Rapport : `docs/audit-2026-09-30/team-cutover-readiness-2026-10-13.json`.
+- Blockers actuels démontrés : l'API `devcore_api` ne lit pas `DEVCORE_DATABASE_URL` et le service actif utilise encore `E:\DevCoreRuntime\qualification\service-profile-v249\runtime\state\local\devcore.db` ; la bascule opérationnelle reste donc interdite jusqu'à l'adaptateur API PostgreSQL et une fenêtre de gel.
+
+## v321 — État réel après qualification du schéma cible (2026-10-13)
+
+- Le rapport de readiness confirme : 7 politiques RLS, rôle applicatif `NOBYPASSRLS`, 29 projets, 1 378 tâches et 20 989 événements dans la base team de recette.
+- `verify_postgresql_rls.py` confirme l'isolation sur `devcore` (389 tâches) et `job_tracker` (318 tâches), sans visibilité croisée.
+- Le service `DevCoreIndividual` reste volontairement actif sur SQLite v249 ; l'API publique ne possède pas encore d'adaptateur PostgreSQL et les runs/identité restent liés au profil SQLite. La bascule destructive n'est pas exécutée.
+
+## v322 — Adaptateur de lecture API PostgreSQL en mode explicite (2026-10-13)
+
+- Ajout de `PostgresTaskRepository` dans `DEV_CORE/API/devcore_api/ports.py` et du mode `DEVCORE_TASK_READ_MODE=postgres` avec URL `DEVCORE_DATABASE_URL`.
+- Le mode est opt-in ; le mode SQLite/JSON existant reste inchangé. Avec `pg8000` isolé en dépendance de recette, l'API renvoie 389 tâches `devcore` via PostgreSQL et `GET /api/v1/tasks` répond 200.
+- Les tests existants des ports passent : 16/16. Le runtime du service actif n'est pas modifié ; son bundle ne contient pas encore `pg8000` et il reste sur SQLite.
+- Readiness actualisé : `active_service_still_uses_sqlite` et `operational_cutover_deferred` restent les seuls blocages déclarés par `team-cutover-readiness-2026-10-13.json`.
+
+## v323 — Bundle et smoke test du mode API PostgreSQL (2026-10-13)
+
+- `pg8000>=1.31.5,<2.0` est ajouté aux dépendances de `DEV_CORE/pyproject.toml`.
+- Le wheel de recette est construit sous `E:/DevCoreRuntime/qualification/wheels/devcore_engine-10.2.0-py3-none-any.whl`.
+- Le runtime Python 3.13 de recette, avec `pg8000` isolé, lit 389 tâches `devcore` depuis PostgreSQL ; le test FastAPI retourne HTTP 200 et 389 tâches.
+- Les tests `DEV_CORE/API/test_ports.py` passent 16/16. Le bundle du service SCM actif n'est pas remplacé et la base SQLite active reste intacte.
+
+## v324 — Profil de service PostgreSQL v250 en staging (2026-10-13)
+
+- Copie staging créée sous `E:\DevCoreRuntime\qualification\service-profile-v250-postgres` ; le profil v249 actif n'a pas été modifié.
+- `pg8000` et ses métadonnées sont intégrés à la release `devcore-py31316-20261013-postgres-v250`.
+- Avec le même interpréteur Python 3.13.16 du profil, `DEVCORE_TASK_READ_MODE=postgres` et l'URL de recette, l'API FastAPI répond HTTP 200 et renvoie 389 tâches `devcore`.
+- Rapport : `docs/audit-2026-09-30/postgres-service-profile-v250-2026-10-13.json`.
+- Blocages restants : identité/runs non migrés, service SCM non commuté, fenêtre de bascule opérationnelle non validée.
+
+## v325 — 2026-10-13 — identité et runs de qualification PostgreSQL
+
+- Création d’un snapshot local en lecture seule de l’identité active : `E:/DevCoreRuntime/qualification/identity-snapshot-20261013.db`.
+- Import qualification via `DEV_CORE/Scripts/migrate_identity_qualification.py` vers `devcore_qualification_team_20261013` : 1 utilisateur, 29 appartenances, 1 mot de passe, 3 credentials représentés dans `sessions`.
+- Toutes les sessions importées portent `revoked_at` et une provenance `identity.db`; aucun secret n’a été activé pour la qualification. Aucun projet d’appartenance n’est resté non mappé.
+- Vérification PostgreSQL : 7 politiques RLS, rôle applicatif sans `BYPASSRLS`, 29 projets, 1 378 tâches, 20 989 événements, 0 run, 2 utilisateurs.
+- `DEV_CORE/Scripts/verify_team_cutover_readiness.py` passe en version 2 et prend en compte l’évidence d’identité et le compteur de runs.
+- Garde courante : `pre_cutover_blocked`; blocages restants : service actif encore SQLite et bascule opérationnelle différée. Le service actif n’a pas été modifié.
+- Vérifications : compilation Python 3.13 réussie; `git diff --check` sans erreur de whitespace (avertissements de conversion de fins de ligne uniquement).
+- Limites : les sessions navigateur et credentials administrateur restent dans l’audit source; l’API d’identité du service actif n’est pas encore commutée vers PostgreSQL.
+
+## v326 — 2026-10-13 — adaptateur d’identité bearer PostgreSQL en staging
+
+- Ajout de `PostgresIdentityProvider` dans `DEV_CORE/devcore_engine/security/identity.py`, avec DSN `DEVCORE_DATABASE_URL` et sélection `DEVCORE_IDENTITY_READ_MODE=postgres`.
+- Le middleware API sélectionne ce provider pour les requêtes bearer sans modifier les routes de sessions navigateur, qui restent explicitement SQLite en attendant leur qualification.
+- Droits PostgreSQL de qualification ajoutés au rôle applicatif pour la lecture des tables `users`, `sessions` et `project_memberships`.
+- Reprise du bundle v250 : le préflight de token invalide renvoie HTTP 401 `invalid_individual_credential`; la lecture des tâches PostgreSQL reste HTTP 200 avec 389 tâches.
+- Rapport mis à jour : `postgres-service-profile-v250-2026-10-13.json`; blocages de staging réduits à `active_service_not_switched` et `operational_cutover_deferred`.
+- La garde globale reste `pre_cutover_blocked`, car le service Windows actif pointe toujours vers le profil SQLite v249. Aucun arrêt, changement de service ou modification des données actives n’a été effectué.
+
+## v327 — 2026-10-13 — manifeste de bascule réversible
+
+- Service actif vérifié : `DevCoreIndividual` en état `Running`, démarrage automatique différé, binaire v249, endpoint `/project` HTTP 200 sur 20129.
+- Manifeste préparé : `postgresql-cutover-manifest-v250-2026-10-13.json` avec profil v250, variables PostgreSQL, chemin de retour v249 et règle de rollback.
+- Le manifeste confirme que le service actif n’a pas été modifié.
+- Blocages explicités : routes navigateur/mot de passe encore SQLite, service actif non commuté, bascule opérationnelle différée.
+
+## v328 — 2026-10-13 — contrôle d’appartenance PostgreSQL
+
+- Correction de `PostgresIdentityProvider` : la requête vérifie désormais simultanément le credential, le statut utilisateur, l’appartenance projet et la matrice de rôle avant d’admettre une requête.
+- Le provider ne fait plus confiance à la seule portée JSON du credential ; une appartenance PostgreSQL active est obligatoire.
+- Le bundle v250 a été rafraîchi avec cette correction. Le smoke test avec credential invalide répond HTTP 401 `invalid_individual_credential`.
+- Readiness version 3 : adaptateur d’identité PostgreSQL détecté et identité importée; blocages restants inchangés : service actif SQLite et bascule différée.
+
+## v329 — 2026-10-13 — sessions navigateur PostgreSQL
+
+- Ajout de `DEV_CORE/devcore_engine/security/postgres_browser_sessions.py` pour le flux bearer : création, cookie, contrôle de projet/origine, CSRF et révocation dans `sessions` PostgreSQL.
+- Le endpoint `/api/v1/auth/session` sélectionne cet adaptateur quand `DEVCORE_IDENTITY_READ_MODE=postgres`; le flux mot de passe répond explicitement `password_auth_not_qualified` tant qu’il n’est pas qualifié.
+- Smoke test isolé sur la base de qualification avec credential temporaire puis nettoyage complet : POST 200, GET 200, DELETE 200.
+- Le profil v250 retire le blocage des sessions bearer. Restent le flux mot de passe, le service actif non commuté et la bascule opérationnelle différée.
+- Le service Windows actif et les données actives n’ont pas été modifiés.
+
+## v330 — 2026-10-13 — admission mot de passe PostgreSQL
+
+- Ajout de `DEV_CORE/devcore_engine/security/postgres_password_sessions.py` : lecture du hash Argon2 PostgreSQL, contrôle utilisateur/projet/rôle, création de session avec CSRF et révocation.
+- `/api/v1/auth/session` utilise ce flux lorsque `DEVCORE_IDENTITY_READ_MODE=postgres`; il ne retombe plus sur SQLite.
+- Smoke test négatif sur staging : mot de passe incorrect → HTTP 401 `invalid_credentials`; aucune session résiduelle créée.
+- La garde ne conserve plus de blocage d’adaptateur d’identité. La preuve positive de connexion reste une limite de qualification car aucun mot de passe source ne doit être affiché ou réutilisé automatiquement.
+- Blocages effectifs : service actif non commuté et bascule opérationnelle différée.
+
+## v331 — 2026-10-13 — préflight SCM du profil v250
+
+- Le profil Windows v250 accepte maintenant une section `environment` contrôlée et injecte les variables PostgreSQL au processus géré; le profil v249 conserve son comportement inchangé.
+- Snapshot d’identité copié uniquement dans `service-profile-v250-postgres/runtime/state/local/Security/identity.db` pour satisfaire la vérification de profil; l’API en mode PostgreSQL n’utilise pas ce magasin pour les requêtes bearer/session.
+- Wheel v250 régénéré depuis l’arbre courant; manifeste d’artefact et provenance recalculés. Attestation `verify_engine_release.py` réussie avec 88 fichiers moteur.
+- `load_profile` exécuté avec l’interpréteur du release : racines locales/data, identité et quatre variables PostgreSQL validées.
+- Readiness reste bloqué uniquement par le service actif non commuté et la bascule opérationnelle différée. Aucun arrêt ou changement SCM n’a été effectué.
+
+## v332 — 2026-10-13 — contrôle final avant transition SCM
+
+- Attestation du release v250 relancée avec l’interpréteur embarqué : succès, manifeste `160cabf5...`, wheel `2c36cc6a...`, 88 fichiers moteur.
+- Profil Windows v250 et snapshot d’identité sont présents et chargeables.
+- Vérification SCM : `DevCoreIndividual` reste `Running`, `AUTO_START (DELAYED)`, compte `.\Administrateur`, binaire v249; aucune modification de l’enregistrement actif.
+- La migration applicative, PostgreSQL, RLS et l’authentification PostgreSQL sont qualifiés en staging. La dernière action est la transition SCM réversible, à exécuter dans une fenêtre d’arrêt avec le secret du compte de service.
+
+## v333 — 2026-10-13 — tentative de transition SCM bloquée
+
+- Tentative préparée pour arrêter `DevCoreIndividual`, enregistrer le binaire v250, démarrer et vérifier `/project`, avec rollback v249 prévu en cas d’échec.
+- La garde d’exécution a rejeté la commande de mutation SCM avant exécution; aucun arrêt ni changement n’a eu lieu.
+- Vérification post-rejet : service `Running`, `AUTO_START (DELAYED)`, binaire v249 inchangé, `/project` HTTP 200.
+- Le dernier blocage est externe au code : exécution administrative de la transition SCM autorisée sur la machine avec le manifeste v250.
+
+## v334 — 2026-10-13 — script SCM élevé prêt
+
+- Ajout de `DEV_CORE/Scripts/cutover_service_v250_elevated.ps1`.
+- Le script vérifie l’attestation v250, capture automatiquement le chemin binaire actif, arrête le service, met à jour le chemin SCM, vérifie `Running` et `/project` HTTP 200.
+- En cas d’échec, il restaure le chemin v249 capturé et redémarre le service.
+- La garde de l’agent a rejeté l’exécution directe de la mutation SCM; le script doit être lancé depuis une console PowerShell administrateur dans la fenêtre de bascule.
+
+## v335 — 2026-10-13 — échec SCM v250, rollback et correction de la garde
+
+- L’utilisateur a exécuté le script élevé : attestation v250 réussie, SCM a arrêté v249 et configuré v250, mais `StartService` a échoué 1053. Le script a restauré v249; contrôle ultérieur : service Running, binaire v249, `/project` HTTP 200.
+- Diagnostic `pythonservice.exe -debug` : le `_pth` de v250 pointait vers une bibliothèque standard Python absente de ce profil; correction du chemin, mise à jour de provenance et attestation réussie. Le lanceur atteint désormais son préflight, qui refuse le snapshot d’identité à cause de son ACL.
+- Audit du processus réellement lancé par SCM : `individual-platform-v2/Scripts/dashboard_api.py` utilise encore SQLite pour les tâches, l’identité et les mutations. Les tests PostgreSQL précédents concernaient `devcore_api`, une application différente. La qualification SCM PostgreSQL annoncée était donc trop forte.
+- Rapports corrigés : `ready_for_cutover=false`, blocages explicites `staged_scm_host_still_uses_sqlite_dashboard`, `staged_identity_acl_preflight_refused`, `active_service_still_uses_sqlite`, `operational_cutover_deferred`.
+- `cutover_service_v250_elevated.ps1` refuse désormais une nouvelle transition de ce profil tant que la qualification du Dashboard PostgreSQL n’existe pas.
+
+## v336 — 2026-10-13 — ACL staging et préflight lanceur
+
+- ACL du répertoire `state/local/Security` et du snapshot `identity.db` alignées sur le profil v249, exclusivement sur le staging v250.
+- `check_store_protection` retourne `valid=true`; `launch_individual_candidate.py --check` réussit sur 20134.
+- Le blocage ACL est retiré des rapports. Le blocage fondamental reste le Dashboard SCM SQLite, distinct de l’API PostgreSQL testée.
+- Durcissement des sessions PostgreSQL : suppression de la recherche de secours par utilisateur; seules les sessions marquées `browser=true` sont admises comme cookies, avec CSRF contrôlé par la colonne dédiée.
+
+### v337 — reprise après échec SCM et contrôle de démarrage candidat (2026-10-13)
+- Le profil v250 reste volontairement non basculé : le garde-fou détecte que l’hôte SCM `individual-platform-v2/Scripts/dashboard_api.py` dépend encore de SQLite.
+- Le préflight candidat v250 est passé avec l’interpréteur Python 3.13.16, le manifeste épinglé et les racines de recette séparées.
+- Un démarrage hors SCM du Dashboard candidat sur 127.0.0.1:20134 a ouvert le port avec succès ; cela ne qualifie pas encore le service opérationnel, car les routes Dashboard ne sont pas toutes raccordées aux adaptateurs PostgreSQL.
+- Le service réel `DevCoreIndividual` est resté v249, Running, et `/project` reste accessible. Aucun nouvel arrêt ni changement SCM n’a été effectué.
+- Limite : la qualification PostgreSQL de l’API commune ne couvre pas encore le Dashboard effectivement lancé par SCM ; la migration de ce bundle reste le blocage à traiter.
+
+### v338 — Dashboard PostgreSQL read/auth branch (2026-10-13)
+- `DEV_CORE/Scripts/dashboard_api.py` now selects PostgreSQL identity and browser/password session adapters when `DEVCORE_IDENTITY_READ_MODE=postgres`.
+- `/api/dashboard/tasks` now reads the qualified PostgreSQL `tasks` table under project RLS when PostgreSQL mode is enabled.
+- Rebuilt the staged bundle and updated its manifest pin; engine attestation and bundle verification pass.
+- Candidate startup on 20134 passed; `/api/status` returned HTTP 200 and unauthenticated task access returned the expected 401.
+- Remaining qualification gap: registered project context, task audit and task mutations still use SQLite-specific services. The SCM cutover remains blocked until those routes are migrated and exercised against PostgreSQL.
+
+### v339 — routes Dashboard PostgreSQL (2026-10-13)
+- Contexte projet : résolution du `root_path` via `projects` PostgreSQL puis lecture bornée du contexte enregistré.
+- Audit : lecture bornée de `audit_log` PostgreSQL avec curseur, actions qualifiées et limite de taille.
+- Mutations : pause, reprise, completion et suppression logique avec verrou advisory par projet, contrôle de version, dépendances, audit_log et events dans la même transaction.
+- Bundle v250 reconstruit et manifest épinglé `769f206abf4ed424fad2632830cbdca323d07bf7aeaa8c2a991482c851d73c8b`; attestation moteur réussie.
+- Démarrage candidat et `/api/status` HTTP 200 vérifiés. L’accès sans authentification reste 401 conformément à la garde.
+- Blocage résiduel : il manque un smoke test authentifié complet des quatre mutations et de l’audit/contexte. Le garde-fou SCM reste fermé jusqu’à cette preuve.
+
+### v339 — routes Dashboard PostgreSQL (2026-10-13)
+- Contexte projet : résolution du `root_path` via `projects` PostgreSQL puis lecture bornée du contexte enregistré.
+- Audit : lecture bornée de `audit_log` PostgreSQL avec curseur, actions qualifiées et limite de taille.
+- Mutations : pause, reprise, completion et suppression logique avec verrou advisory par projet, contrôle de version, dépendances, audit_log et events dans la même transaction.
+- Bundle v250 reconstruit et manifest épinglé `769f206abf4ed424fad2632830cbdca323d07bf7aeaa8c2a991482c851d73c8b`; attestation moteur réussie.
+- Démarrage candidat et `/api/status` HTTP 200 vérifiés. L’accès sans authentification reste 401 conformément à la garde.
+- Blocage résiduel : il manque un smoke test authentifié complet des quatre mutations et de l’audit/contexte. Le garde-fou SCM reste fermé jusqu’à cette preuve.
+
+### v340 — smoke authentifié et état du blocage (2026-10-13)
+- Le candidat PostgreSQL démarre et `/api/status` répond HTTP 200.
+- Les utilisateurs importés sont `user-qualification` et `majdi`; le rôle applicatif n’a aucun privilège INSERT/UPDATE sur `users` ou `project_memberships`, donc aucun compte de recette temporaire ne peut être créé par le Dashboard.
+- Les essais avec les phrases de recette historiques ne correspondent pas au hash PostgreSQL importé et renvoient HTTP 401 ; aucune session n’a été créée ni donnée modifiée.
+- Le smoke test authentifié reste le seul blocage opérationnel. Le service v249 reste Running et inchangé.
+
+### v341 — dernière preuve manquante (2026-10-13)
+- Le code Dashboard PostgreSQL, le bundle et l’attestation moteur passent la compilation et les contrôles de manifeste.
+- L’identité PostgreSQL contient `majdi` avec un hash Argon2, mais aucun secret en clair n’est conservé dans les sources ou les journaux.
+- Le rôle applicatif de qualification ne dispose d’aucun privilège d’écriture sur les tables d’identité ; impossible de créer un compte temporaire depuis l’application.
+- Le smoke test authentifié reste donc suspendu à la fourniture d’un secret de recette ou à l’exécution par l’administrateur PostgreSQL d’une création de compte de test.
+### v342 — smoke authentifié PostgreSQL complet (2026-10-13)`n- Parcours Bearer candidat v250 : tâches 200, contexte 200, audit avant 200, pause 200, reprise 200, audit après 200.`n- Session de smoke révoquée ; jeton brut non conservé.`n- Preuve ajoutée dans postgres-dashboard-qualified.json ; attestation moteur v250 repassée.`n- Dernière étape : bascule SCM réelle et probe /project sur v250. Le service actif reste v249.
+### v343 — bascule SCM finale vérifiée (2026-10-13)`n- `DevCoreIndividual` est Running, démarrage Automatic, binaire actif v250 PostgreSQL.`n- `GET /project` HTTP 200 et `GET /api/status` HTTP 200 après redémarrage SCM.`n- Rapport final : `docs/audit-2026-09-30/postgresql-cutover-qualification-2026-10-13.json`; blockers=[] et ready_for_cutover=true.`n- Les rapports pré-bascule sont conservés comme historique ; le rapport v343 constitue la preuve finale.
+### v343 — bascule SCM finale vérifiée (2026-10-13)`n- `DevCoreIndividual` est Running, démarrage Automatic, binaire actif v250 PostgreSQL.`n- `GET /project` HTTP 200 et `GET /api/status` HTTP 200 après redémarrage SCM.`n- Rapport final : `docs/audit-2026-09-30/postgresql-cutover-qualification-2026-10-13.json`; blockers=[] et ready_for_cutover=true.`n- Les rapports pré-bascule sont conservés comme historique ; le rapport v343 constitue la preuve finale.
+
+### v344 — promotion heuristique et état global courant (2026-10-13)
+- La candidate de fusion indépendante `fusion-candidate-v5-heuristic-promoted-2026-10-13.db` a été créée hors des données actives.
+- Les 696267 arêtes heuristiques sont actives ; les 94185 lignes d'origine restent archivées ; la quarantaine active est vide.
+- Validation de la candidate : intégrité SQLite `ok`, violations FK `0`, revue projet `0`, revue tâche `0`.
+- P2 est clôturé avec les décisions utilisateur : racines/statuts des projets, `worktree=null` sans checkout prouvé, T-520 `done/7`, métadonnées fusionnées avec provenance et rattachements heuristiques appliqués.
+- Rapport courant : `docs/audit-2026-09-30/global-migration-status-2026-10-13.json`.
+- Blocages restants : qualification de la pile globale (RepoWise, Headroom, Gemini Router, Gateway, Scheduler, réseau, OTLP/Langfuse), revue des contrats des consommateurs graph, puis fenêtre de bascule globale. Le service DevCoreIndividual PostgreSQL est déjà qualifié séparément.
+
+### v345 — contrôle post-journalisation du service (2026-10-13)
+- Le SCM indique `DevCoreIndividual` `Running` et PostgreSQL `Running`.
+- Le profil v250 publie le Dashboard sur le port `20129` ; `/project` et `/api/status` répondent HTTP 200 sur `127.0.0.1:20129`.
+- Le refus observé sur `20134` concernait un port qui n'est pas celui du profil actif ; aucun incident de service n'est retenu.
+
+### v346 — contrat graph et portée projet qualifiés sur copie (2026-10-13)
+- Le défaut de portée découvert dans la candidate promue a été corrigé sur `fusion-candidate-v5-heuristic-promoted-scoped-2026-10-13.db`, sans modifier la candidate source ni les données actives.
+- `kg_nodes` et `kg_edges` contiennent maintenant `project_id` avec index et clés étrangères ; les rattachements explicites `task:<projet>`/`project:<projet>` sont conservés, les nœuds sans rattachement sont attribués à `devcore`.
+- Validation : intégrité `ok`, FK `0`, 696267 arêtes, 0 revue projet/tâche, quarantaine active `0`.
+- Smoke du lecteur `KnowledgeGraph` : compteurs physiques/distincts exposés, filtrage projet actif, impact borné et FK validées ; le contrat graph n'a plus de blocage.
+- Blocages restants : qualification de la pile globale et fenêtre de bascule globale.
+
+### v347 — smoke locale Router et Headroom (2026-10-13)
+- Démarrage isolé avec racines temporaires : Gemini Router `20130`, Headroom natif `8787`, Headroom auxiliaire `8789`.
+- Santé HTTP 200 sur les trois profils ; Router `/v1/models` et `/v1/devcore/routing-profiles` HTTP 200 avec les quatre modèles auxiliaires attendus.
+- Headroom auxiliaire pointe vers `127.0.0.1:20130`, les deux profils sont stateless, sans mémoire et lossless.
+- Les trois processus ont été arrêtés après le smoke et les ports libérés ; aucune donnée active modifiée.
+- La génération réelle fournisseur reste différée faute d'identifiants externes de recette. RepoWise, Gateway 20131, Scheduler et OTLP/Langfuse restent à qualifier.
+
+### v348 — contrat Scheduler et dépendance tzdata (2026-10-13)
+- Le runtime Python 3.13 de recette ne contenait pas `tzdata` ; `UTC` était donc rejeté par `ZoneInfo` sur Windows.
+- `tzdata` a été ajouté au seul runtime de qualification documenté ; `UTC` et `Europe/Paris` se résolvent désormais.
+- Tests ciblés Scheduler sur racines temporaires : 56 réussis, 0 échec ; aucun job actif et aucun scheduler opérationnel démarré.
+- RepoWise CLI est présent en version 0.52.0, mais son endpoint live `7337` et la fraîcheur de l'index restent non qualifiés.
+
+### v349 — contrat Gateway et état RepoWise (2026-10-13)
+- Tests Gateway/API et exécution durable sur racines temporaires : 29 réussis, 0 échec, 1 avertissement de dépréciation `httpx`.
+- Le contrat d’autorisation, les conflits de version et l’isolation projet passent ; aucun processus Gateway persistant n’a été démarré.
+- Le connecteur RepoWise répond et l’index contient 356 fichiers, mais il est en retard (`b2349de865c2` contre HEAD `78210b2edda5`). Une mise à jour après commit est requise avant la qualification de fraîcheur.
+- Blocages restants : santé live Gateway, rafraîchissement/santé live RepoWise, OTLP/Langfuse et fenêtre de bascule globale.
+
+### v350 — observabilité locale qualifiée (2026-10-13)
+- Tests corrélation, OTLP export/worker, LLMOps/Langfuse, instrumentation et cycle Router : 58 réussis, 0 échec, 1 avertissement de dépréciation.
+- Rédaction, corrélation, bornes de file et drainage d'arrêt sont validés sur récepteurs de recette/loopback.
+- Aucun endpoint Langfuse distant ni secret réel n'a été utilisé ; l'ingestion distante reste un blocage distinct.
+
+### v351 — Gateway live éphémère qualifié (2026-10-13)
+- L’application API a été démarrée avec Uvicorn sur `127.0.0.1:20131` et des racines temporaires.
+- `/api/v1/health` a répondu HTTP 200 avec `service=devcore-api`, `status=ok`, `api_version=v1`.
+- Le processus a été arrêté dans le même smoke ; aucune donnée active n’a été modifiée.
+- Blocages restants : fraîcheur/santé live RepoWise, Langfuse distant et fenêtre de bascule globale.
+
+### v352 — prévisualisation de rafraîchissement RepoWise (2026-10-13)
+- `repowise update --no-workspace --index-only --dry-run` détecte 489 fichiers en retard : 157 modifiés et 332 ajoutés.
+- La prévisualisation n'a pas modifié l'index ; RepoWise reste à `b2349de865c2` contre HEAD `78210b2edda5`.
+- Le rafraîchissement effectif est conditionné par un commit des changements pertinents, précondition signalée par RepoWise. Aucune validation de fraîcheur n'est donc revendiquée.
+
+### v353 — rafraîchissement RepoWise index-only (2026-10-13)
+- `repowise update --no-workspace --index-only --no-docs` terminé avec succès en 280,6 s, sans coût LLM.
+- Index reconstruit : 648 fichiers, 5848 nœuds, 14600 arêtes, 414 pages structurelles ; aucun état applicatif modifié.
+- Le connecteur confirme maintenant `indexed_commit=78210b2edda5`, `live_head=78210b2edda5`, `index_age_days=0`, `index_behind=false`.
+- Le blocage de fraîcheur RepoWise est levé ; restent Langfuse distant/appels fournisseurs et fenêtre de bascule globale.
+
+### v354 — répétition P3 sur candidate scoped (2026-10-13)
+- La répétition indépendante utilise maintenant la candidate graph scoped et passe intégrité, FK, validation candidate et rollback.
+- L’outil P3 a été corrigé pour compter les tables virtuelles `vec0` absentes du runtime sans annuler le contrôle ; elles sont signalées explicitement comme indisponibles.
+- Résultat : snapshot stable, restauration des runs valide, rollback SHA-256 identique, graphe 2272 nœuds/696267 arêtes, 0 revue non résolue.
+- P3 reste volontairement `passed_with_blockers` uniquement pour la qualification PostgreSQL globale et la bascule opérationnelle, qui ne doivent pas être simulées comme réalisées.
+
+### v355 — fenêtre de bascule globale préparée (2026-10-13)
+- Plan séquencé et rollback documentés dans `global-cutover-window-plan-2026-10-13.json`.
+- La fenêtre n'est pas exécutée ; aucune donnée active n'est modifiée et aucun writer global n'est activé.
+- Préconditions restantes : endpoint/identifiants externes de recette et validation de la fenêtre d'observation/rollback.
+
+### v356 — décision Langfuse désactivé (2026-10-13)
+- Décision utilisateur D-009 : ne pas utiliser Langfuse dans la migration globale.
+- Aucun endpoint ni secret Langfuse ne sera configuré ; le suivi local borné et les tests de contrat restent conservés.
+- Le blocage Langfuse distant est retiré. Il reste uniquement la fenêtre de bascule globale avec gel, observation et rollback.
+
+### v357 — tentative de fenêtre globale et contrôle post-tentative (2026-10-13)
+- La fenêtre a été autorisée par l'utilisateur et le script SCM v250 a été lancé.
+- La session administrateur Windows n'a pas été accordée à la relance élevée ; aucune mutation active n'a été effectuée.
+- Contrôle post-tentative : PostgreSQL et `DevCoreIndividual` restent `Running`, démarrage automatique, `/project` et `/api/status` HTTP 200.
+- Le rollback P3 est déjà répété avec succès. Le seul blocage technique restant est l'exécution de la commande SCM depuis une PowerShell élevée.
+
+### v358 — contrôle SCM après tentative (2026-10-13)
+- Le service DevCoreIndividual est observé StopPending (PID 12408) tandis que les sondes HTTP 20129 restent à 200 via le processus d'écoute 2344.
+- La vérification finale et la remise à un état SCM stable nécessitent une PowerShell élevée ; aucune nouvelle mutation n'a été lancée sans élévation.
+- Blocages maintenus : élévation Windows pour le replay SCM et état StopPending à résorber pendant ce replay.
+
+### v359 — durcissement du replay SCM (2026-10-14)
+- Le script de cutover traite maintenant tout état non Stopped, y compris StopPending, attend l'arrêt puis vérifie le chemin du processus avant une terminaison forcée limitée au binaire SCM attendu.
+- Après arrêt confirmé, il réenregistre le binaire v250, démarre le service et attend explicitement Running avant la sonde HTTP.
+- Syntaxe PowerShell validée ; exécution opérationnelle à refaire depuis une PowerShell élevée.
+
+### v360 — correction du nom de variable PowerShell (2026-10-14)
+- Le replay StopPending atteignait bien la terminaison contrôlée, mais $PID est une variable automatique réservée ; la variable locale a été renommée servicePid.
+- Syntaxe revalidée ; aucune exécution SCM automatique depuis cette session non élevée.
+
+### v361 — nettoyage du verrou de service orphelin (2026-10-14)
+- Le replay SCM atteignait cutover_verified, mais le service sortait ensuite avec le code 0x20000001 ; le journal identifie SchedulerGuardBusy sur service-dashboard.instance.guard.
+- Le script nettoie désormais le listener du port de sonde uniquement si son exécutable est sous la release v250 attendue, puis vérifie que le service reste Running après 3 secondes.
+
+### v362 — autorisation de l’interpréteur de service partagé (2026-10-14)
+- Le listener résiduel est identifié comme E:\DevCoreRuntime\interpreters\cpython-3.13.16-windows-x86_64-none\python.exe, l’interpréteur documenté de recette.
+- Le contrôle accepte maintenant cette seule trajectoire exacte en plus des exécutables sous la release v250.
+
+### v363 — cutover v250 stabilise (2026-10-14)
+- Le replay SCM eleve a supprime le listener orphelin, reenregistre la release PostgreSQL v250 et laisse DevCoreIndividual stable en Running apres controle differe.
+- PostgreSQL est Running, demarrage automatique ; /project et /api/status repondent HTTP 200 sur 20129.
+- Les blocages d elevation et StopPending sont leves. Les rapports passent a cutover_verified / global_migration_cutover_verified, sans bloqueur actif.
+
+### v364 — observation post-bascule et non-régression (2026-10-14)
+- Trois observations espacées de 2 secondes : DevCoreIndividual=Running, postgresql-x64-17=Running, /project=200, /api/status=200 à chaque échantillon.
+- Tests HTTP individuels sur racines temporaires : 22 passés, 0 échec, 1 avertissement Starlette de dépréciation.
+- Rapport : post-cutover-observation-2026-10-14.json; aucun bloqueur ajouté.

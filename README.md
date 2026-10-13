@@ -5,6 +5,21 @@
 Version : 10.2.0
 Mode : Single Client (sans Docker)
 
+## État de qualification — 14 octobre 2026
+
+La migration globale DevCore est qualifiée pour le profil local PostgreSQL :
+
+- `DevCoreIndividual` et `postgresql-x64-17` sont `Running` ;
+- la release active est `devcore-py31316-20261013-postgres-v250` ;
+- le cockpit individuel est disponible sur `http://127.0.0.1:20129/project` ;
+- `/project` et `/api/status` répondent HTTP 200 ;
+- le contrôle post-bascule compte 22 tests HTTP réussis, sans échec.
+
+Le profil actif est le cockpit individuel. Les routes globales historiques
+(`/` et `/api/dashboard`) sont fermées par conception ; les tâches nécessitent
+une session authentifiée. Les preuves sont archivées dans
+`docs/audit-2026-09-30/global-migration-final-status-2026-10-14.md`.
+
 ---
 
 ## 🚀 Lancement & Architecture

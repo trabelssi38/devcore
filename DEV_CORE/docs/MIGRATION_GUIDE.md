@@ -2,6 +2,22 @@
 
 Ce guide détaille la migration historique de la stack Docker multi-services (PostgreSQL, Qdrant, Node API) et des scripts PowerShell vers l'architecture native Python unifiée basée sur SQLite WAL (`devcore.db`) et `sqlite-vec`.
 
+## État actuel — 14 octobre 2026
+
+La migration globale du profil local qualifié est terminée. `DevCoreIndividual`
+utilise PostgreSQL v250 et démarre automatiquement. SQLite reste utilisé pour
+les imports, les fixtures et les validations isolées ; il ne remplace pas la
+source PostgreSQL active du profil équipe.
+
+Le cockpit individuel est disponible sur `http://127.0.0.1:20129/project` et
+`/api/status` répond HTTP 200. Les routes du cockpit global historique (`/` et
+`/api/dashboard`) sont refusées par le profil individuel ; les routes de tâches
+exigent une authentification.
+
+Preuves : `docs/audit-2026-09-30/global-migration-final-status-2026-10-14.md`,
+`docs/audit-2026-09-30/global-migration-status-2026-10-13.json` et
+`docs/audit-2026-09-30/post-cutover-observation-2026-10-14.json`.
+
 ---
 
 ## Changements Majeurs

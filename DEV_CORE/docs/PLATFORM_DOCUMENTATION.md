@@ -1364,14 +1364,17 @@ powershell -File C:\devcore\DEV_CORE\Scripts\gateway.ps1 -List -Json
 - Specs Playwright : `tests\components\dashboard.spec.ts` et `tests\e2e\dashboard.spec.ts`.
 - `DEV_CORE\Web\test_playwright_setup.py` verrouille la configuration Playwright versionnée.
 
-### LLMOps / Langfuse
+### LLMOps local (Langfuse distant désactivé)
 
-`DEV_CORE\API\devcore_api\llmops.py` ajoute une couche LLMOps compatible Langfuse.
+`DEV_CORE\API\devcore_api\llmops.py` conserve un format d'événement compatible
+Langfuse pour l'observabilité locale, mais l'export distant Langfuse est désactivé
+par la décision D-009.
 
 - `LangfuseEvent.from_generation(...)` relie generation LLM, modele, usage, cout et `CorrelationContext`.
 - `as_langfuse_payload()` produit un payload compatible Langfuse : `traceId`, `model`, `usage`, `metadata`.
-- `LlmOpsClient.capture(...)` envoie via transport injecte si `LANGFUSE_PUBLIC_KEY` et `LANGFUSE_SECRET_KEY` sont configures.
-- Sans configuration Langfuse, les evenements sont buffers localement et ne bloquent pas l'execution.
+- `LlmOpsClient.capture(...)` reste borné au buffer local ; aucun secret Langfuse
+  ni endpoint distant ne doit être configuré.
+- Les événements sont bufferisés localement et ne bloquent pas l'exécution.
 - `DEV_CORE\API\test_llmops_langfuse.py` couvre payload, buffering et transport.
 
 ### Evaluation datasets

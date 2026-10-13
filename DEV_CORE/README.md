@@ -5,6 +5,16 @@ DevCore local pilot. The wider repository also contains API, scheduler, MCP,
 dashboard and PowerShell entry points. See the repository root README and the
 local multi-user implementation plan for operating instructions.
 
+## Qualification PostgreSQL v250 — 14 octobre 2026
+
+Le service actif `DevCoreIndividual` utilise la release
+`E:/DevCoreRuntime/qualification/service-profile-v250-postgres/runtime/releases/devcore-py31316-20261013-postgres-v250`.
+Il démarre automatiquement avec PostgreSQL `postgresql-x64-17` et expose le
+cockpit individuel sur `http://127.0.0.1:20129/project`. Les sondes `/project`
+et `/api/status` répondent HTTP 200 ; les routes globales historiques sont
+fermées par le profil individuel et les tâches demandent une authentification.
+La preuve post-bascule est `docs/audit-2026-09-30/post-cutover-observation-2026-10-14.json`.
+
 ## Candidat Windows L9
 
 Le candidat individuel versionné est installé sous `E:/DevCoreRuntime/releases/devcore-py31316-20261010-l9`.
