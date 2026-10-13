@@ -1,11 +1,13 @@
-# Prochaines étapes après la qualification L9
+# Suivi des étapes après la qualification L9
 
-Date de suivi : 2026-10-11
+Date de suivi : 2026-10-14
 
-Le pilote individuel local est qualifié après redémarrage Windows. Les trois
-chantiers ci-dessous restent ouverts et doivent être menés dans cet ordre.
+La qualification locale L9 et le cutover PostgreSQL v250 du service
+`DevCoreIndividual` sont terminés. La checklist post-L9 complète ne l'est pas :
+elle contient encore des gates réseau, de pile globale et de reprise qui ne sont
+pas activés dans le profil individuel.
 
-## 1. Gel et bascule des écritures historiques
+## 1. Gel et bascule des écritures historiques — partiel
 
 Objectif : préserver une copie cohérente de l'historique, arrêter les écrivains
 historiques, puis basculer explicitement vers la source de vérité retenue.
@@ -19,12 +21,14 @@ Préconditions :
   les deux projets `needs_review` et les 460 identifiants textuels ;
 - obtenir un rapport sans écrivain actif avant toute bascule.
 
-Critères de sortie : journal de gel, manifeste de sauvegarde, empreintes avant/
-après, zéro écrivain historique actif et procédure de retour arrière testée sur
-copie. Aucune écriture Dropbox ou production ne doit être modifiée pendant la
-qualification préparatoire.
+La candidate réconciliée, le rollback et l'intégrité du graphe sont qualifiés
+sur copie. Le gel traçable des écrivains historiques actifs et la bascule des
+données Dropbox ne sont pas déclarés terminés dans cette session.
 
-## 2. Déploiement équipe PostgreSQL réel
+Critères restant ouverts : journal de gel applicatif, preuve de zéro écrivain
+historique actif et retour arrière sur la source active.
+
+## 2. Déploiement équipe PostgreSQL réel — terminé pour le profil local
 
 Objectif : installer un cluster PostgreSQL local dédié au profil équipe et
 déployer le schéma v2 avec le rôle applicatif sans `BYPASSRLS`.
@@ -39,11 +43,13 @@ Ordre d'exécution :
 5. exécuter les tests de concurrence et d'isolation par projet ;
 6. basculer l'API vers PostgreSQL uniquement après validation des rapports.
 
-Critères de sortie : `integrity_check` logique, zéro violation RLS sur fixtures
-réelles, migrations répétables, sauvegarde/restauration testée et API sans
-double source de vérité. Le cluster réel n'est pas encore qualifié.
+Le cluster local `devcore_qualification_team_20261013`, son rôle applicatif,
+le schéma/RLS, l'API et le service SCM v250 ont été qualifiés. Preuves :
+`postgresql-cutover-qualification-2026-10-13.json`,
+`global-cutover-execution-2026-10-13.json` et
+`post-cutover-observation-2026-10-14.json`.
 
-## 3. Activation réseau et OTLP/Langfuse
+## 3. Activation réseau et OTLP/Langfuse — non activé par décision
 
 Objectif : ouvrir l'accès réseau après qualification des identités et de
 l'isolation, puis activer l'observabilité distante de façon bornée.
@@ -62,9 +68,12 @@ OTLP/Langfuse :
   shutdown ;
 - mesurer les files, les pertes acceptées et le comportement lorsque le réseau
   distant est indisponible ;
-- activer en continu seulement après ces preuves et une décision de rétention.
+- l'export Langfuse distant est désactivé par D-009 ; les événements restent
+  dans le buffer local borné.
+- l'accès réseau reste limité à localhost conformément à D-002. Une ouverture
+  réseau externe et une ingestion distante ne sont donc pas des étapes terminées.
 
-## 4. Remise en service coordonnée de la pile globale
+## 4. Remise en service coordonnée de la pile globale — partiel
 
 Objectif : réactiver le mode global et ses dépendances historiques après la
 qualification L9, sans considérer le seul service `DevCoreIndividual` comme
@@ -94,7 +103,13 @@ Ordre d'exécution :
 6. documenter explicitement les services démarrés automatiquement et ceux
    restant manuels.
 
-Critères de sortie : tous les ports déclarés dans `Config/network.json` qui
+Le smoke local du Router, Headroom et Gateway est passé, RepoWise est à jour et
+les contrats du Scheduler sont qualifiés. Les jobs du Scheduler restent
+désactivés et le profil actif demeure individuel ; les routes du cockpit global
+restent donc fermées (`/` et `/api/dashboard`). La reprise complète de la pile
+globale après redémarrage n'est pas prouvée.
+
+Critères restant ouverts : tous les ports déclarés dans `Config/network.json` qui
 sont requis par le mode global répondent, chaque réponse de santé est liée au
 bon composant, RepoWise n'est pas en retard sur `HEAD`, les deux cockpits
 globaux sont utilisables sur copie, et une reprise après redémarrage est
@@ -102,7 +117,9 @@ consignée. Le démarrage de `DevCoreIndividual` seul ne satisfait pas ce gate.
 
 ## État et décision
 
-Ces étapes sont des travaux à réaliser, pas des fonctionnalités déclarées
-terminées. Le compte Windows `Administrateur` reste l'exception acceptée pour
-le pilote L9 ; il ne doit pas être confondu avec la qualification PostgreSQL,
-réseau ou observabilité.
+Conclusion : le cutover local PostgreSQL et le service individuel sont
+`cutover_verified`, sans bloqueur actif. La checklist post-L9 complète reste
+partiellement ouverte pour le gel des écrivains historiques, l'accès réseau,
+l'activation distante et la pile globale complète. Le compte Windows
+`Administrateur` reste l'identité du pilote ; il ne constitue pas un compte de
+service restreint.
