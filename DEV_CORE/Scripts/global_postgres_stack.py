@@ -29,6 +29,19 @@ from devcore_engine.infra.llm_route_contract import validate_health
 
 PORTS = {"router": 20130, "headroom-native": 8787,
          "headroom-auxiliary": 8789, "gateway": 20131, "repowise": 7337}
+HEALTH_GRACE_SECONDS = {"headroom-native": 150, "headroom-auxiliary": 150}
+
+
+def overdue_health_failures(health: dict[str, bool], failing_since: dict[str, float],
+                            now: float) -> list[str]:
+    """Keep transient request load visible without killing every child on one miss."""
+    for name, ready in health.items():
+        if ready:
+            failing_since.pop(name, None)
+        else:
+            failing_since.setdefault(name, now)
+    return [name for name, started in failing_since.items()
+            if now - started >= HEALTH_GRACE_SECONDS.get(name, 30)]
 
 
 def _json_probe(port: int, path: str) -> dict:
@@ -243,6 +256,7 @@ def _supervise(roots: dict, repowise: str | None, headroom_python: Path) -> int:
         _write_manifest(manifest_path, manifest)
         print(json.dumps({"status": "global_stack_candidate_ready", "manifest": str(manifest_path)}), flush=True)
         next_health_check = 0.0
+        failing_since: dict[str, float] = {}
         while not stop:
             try:
                 request = json.loads(stop_path.read_text(encoding="utf-8"))
@@ -261,8 +275,9 @@ def _supervise(roots: dict, repowise: str | None, headroom_python: Path) -> int:
                 manifest["health"] = health
                 manifest["heartbeat_utc"] = datetime.now(timezone.utc).isoformat()
                 _write_manifest(manifest_path, manifest)
-                if not all(health.values()):
-                    raise RuntimeError(f"Global health lost: {[name for name, ok in health.items() if not ok]}")
+                overdue = overdue_health_failures(health, failing_since, time.monotonic())
+                if overdue:
+                    raise RuntimeError(f"Global health lost beyond grace period: {overdue}")
                 next_health_check = time.monotonic() + 2
             time.sleep(.5)
         return 0
