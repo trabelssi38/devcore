@@ -1,0 +1,21 @@
+{
+  "report_version": 1,
+  "created_utc": "2026-10-13T23:05:00Z",
+  "status": "repowise_refresh_preview_only",
+  "command": "repowise update --no-workspace --index-only --dry-run --progress json",
+  "indexed_commit": "b2349de865c2",
+  "live_head": "78210b2edda5",
+  "changes_detected": {
+    "total": 489,
+    "modified": 157,
+    "added": 332
+  },
+  "index_modified": false,
+  "precondition": "The stored analysis requires committing health-relevant working-tree changes before repowise update.",
+  "blockers": [
+    "repowise_index_refresh_requires_commit",
+    "remote_langfuse_endpoint_not_qualified",
+    "global_cutover_window_not_executed"
+  ],
+  "ready_for_global_cutover": false
+}

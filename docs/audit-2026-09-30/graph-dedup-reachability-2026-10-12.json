@@ -1,0 +1,13 @@
+{
+  "report_version": 1,
+  "created_utc": "2026-10-12T10:39:57.042299+00:00",
+  "status": "validation_only",
+  "depth": 2,
+  "nodes_examined": 2186,
+  "before_relation_rows": 602082,
+  "after_distinct_rows": 4379,
+  "mismatch_nodes": 0,
+  "mismatch_examples": [],
+  "impact_reachability_equal": true,
+  "policy": "reachability validation only; no operational graph is changed"
+}

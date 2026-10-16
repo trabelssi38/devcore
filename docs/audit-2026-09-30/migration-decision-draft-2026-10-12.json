@@ -1,0 +1,1078 @@
+{
+  "status": "partial_policy_approved",
+  "ready_for_cutover": false,
+  "source": "E:\\src_python\\devcore\\docs\\audit-2026-09-30\\fusion-decisions-2026-10-12.json",
+  "projects": {
+    "dashboard_recette_br": {
+      "root_path": "E:\\src_web\\dashboard_recette_br",
+      "status": "active",
+      "decision": "use_user_selected_root",
+      "evidence": "user_reply_2026-10-12; path_exists=true",
+      "root_approved_by": "user",
+      "status_basis": "both_source_rows_active; retained provisionally"
+    },
+    "devcore": {
+      "root_path": "E:\\src_python\\devcore",
+      "status": "active",
+      "decision": "use_user_selected_root",
+      "evidence": "user_reply_2026-10-12; path_exists=true",
+      "root_approved_by": "user",
+      "status_basis": "both_source_rows_active; retained provisionally"
+    },
+    "pramax_prefs_patch": {
+      "root_path": "E:\\src_python\\pramax_prefs_patch",
+      "status": "active",
+      "decision": "use_user_selected_root",
+      "evidence": "user_reply_2026-10-12; path_exists=true",
+      "root_approved_by": "user",
+      "status_basis": "both_source_rows_active; retained provisionally"
+    }
+  },
+  "task_conflicts": [
+    {
+      "project_id": "cea_dashboard",
+      "task_id": "T-01",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "cea_dashboard",
+      "task_id": "T-02",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "cea_dashboard",
+      "task_id": "T-03",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "cea_dashboard",
+      "task_id": "T-04",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "conso_api_madania",
+      "task_id": "T-GIT-2654ADE",
+      "field": "metadata",
+      "recommended_winner": "merge_with_source_provenance",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-00",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-01",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-02",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-03",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-04",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-05",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-06",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-07",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-08",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-09",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-10",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-100",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-101",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-102",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-103",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-104",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-105",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-106",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-107",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-108",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-109",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-11",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-110",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-111",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-112",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-113",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-114",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-115",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-116",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-117",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-118",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-119",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-12",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-120",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-121",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-13",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-14",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-15",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-16",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-17",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-18",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-19",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-2",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-20",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-21",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-22",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-23",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-24",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-25",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-26",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-27",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-28",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-29",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-30",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-31",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-32",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-33",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-34",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-35",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-36",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-37",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-38",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-39",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-434",
+      "field": "metadata",
+      "recommended_winner": "merge_with_source_provenance",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-48",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-49",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-50",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-51",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-52",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-53",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-54",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-55",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-56",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-57",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-58",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-59",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-60",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-61",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-62",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-63",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-64",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-65",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-66",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-67",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-68",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-69",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-70",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-71",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-72",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-73",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-74",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-75",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-76",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-77",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-78",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-79",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-80",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-81",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-82",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-83",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-84",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-85",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-86",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-87",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-88",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-89",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-90",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-91",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-92",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-93",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-94",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-95",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-96",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-97",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-98",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-99",
+      "field": "worktree",
+      "recommended_winner": "null",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "devcore",
+      "task_id": "T-383",
+      "field": "metadata",
+      "recommended_winner": "merge_with_source_provenance",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-520",
+      "field": "status",
+      "recommended_winner": "current_done",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-520",
+      "field": "steps_done",
+      "recommended_winner": "current_7",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-521",
+      "field": "status",
+      "recommended_winner": "manual_review",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-521",
+      "field": "steps_done",
+      "recommended_winner": "manual_review",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-522",
+      "field": "status",
+      "recommended_winner": "manual_review",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-522",
+      "field": "steps_done",
+      "recommended_winner": "manual_review",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-523",
+      "field": "metadata",
+      "recommended_winner": "merge_with_source_provenance",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-523",
+      "field": "status",
+      "recommended_winner": "manual_review",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-523",
+      "field": "steps_done",
+      "recommended_winner": "manual_review",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-532",
+      "field": "status",
+      "recommended_winner": "manual_review",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-532",
+      "field": "steps_done",
+      "recommended_winner": "manual_review",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-535",
+      "field": "metadata",
+      "recommended_winner": "merge_with_source_provenance",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-535",
+      "field": "steps_done",
+      "recommended_winner": "manual_review",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-535",
+      "field": "title",
+      "recommended_winner": "manual_review",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-536",
+      "field": "metadata",
+      "recommended_winner": "merge_with_source_provenance",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-537",
+      "field": "metadata",
+      "recommended_winner": "merge_with_source_provenance",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-537",
+      "field": "steps_done",
+      "recommended_winner": "manual_review",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-538",
+      "field": "metadata",
+      "recommended_winner": "merge_with_source_provenance",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-539",
+      "field": "metadata",
+      "recommended_winner": "merge_with_source_provenance",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-539",
+      "field": "status",
+      "recommended_winner": "manual_review",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-539",
+      "field": "steps_done",
+      "recommended_winner": "manual_review",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-GIT-79A172A",
+      "field": "metadata",
+      "recommended_winner": "merge_with_source_provenance",
+      "basis": "draft_recommendation_only"
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-GIT-AE08FBC",
+      "field": "metadata",
+      "recommended_winner": "merge_with_source_provenance",
+      "basis": "draft_recommendation_only"
+    }
+  ],
+  "quarantine": {
+    "policy": "retain_restorable",
+    "edges": 94185,
+    "basis": "unresolved_without_proof"
+  },
+  "required_human_reviews": [
+    "job_tracker title conflict(s)",
+    "manual_review task fields",
+    "PostgreSQL/global stack readiness",
+    "cutover_and_rollback_window"
+  ],
+  "user_feedback": {
+    "task_policy": {
+      "status": "approved_in_conversation",
+      "rule": "worktree=null without proven checkout; T-520=done/7; merge divergent metadata with both source provenances",
+      "scope": "policy_only; per-row evidence still required"
+    },
+    "project_roots": {
+      "status": "roots_approved_in_conversation; status_retained_from_sources",
+      "exact_values": {
+        "dashboard_recette_br": "E:\\src_web\\dashboard_recette_br",
+        "devcore": "E:\\src_python\\devcore",
+        "pramax_prefs_patch": "E:\\src_python\\pramax_prefs_patch"
+      }
+    },
+    "graph_heuristics": {
+      "status": "authorized_on_review_copy",
+      "scope": "apply every supported heuristic; preserve unmatched endpoints as unresolved nodes with original identifiers"
+    }
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "report_version": 1,
+  "created_utc": "2026-10-13T21:29:49.064985+00:00",
+  "status": "consumer_contract_qualified",
+  "candidate": "E:\\DevCoreRuntime\\qualification\\fusion-candidate-v5-heuristic-promoted-scoped-2026-10-13.db",
+  "read_only": true,
+  "runtime_inventory_lines": [
+    41,
+    44,
+    79,
+    87,
+    120,
+    125
+  ],
+  "inventory_counts": {
+    "raw_count": 15,
+    "traversal": 16,
+    "write": 10
+  },
+  "schema_columns": {
+    "kg_nodes": [
+      "id",
+      "project_id",
+      "type",
+      "label",
+      "properties"
+    ],
+    "kg_edges": [
+      "id",
+      "project_id",
+      "from_node",
+      "to_node",
+      "type",
+      "properties"
+    ]
+  },
+  "stats": {
+    "nodes": 2272,
+    "edges": 696267,
+    "edge_rows": 696267,
+    "distinct_edges": 4767
+  },
+  "project_stats": {
+    "nodes": 2268,
+    "edges": 696267,
+    "edge_rows": 696267,
+    "distinct_edges": 4767
+  },
+  "impact_sample": {
+    "target": "class:DEV_CORE/MCP/devcore-scripts/hooks.py/CircuitBreaker",
+    "blast_radius_count": 1,
+    "returned_project_id": "devcore"
+  },
+  "foreign_key_violations": 0,
+  "checks": {
+    "raw_and_distinct_counts_exposed": true,
+    "project_scope_columns_present": true,
+    "project_stats_distinguishable": true,
+    "foreign_keys_valid": true
+  },
+  "blockers": []
+}

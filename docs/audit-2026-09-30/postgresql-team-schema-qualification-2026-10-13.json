@@ -1,0 +1,21 @@
+{
+  "report_version": 1,
+  "created_utc": "2026-10-13T06:54:53.010661+00:00",
+  "status": "team_schema_imported_rls_verified",
+  "database": "devcore_qualification_team_20261013",
+  "counts": {
+    "projects": 29,
+    "tasks": 1378
+  },
+  "rls": {
+    "project_a_visible": 0,
+    "project_b_visible": 0,
+    "cross_project_isolation": true
+  },
+  "blockers": [
+    "api_not_connected_to_postgresql",
+    "legacy_events_runs_not_mapped",
+    "operational_cutover_deferred"
+  ],
+  "ready_for_cutover": false
+}

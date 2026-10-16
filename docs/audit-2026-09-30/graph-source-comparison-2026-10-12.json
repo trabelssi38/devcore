@@ -1,0 +1,22 @@
+{
+  "report_version": 1,
+  "created_utc": "2026-10-12T10:17:54.690084+00:00",
+  "status": "comparison_only",
+  "current": {
+    "rows": 696267,
+    "distinct_relations": 4767,
+    "sha256_keys": "46e271c5e1dc9009253b1bbbd8aa7316b88a654282a4eb24d7847d196195d48a"
+  },
+  "other": {
+    "rows": 279697,
+    "distinct_relations": 4767,
+    "sha256_keys": "46e271c5e1dc9009253b1bbbd8aa7316b88a654282a4eb24d7847d196195d48a"
+  },
+  "shared_distinct_relations": 4767,
+  "only_current_distinct_relations": 0,
+  "only_other_distinct_relations": 0,
+  "only_other_rows": 0,
+  "only_other_by_type": {},
+  "examples_only_other": [],
+  "policy": "no relation is imported automatically; only_other requires provenance review"
+}

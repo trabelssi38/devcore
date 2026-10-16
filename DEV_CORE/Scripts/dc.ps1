@@ -32,6 +32,13 @@ $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path (Join-Path $env:DEVCO
 if ($DEV_CORE -match '[/\\]Scripts[/\\]?$') {
     $DEV_CORE = Split-Path -Parent $DEV_CORE
 }
+
+# Preserve the historical single-string operator commands through the typed gateway.
+if ($args.Count -eq 1 -and $args[0] -match '^(check|health|verify|guide)\b') {
+    & (Join-Path $PSScriptRoot 'gateway.ps1') -Command $args[0]
+    exit $LASTEXITCODE
+}
+
 if (-not $env:PYTHONPATH -or $env:PYTHONPATH -notlike "*$DEV_CORE*") {
     $env:PYTHONPATH = if ($env:PYTHONPATH) { "$DEV_CORE;$env:PYTHONPATH" } else { $DEV_CORE }
 }

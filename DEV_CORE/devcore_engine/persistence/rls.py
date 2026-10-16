@@ -16,6 +16,7 @@ from sqlalchemy.engine import Connection, Engine
 RLS_TABLES = [
     "tasks",
     "runs",
+    "external_effects",
     "events",
     "audit_log",
     "artifacts",

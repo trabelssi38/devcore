@@ -1,0 +1,52 @@
+{
+  "report_version": 1,
+  "created_utc": "2026-10-13T21:45:00Z",
+  "status": "local_stack_smoke_passed_with_external_credential_deferred",
+  "scope": "isolated localhost processes with temporary local/data roots",
+  "services": {
+    "gemini_router": {
+      "port": 20130,
+      "health_http": 200,
+      "models_http": 200,
+      "routing_profiles_http": 200,
+      "route": "auxiliary",
+      "policy_version": 2,
+      "models": ["devcore-writing", "devcore-documentation", "devcore-summary", "devcore-bulk"]
+    },
+    "headroom_native": {
+      "port": 8787,
+      "health_http": 200,
+      "status": "ready",
+      "route": "native",
+      "stateless": true,
+      "memory_enabled": false,
+      "lossless": true
+    },
+    "headroom_auxiliary": {
+      "port": 8789,
+      "health_http": 200,
+      "status": "ready",
+      "route": "auxiliary",
+      "upstream": "http://127.0.0.1:20130",
+      "stateless": true,
+      "memory_enabled": false,
+      "lossless": true
+    }
+  },
+  "lifecycle": {
+    "started_with_explicit_temp_roots": true,
+    "all_processes_stopped_after_smoke": true,
+    "ports_released": [20130, 8787, 8789],
+    "active_data_modified": false
+  },
+  "limitations": [
+    "Aucun appel fournisseur ni génération réelle n'a été exécuté ; les identifiants externes ne sont pas présents dans la recette.",
+    "Cette preuve ne qualifie pas encore RepoWise, Gateway 20131, Scheduler ou OTLP/Langfuse."
+  ],
+  "blockers": [
+    "external_provider_credentials_not_qualified",
+    "repowise_gateway_scheduler_otlp_not_qualified",
+    "global_cutover_window_not_executed"
+  ],
+  "ready_for_global_cutover": false
+}

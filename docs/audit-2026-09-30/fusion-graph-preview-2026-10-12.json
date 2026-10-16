@@ -1,0 +1,9 @@
+{
+  "output": "E:\\src_python\\devcore\\docs\\audit-2026-09-30\\fusion-graph-preview-2026-10-12.db",
+  "status": "preview_only",
+  "source_edges": 696267,
+  "valid_edges": 427401,
+  "repaired_edges": 174681,
+  "unresolved_edges": 94185,
+  "created_utc": "2026-10-11T23:30:21.787477+00:00"
+}

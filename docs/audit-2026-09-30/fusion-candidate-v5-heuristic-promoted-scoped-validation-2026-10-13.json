@@ -1,0 +1,22 @@
+{
+  "report_version": 1,
+  "created_utc": "2026-10-13T21:29:23.143829+00:00",
+  "status": "sqlite_candidate_qualified",
+  "candidate": "E:\\DevCoreRuntime\\qualification\\fusion-candidate-v5-heuristic-promoted-scoped-2026-10-13.db",
+  "integrity_check": "ok",
+  "foreign_key_check": {
+    "total": 0
+  },
+  "orphan_tasks": 0,
+  "project_review_required": 0,
+  "task_review_required": 0,
+  "counts": {
+    "projects": 29,
+    "tasks": 1378,
+    "kg_nodes": 2272,
+    "kg_edges": 696267
+  },
+  "quarantine_edges": 0,
+  "blockers": [],
+  "ready_for_cutover": false
+}

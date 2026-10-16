@@ -1,0 +1,25 @@
+{
+  "created_utc": "2026-10-11T23:33:56.582688+00:00",
+  "status": "validated_preview",
+  "source_edges": 696267,
+  "preview_edges": 696267,
+  "status_counts": {
+    "repaired": 174681,
+    "unresolved": 94185,
+    "valid": 427401
+  },
+  "repaired_relation_types": {
+    "file_function": 108927,
+    "file_imports": 44460,
+    "function_calls": 21294
+  },
+  "duplicate_groups_after_repair": 4379,
+  "duplicate_rows_after_repair": 602082,
+  "duplicate_groups_before_repair": 4767,
+  "duplicate_rows_before_repair": 696267,
+  "duplicate_group_delta": -388,
+  "repaired_rows_with_missing_nodes": 0,
+  "source_integrity": "ok",
+  "preview_integrity": "ok",
+  "source_unchanged_by_row_count": true
+}

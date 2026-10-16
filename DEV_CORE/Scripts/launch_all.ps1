@@ -9,6 +9,10 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+$individualService = Get-CimInstance Win32_Service -Filter "Name='DevCoreIndividual'" -ErrorAction SilentlyContinue
+if ($individualService -and $individualService.State -eq 'Running') {
+    throw 'Legacy launch_all.ps1 cannot start beside DevCoreIndividual: port 20129 already belongs to the active PostgreSQL pilot. Use a qualified global cutover procedure.'
+}
 $defaultDevCore = Split-Path -Parent $PSScriptRoot
 $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path (Join-Path $env:DEVCORE_PLATFORM_ROOT "Scripts\platform_version.ps1"))) {
     $env:DEVCORE_PLATFORM_ROOT

@@ -1,0 +1,42 @@
+{
+  "created_utc": "2026-10-13T08:18:54.268657+00:00",
+  "status": "cutover_refused_pending_dashboard_migration",
+  "service": "DevCoreIndividual",
+  "active": {
+    "binary": "E:/DevCoreRuntime/qualification/service-profile-v249/runtime/releases/devcore-py31316-20261011-l9-autostart-clean-v249/pythonservice.exe",
+    "data_root": "E:/DevCoreRuntime/qualification/service-profile-v249/runtime/state/local",
+    "port": 20129,
+    "verified": "running_http_200"
+  },
+  "staged": {
+    "profile": "E:/DevCoreRuntime/qualification/service-profile-v250-postgres",
+    "release": "E:/DevCoreRuntime/qualification/service-profile-v250-postgres/runtime/releases/devcore-py31316-20261013-postgres-v250",
+    "database": "devcore_qualification_team_20261013",
+    "task_read_mode": "postgres",
+    "identity_read_mode": "postgres",
+    "port": 20129,
+    "browser_session_adapter": "qualified_for_bearer_post_get_delete",
+    "password_auth": "implemented_negative_smoke_only"
+  },
+  "required_environment": {
+    "DEVCORE_TASK_READ_MODE": "postgres",
+    "DEVCORE_IDENTITY_READ_MODE": "postgres",
+    "DEVCORE_DATABASE_URL": "postgresql://devcore_app_qualification@127.0.0.1:5432/devcore_qualification_team_20261013",
+    "DEVCORE_REQUIRE_AUTH": "1"
+  },
+  "rollback": {
+    "binary": "E:/DevCoreRuntime/qualification/service-profile-v249/runtime/releases/devcore-py31316-20261011-l9-autostart-clean-v249/pythonservice.exe",
+    "data_root": "E:/DevCoreRuntime/qualification/service-profile-v249/runtime/state/local",
+    "restore_rule": "stop staged service, restore original service binary/configuration, restart, verify /project HTTP 200"
+  },
+  "blockers": [
+    "staged_scm_host_still_uses_sqlite_dashboard",
+    "operational_cutover_deferred"
+  ],
+  "active_service_modified": false,
+  "last_attempt": {
+    "result": "v250_start_1053",
+    "rollback": "v249_running_http_200"
+  },
+  "staged_identity_acl": "qualified"
+}

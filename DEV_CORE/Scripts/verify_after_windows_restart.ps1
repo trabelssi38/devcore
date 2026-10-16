@@ -1,5 +1,5 @@
 param(
-    [string]$ExpectedHost = 'E:/DevCoreRuntime/qualification/service-profile-v249/runtime/releases/devcore-py31316-20261011-l9-autostart-clean-v249/pythonservice.exe'
+    [string]$ExpectedHost = 'E:/DevCoreRuntime/qualification/service-profile-v250-postgres/runtime/releases/devcore-py31316-20261013-postgres-v250/pythonservice.exe'
 )
 
 $service = Get-Service -Name 'DevCoreIndividual' -ErrorAction Stop
@@ -12,9 +12,10 @@ if ($config -notmatch 'START_TYPE\s*:\s*2\s+AUTO_START') {
     Write-Error 'DevCoreIndividual is not configured for AUTO_START.'
     exit 1
 }
-$hostMatch = [regex]::Match($config, 'BINARY_PATH_NAME\s*:\s*"([^"]+)"')
+$hostLine = ($config -split "`r?`n" | Where-Object { $_ -match 'BINARY_PATH_NAME\s*:' } | Select-Object -First 1)
+$actualHost = if ($hostLine) { ($hostLine -replace '^.*BINARY_PATH_NAME\s*:\s*', '').Trim().Trim('"') } else { '' }
 $expectedNormalized = [IO.Path]::GetFullPath($ExpectedHost)
-if (-not $hostMatch.Success -or $hostMatch.Groups[1].Value -ine $expectedNormalized) {
+if (-not $actualHost -or [IO.Path]::GetFullPath($actualHost) -ine $expectedNormalized) {
     Write-Error "Unexpected service host. Expected: $ExpectedHost"
     exit 1
 }

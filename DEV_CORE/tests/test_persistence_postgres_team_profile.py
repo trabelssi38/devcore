@@ -159,7 +159,7 @@ def test_schema_declares_core_tables_and_unique_task_number_constraint():
 
 def test_rls_ddl_and_transaction_pool_connection_isolation():
     rls_statements = build_rls_ddl()
-    assert len(rls_statements) == 14  # 7 tables x 2 (ENABLE RLS + CREATE POLICY)
+    assert len(rls_statements) == 16  # 8 tables x 2 (ENABLE RLS + CREATE POLICY)
 
     for stmt in rls_statements:
         assert "ROW LEVEL SECURITY" in stmt or "CREATE POLICY" in stmt
@@ -200,6 +200,19 @@ def test_rls_ddl_and_transaction_pool_connection_isolation():
     conn2 = pool_engine.connect()
     assert get_project_context(conn2) is None
     conn2.close()
+
+
+def test_durable_runs_migration_preserves_imported_rows_and_project_isolation():
+    migration = (Path(__file__).resolve().parents[1] / "devcore_engine" / "persistence" /
+                 "migrations" / "20261016_durable_runs.sql").read_text(encoding="utf-8").lower()
+    assert "alter table runs add column if not exists execution_ready boolean not null default false" in migration
+    assert "on runs(project_id, status, created_at) where execution_ready" in migration
+    assert "on runs(project_id, idempotency_key) where idempotency_key is not null" in migration
+    assert "alter table external_effects force row level security" in migration
+    assert "with check (project_id = nullif(current_setting('app.current_project_id', true), ''))" in migration
+    assert not any(word in migration for word in ("drop table runs", "truncate table runs", "update runs set execution_ready = true"))
+    assert {"execution_ready", "worker_token", "heartbeat_at", "command"} <= set(metadata.tables["runs"].c.keys())
+    assert "external_effects" in metadata.tables
 
 
 # ============================================================================

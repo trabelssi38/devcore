@@ -1,0 +1,1358 @@
+{
+  "status": "decisions_closed_with_deferrals",
+  "approved_by": "user_conversation_2026-10-12",
+  "projects": {
+    "dashboard_recette_br": {
+      "decision": "use_user_selected_root",
+      "root_path": "E:\\src_web\\dashboard_recette_br",
+      "status": "active",
+      "evidence": "user selected path; exists"
+    },
+    "devcore": {
+      "decision": "use_user_selected_root",
+      "root_path": "E:\\src_python\\devcore",
+      "status": "active",
+      "evidence": "user selected path; exists"
+    },
+    "pramax_prefs_patch": {
+      "decision": "use_user_selected_root",
+      "root_path": "E:\\src_python\\pramax_prefs_patch",
+      "status": "active",
+      "evidence": "user selected path; exists"
+    }
+  },
+  "task_conflicts": [
+    {
+      "project_id": "cea_dashboard",
+      "task_id": "T-01",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "cea_dashboard",
+      "task_id": "T-02",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "cea_dashboard",
+      "task_id": "T-03",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "cea_dashboard",
+      "task_id": "T-04",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "conso_api_madania",
+      "task_id": "T-GIT-2654ADE",
+      "field": "metadata",
+      "winner": "merge_with_provenance",
+      "evidence": "preserve both non-empty source values and record provenance",
+      "current_value": "**Actions détectées dans le commit Git (2654ade) :**\n- fix(oracle): fiabilisation OracleManager avec reconnexion automatique et gestion propre des curseurs",
+      "other_value": ""
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-00",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-01",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-02",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-03",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-04",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-05",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-06",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-07",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-08",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-09",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-10",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-100",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-101",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-102",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-103",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-104",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-105",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-106",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-107",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-108",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-109",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-11",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-110",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-111",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-112",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-113",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-114",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-115",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-116",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-117",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-118",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-119",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-12",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-120",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-121",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-13",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-14",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-15",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-16",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-17",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-18",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-19",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-2",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-20",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-21",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-22",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-23",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-24",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-25",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-26",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-27",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-28",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-29",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-30",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-31",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-32",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-33",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-34",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-35",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-36",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-37",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-38",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-39",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-434",
+      "field": "metadata",
+      "winner": "merge_with_provenance",
+      "evidence": "preserve both non-empty source values and record provenance",
+      "current_value": "**Actions détectées dans le commit Git (bda36f2) :**\n- fix(ops): reap healthcheck child processes",
+      "other_value": ""
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-48",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-49",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-50",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-51",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-52",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-53",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-54",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-55",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-56",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-57",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-58",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-59",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-60",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-61",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-62",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-63",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-64",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-65",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-66",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-67",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-68",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-69",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-70",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-71",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-72",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-73",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-74",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-75",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-76",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-77",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-78",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-79",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-80",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-81",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-82",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-83",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-84",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-85",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-86",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-87",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-88",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-89",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-90",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-91",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-92",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-93",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-94",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-95",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-96",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-97",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-98",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "dashboard_recette_br",
+      "task_id": "T-99",
+      "field": "worktree",
+      "winner": "null",
+      "evidence": "user-approved rule: no checkout proof means null",
+      "current_value": null,
+      "other_value": "main"
+    },
+    {
+      "project_id": "devcore",
+      "task_id": "T-383",
+      "field": "metadata",
+      "winner": "merge_with_provenance",
+      "evidence": "preserve both non-empty source values and record provenance",
+      "current_value": "**Actions detectees dans les commits Git :**\n- fix(dashboard/tasks): resolve log timestamp lookup across LOCAL_ROOT/DATA_ROOT and clean task titles\n",
+      "other_value": "**Actions detectees dans les commits Git :**\n- fix(dashboard/tasks): resolve log timestamp lookup across LOCAL_ROOT/DATA_ROOT and clean task titles\n- docs: update documentation and fix CLI launch flag compatibility\n"
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-520",
+      "field": "status",
+      "winner": "current",
+      "evidence": "current source is the selected operational snapshot; completed state retained when present",
+      "current_value": "done",
+      "other_value": "in_progress"
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-520",
+      "field": "steps_done",
+      "winner": "max_numeric",
+      "evidence": "monotonic progress rule; retain larger verified step count",
+      "current_value": 7,
+      "other_value": 6
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-521",
+      "field": "status",
+      "winner": "current",
+      "evidence": "current source is the selected operational snapshot; completed state retained when present",
+      "current_value": "done",
+      "other_value": "todo"
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-521",
+      "field": "steps_done",
+      "winner": "max_numeric",
+      "evidence": "monotonic progress rule; retain larger verified step count",
+      "current_value": 5,
+      "other_value": 0
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-522",
+      "field": "status",
+      "winner": "current",
+      "evidence": "current source is the selected operational snapshot; completed state retained when present",
+      "current_value": "done",
+      "other_value": "todo"
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-522",
+      "field": "steps_done",
+      "winner": "max_numeric",
+      "evidence": "monotonic progress rule; retain larger verified step count",
+      "current_value": 6,
+      "other_value": 0
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-523",
+      "field": "metadata",
+      "winner": "merge_with_provenance",
+      "evidence": "preserve both non-empty source values and record provenance",
+      "current_value": "**Actions détectées dans le commit Git (e679b41) :**\n- Qualify deployed user store",
+      "other_value": ""
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-523",
+      "field": "status",
+      "winner": "current",
+      "evidence": "current source is the selected operational snapshot; completed state retained when present",
+      "current_value": "done",
+      "other_value": "todo"
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-523",
+      "field": "steps_done",
+      "winner": "max_numeric",
+      "evidence": "monotonic progress rule; retain larger verified step count",
+      "current_value": 6,
+      "other_value": 0
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-532",
+      "field": "status",
+      "winner": "current",
+      "evidence": "current source is the selected operational snapshot; completed state retained when present",
+      "current_value": "done",
+      "other_value": "todo"
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-532",
+      "field": "steps_done",
+      "winner": "max_numeric",
+      "evidence": "monotonic progress rule; retain larger verified step count",
+      "current_value": 6,
+      "other_value": 0
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-535",
+      "field": "metadata",
+      "winner": "merge_with_provenance",
+      "evidence": "preserve both non-empty source values and record provenance",
+      "current_value": "**Actions détectées dans le commit Git (0b79e3a) :**\n- Qualifier la seconde base Oracle 11g de production",
+      "other_value": ""
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-535",
+      "field": "steps_done",
+      "winner": "max_numeric",
+      "evidence": "monotonic progress rule; retain larger verified step count",
+      "current_value": 5,
+      "other_value": 2
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-535",
+      "field": "title",
+      "winner": "current_with_other_preserved",
+      "evidence": "semantic divergence; current title retained and other title kept in provenance",
+      "current_value": "[P16] Installer la capture AQ sur la base Oracle 11g de developpement",
+      "other_value": "Qualifier la seconde base Oracle 11g de production"
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-536",
+      "field": "metadata",
+      "winner": "merge_with_provenance",
+      "evidence": "preserve both non-empty source values and record provenance",
+      "current_value": "**Actions détectées dans le commit Git (91caeb3) :**\n- refactor(startup): complete P17 route dependency and package cleanup",
+      "other_value": ""
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-537",
+      "field": "metadata",
+      "winner": "merge_with_provenance",
+      "evidence": "preserve both non-empty source values and record provenance",
+      "current_value": "**Actions détectées dans le commit Git (d602f3a) :**\n- Validate System Health help focus in Chromium",
+      "other_value": ""
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-537",
+      "field": "steps_done",
+      "winner": "max_numeric",
+      "evidence": "monotonic progress rule; retain larger verified step count",
+      "current_value": 4,
+      "other_value": 2
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-538",
+      "field": "metadata",
+      "winner": "merge_with_provenance",
+      "evidence": "preserve both non-empty source values and record provenance",
+      "current_value": "**Actions détectées dans le commit Git (0477bca) :**\n- Record current RepoWise index health",
+      "other_value": ""
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-539",
+      "field": "metadata",
+      "winner": "merge_with_provenance",
+      "evidence": "preserve both non-empty source values and record provenance",
+      "current_value": "**Actions détectées dans le commit Git (71dc460) :**\n- Record exploitation readiness and rollback drill",
+      "other_value": ""
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-539",
+      "field": "status",
+      "winner": "current",
+      "evidence": "current source is the selected operational snapshot; completed state retained when present",
+      "current_value": "done",
+      "other_value": "todo"
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-539",
+      "field": "steps_done",
+      "winner": "max_numeric",
+      "evidence": "monotonic progress rule; retain larger verified step count",
+      "current_value": 5,
+      "other_value": 0
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-GIT-79A172A",
+      "field": "metadata",
+      "winner": "merge_with_provenance",
+      "evidence": "preserve both non-empty source values and record provenance",
+      "current_value": "**Actions détectées dans le commit Git (79a172a) :**\n- feat: consolidate P01-P17 implementation and documentation",
+      "other_value": ""
+    },
+    {
+      "project_id": "job_tracker",
+      "task_id": "T-GIT-AE08FBC",
+      "field": "metadata",
+      "winner": "merge_with_provenance",
+      "evidence": "preserve both non-empty source values and record provenance",
+      "current_value": "**Actions détectées dans le commit Git (ae08fbc) :**\n- docs: clarify RepoWise health snapshots",
+      "other_value": ""
+    }
+  ],
+  "approvals": {
+    "project_ownership_and_roots": {
+      "approved_by": "user",
+      "state": "approved",
+      "evidence": "explicit project root reply on 2026-10-12"
+    },
+    "task_field_conflict_winners": {
+      "approved_by": "user",
+      "state": "approved",
+      "evidence": "explicit task arbitration policy reply on 2026-10-12"
+    },
+    "quarantine_retention_policy": {
+      "approved_by": "user",
+      "state": "approved",
+      "evidence": "heuristic projection retains unresolved original identifiers and provenance"
+    },
+    "postgresql_global_stack_readiness": {
+      "approved_by": "qualification_gate",
+      "state": "deferred",
+      "evidence": "P0 services pass; PostgreSQL cluster and full stack readiness remain unqualified"
+    },
+    "cutover_and_rollback_window": {
+      "approved_by": "qualification_gate",
+      "state": "deferred",
+      "evidence": "P1 copy capture passed; production freeze and independent rollback window remain pending P3/P4"
+    }
+  }
+}

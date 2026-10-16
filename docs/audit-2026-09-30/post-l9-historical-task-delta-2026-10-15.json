@@ -1,0 +1,18 @@
+{
+  "report_version": 1,
+  "date": "2026-10-15",
+  "status": "read_only_delta_found_import_pending",
+  "active_source": "PostgreSQL devcore_qualification_team_20261013 via DevCoreIndividual v250",
+  "historical_source": "E:/DevCoreRuntime/qualification/historical-freeze-20261014-130504/local/devcore.db",
+  "old_sqlite_devcore_tasks": 389,
+  "frozen_sqlite_devcore_tasks": 398,
+  "postgresql_devcore_tasks": 389,
+  "missing_legacy_ids": ["T-393", "T-394", "T-395", "T-396", "T-397", "T-398", "T-399", "T-400", "T-401"],
+  "missing_task_status": "done",
+  "missing_task_dependencies": 0,
+  "postgresql_max_task_number": 477,
+  "candidate_numbers_393_through_401_available": false,
+  "app_role_tasks_insert_privilege": false,
+  "active_data_modified": false,
+  "next_step": "Prepare a transactionally guarded import using new free PostgreSQL task numbers and an authorized migration role; verify all nine UUIDs, legacy IDs, project isolation, and rollback before commit."
+}

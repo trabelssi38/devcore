@@ -451,3 +451,46 @@ def test_run_step_cross_project_isolation(auth_env):
     assert step_bob.json()["status"] == "succeeded"
 
 
+def test_postgres_browser_cookie_uses_postgres_identity_without_sqlite_fallback(auth_env, monkeypatch):
+    """The team gateway must authorize a PostgreSQL cookie on every scoped route."""
+    import importlib
+    from devcore_engine.security.browser_sessions import BrowserSession
+    from devcore_engine.security.identity import Principal, ProjectAccessDenied
+
+    api_module = importlib.import_module("devcore_api.app")
+    postgres_sessions = importlib.import_module("devcore_engine.security.postgres_browser_sessions")
+    sqlite_sessions = importlib.import_module("devcore_engine.security.browser_sessions")
+    dsn = "postgresql://unused/isolated_fixture"
+    monkeypatch.setenv("DEVCORE_IDENTITY_READ_MODE", "postgres")
+    monkeypatch.setenv("DEVCORE_DATABASE_URL", dsn)
+    monkeypatch.setattr(api_module, "resolve_identity_store_path", lambda: None)
+
+    calls = []
+
+    def authorize(source, secret, project, action, origin, *, csrf=None, mutate=False):
+        calls.append((source, secret, project, action, origin, csrf, mutate))
+        if project != "alpha" or (mutate and csrf != "csrf-ok"):
+            raise ProjectAccessDenied("Project action denied")
+        return BrowserSession(Principal("alice", "pg-session", project, action),
+                              "pg-session", project, time.time() + 60, (READ, WRITE))
+
+    def sqlite_fallback(*args, **kwargs):
+        raise AssertionError("SQLite session adapter must not be used in PostgreSQL mode")
+
+    monkeypatch.setattr(postgres_sessions, "authorize_session", authorize)
+    monkeypatch.setattr(sqlite_sessions, "authorize_session", sqlite_fallback)
+    client = auth_env["client"]
+    client.cookies.set("devcore_session", "fixture-cookie")
+
+    assert client.get("/api/v1/tasks", params={"project": "alpha"}).status_code == 200
+    assert client.get("/api/v1/tasks", params={"project": "beta"}).status_code == 403
+    blocked = client.post("/api/v1/tasks/pause", json={"project": "alpha", "id": "T-01", "expected_version": 1},
+                          headers={"Origin": "http://127.0.0.1:20131", "X-CSRF-Token": "wrong"})
+    assert blocked.status_code == 403
+    allowed = client.post("/api/v1/tasks/pause", json={"project": "alpha", "id": "T-01", "expected_version": 1},
+                          headers={"Origin": "http://127.0.0.1:20131", "X-CSRF-Token": "csrf-ok"})
+    assert allowed.status_code == 200
+    assert all(call[0:2] == (dsn, "fixture-cookie") for call in calls)
+    assert calls[-1][3:] == (WRITE, "http://127.0.0.1:20131", "csrf-ok", True)
+
+

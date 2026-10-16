@@ -1,0 +1,17 @@
+{
+  "output": "docs\\audit-2026-09-30\\fusion-candidate-v5-2026-10-12.db",
+  "status": "candidate_qualified_sqlite",
+  "integrity_check": "ok",
+  "foreign_key_violations": 0,
+  "projects": 29,
+  "tasks": 1378,
+  "graph_nodes": 2272,
+  "graph_edges": 696267,
+  "unresolved_graph_edges": 94185,
+  "ready_for_cutover": false,
+  "blockers": [
+    "postgresql_global_stack_not_qualified",
+    "operational_cutover_deferred"
+  ],
+  "created_utc": "2026-10-12T22:26:31.690224+00:00"
+}

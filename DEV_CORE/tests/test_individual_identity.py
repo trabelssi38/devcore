@@ -11,6 +11,17 @@ from devcore_engine.security.identity import (
 )
 
 
+def test_postgres_session_info_rejects_missing_cookie_before_database_access(monkeypatch):
+    from devcore_engine.security import postgres_browser_sessions
+
+    def unexpected_connect(_dsn):
+        raise AssertionError("a missing cookie must not open PostgreSQL")
+
+    monkeypatch.setattr(postgres_browser_sessions, "_connect", unexpected_connect)
+    with pytest.raises(AuthenticationRequired):
+        postgres_browser_sessions.session_info("postgresql://unused", None, "http://127.0.0.1")
+
+
 @pytest.fixture
 def store(tmp_path):
     path = tmp_path / "local" / "identity.db"

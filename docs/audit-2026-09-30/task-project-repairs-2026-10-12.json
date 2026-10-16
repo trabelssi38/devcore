@@ -1,0 +1,83 @@
+{
+  "report_version": 1,
+  "created_utc": "2026-10-12T08:21:25.835903+00:00",
+  "status": "proposal_only",
+  "current_projects": 27,
+  "other_projects": 4,
+  "missing_task_rows": 46,
+  "proposals": [
+    {
+      "project_id": "scripts",
+      "task_count": 13,
+      "task_ids": [
+        "T-01",
+        "T-02",
+        "T-03",
+        "T-04",
+        "T-05",
+        "T-06",
+        "T-07",
+        "T-233",
+        "T-234",
+        "T-235",
+        "T-236",
+        "T-237",
+        "T-238"
+      ],
+      "decision": "create_provisional_project_needs_review",
+      "evidence": "project_missing_on_both_sources",
+      "other_project": null
+    },
+    {
+      "project_id": "xtream_universal_manager",
+      "task_count": 33,
+      "task_ids": [
+        "T-01",
+        "T-02",
+        "T-03",
+        "T-04",
+        "T-05",
+        "T-06",
+        "T-07",
+        "T-08",
+        "T-09",
+        "T-10",
+        "T-11",
+        "T-12",
+        "T-13",
+        "T-14",
+        "T-15",
+        "T-16",
+        "T-17",
+        "T-18",
+        "T-19",
+        "T-20",
+        "T-21",
+        "T-22",
+        "T-23",
+        "T-24",
+        "T-25",
+        "T-26",
+        "T-27",
+        "T-28",
+        "T-29",
+        "T-30",
+        "T-31",
+        "T-32",
+        "T-33"
+      ],
+      "decision": "merge_project_from_other_source",
+      "evidence": "project_exists_on_other_source",
+      "other_project": {
+        "id": "xtream_universal_manager",
+        "name": "xtream_universal_manager",
+        "root_path": "C:\\src\\xtream_universal_manager",
+        "status": "active",
+        "metadata": "{}",
+        "created_at": "2026-09-19 14:15:45",
+        "updated_at": "2026-09-27 00:04:53"
+      }
+    }
+  ],
+  "policy": "no project row is created or task project_id changed automatically"
+}

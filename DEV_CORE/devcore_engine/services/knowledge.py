@@ -35,14 +35,22 @@ class KnowledgeGraph:
 
     def get_stats(self, project_id: Optional[str] = None) -> Dict[str, int]:
         cursor = self.conn.cursor()
-        has_proj = self._has_project_column("kg_nodes")
-        if project_id and has_proj:
+        has_node_proj = self._has_project_column("kg_nodes")
+        has_edge_proj = self._has_project_column("kg_edges")
+        if project_id and has_node_proj and has_edge_proj:
             node_count = cursor.execute("SELECT COUNT(*) FROM kg_nodes WHERE project_id = ?;", (project_id,)).fetchone()[0]
             edge_count = cursor.execute("SELECT COUNT(*) FROM kg_edges WHERE project_id = ?;", (project_id,)).fetchone()[0]
+            distinct_edge_count = cursor.execute(
+                "SELECT COUNT(*) FROM (SELECT DISTINCT from_node, to_node, type, properties FROM kg_edges WHERE project_id = ?);",
+                (project_id,),
+            ).fetchone()[0]
         else:
             node_count = cursor.execute("SELECT COUNT(*) FROM kg_nodes;").fetchone()[0]
             edge_count = cursor.execute("SELECT COUNT(*) FROM kg_edges;").fetchone()[0]
-        return {"nodes": node_count, "edges": edge_count}
+            distinct_edge_count = cursor.execute(
+                "SELECT COUNT(*) FROM (SELECT DISTINCT from_node, to_node, type, properties FROM kg_edges);"
+            ).fetchone()[0]
+        return {"nodes": node_count, "edges": edge_count, "edge_rows": edge_count, "distinct_edges": distinct_edge_count}
 
     def add_node(self, node_id: str, node_type: str, label: str, properties: Optional[Dict[str, Any]] = None, project_id: str = "devcore") -> None:
         props_json = json.dumps(properties or {})

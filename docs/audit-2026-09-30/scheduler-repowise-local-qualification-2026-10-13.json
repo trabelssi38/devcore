@@ -1,0 +1,31 @@
+{
+  "report_version": 1,
+  "created_utc": "2026-10-13T22:05:00Z",
+  "status": "scheduler_contract_qualified_repowise_binary_present",
+  "scheduler": {
+    "runtime": "E:\\DevCoreRuntime\\releases\\devcore-py313-20261002\\Scripts\\python.exe",
+    "tests": {
+      "command": "pytest DEV_CORE/tests/test_scheduler_config_validation.py DEV_CORE/tests/test_scheduler_cooperative_stop.py DEV_CORE/tests/test_scheduler_claim_resolution.py -q",
+      "passed": 56,
+      "failed": 0
+    },
+    "temporary_roots": true,
+    "jobs_enabled": false,
+    "active_scheduler_started": false,
+    "timezone_database": "tzdata copied into the documented Python 3.13 runtime; UTC and Europe/Paris resolve"
+  },
+  "repowise": {
+    "binary_present": true,
+    "version": "0.52.0",
+    "operational_health": "not_qualified",
+    "reason": "The local command is present, but no live 7337 endpoint or freshness/rollback smoke was executed."
+  },
+  "active_data_modified": false,
+  "blockers": [
+    "repowise_live_health_and_freshness_not_qualified",
+    "gateway_20131_live_health_not_qualified",
+    "otlp_langfuse_not_qualified",
+    "global_cutover_window_not_executed"
+  ],
+  "ready_for_global_cutover": false
+}

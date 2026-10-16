@@ -1,0 +1,25 @@
+{
+  "report_version": 1,
+  "created_utc": "2026-10-13T22:35:00Z",
+  "status": "otlp_local_contract_qualified",
+  "tests": {
+    "command": "pytest DEV_CORE/API/test_correlation_context.py DEV_CORE/API/test_otlp_worker.py DEV_CORE/API/test_otlp_export.py DEV_CORE/API/test_llmops_langfuse.py DEV_CORE/API/test_llmops_generation.py DEV_CORE/API/test_observability_instrumentation.py DEV_CORE/API/test_router_observation_lifecycle.py -q",
+    "passed": 58,
+    "failed": 0,
+    "warnings": 1
+  },
+  "scope": {
+    "temporary_or_loopback_receivers": true,
+    "redaction_and_correlation": "tested",
+    "bounded_queue_and_shutdown_drain": "tested",
+    "real_langfuse_ingestion": "not_tested",
+    "real_credentials": "not_used"
+  },
+  "blockers": [
+    "remote_langfuse_endpoint_not_qualified",
+    "repowise_index_refresh_and_live_health",
+    "gateway_20131_live_health",
+    "global_cutover_window_not_executed"
+  ],
+  "ready_for_global_cutover": false
+}

@@ -1,0 +1,23 @@
+{
+  "report_version": 1,
+  "created_utc": "2026-10-12T22:07:53.489126+00:00",
+  "status": "decisions_closed_with_deferrals",
+  "ready_for_cutover": false,
+  "proposal_source": "E:\\src_python\\devcore\\docs\\audit-2026-09-30\\fusion-decisions-2026-10-12.json",
+  "approval_source": "E:\\src_python\\devcore\\docs\\audit-2026-09-30\\migration-decision-approvals-2026-10-12.json",
+  "counts": {
+    "projects_reviewed": 3,
+    "projects_required": 3,
+    "conflicts_reviewed": 145,
+    "conflicts_required": 145
+  },
+  "missing_projects": [],
+  "missing_conflicts": [],
+  "missing_approvals": [],
+  "deferred_approvals": [
+    "postgresql_global_stack_readiness",
+    "cutover_and_rollback_window"
+  ],
+  "blockers": [],
+  "policy": "review only; this validator never changes candidates or operational databases"
+}

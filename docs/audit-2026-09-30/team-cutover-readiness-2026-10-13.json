@@ -1,0 +1,39 @@
+{
+  "report_version": 5,
+  "created_utc": "2026-10-13T13:40:28.384700+00:00",
+  "status": "pre_cutover_blocked",
+  "ready_for_cutover": false,
+  "database": "devcore_qualification_team_20261013",
+  "postgresql": {
+    "policies": 7,
+    "app_role_bypassrls": false,
+    "projects": 29,
+    "tasks": 1378,
+    "events": 20989,
+    "runs": 0,
+    "users": 2,
+    "sessions": 3,
+    "usable_sessions": 0
+  },
+  "identity": {
+    "status": "identity_imported_sessions_revoked",
+    "api_adapter_configured": true
+  },
+  "service": {
+    "active_binary": "E:\\DevCoreRuntime\\qualification\\service-profile-v249\\runtime\\releases\\devcore-py31316-20261011-l9-autostart-clean-v249\\pythonservice.exe",
+    "staged_release": "E:\\DevCoreRuntime\\qualification\\service-profile-v250-postgres\\runtime\\releases\\devcore-py31316-20261013-postgres-v250",
+    "dashboard_sqlite": true
+  },
+  "blockers": [
+    "staged_scm_host_still_uses_sqlite_dashboard",
+    "active_service_not_switched_to_staged_release",
+    "operational_cutover_deferred"
+  ],
+  "evidence": {
+    "api_source": "E:\\src_python\\devcore\\DEV_CORE\\API\\devcore_api\\ports.py",
+    "identity_api_source": "E:\\src_python\\devcore\\DEV_CORE\\API\\devcore_api\\app.py",
+    "active_sqlite_archive": "E:\\DevCoreRuntime\\qualification\\service-profile-v249\\runtime\\state\\local\\devcore.db",
+    "identity_report": "E:\\src_python\\devcore\\docs\\audit-2026-09-30\\postgresql-identity-qualification-2026-10-13.json",
+    "dashboard_source": "E:\\DevCoreRuntime\\qualification\\service-profile-v250-postgres\\runtime\\releases\\devcore-py31316-20261013-postgres-v250\\individual-platform-v2\\Scripts\\dashboard_api.py"
+  }
+}

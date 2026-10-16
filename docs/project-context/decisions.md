@@ -15,8 +15,9 @@ en est une synthèse lisible, à mettre à jour avec le registre.
 | D-005 | Remplacée | 2026-10-10, qualification L5 | DBOS conditionnel. Non installé sur le runtime Python 3.13 et PostgreSQL natif local absent ; écarté pour éviter deux moteurs concurrents et dépendances cloud. | Remplacée pour le pilote par D-008. |
 | D-006 | En vigueur | Consignée le 2026-10-02 ; priorité utilisateur confirmée dans ce fil | Réparer les outils, charger une fiche courte et les décisions pertinentes, puis mesurer tokens et qualité sur tâches équivalentes. Ne revendiquer un gain qu'avec preuves comparables. | [Journal L7/L8](../audit-2026-09-30/execution-2026-10-02.md), [protocole](../audit-2026-09-30/protocole-tokens-codex.md). |
 | D-008 | En vigueur | 2026-10-10, passage v220 qualifié | Moteur d'exécution durable natif DurableRunEngine (SQLite/PostgreSQL) avec confinement WindowsJob, 8 états, fencing tokens et déduplication des effets externes. | [Plan L5](../../plans/2026-10-01-devcore-local-multiutilisateur.md) ; remplace D-005. |
+| D-010 | En vigueur | 2026-10-15, instruction explicite de l'utilisateur | La preuve ESU Windows 10 et la rotation des mots de passe du pilote ne sont pas des critères de cette migration. Conserver les critères TLS, pare-feu limité, origine et essai depuis un second poste pour l'accès LAN. | [Préflight LAN](../audit-2026-09-30/lan-readiness-preflight-2026-10-15.md) ; remplace les exigences ajoutées en v381–v384, sans remplacer D-002. |
 
-Lecture opérationnelle : appliquer D-002 à D-004, D-006, D-007 et D-008 ; conserver D-001
+Lecture opérationnelle : appliquer D-002 à D-004, D-006, D-007, D-008 et D-010 ; conserver D-001
 et D-005 pour l'historique. La date exacte de la confirmation D-006 doit être vérifiée dans le fil si nécessaire.
 
 ## D-007 — Séparation native / auxiliaire (en vigueur, 2026-10-04)

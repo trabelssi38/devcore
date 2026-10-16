@@ -1,0 +1,110 @@
+{
+  "report_version": 1,
+  "created_utc": "2026-10-13T23:33:44.352070+00:00",
+  "status": "post_l9_gates_qualified_with_historical_freeze_blocker",
+  "gates": {
+    "historical_freeze": {
+      "status": "partial",
+      "process_scan": "no_scheduler_or_legacy_writer_process_observed",
+      "active_services": [
+        "DevCoreIndividual",
+        "postgresql-x64-17"
+      ],
+      "blockers": [
+        "dropbox_or_other_host_writer_activity_not_proven",
+        "active_freeze_window_not_executed"
+      ],
+      "safe_scope": "read_only_process_and_service inspection; no active data modified",
+      "preflight": {
+        "status": "passed_read_only_current_host",
+        "evidence": "historical-freeze-preflight-2026-10-14.json",
+        "historical_processes_observed": 0,
+        "dropbox_client_present": true,
+        "write_activity_proven": false,
+        "other_host_absence_proven": false
+      }
+    },
+    "network": {
+      "status": "localhost_only_qualified",
+      "bind_contract": "passed",
+      "gateway_live_smoke": "passed",
+      "gateway_port": 20131,
+      "external_network": "disabled_by_D-002"
+    },
+    "observability": {
+      "status": "local_contract_qualified",
+      "tests_passed": 182,
+      "warnings": 1,
+      "langfuse_remote": "disabled_by_D-009",
+      "otlp_scope": "loopback_and_bounded_buffer"
+    },
+    "global_stack": {
+      "status": "qualified_on_copy_not_activated",
+      "router_headroom_gateway_contracts": "passed",
+      "scheduler_contracts": "passed",
+      "repowise_index": "fresh_at_d54a91944e95",
+      "global_listeners": "stopped",
+      "blockers": [],
+      "restart_check": "passed_for_individual_profile",
+      "restart_evidence": "verify_after_windows_restart.ps1: service=Running, startup=Auto, cockpit_http=200",
+      "restart_cycle": "passed_two_cycles_router_headroom_on_temporary_roots",
+      "repowise_dry_run": {
+        "status": "passed",
+        "changed_files": 11,
+        "pages_to_regenerate": 138,
+        "pages_generated": 0,
+        "index_modified": false,
+        "requires_commit_for_real_refresh": true
+      },
+      "repowise_refresh": {
+        "status": "passed",
+        "files": 648,
+        "nodes": 5862,
+        "edges": 14607,
+        "pages_regenerated": 260,
+        "cost_usd": 0.0,
+        "index_behind": false
+      },
+      "global_cockpit_smoke": {
+        "status": "passed",
+        "routes": {
+          "/index.html": 200,
+          "/index_terminal.html": 200,
+          "/api/status": 200,
+          "/api/dashboard": 200
+        },
+        "profile": "legacy",
+        "temporary_roots": true
+      },
+      "scheduler_restart_cycle": {
+        "status": "passed",
+        "ready_protocol": 2,
+        "cooperative_stop": true,
+        "process_exit": 0,
+        "ready_removed": true,
+        "temporary_roots": true
+      }
+    }
+  },
+  "evidence": [
+    "post-cutover-observation-2026-10-14.json",
+    "global-stack-local-smoke-2026-10-13.json",
+    "scheduler-repowise-local-qualification-2026-10-13.json",
+    "gateway-live-smoke-2026-10-13.json",
+    "otlp-local-qualification-2026-10-13.json"
+  ],
+  "changes_verified": [
+    "test_network_bind_contract.ps1",
+    "health_report.ps1",
+    "diagnose.ps1",
+    "dc.ps1",
+    "devcore_engine/cli.py",
+    "test_gateway.ps1",
+    "verify_after_windows_restart.ps1",
+    "global_stack_restart_cycle_temporary_roots",
+    "repowise_index_only_refresh_2026-10-14",
+    "global_cockpit_smoke_temporary_roots",
+    "scheduler_cooperative_restart_temporary_roots"
+  ],
+  "ready_for_external_network_or_global_scheduler": false
+}

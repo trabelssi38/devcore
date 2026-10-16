@@ -1,0 +1,29 @@
+{
+  "report_version": 1,
+  "created_utc": "2026-10-12T23:16:43.500899+00:00",
+  "status": "legacy_subset_copy_verified",
+  "database": "devcore_qualification",
+  "host": "127.0.0.1",
+  "port": 5432,
+  "counts": {
+    "projects": 29,
+    "tasks": 1378,
+    "kg_nodes": 2272,
+    "kg_edges": 696267,
+    "bus_events": 20989
+  },
+  "project_count": 29,
+  "task_count": 1378,
+  "orphan_tasks": 0,
+  "orphan_edges": 0,
+  "ready_for_cutover": false,
+  "blockers": [
+    "team_schema_not_applied",
+    "rls_not_qualified",
+    "api_not_connected_to_postgresql",
+    "historical_data_not_fully_imported",
+    "operational_cutover_deferred"
+  ],
+  "policy": "Five-table compatibility sample only; DevCore team schema and live API were not qualified",
+  "correction_2026_10_13": "Previous status overstated qualification; counts and referential checks remain valid only for the isolated five-table copy."
+}

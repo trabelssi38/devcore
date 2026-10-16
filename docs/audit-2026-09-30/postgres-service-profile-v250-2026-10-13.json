@@ -1,0 +1,64 @@
+{
+  "report_version": 1,
+  "created_utc": "2026-10-13T07:48:07.2338630Z",
+  "status": "staged_scm_start_failed_rolled_back",
+  "profile": "E:\\DevCoreRuntime\\qualification\\service-profile-v250-postgres",
+  "release": "E:\\DevCoreRuntime\\qualification\\service-profile-v250-postgres\\runtime\\releases\\devcore-py31316-20261013-postgres-v250",
+  "database": "devcore_qualification_team_20261013",
+  "task_read_mode": "postgres",
+  "api_smoke": {
+    "task_count": 389,
+    "status_code": 200,
+    "project": "devcore",
+    "identity_invalid_token_status": 401,
+    "identity_invalid_token_code": "invalid_individual_credential",
+    "identity_membership_scope_check": "implemented",
+    "identity_adapter_configured": true,
+    "browser_session_post_status": 200,
+    "browser_session_get_status": 200,
+    "browser_session_delete_status": 200,
+    "browser_session_adapter_qualified": true,
+    "password_invalid_status": 401,
+    "password_invalid_code": "invalid_credentials",
+    "password_adapter_configured": true,
+    "password_positive_evidence": false,
+    "release_engine_files": 88
+  },
+  "active_service_modified": false,
+  "ready_for_cutover": false,
+  "blockers": [
+    "staged_scm_host_still_uses_sqlite_dashboard",
+    "operational_cutover_deferred"
+  ],
+  "identity_read_mode": "postgres",
+  "qualification_identity": {
+    "users": 1,
+    "memberships": 29,
+    "sessions_imported": 3,
+    "sessions_forced_revoked": 3,
+    "runs": 0
+  },
+  "limitations": [
+    "API adapter smoke tests concern devcore_api, not the Dashboard process launched by SCM",
+    "positive password login remains unverified"
+  ],
+  "release_attestation": true,
+  "service_profile_configured": true,
+  "service_profile_environment_keys": [
+    "DEVCORE_DATABASE_URL",
+    "DEVCORE_IDENTITY_READ_MODE",
+    "DEVCORE_REQUIRE_AUTH",
+    "DEVCORE_TASK_READ_MODE"
+  ],
+  "identity_snapshot_staged": true,
+  "scm_trial": {
+    "result": "failed_1053",
+    "rollback": "v249_running_http_200",
+    "causes": [
+      "python_stdlib_path_corrected_after_trial",
+      "identity_acl_preflight_refused",
+      "sqlite_dashboard_not_postgresql"
+    ]
+  },
+  "staged_identity_acl": "qualified"
+}

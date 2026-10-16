@@ -1,0 +1,23 @@
+{
+  "decision_id": "D-009",
+  "created_utc": "2026-10-13T23:45:00Z",
+  "status": "effective",
+  "decision": "Ne pas utiliser Langfuse dans la migration globale DevCore.",
+  "scope": "production et recette opérationnelle",
+  "policy": {
+    "remote_export": "disabled",
+    "credentials": "must_not_be_configured",
+    "local_observability": "retained",
+    "buffering": "bounded_local_only",
+    "active_data": "unchanged"
+  },
+  "reason": "Le suivi distant n'est pas nécessaire pour le pilote DevCore et introduirait une dépendance externe supplémentaire.",
+  "validation": [
+    "Les tests locaux OTLP/LLMOps restent conservés comme tests de contrat.",
+    "L'absence de LANGFUSE_PUBLIC_KEY et LANGFUSE_SECRET_KEY maintient le buffering local borné.",
+    "Aucun endpoint distant ni secret Langfuse n'est requis pour la bascule."
+  ],
+  "remaining_blockers": [
+    "global_cutover_window_not_executed"
+  ]
+}

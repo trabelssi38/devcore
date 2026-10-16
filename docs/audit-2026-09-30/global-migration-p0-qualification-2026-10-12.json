@@ -1,0 +1,86 @@
+{
+  "phase": "P0",
+  "status": "pass",
+  "ready_for_cutover": false,
+  "read_only": true,
+  "checks": [
+    {
+      "name": "python_runtime",
+      "status": "pass",
+      "detail": "Python 3.13.3"
+    },
+    {
+      "name": "fusion_cutover_checklist",
+      "status": "pass",
+      "detail": "sha256=0fc5c24c4f7533edf56f05b3574ff9012ba49a885be7845c3db046968998a5cb"
+    },
+    {
+      "name": "global_migration_proposals",
+      "status": "pass",
+      "detail": "sha256=c64996cc10ccb43c1c8fd14ce9ac6587a0fd3a579476b2f9624a5893324f6885"
+    },
+    {
+      "name": "scheduler_archive",
+      "status": "pass",
+      "detail": "sha256=ac32d13684316c9187bd9772b643137e0a619cb3db5323bf116579d93d692f57"
+    },
+    {
+      "name": "individual_api",
+      "status": "pass",
+      "detail": "http_403"
+    },
+    {
+      "name": "gateway",
+      "status": "pass",
+      "detail": "http_404"
+    },
+    {
+      "name": "gemini_router",
+      "status": "pass",
+      "detail": "http_404"
+    },
+    {
+      "name": "headroom_native",
+      "status": "pass",
+      "detail": "http_404"
+    },
+    {
+      "name": "headroom_auxiliary",
+      "status": "pass",
+      "detail": "http_404"
+    },
+    {
+      "name": "repowise",
+      "status": "pass",
+      "detail": "http_404"
+    }
+  ],
+  "blocked_checks": [],
+  "artifact_hashes": {
+    "fusion-candidate-2026-10-12.json": "b0ae161945628599dcf372dc88646bc3abdb901ba6ae738a47c9b4fdfdaa812b",
+    "fusion-candidate-v2-2026-10-12.json": "a11dcb779445e920325a17c9fee4bd041b8e46a7dd1a1d4d983242005f885e37",
+    "fusion-candidate-v2-validation-2026-10-12.json": "68ad76750a1442d6a855d5f334b4764505c35dce11834b5825dd42a559138359",
+    "fusion-candidate-v3-2026-10-12.json": "fd85801a00aaf5a1e5ba3980d07960d00c3456575b29af14baeee1086ba04092",
+    "fusion-candidate-v3-validation-2026-10-12.json": "62cfea9f3a535b21b64cee3ef97155a50f86fd9322df9be57340b5e2cef2f560",
+    "fusion-candidate-v4-2026-10-12.json": "4b1b55eaa46ee68af5f6992a612976c5a281a89d364e2b21dfd8cd5090c0debc",
+    "fusion-candidate-v4-validation-2026-10-12.json": "55b70fd3cb9ff77899e9dd377605a56103779c13957f66f8c52f235748ccc5fc",
+    "fusion-candidate-validation-2026-10-12.json": "a8355821ccc88bb947b325b7a2435ecd13481055159792e215d7a2f4a9ea600c",
+    "fusion-cutover-checklist-2026-10-12.json": "0fc5c24c4f7533edf56f05b3574ff9012ba49a885be7845c3db046968998a5cb",
+    "fusion-decisions-2026-10-12.json": "137b551dd82db2f8feed151bc4adc2bcd4474a75892836176dc2fb16d5f932a8",
+    "fusion-graph-preview-2026-10-12.json": "80feab7e6193fe157915a207219e87d826ba2db0d9e525fab747cffe3d37bc1b",
+    "fusion-graph-validation-2026-10-12.json": "fd1e8acaf561fd243ad635fc8fda75ea9ee0ce6381eb2c76eb72bcd7f51dbb6a",
+    "global-migration-p0-qualification-2026-10-12.json": "e8504c71372cc909f72ca44f36b4b47626e5d39d62530c792e73acf86b415116",
+    "global-migration-proposals-2026-10-12.json": "c64996cc10ccb43c1c8fd14ce9ac6587a0fd3a579476b2f9624a5893324f6885",
+    "graph-consumer-inventory-2026-10-12.json": "8453d88624aa2451fea3ee2aa59abe89acbdf13f199eb455844f9377769ecffb",
+    "graph-dedup-preview-2026-10-12.json": "da143ebb7a243aee0ba30fbf2c644a3f0a02d5b1d7bf26994b064469d75ea0b4",
+    "graph-dedup-reachability-2026-10-12.json": "e8cd8bada438eca449269859edaf8e9e2a30c2e21122add0e9a13b9c24070378",
+    "graph-fk-preview-2026-10-12.json": "3b172ece6e6b605e677379fbc84a2893b1e01957cc9831c96d54e6c9c3847996",
+    "graph-multiplicity-2026-10-12.json": "bb453fa63b69f48ffb7bc3aa318d3852fd63b9708f046ee3d95f71ed598f346a",
+    "graph-repair-2026-10-12.json": "e2d0b9ef268da3bbc70b0f7c01f7e255a57fcd8ebe6ca6ac7621e8c3819aaf5a",
+    "graph-repair-proposals-2026-10-12.json": "d26f5c06f0fc99ab34755085c8bbc6b5dd3f20efbe0bbe1aa80b4450078efc61",
+    "graph-source-comparison-2026-10-12.json": "1eb3b6c256479cee4b6a8d9bbb59444bdd21d3e8675f1d8b5e5e6b1a24ace1a5",
+    "scheduler-archive-2026-10-12.json": "ac32d13684316c9187bd9772b643137e0a619cb3db5323bf116579d93d692f57",
+    "task-project-fk-preview-2026-10-12.json": "159fd3131471a9aa75a9505e190219175bd83412dcf8d5ca666f9b2c164ea015",
+    "task-project-repairs-2026-10-12.json": "4ade01db0476d3ee06a04ac3d1fc0fb284e079ac405e37fb982391b84ac63412"
+  }
+}

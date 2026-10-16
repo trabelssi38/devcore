@@ -9,6 +9,7 @@ from .models import (
     RunSubmission,
 )
 from .store import SqliteRunStore
+from .postgres_store import PostgresRunStore
 
 
 class FairRunScheduler:
@@ -16,7 +17,7 @@ class FairRunScheduler:
 
     def __init__(
         self,
-        store: SqliteRunStore,
+        store: SqliteRunStore | PostgresRunStore,
         quota_config: RunQuotaConfig | None = None,
     ):
         self.store = store

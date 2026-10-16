@@ -1,0 +1,14 @@
+{
+  "output": "E:\\src_python\\devcore\\docs\\audit-2026-09-30\\fusion-candidate-2026-10-12.db",
+  "status": "review_only",
+  "integrity": "ok",
+  "attached_counts": {
+    "fusion_project_merge_map": 28,
+    "fusion_task_merge_map": 1378,
+    "fusion_task_field_conflicts": 145,
+    "fusion_kg_edges_repair_preview": 696267,
+    "fusion_run_history_archive": 12245
+  },
+  "writes_to_application_tables": false,
+  "created_utc": "2026-10-11T23:46:40.940179+00:00"
+}

@@ -165,6 +165,8 @@ def main() -> None:
     diag_p = subparsers.add_parser("diagnose", help="Run system diagnostics")
     diag_p.add_argument("--gate", action="store_true", help="Run gate check mode")
     diag_p.add_argument("--json", action="store_true", help="Output JSON format")
+    diag_p.add_argument("--fix", action="store_true", help="Request diagnostic repairs (simulation only)")
+    diag_p.add_argument("--dry-run", action="store_true", help="Simulate requested repairs")
 
 
     # Skills
@@ -298,10 +300,14 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.command == "diagnose":
+        if args.fix and not args.dry_run:
+            parser.error("diagnostic repairs are unavailable; use --fix --dry-run to inspect")
         from devcore_engine.infra.diagnose import DiagnosticEngine
         diag = DiagnosticEngine()
         report = diag.run_diagnostics()
         fails = [c for c in report.get("checks", []) if c.get("status") == "FAIL"]
+        if getattr(args, "dry_run", False) and not getattr(args, "json", False):
+            print("MODE DRY-RUN ACTIVE")
         print(json.dumps(report, indent=2))
         if getattr(args, "gate", False) and fails:
             sys.exit(1)

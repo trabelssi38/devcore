@@ -1,0 +1,35 @@
+{
+  "report_version": 1,
+  "created_utc": "2026-10-13T23:20:00Z",
+  "status": "prepared_not_executed",
+  "scope": "global DevCore migration",
+  "preconditions": [
+    "Langfuse désactivé selon D-009 ; aucune dépendance d'observabilité distante",
+    "candidate scoped validée : intégrité ok, FK 0, revues 0",
+    "PostgreSQL DevCore qualifié et service DevCoreIndividual vérifié",
+    "responsable rollback et fenêtre d'observation confirmés"
+  ],
+  "sequence": [
+    {"step": 1, "action": "geler les écrivains historiques et vérifier l'absence de mutation", "abort_if": "une mutation ou un writer reste actif"},
+    {"step": 2, "action": "capturer les empreintes du snapshot et de la candidate", "abort_if": "empreinte différente de la preuve"},
+    {"step": 3, "action": "basculer les lecteurs vers la génération immuable", "abort_if": "health ou smoke HTTP non 200"},
+    {"step": 4, "action": "activer les écrivains PostgreSQL après observation initiale", "abort_if": "erreur RLS, audit, event ou latence hors seuil"},
+    {"step": 5, "action": "observer services, métriques, OTLP et rollback pendant la fenêtre", "abort_if": "perte de corrélation, erreur externe ou divergence"}
+  ],
+  "rollback": [
+    "arrêter les writers et le scheduler",
+    "révoquer les sessions de recette",
+    "restaurer la génération précédente et le snapshot validé",
+    "vérifier les empreintes, /project, /api/status et l'audit",
+    "conserver les événements de rollback sans rejouer de commande historique"
+  ],
+  "execution": {
+    "performed": false,
+    "live_data_modified": false,
+    "ready_for_global_cutover": false
+  },
+  "blockers": [
+    "external_credentials_and_endpoint_pending",
+    "global_cutover_approval_window_pending"
+  ]
+}

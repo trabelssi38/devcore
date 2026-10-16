@@ -1,0 +1,474 @@
+{
+  "report_version": 1,
+  "created_utc": "2026-10-12T10:21:06.906532+00:00",
+  "status": "analysis_only",
+  "shared_distinct_relations": 4767,
+  "same_multiplicity_relations": 0,
+  "different_multiplicity_relations": 4767,
+  "current_extra_rows_against_other": 416570,
+  "other_extra_rows_against_current": 0,
+  "current_excess_by_type": {
+    "file_service": 52990,
+    "project_task": 19530,
+    "commit_file": 163800,
+    "file_function": 72100,
+    "task_commit": 17500,
+    "function_calls": 49770,
+    "file_imports": 36890,
+    "decision_service": 2590,
+    "class_inherits": 1400
+  },
+  "top_current_excess": [
+    {
+      "from_node": "function:DEV_CORE/MCP/devcore-scripts/server.py/main",
+      "to_node": "function:UNKNOWN/print",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 1287,
+      "other_rows": 517,
+      "excess_rows": 770
+    },
+    {
+      "from_node": "function:DEV_CORE/MCP/devcore-scripts/server.py/apply_rtk",
+      "to_node": "function:UNKNOWN/len",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 1053,
+      "other_rows": 423,
+      "excess_rows": 630
+    },
+    {
+      "from_node": "function:DEV_CORE/MCP/devcore-scripts/server.py/handle_tool_call",
+      "to_node": "function:UNKNOWN/run_python_script",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 936,
+      "other_rows": 376,
+      "excess_rows": 560
+    },
+    {
+      "from_node": "function:DEV_CORE/Tools/devcore/crg_sync.py/parse_python",
+      "to_node": "function:UNKNOWN/isinstance",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 936,
+      "other_rows": 376,
+      "excess_rows": 560
+    },
+    {
+      "from_node": "function:DEV_CORE/MCP/devcore-scripts/server.py/_dispatch_tool_call",
+      "to_node": "function:UNKNOWN/run_python_script",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 819,
+      "other_rows": 329,
+      "excess_rows": 490
+    },
+    {
+      "from_node": "function:DEV_CORE/MCP/devcore-scripts/server.py/run_powershell_script",
+      "to_node": "function:UNKNOWN/str",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 819,
+      "other_rows": 329,
+      "excess_rows": 490
+    },
+    {
+      "from_node": "function:DEV_CORE/MCP/devcore-scripts/server.py/sync_tasks",
+      "to_node": "function:UNKNOWN/open",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 819,
+      "other_rows": 329,
+      "excess_rows": 490
+    },
+    {
+      "from_node": "function:DEV_CORE/Tools/devcore/test_cli_foundation.py/test_embedding_mismatch_warning",
+      "to_node": "function:UNKNOWN/patch",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 819,
+      "other_rows": 329,
+      "excess_rows": 490
+    },
+    {
+      "from_node": "DEV_CORE/Tools/devcore/agent_runner.py",
+      "to_node": "function:DEV_CORE/Tools/devcore/agent_runner.py/build_prompt",
+      "type": "file_function",
+      "properties": "{\"confidence\": \"EXTRACTED\"}",
+      "current_rows": 702,
+      "other_rows": 282,
+      "excess_rows": 420
+    },
+    {
+      "from_node": "DEV_CORE/Tools/devcore/agent_runner.py",
+      "to_node": "function:DEV_CORE/Tools/devcore/agent_runner.py/checkpoint",
+      "type": "file_function",
+      "properties": "{\"confidence\": \"EXTRACTED\"}",
+      "current_rows": 702,
+      "other_rows": 282,
+      "excess_rows": 420
+    },
+    {
+      "from_node": "DEV_CORE/Tools/devcore/agent_runner.py",
+      "to_node": "function:DEV_CORE/Tools/devcore/agent_runner.py/has_active_task",
+      "type": "file_function",
+      "properties": "{\"confidence\": \"EXTRACTED\"}",
+      "current_rows": 702,
+      "other_rows": 282,
+      "excess_rows": 420
+    },
+    {
+      "from_node": "DEV_CORE/Tools/devcore/agent_runner.py",
+      "to_node": "function:DEV_CORE/Tools/devcore/agent_runner.py/report_status",
+      "type": "file_function",
+      "properties": "{\"confidence\": \"EXTRACTED\"}",
+      "current_rows": 702,
+      "other_rows": 282,
+      "excess_rows": 420
+    },
+    {
+      "from_node": "DEV_CORE/Tools/devcore/agent_runner.py",
+      "to_node": "function:DEV_CORE/Tools/devcore/agent_runner.py/run",
+      "type": "file_function",
+      "properties": "{\"confidence\": \"EXTRACTED\"}",
+      "current_rows": 702,
+      "other_rows": 282,
+      "excess_rows": 420
+    },
+    {
+      "from_node": "function:DEV_CORE/Tools/devcore/test_cli_foundation.py/test_conversations_db_fts5_check",
+      "to_node": "function:UNKNOWN/patch",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 702,
+      "other_rows": 282,
+      "excess_rows": 420
+    },
+    {
+      "from_node": "function:DEV_CORE/MCP/devcore-scripts/server.py/apply_rtk",
+      "to_node": "function:UNKNOWN/open",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 585,
+      "other_rows": 235,
+      "excess_rows": 350
+    },
+    {
+      "from_node": "function:DEV_CORE/MCP/devcore-scripts/server.py/complete_active_task",
+      "to_node": "function:UNKNOWN/open",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 585,
+      "other_rows": 235,
+      "excess_rows": 350
+    },
+    {
+      "from_node": "function:DEV_CORE/MCP/devcore-scripts/server.py/emit_event",
+      "to_node": "function:UNKNOWN/str",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 585,
+      "other_rows": 235,
+      "excess_rows": 350
+    },
+    {
+      "from_node": "function:DEV_CORE/MCP/devcore-scripts/server.py/run_python_script",
+      "to_node": "function:UNKNOWN/str",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 585,
+      "other_rows": 235,
+      "excess_rows": 350
+    },
+    {
+      "from_node": "DEV_CORE/Tools/devcore/agent_runner.py",
+      "to_node": "function:DEV_CORE/Tools/devcore/agent_runner.py/__init__",
+      "type": "file_function",
+      "properties": "{\"confidence\": \"EXTRACTED\"}",
+      "current_rows": 468,
+      "other_rows": 188,
+      "excess_rows": 280
+    },
+    {
+      "from_node": "function:DEV_CORE/Tools/devcore/bootstrap_parser.py/parse_bootstrap_markdown",
+      "to_node": "function:UNKNOWN/flush",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 468,
+      "other_rows": 188,
+      "excess_rows": 280
+    },
+    {
+      "from_node": "function:DEV_CORE/Tools/devcore/crg_sync.py/main",
+      "to_node": "function:UNKNOWN/len",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 468,
+      "other_rows": 188,
+      "excess_rows": 280
+    },
+    {
+      "from_node": "function:DEV_CORE/Tools/devcore/crg_sync.py/main",
+      "to_node": "function:UNKNOWN/print",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 468,
+      "other_rows": 188,
+      "excess_rows": 280
+    },
+    {
+      "from_node": "function:DEV_CORE/Tools/devcore/test_agent_runner.py/test_recommend_engine_rules",
+      "to_node": "function:UNKNOWN/recommend_engine",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 468,
+      "other_rows": 188,
+      "excess_rows": 280
+    },
+    {
+      "from_node": "function:DEV_CORE/Tools/devcore/test_orchestrator.py/test_dependency_graph_cycle_detection",
+      "to_node": "function:UNKNOWN/str",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 468,
+      "other_rows": 188,
+      "excess_rows": 280
+    },
+    {
+      "from_node": "function:DEV_CORE/Tools/devcore/test_scheduler_migration.py/test_sync_registry_new_and_merge",
+      "to_node": "function:UNKNOWN/open",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 468,
+      "other_rows": 188,
+      "excess_rows": 280
+    },
+    {
+      "from_node": "DEV_CORE/MCP/devcore-scripts/hooks.py",
+      "to_node": "function:DEV_CORE/MCP/devcore-scripts/hooks.py/__init__",
+      "type": "file_function",
+      "properties": "{\"confidence\": \"EXTRACTED\"}",
+      "current_rows": 351,
+      "other_rows": 141,
+      "excess_rows": 210
+    },
+    {
+      "from_node": "DEV_CORE/Scripts/launch.ps1",
+      "to_node": "function:DEV_CORE/Scripts/launch.ps1/Check-Port",
+      "type": "file_function",
+      "properties": "{\"confidence\": \"INFERRED\"}",
+      "current_rows": 351,
+      "other_rows": 141,
+      "excess_rows": 210
+    },
+    {
+      "from_node": "DEV_CORE/Tools/devcore/orchestrator.py",
+      "to_node": "function:DEV_CORE/Tools/devcore/orchestrator.py/__init__",
+      "type": "file_function",
+      "properties": "{\"confidence\": \"EXTRACTED\"}",
+      "current_rows": 351,
+      "other_rows": 141,
+      "excess_rows": 210
+    },
+    {
+      "from_node": "function:DEV_CORE/MCP/devcore-scripts/hooks.py/post_rtk_compress",
+      "to_node": "function:UNKNOWN/len",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 351,
+      "other_rows": 141,
+      "excess_rows": 210
+    },
+    {
+      "from_node": "function:DEV_CORE/MCP/devcore-scripts/server.py/apply_rtk",
+      "to_node": "function:UNKNOWN/round",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 351,
+      "other_rows": 141,
+      "excess_rows": 210
+    },
+    {
+      "from_node": "function:DEV_CORE/MCP/devcore-scripts/server.py/complete_active_task",
+      "to_node": "function:UNKNOWN/get_active_project",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 351,
+      "other_rows": 141,
+      "excess_rows": 210
+    },
+    {
+      "from_node": "function:DEV_CORE/MCP/devcore-scripts/server.py/complete_active_task",
+      "to_node": "function:UNKNOWN/next",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 351,
+      "other_rows": 141,
+      "excess_rows": 210
+    },
+    {
+      "from_node": "function:DEV_CORE/MCP/devcore-scripts/server.py/complete_active_task",
+      "to_node": "function:UNKNOWN/run_python_script",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 351,
+      "other_rows": 141,
+      "excess_rows": 210
+    },
+    {
+      "from_node": "function:DEV_CORE/MCP/devcore-scripts/server.py/complete_active_task",
+      "to_node": "function:UNKNOWN/str",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 351,
+      "other_rows": 141,
+      "excess_rows": 210
+    },
+    {
+      "from_node": "function:DEV_CORE/MCP/devcore-scripts/server.py/emit_event",
+      "to_node": "function:UNKNOWN/open",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 351,
+      "other_rows": 141,
+      "excess_rows": 210
+    },
+    {
+      "from_node": "function:DEV_CORE/MCP/devcore-scripts/server.py/handle_tool_call",
+      "to_node": "function:UNKNOWN/get_active_project",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 351,
+      "other_rows": 141,
+      "excess_rows": 210
+    },
+    {
+      "from_node": "function:DEV_CORE/MCP/devcore-scripts/server.py/handle_tool_call",
+      "to_node": "function:UNKNOWN/run_powershell_script",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 351,
+      "other_rows": 141,
+      "excess_rows": 210
+    },
+    {
+      "from_node": "function:DEV_CORE/MCP/devcore-scripts/server.py/handle_tool_call",
+      "to_node": "function:UNKNOWN/str",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 351,
+      "other_rows": 141,
+      "excess_rows": 210
+    },
+    {
+      "from_node": "function:DEV_CORE/MCP/devcore-scripts/server.py/main",
+      "to_node": "function:UNKNOWN/len",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 351,
+      "other_rows": 141,
+      "excess_rows": 210
+    },
+    {
+      "from_node": "function:DEV_CORE/MCP/devcore-scripts/server.py/run_powershell_script",
+      "to_node": "function:UNKNOWN/apply_rtk",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 351,
+      "other_rows": 141,
+      "excess_rows": 210
+    },
+    {
+      "from_node": "function:DEV_CORE/MCP/devcore-scripts/server.py/run_python_script",
+      "to_node": "function:UNKNOWN/apply_rtk",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 351,
+      "other_rows": 141,
+      "excess_rows": 210
+    },
+    {
+      "from_node": "function:DEV_CORE/MCP/devcore-scripts/server.py/sync_tasks",
+      "to_node": "function:UNKNOWN/any",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 351,
+      "other_rows": 141,
+      "excess_rows": 210
+    },
+    {
+      "from_node": "function:DEV_CORE/MCP/devcore-scripts/server.py/sync_tasks",
+      "to_node": "function:UNKNOWN/get_active_project",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 351,
+      "other_rows": 141,
+      "excess_rows": 210
+    },
+    {
+      "from_node": "function:DEV_CORE/MCP/devcore-scripts/server.py/sync_tasks",
+      "to_node": "function:UNKNOWN/int",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 351,
+      "other_rows": 141,
+      "excess_rows": 210
+    },
+    {
+      "from_node": "function:DEV_CORE/MCP/devcore-scripts/server.py/sync_tasks",
+      "to_node": "function:UNKNOWN/max",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 351,
+      "other_rows": 141,
+      "excess_rows": 210
+    },
+    {
+      "from_node": "function:DEV_CORE/MCP/devcore-scripts/server.py/sync_tasks",
+      "to_node": "function:UNKNOWN/run_python_script",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 351,
+      "other_rows": 141,
+      "excess_rows": 210
+    },
+    {
+      "from_node": "function:DEV_CORE/MCP/devcore-scripts/server.py/sync_tasks",
+      "to_node": "function:UNKNOWN/str",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 351,
+      "other_rows": 141,
+      "excess_rows": 210
+    },
+    {
+      "from_node": "function:DEV_CORE/Tools/devcore/bootstrap_parser.py/parse_bootstrap_markdown",
+      "to_node": "function:UNKNOWN/BootstrapDirective",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 351,
+      "other_rows": 141,
+      "excess_rows": 210
+    },
+    {
+      "from_node": "function:DEV_CORE/Tools/devcore/crg_sync.py/main",
+      "to_node": "function:UNKNOWN/open",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 351,
+      "other_rows": 141,
+      "excess_rows": 210
+    },
+    {
+      "from_node": "function:DEV_CORE/Tools/devcore/memory_sync.py/promote_approved_memory",
+      "to_node": "function:UNKNOWN/str",
+      "type": "function_calls",
+      "properties": "{\"confidence\": \"AMBIGUOUS\"}",
+      "current_rows": 351,
+      "other_rows": 141,
+      "excess_rows": 210
+    }
+  ],
+  "policy": "no rows are deleted or imported; multiplicity differences require provenance review"
+}

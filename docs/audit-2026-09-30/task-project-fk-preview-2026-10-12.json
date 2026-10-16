@@ -1,0 +1,10 @@
+{
+  "output": "E:\\src_python\\devcore\\docs\\audit-2026-09-30\\task-project-fk-preview-2026-10-12.db",
+  "status": "preview_only",
+  "projects": 29,
+  "tasks": 1378,
+  "missing_before": 46,
+  "missing_after": 0,
+  "integrity": "ok",
+  "created_utc": "2026-10-12T08:52:38.107703+00:00"
+}

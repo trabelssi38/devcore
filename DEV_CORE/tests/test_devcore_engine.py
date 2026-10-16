@@ -101,10 +101,13 @@ def test_knowledge_graph(tmp_path):
     kg.add_node("n1", "file", "File 1")
     kg.add_node("n2", "file", "File 2")
     kg.add_edge("n1", "n2", "imports")
+    kg.add_edge("n1", "n2", "imports")
 
     stats = kg.get_stats()
     assert stats["nodes"] == 2
-    assert stats["edges"] == 1
+    assert stats["edges"] == 2
+    assert stats["edge_rows"] == 2
+    assert stats["distinct_edges"] == 1
 
     impact = kg.impact_analysis("n1")
     assert impact["blast_radius_count"] == 2

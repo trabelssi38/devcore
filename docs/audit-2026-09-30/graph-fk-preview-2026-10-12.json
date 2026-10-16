@@ -1,0 +1,10 @@
+{
+  "output": "E:\\src_python\\devcore\\docs\\audit-2026-09-30\\graph-fk-preview-2026-10-12.db",
+  "status": "preview_only",
+  "nodes": 2186,
+  "repaired_edges": 602082,
+  "quarantine_edges": 94185,
+  "integrity": "ok",
+  "foreign_key_violations": 0,
+  "created_utc": "2026-10-12T09:58:51.433632+00:00"
+}

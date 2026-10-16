@@ -23,6 +23,8 @@ $mappedArgs = @()
 foreach ($a in $args) {
     if ($a -eq "-Gate" -or $a -eq "-gate") { $mappedArgs += "--gate" }
     elseif ($a -eq "-Json" -or $a -eq "-json") { $mappedArgs += "--json" }
+    elseif ($a -like "-Fix*") { $mappedArgs += "--fix" }
+    elseif ($a -like "-DryRun*") { $mappedArgs += "--dry-run" }
     else { $mappedArgs += $a }
 }
 & $pythonExe -m devcore_engine.cli diagnose $mappedArgs

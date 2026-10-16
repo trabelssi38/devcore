@@ -1,0 +1,72 @@
+{
+  "report_version": 1,
+  "created_utc": "2026-10-14T10:03:14.995670+00:00",
+  "status": "preflight_only",
+  "scope": "read_only_current_host",
+  "historical_devcore_processes": [],
+  "services": [
+    {
+      "Name": "DevCoreIndividual",
+      "State": "Running",
+      "StartMode": "Auto",
+      "StartName": ".\\Administrateur",
+      "PathName": "E:\\DevCoreRuntime\\qualification\\service-profile-v250-postgres\\runtime\\releases\\devcore-py31316-20261013-postgres-v250\\pythonservice.exe"
+    },
+    {
+      "Name": "postgresql-x64-17",
+      "State": "Running",
+      "StartMode": "Auto",
+      "StartName": "NT AUTHORITY\\NetworkService",
+      "PathName": "\"C:\\Program Files\\PostgreSQL\\17\\bin\\pg_ctl.exe\" runservice -N \"postgresql-x64-17\" -D \"C:\\Program Files\\PostgreSQL\\17\\data\" -w"
+    }
+  ],
+  "dropbox_processes": [
+    {
+      "Id": 9352,
+      "ProcessName": "Dropbox",
+      "Path": "C:\\Program Files (x86)\\Dropbox\\Client\\Dropbox.exe"
+    },
+    {
+      "Id": 9504,
+      "ProcessName": "Dropbox",
+      "Path": "C:\\Program Files (x86)\\Dropbox\\Client\\Dropbox.exe"
+    },
+    {
+      "Id": 9572,
+      "ProcessName": "Dropbox",
+      "Path": "C:\\Program Files (x86)\\Dropbox\\Client\\Dropbox.exe"
+    },
+    {
+      "Id": 11480,
+      "ProcessName": "Dropbox",
+      "Path": "C:\\Program Files (x86)\\Dropbox\\Client\\Dropbox.exe"
+    },
+    {
+      "Id": 13704,
+      "ProcessName": "Dropbox",
+      "Path": "C:\\Program Files (x86)\\Dropbox\\Client\\Dropbox.exe"
+    },
+    {
+      "Id": 14316,
+      "ProcessName": "Dropbox",
+      "Path": "C:\\Program Files (x86)\\Dropbox\\Client\\Dropbox.exe"
+    },
+    {
+      "Id": 15144,
+      "ProcessName": "Dropbox",
+      "Path": "C:\\Program Files (x86)\\Dropbox\\Client\\Dropbox.exe"
+    }
+  ],
+  "findings": {
+    "current_host_historical_writer_process_observed": false,
+    "active_service_writer_observed": true,
+    "dropbox_client_present": true,
+    "dropbox_write_activity_proven": false,
+    "other_host_absence_proven": false
+  },
+  "blockers": [
+    "dropbox_or_other_host_writer_activity_not_proven",
+    "active_freeze_window_not_executed"
+  ],
+  "policy": "No process stopped; no active data or Dropbox files modified."
+}

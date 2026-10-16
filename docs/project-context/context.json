@@ -162,6 +162,26 @@
       "replaces": [
         "D-005"
       ]
+    },
+    {
+      "id": "D-010",
+      "status": "effective",
+      "required": true,
+      "date": "2026-10-15",
+      "decision": "La preuve ESU Windows 10 et la rotation des mots de passe du pilote ne sont pas des critères de la migration ; l'accès LAN conserve TLS, pare-feu limité, origines contrôlées et essai depuis un second poste.",
+      "rationale": "Instruction explicite de l'utilisateur révisant les gates LAN après le pilote local.",
+      "validation": "Instruction utilisateur du 2026-10-15 ; aucune ouverture LAN impliquée par cette décision.",
+      "sources": [
+        "docs/audit-2026-09-30/lan-readiness-preflight-2026-10-15.md",
+        "docs/audit-2026-09-30/execution-2026-10-05.md v385"
+      ],
+      "tags": [
+        "lan",
+        "tls",
+        "firewall",
+        "migration"
+      ],
+      "replaces": []
     }
   ]
 }

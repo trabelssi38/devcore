@@ -1056,7 +1056,7 @@ function performDashboardRefresh() {
 
   const controller = new AbortController();
   const deadline = setTimeout(() => controller.abort(), 20000);
-  return fetch(`${API_BASE}/api/dashboard`, { signal: controller.signal })
+  return fetch(`${API_BASE}/api/dashboard?project=${encodeURIComponent(window.devcoreActiveProject)}`, { signal: controller.signal })
     .then(response => {
       checkDashboardResponseAccess(response);
       if (!response.ok) throw new Error('API server returned error status');
@@ -1603,7 +1603,7 @@ function parseDashboardSseBlock(block) {
     if (line.startsWith('data:')) event.data.push(line.slice(5).replace(/^ /, ''));
     if (line.startsWith('id:')) event.id = line.slice(3).trim();
   });
-  if (event.id && /^snapshot:[0-9a-f]{32}$/.test(event.id)) dashboardLastEventId = event.id;
+  if (event.id && (/^snapshot:[0-9a-f]{32}$/.test(event.id) || /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(event.id))) dashboardLastEventId = event.id;
   const data = event.data.join('\n');
   if (!data || (event.event === 'message' && data === 'Connected')) return;
   try {
@@ -1621,8 +1621,8 @@ function connectDashboardStream() {
   }
   const controller = new AbortController();
   dashboardStreamAbort = controller;
-  return fetch(`${API_BASE}/api/dashboard/stream`, {
-    headers: { Accept: 'text/event-stream', ...(dashboardAppliedSnapshotCursor ? { 'Last-Event-ID': dashboardAppliedSnapshotCursor } : {}) },
+  return fetch(`${API_BASE}/api/dashboard/stream?project=${encodeURIComponent(window.devcoreActiveProject)}`, {
+    headers: { Accept: 'text/event-stream', ...((dashboardLastEventId || dashboardAppliedSnapshotCursor) ? { 'Last-Event-ID': dashboardLastEventId || dashboardAppliedSnapshotCursor } : {}) },
     signal: controller.signal
   })
     .then(response => {

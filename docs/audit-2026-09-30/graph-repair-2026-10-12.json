@@ -1,0 +1,2022 @@
+{
+  "report_version": 1,
+  "created_utc": "2026-10-11T23:18:38.750986+00:00",
+  "status": "inspection_only",
+  "sources": {
+    "current": {
+      "path": "E:\\DevCoreRuntime\\qualification\\precutover-20261010-v228\\devcore.db",
+      "nodes": 2186,
+      "edges": 696267,
+      "source_missing_edges": 182169,
+      "target_missing_edges": 86697,
+      "edges_with_any_missing_node": 268866,
+      "missing_source_node_ids": 141,
+      "missing_target_node_ids": 109,
+      "top_missing_sources": [
+        [
+          "DEV_CORE/Scripts/plugin_service.ps1",
+          8892
+        ],
+        [
+          "DEV_CORE/Tools/devcore/state_engine.py",
+          7488
+        ],
+        [
+          "DEV_CORE/Tools/devcore/agent_runner.py",
+          6786
+        ],
+        [
+          "DEV_CORE/Tools/devcore/test_scheduler_contract.py",
+          5616
+        ],
+        [
+          "DEV_CORE/Tools/devcore/orchestrator.py",
+          5265
+        ],
+        [
+          "DEV_CORE/MCP/devcore-scripts/server.py",
+          5031
+        ],
+        [
+          "DEV_CORE/Tools/devcore/test_scheduler_tick.py",
+          4446
+        ],
+        [
+          "DEV_CORE/Scripts/knowledge_graph.ps1",
+          4446
+        ],
+        [
+          "DEV_CORE/Tools/devcore/cli.py",
+          4212
+        ],
+        [
+          "DEV_CORE/Tools/devcore/event_bus.py",
+          4212
+        ],
+        [
+          "DEV_CORE/Scripts/auto_skill_service.ps1",
+          3978
+        ],
+        [
+          "DEV_CORE/Tools/devcore/missions.py",
+          3510
+        ],
+        [
+          "DEV_CORE/Tools/devcore/test_cli_foundation.py",
+          3510
+        ],
+        [
+          "DEV_CORE/Scripts/gen_dashboard.ps1",
+          3510
+        ],
+        [
+          "DEV_CORE/Scripts/hermes-daemon.ps1",
+          3276
+        ],
+        [
+          "DEV_CORE/Scripts/task_service.ps1",
+          3276
+        ],
+        [
+          "DEV_CORE/Tools/devcore/test_scheduler_migration.py",
+          3276
+        ],
+        [
+          "DEV_CORE/Tools/devcore/test_state_engine.py",
+          3276
+        ],
+        [
+          "DEV_CORE/MCP/devcore-scripts/hooks.py",
+          3159
+        ],
+        [
+          "DEV_CORE/Tools/devcore/test_agent_runner.py",
+          3042
+        ],
+        [
+          "DEV_CORE/Tools/devcore/test_orchestrator.py",
+          3042
+        ],
+        [
+          "DEV_CORE/Scripts/event_bus.ps1",
+          2574
+        ],
+        [
+          "DEV_CORE/Scripts/learning_service.ps1",
+          2574
+        ],
+        [
+          "DEV_CORE/Scripts/metrics_service.ps1",
+          2574
+        ],
+        [
+          "DEV_CORE/Tools/devcore/crg_sync.py",
+          2574
+        ],
+        [
+          "DEV_CORE/Tools/devcore/file_utils.py",
+          2340
+        ],
+        [
+          "DEV_CORE/Tools/devcore/qdrant_queue.py",
+          2340
+        ],
+        [
+          "DEV_CORE/Scripts/test_hermes_integration.ps1",
+          2106
+        ],
+        [
+          "DEV_CORE/Tools/devcore/telemetry.py",
+          2106
+        ],
+        [
+          "DEV_CORE/Tools/devcore/test_resumption.py",
+          2106
+        ],
+        [
+          "DEV_CORE/Scripts/ensure_repowise_watch.ps1",
+          2106
+        ],
+        [
+          "DEV_CORE/MCP/devcore-scripts/test_hooks.py",
+          1989
+        ],
+        [
+          "DEV_CORE/Scripts/verify.ps1",
+          1872
+        ],
+        [
+          "DEV_CORE/Tools/devcore/contracts.py",
+          1872
+        ],
+        [
+          "DEV_CORE/Tools/devcore/session.py",
+          1872
+        ],
+        [
+          "DEV_CORE/Tools/devcore/test_event_bus.py",
+          1872
+        ],
+        [
+          "DEV_CORE/Scripts/ensure_repowise_mcp.ps1",
+          1872
+        ],
+        [
+          "DEV_CORE/Scripts/launch.ps1",
+          1755
+        ],
+        [
+          "DEV_CORE/Scripts/dashboard_read_model.ps1",
+          1638
+        ],
+        [
+          "DEV_CORE/Scripts/repowise_watch_worker.ps1",
+          1638
+        ],
+        [
+          "DEV_CORE/Tools/devcore/ask_cli.py",
+          1638
+        ],
+        [
+          "DEV_CORE/Tools/devcore/ask_parser.py",
+          1638
+        ],
+        [
+          "DEV_CORE/Tools/devcore/bootstrap_cli.py",
+          1404
+        ],
+        [
+          "DEV_CORE/Tools/devcore/memory_sync.py",
+          1404
+        ],
+        [
+          "DEV_CORE/Tools/devcore/paths.py",
+          1404
+        ],
+        [
+          "DEV_CORE/Tools/devcore/router.py",
+          1404
+        ],
+        [
+          "DEV_CORE/Scripts/endday.ps1",
+          1404
+        ],
+        [
+          "DEV_CORE/Scripts/context_service.ps1",
+          1170
+        ],
+        [
+          "DEV_CORE/Scripts/memory_service.ps1",
+          1170
+        ],
+        [
+          "DEV_CORE/Tools/devcore/bootstrap_parser.py",
+          1170
+        ],
+        [
+          "DEV_CORE/Tools/devcore/bootstrap_resolver.py",
+          1170
+        ],
+        [
+          "DEV_CORE/Tools/devcore/memory.py",
+          1170
+        ],
+        [
+          "DEV_CORE/Tools/devcore/scoring.py",
+          1170
+        ],
+        [
+          "DEV_CORE/Scripts/benchmark_reference.ps1",
+          936
+        ],
+        [
+          "DEV_CORE/Scripts/dc.ps1",
+          936
+        ],
+        [
+          "DEV_CORE/Scripts/routing_profile.ps1",
+          936
+        ],
+        [
+          "DEV_CORE/Scripts/skill_eval.ps1",
+          936
+        ],
+        [
+          "DEV_CORE/Scripts/ci_powershell_tests.ps1",
+          936
+        ],
+        [
+          "DEV_CORE/Scripts/ensure_repowise_web_languages.ps1",
+          936
+        ],
+        [
+          "DEV_CORE/Scripts/qdrant_sync.ps1",
+          936
+        ],
+        [
+          "DEV_CORE/Scripts/embedding_contract.ps1",
+          702
+        ],
+        [
+          "DEV_CORE/Scripts/health_report.ps1",
+          702
+        ],
+        [
+          "DEV_CORE/Scripts/skill_lint.ps1",
+          702
+        ],
+        [
+          "DEV_CORE/Scripts/test_dc_dispatch.ps1",
+          702
+        ],
+        [
+          "DEV_CORE/Scripts/test_repowise_watch_worker.ps1",
+          702
+        ],
+        [
+          "DEV_CORE/Tools/devcore/bootstrap_context.py",
+          702
+        ],
+        [
+          "DEV_CORE/Scripts/gateway.ps1",
+          468
+        ],
+        [
+          "DEV_CORE/Scripts/guided_recovery.ps1",
+          468
+        ],
+        [
+          "DEV_CORE/Scripts/platform_version.ps1",
+          468
+        ],
+        [
+          "DEV_CORE/Scripts/test_agent_conformity.ps1",
+          468
+        ],
+        [
+          "DEV_CORE/Scripts/test_auto_skills_pipeline.ps1",
+          468
+        ],
+        [
+          "DEV_CORE/Scripts/test_ci_timeout_contract.ps1",
+          468
+        ],
+        [
+          "DEV_CORE/Scripts/test_gateway.ps1",
+          468
+        ],
+        [
+          "DEV_CORE/Scripts/test_learning_service.ps1",
+          468
+        ],
+        [
+          "DEV_CORE/Scripts/test_qdrant_vector_contract.ps1",
+          468
+        ],
+        [
+          "DEV_CORE/Scripts/test_verify_ci.ps1",
+          468
+        ],
+        [
+          "DEV_CORE/Scripts/Auto/task_git_scanner.ps1",
+          468
+        ],
+        [
+          "DEV_CORE/Scripts/Auto/task_spec_parser.ps1",
+          468
+        ],
+        [
+          "DEV_CORE/Tools/devcore/ask_confirm.py",
+          468
+        ],
+        [
+          "DEV_CORE/Tools/devcore/bootstrap_types.py",
+          468
+        ],
+        [
+          "DEV_CORE/Scripts/diagnose.ps1",
+          468
+        ],
+        [
+          "DEV_CORE/Scripts/task_sync.ps1",
+          468
+        ],
+        [
+          "DEV_CORE/Scripts/adapt_client.ps1",
+          234
+        ],
+        [
+          "DEV_CORE/Scripts/ci_lint.ps1",
+          234
+        ],
+        [
+          "DEV_CORE/Scripts/endday_check.ps1",
+          234
+        ],
+        [
+          "DEV_CORE/Scripts/ensure_repowise_ipv6_proxy.ps1",
+          234
+        ],
+        [
+          "DEV_CORE/Scripts/gen_session_context.ps1",
+          234
+        ],
+        [
+          "DEV_CORE/Scripts/headroom_start.ps1",
+          234
+        ],
+        [
+          "DEV_CORE/Scripts/init_agent_env.ps1",
+          234
+        ],
+        [
+          "DEV_CORE/Scripts/memory_hierarchy.ps1",
+          234
+        ],
+        [
+          "DEV_CORE/Scripts/obsidian_sync.ps1",
+          234
+        ],
+        [
+          "DEV_CORE/Scripts/session_end.ps1",
+          234
+        ],
+        [
+          "DEV_CORE/Scripts/session_start.ps1",
+          234
+        ],
+        [
+          "DEV_CORE/Scripts/test_autonomy.ps1",
+          234
+        ],
+        [
+          "DEV_CORE/Scripts/test_benchmark_pipeline.ps1",
+          234
+        ],
+        [
+          "DEV_CORE/Scripts/test_ci_workflow.ps1",
+          234
+        ],
+        [
+          "DEV_CORE/Scripts/test_context_service.ps1",
+          234
+        ],
+        [
+          "DEV_CORE/Scripts/test_dashboard_auth_contract.ps1",
+          234
+        ],
+        [
+          "DEV_CORE/Scripts/test_dashboard_cockpit_contract.ps1",
+          234
+        ],
+        [
+          "DEV_CORE/Scripts/test_dashboard_mutation_methods.ps1",
+          234
+        ]
+      ],
+      "top_missing_targets": [
+        [
+          "function:UNKNOWN/str",
+          6903
+        ],
+        [
+          "function:UNKNOWN/open",
+          5148
+        ],
+        [
+          "function:UNKNOWN/get_paths",
+          3744
+        ],
+        [
+          "function:UNKNOWN/len",
+          3744
+        ],
+        [
+          "function:UNKNOWN/InvalidStateTransition",
+          2925
+        ],
+        [
+          "function:UNKNOWN/run_python_script",
+          2457
+        ],
+        [
+          "function:UNKNOWN/ZoneInfo",
+          2340
+        ],
+        [
+          "function:UNKNOWN/Path",
+          2106
+        ],
+        [
+          "function:UNKNOWN/SchedulerJobCommand",
+          2106
+        ],
+        [
+          "function:UNKNOWN/print",
+          1989
+        ],
+        [
+          "function:UNKNOWN/isinstance",
+          1872
+        ],
+        [
+          "function:UNKNOWN/SchedulerJob",
+          1872
+        ],
+        [
+          "function:UNKNOWN/next",
+          1755
+        ],
+        [
+          "function:UNKNOWN/patch",
+          1755
+        ],
+        [
+          "function:UNKNOWN/compute_next_run",
+          1755
+        ],
+        [
+          "function:UNKNOWN/timedelta",
+          1755
+        ],
+        [
+          "function:UNKNOWN/SchedulerJobSchedule",
+          1638
+        ],
+        [
+          "function:UNKNOWN/get_active_project",
+          1521
+        ],
+        [
+          "function:UNKNOWN/any",
+          1521
+        ],
+        [
+          "function:UNKNOWN/WorkflowExecutor",
+          1521
+        ],
+        [
+          "function:UNKNOWN/ValueError",
+          1287
+        ],
+        [
+          "function:UNKNOWN/datetime",
+          1287
+        ],
+        [
+          "service:docs",
+          1170
+        ],
+        [
+          "class:UNKNOWN/AgentRunner",
+          936
+        ],
+        [
+          "function:UNKNOWN/validate_contract",
+          936
+        ],
+        [
+          "function:UNKNOWN/list",
+          936
+        ],
+        [
+          "function:UNKNOWN/KeyError",
+          936
+        ],
+        [
+          "function:UNKNOWN/SchedulerJobState",
+          936
+        ],
+        [
+          "function:UNKNOWN/StateEngine",
+          936
+        ],
+        [
+          "function:UNKNOWN/int",
+          819
+        ],
+        [
+          "function:UNKNOWN/round",
+          702
+        ],
+        [
+          "function:UNKNOWN/sorted",
+          702
+        ],
+        [
+          "function:UNKNOWN/recommend_engine",
+          702
+        ],
+        [
+          "function:UNKNOWN/EventBus",
+          702
+        ],
+        [
+          "function:UNKNOWN/apply_rtk",
+          702
+        ],
+        [
+          "function:UNKNOWN/HermesAgentRunner",
+          585
+        ],
+        [
+          "function:UNKNOWN/max",
+          585
+        ],
+        [
+          "function:UNKNOWN/dfs",
+          585
+        ],
+        [
+          "function:UNKNOWN/run_powershell_script",
+          585
+        ],
+        [
+          "function:UNKNOWN/LocalProcessAgentRunner",
+          468
+        ],
+        [
+          "function:UNKNOWN/CodexManualAgentRunner",
+          468
+        ],
+        [
+          "function:UNKNOWN/build_bootstrap_payload",
+          468
+        ],
+        [
+          "function:UNKNOWN/build_prepare_payload",
+          468
+        ],
+        [
+          "function:UNKNOWN/min",
+          468
+        ],
+        [
+          "function:UNKNOWN/flush",
+          468
+        ],
+        [
+          "function:UNKNOWN/BootstrapBlock",
+          468
+        ],
+        [
+          "function:UNKNOWN/set",
+          468
+        ],
+        [
+          "function:UNKNOWN/enqueue_refresh_job",
+          468
+        ],
+        [
+          "function:UNKNOWN/_missions_path",
+          468
+        ],
+        [
+          "function:UNKNOWN/DevCorePaths",
+          468
+        ],
+        [
+          "class:UNKNOWN/BaseModel",
+          468
+        ],
+        [
+          "function:UNKNOWN/cls",
+          468
+        ],
+        [
+          "function:UNKNOWN/_append_jsonl",
+          468
+        ],
+        [
+          "function:UNKNOWN/MagicMock",
+          468
+        ],
+        [
+          "function:UNKNOWN/original_run_step",
+          468
+        ],
+        [
+          "function:UNKNOWN/BootstrapDirective",
+          351
+        ],
+        [
+          "function:UNKNOWN/_canonicalize_root",
+          351
+        ],
+        [
+          "function:UNKNOWN/sync_tasks",
+          351
+        ],
+        [
+          "function:UNKNOWN/complete_active_task",
+          351
+        ],
+        [
+          "function:UNKNOWN/sum",
+          351
+        ],
+        [
+          "function:UNKNOWN/emit_event",
+          351
+        ],
+        [
+          "function:UNKNOWN/check_port",
+          351
+        ],
+        [
+          "class:UNKNOWN/ABC",
+          234
+        ],
+        [
+          "function:UNKNOWN/interpret_french_prompt",
+          234
+        ],
+        [
+          "function:UNKNOWN/asdict",
+          234
+        ],
+        [
+          "function:UNKNOWN/render_confirmation_text",
+          234
+        ],
+        [
+          "function:UNKNOWN/_detect_project_id",
+          234
+        ],
+        [
+          "function:UNKNOWN/_detect_task_type",
+          234
+        ],
+        [
+          "function:UNKNOWN/AskInterpretation",
+          234
+        ],
+        [
+          "function:UNKNOWN/_build_intent",
+          234
+        ],
+        [
+          "function:UNKNOWN/_build_context_summary",
+          234
+        ],
+        [
+          "function:UNKNOWN/parse_bootstrap_markdown",
+          234
+        ],
+        [
+          "function:UNKNOWN/detect_bootstrap_context",
+          234
+        ],
+        [
+          "function:UNKNOWN/resolve_bootstrap",
+          234
+        ],
+        [
+          "function:UNKNOWN/BootstrapContext",
+          234
+        ],
+        [
+          "function:UNKNOWN/BootstrapResult",
+          234
+        ],
+        [
+          "function:UNKNOWN/_matches",
+          234
+        ],
+        [
+          "function:UNKNOWN/build_ask_launch_payload",
+          234
+        ],
+        [
+          "function:UNKNOWN/create_session",
+          234
+        ],
+        [
+          "function:UNKNOWN/write_router_decision",
+          234
+        ],
+        [
+          "function:UNKNOWN/log_prepare_event",
+          234
+        ],
+        [
+          "function:UNKNOWN/lru_cache",
+          234
+        ],
+        [
+          "function:UNKNOWN/Draft202012Validator",
+          234
+        ],
+        [
+          "function:UNKNOWN/_load_schema",
+          234
+        ],
+        [
+          "function:UNKNOWN/tuple",
+          234
+        ],
+        [
+          "function:UNKNOWN/get_crg_nodes_edges",
+          234
+        ],
+        [
+          "function:UNKNOWN/resolve_files",
+          234
+        ],
+        [
+          "function:UNKNOWN/parse_python",
+          234
+        ],
+        [
+          "function:UNKNOWN/parse_powershell",
+          234
+        ],
+        [
+          "function:UNKNOWN/listener",
+          234
+        ],
+        [
+          "function:UNKNOWN/_validate_session_id",
+          234
+        ],
+        [
+          "function:UNKNOWN/FileNotFoundError",
+          234
+        ],
+        [
+          "function:UNKNOWN/WorkflowChecker",
+          234
+        ],
+        [
+          "function:UNKNOWN/get_agent_runner",
+          234
+        ],
+        [
+          "function:UNKNOWN/_append_jsonl_durable",
+          234
+        ],
+        [
+          "function:UNKNOWN/load_harness_profiles",
+          234
+        ],
+        [
+          "function:UNKNOWN/log_outcome_event",
+          234
+        ],
+        [
+          "class:UNKNOWN/ValueError",
+          234
+        ],
+        [
+          "function:UNKNOWN/WorkflowDefinition",
+          234
+        ],
+        [
+          "function:UNKNOWN/RejectingChecker",
+          234
+        ]
+      ],
+      "relation_types": {
+        "file_function": 120510,
+        "file_imports": 61659,
+        "class_inherits": 2340,
+        "function_calls": 83187,
+        "file_service": 1170
+      },
+      "examples": [
+        {
+          "rowid": 1,
+          "from_node": "DEV_CORE/Scripts/adapt_client.ps1",
+          "to_node": "function:DEV_CORE/Scripts/adapt_client.ps1/Detect-Client",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 2,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/Ensure-AutoSkillDirs",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 3,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/New-EmptyRegistry",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 4,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/Read-Registry",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 5,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/Write-Registry",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 6,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/ConvertTo-SkillName",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 7,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/Get-FileHashHex",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 8,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/Read-JsonLines",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 9,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/Read-AllEvents",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 10,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/Get-RegistryEntry",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 11,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/Set-RegistryEntry",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 12,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/New-CandidateSkill",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 13,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/Invoke-Detect",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 14,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/Invoke-Promote",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 15,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/Invoke-Reject",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 16,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/Invoke-List",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 17,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/Invoke-Candidates",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 18,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/Invoke-Status",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 19,
+          "from_node": "DEV_CORE/Scripts/benchmark_reference.ps1",
+          "to_node": "function:DEV_CORE/Scripts/benchmark_reference.ps1/Measure-DevCoreAction",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 20,
+          "from_node": "DEV_CORE/Scripts/benchmark_reference.ps1",
+          "to_node": "function:DEV_CORE/Scripts/benchmark_reference.ps1/Get-Percentile",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        }
+      ]
+    },
+    "other": {
+      "path": "E:\\DEV_CORE_LOCAL_autre_poste\\devcore.db",
+      "nodes": 2186,
+      "edges": 279697,
+      "source_missing_edges": 73179,
+      "target_missing_edges": 34827,
+      "edges_with_any_missing_node": 108006,
+      "missing_source_node_ids": 141,
+      "missing_target_node_ids": 109,
+      "top_missing_sources": [
+        [
+          "DEV_CORE/Scripts/plugin_service.ps1",
+          3572
+        ],
+        [
+          "DEV_CORE/Tools/devcore/state_engine.py",
+          3008
+        ],
+        [
+          "DEV_CORE/Tools/devcore/agent_runner.py",
+          2726
+        ],
+        [
+          "DEV_CORE/Tools/devcore/test_scheduler_contract.py",
+          2256
+        ],
+        [
+          "DEV_CORE/Tools/devcore/orchestrator.py",
+          2115
+        ],
+        [
+          "DEV_CORE/MCP/devcore-scripts/server.py",
+          2021
+        ],
+        [
+          "DEV_CORE/Tools/devcore/test_scheduler_tick.py",
+          1786
+        ],
+        [
+          "DEV_CORE/Scripts/knowledge_graph.ps1",
+          1786
+        ],
+        [
+          "DEV_CORE/Tools/devcore/cli.py",
+          1692
+        ],
+        [
+          "DEV_CORE/Tools/devcore/event_bus.py",
+          1692
+        ],
+        [
+          "DEV_CORE/Scripts/auto_skill_service.ps1",
+          1598
+        ],
+        [
+          "DEV_CORE/Tools/devcore/missions.py",
+          1410
+        ],
+        [
+          "DEV_CORE/Tools/devcore/test_cli_foundation.py",
+          1410
+        ],
+        [
+          "DEV_CORE/Scripts/gen_dashboard.ps1",
+          1410
+        ],
+        [
+          "DEV_CORE/Scripts/hermes-daemon.ps1",
+          1316
+        ],
+        [
+          "DEV_CORE/Scripts/task_service.ps1",
+          1316
+        ],
+        [
+          "DEV_CORE/Tools/devcore/test_scheduler_migration.py",
+          1316
+        ],
+        [
+          "DEV_CORE/Tools/devcore/test_state_engine.py",
+          1316
+        ],
+        [
+          "DEV_CORE/MCP/devcore-scripts/hooks.py",
+          1269
+        ],
+        [
+          "DEV_CORE/Tools/devcore/test_agent_runner.py",
+          1222
+        ],
+        [
+          "DEV_CORE/Tools/devcore/test_orchestrator.py",
+          1222
+        ],
+        [
+          "DEV_CORE/Scripts/event_bus.ps1",
+          1034
+        ],
+        [
+          "DEV_CORE/Scripts/learning_service.ps1",
+          1034
+        ],
+        [
+          "DEV_CORE/Scripts/metrics_service.ps1",
+          1034
+        ],
+        [
+          "DEV_CORE/Tools/devcore/crg_sync.py",
+          1034
+        ],
+        [
+          "DEV_CORE/Tools/devcore/file_utils.py",
+          940
+        ],
+        [
+          "DEV_CORE/Tools/devcore/qdrant_queue.py",
+          940
+        ],
+        [
+          "DEV_CORE/Scripts/test_hermes_integration.ps1",
+          846
+        ],
+        [
+          "DEV_CORE/Tools/devcore/telemetry.py",
+          846
+        ],
+        [
+          "DEV_CORE/Tools/devcore/test_resumption.py",
+          846
+        ],
+        [
+          "DEV_CORE/Scripts/ensure_repowise_watch.ps1",
+          846
+        ],
+        [
+          "DEV_CORE/MCP/devcore-scripts/test_hooks.py",
+          799
+        ],
+        [
+          "DEV_CORE/Scripts/verify.ps1",
+          752
+        ],
+        [
+          "DEV_CORE/Tools/devcore/contracts.py",
+          752
+        ],
+        [
+          "DEV_CORE/Tools/devcore/session.py",
+          752
+        ],
+        [
+          "DEV_CORE/Tools/devcore/test_event_bus.py",
+          752
+        ],
+        [
+          "DEV_CORE/Scripts/ensure_repowise_mcp.ps1",
+          752
+        ],
+        [
+          "DEV_CORE/Scripts/launch.ps1",
+          705
+        ],
+        [
+          "DEV_CORE/Scripts/dashboard_read_model.ps1",
+          658
+        ],
+        [
+          "DEV_CORE/Scripts/repowise_watch_worker.ps1",
+          658
+        ],
+        [
+          "DEV_CORE/Tools/devcore/ask_cli.py",
+          658
+        ],
+        [
+          "DEV_CORE/Tools/devcore/ask_parser.py",
+          658
+        ],
+        [
+          "DEV_CORE/Tools/devcore/bootstrap_cli.py",
+          564
+        ],
+        [
+          "DEV_CORE/Tools/devcore/memory_sync.py",
+          564
+        ],
+        [
+          "DEV_CORE/Tools/devcore/paths.py",
+          564
+        ],
+        [
+          "DEV_CORE/Tools/devcore/router.py",
+          564
+        ],
+        [
+          "DEV_CORE/Scripts/endday.ps1",
+          564
+        ],
+        [
+          "DEV_CORE/Scripts/context_service.ps1",
+          470
+        ],
+        [
+          "DEV_CORE/Scripts/memory_service.ps1",
+          470
+        ],
+        [
+          "DEV_CORE/Tools/devcore/bootstrap_parser.py",
+          470
+        ],
+        [
+          "DEV_CORE/Tools/devcore/bootstrap_resolver.py",
+          470
+        ],
+        [
+          "DEV_CORE/Tools/devcore/memory.py",
+          470
+        ],
+        [
+          "DEV_CORE/Tools/devcore/scoring.py",
+          470
+        ],
+        [
+          "DEV_CORE/Scripts/benchmark_reference.ps1",
+          376
+        ],
+        [
+          "DEV_CORE/Scripts/dc.ps1",
+          376
+        ],
+        [
+          "DEV_CORE/Scripts/routing_profile.ps1",
+          376
+        ],
+        [
+          "DEV_CORE/Scripts/skill_eval.ps1",
+          376
+        ],
+        [
+          "DEV_CORE/Scripts/ci_powershell_tests.ps1",
+          376
+        ],
+        [
+          "DEV_CORE/Scripts/ensure_repowise_web_languages.ps1",
+          376
+        ],
+        [
+          "DEV_CORE/Scripts/qdrant_sync.ps1",
+          376
+        ],
+        [
+          "DEV_CORE/Scripts/embedding_contract.ps1",
+          282
+        ],
+        [
+          "DEV_CORE/Scripts/health_report.ps1",
+          282
+        ],
+        [
+          "DEV_CORE/Scripts/skill_lint.ps1",
+          282
+        ],
+        [
+          "DEV_CORE/Scripts/test_dc_dispatch.ps1",
+          282
+        ],
+        [
+          "DEV_CORE/Scripts/test_repowise_watch_worker.ps1",
+          282
+        ],
+        [
+          "DEV_CORE/Tools/devcore/bootstrap_context.py",
+          282
+        ],
+        [
+          "DEV_CORE/Scripts/gateway.ps1",
+          188
+        ],
+        [
+          "DEV_CORE/Scripts/guided_recovery.ps1",
+          188
+        ],
+        [
+          "DEV_CORE/Scripts/platform_version.ps1",
+          188
+        ],
+        [
+          "DEV_CORE/Scripts/test_agent_conformity.ps1",
+          188
+        ],
+        [
+          "DEV_CORE/Scripts/test_auto_skills_pipeline.ps1",
+          188
+        ],
+        [
+          "DEV_CORE/Scripts/test_ci_timeout_contract.ps1",
+          188
+        ],
+        [
+          "DEV_CORE/Scripts/test_gateway.ps1",
+          188
+        ],
+        [
+          "DEV_CORE/Scripts/test_learning_service.ps1",
+          188
+        ],
+        [
+          "DEV_CORE/Scripts/test_qdrant_vector_contract.ps1",
+          188
+        ],
+        [
+          "DEV_CORE/Scripts/test_verify_ci.ps1",
+          188
+        ],
+        [
+          "DEV_CORE/Scripts/Auto/task_git_scanner.ps1",
+          188
+        ],
+        [
+          "DEV_CORE/Scripts/Auto/task_spec_parser.ps1",
+          188
+        ],
+        [
+          "DEV_CORE/Tools/devcore/ask_confirm.py",
+          188
+        ],
+        [
+          "DEV_CORE/Tools/devcore/bootstrap_types.py",
+          188
+        ],
+        [
+          "DEV_CORE/Scripts/diagnose.ps1",
+          188
+        ],
+        [
+          "DEV_CORE/Scripts/task_sync.ps1",
+          188
+        ],
+        [
+          "DEV_CORE/Scripts/adapt_client.ps1",
+          94
+        ],
+        [
+          "DEV_CORE/Scripts/ci_lint.ps1",
+          94
+        ],
+        [
+          "DEV_CORE/Scripts/endday_check.ps1",
+          94
+        ],
+        [
+          "DEV_CORE/Scripts/ensure_repowise_ipv6_proxy.ps1",
+          94
+        ],
+        [
+          "DEV_CORE/Scripts/gen_session_context.ps1",
+          94
+        ],
+        [
+          "DEV_CORE/Scripts/headroom_start.ps1",
+          94
+        ],
+        [
+          "DEV_CORE/Scripts/init_agent_env.ps1",
+          94
+        ],
+        [
+          "DEV_CORE/Scripts/memory_hierarchy.ps1",
+          94
+        ],
+        [
+          "DEV_CORE/Scripts/obsidian_sync.ps1",
+          94
+        ],
+        [
+          "DEV_CORE/Scripts/session_end.ps1",
+          94
+        ],
+        [
+          "DEV_CORE/Scripts/session_start.ps1",
+          94
+        ],
+        [
+          "DEV_CORE/Scripts/test_autonomy.ps1",
+          94
+        ],
+        [
+          "DEV_CORE/Scripts/test_benchmark_pipeline.ps1",
+          94
+        ],
+        [
+          "DEV_CORE/Scripts/test_ci_workflow.ps1",
+          94
+        ],
+        [
+          "DEV_CORE/Scripts/test_context_service.ps1",
+          94
+        ],
+        [
+          "DEV_CORE/Scripts/test_dashboard_auth_contract.ps1",
+          94
+        ],
+        [
+          "DEV_CORE/Scripts/test_dashboard_cockpit_contract.ps1",
+          94
+        ],
+        [
+          "DEV_CORE/Scripts/test_dashboard_mutation_methods.ps1",
+          94
+        ]
+      ],
+      "top_missing_targets": [
+        [
+          "function:UNKNOWN/str",
+          2773
+        ],
+        [
+          "function:UNKNOWN/open",
+          2068
+        ],
+        [
+          "function:UNKNOWN/get_paths",
+          1504
+        ],
+        [
+          "function:UNKNOWN/len",
+          1504
+        ],
+        [
+          "function:UNKNOWN/InvalidStateTransition",
+          1175
+        ],
+        [
+          "function:UNKNOWN/run_python_script",
+          987
+        ],
+        [
+          "function:UNKNOWN/ZoneInfo",
+          940
+        ],
+        [
+          "function:UNKNOWN/Path",
+          846
+        ],
+        [
+          "function:UNKNOWN/SchedulerJobCommand",
+          846
+        ],
+        [
+          "function:UNKNOWN/print",
+          799
+        ],
+        [
+          "function:UNKNOWN/isinstance",
+          752
+        ],
+        [
+          "function:UNKNOWN/SchedulerJob",
+          752
+        ],
+        [
+          "function:UNKNOWN/next",
+          705
+        ],
+        [
+          "function:UNKNOWN/patch",
+          705
+        ],
+        [
+          "function:UNKNOWN/compute_next_run",
+          705
+        ],
+        [
+          "function:UNKNOWN/timedelta",
+          705
+        ],
+        [
+          "function:UNKNOWN/SchedulerJobSchedule",
+          658
+        ],
+        [
+          "function:UNKNOWN/get_active_project",
+          611
+        ],
+        [
+          "function:UNKNOWN/any",
+          611
+        ],
+        [
+          "function:UNKNOWN/WorkflowExecutor",
+          611
+        ],
+        [
+          "function:UNKNOWN/ValueError",
+          517
+        ],
+        [
+          "function:UNKNOWN/datetime",
+          517
+        ],
+        [
+          "service:docs",
+          470
+        ],
+        [
+          "class:UNKNOWN/AgentRunner",
+          376
+        ],
+        [
+          "function:UNKNOWN/validate_contract",
+          376
+        ],
+        [
+          "function:UNKNOWN/list",
+          376
+        ],
+        [
+          "function:UNKNOWN/KeyError",
+          376
+        ],
+        [
+          "function:UNKNOWN/SchedulerJobState",
+          376
+        ],
+        [
+          "function:UNKNOWN/StateEngine",
+          376
+        ],
+        [
+          "function:UNKNOWN/int",
+          329
+        ],
+        [
+          "function:UNKNOWN/round",
+          282
+        ],
+        [
+          "function:UNKNOWN/sorted",
+          282
+        ],
+        [
+          "function:UNKNOWN/recommend_engine",
+          282
+        ],
+        [
+          "function:UNKNOWN/EventBus",
+          282
+        ],
+        [
+          "function:UNKNOWN/apply_rtk",
+          282
+        ],
+        [
+          "function:UNKNOWN/HermesAgentRunner",
+          235
+        ],
+        [
+          "function:UNKNOWN/max",
+          235
+        ],
+        [
+          "function:UNKNOWN/dfs",
+          235
+        ],
+        [
+          "function:UNKNOWN/run_powershell_script",
+          235
+        ],
+        [
+          "function:UNKNOWN/LocalProcessAgentRunner",
+          188
+        ],
+        [
+          "function:UNKNOWN/CodexManualAgentRunner",
+          188
+        ],
+        [
+          "function:UNKNOWN/build_bootstrap_payload",
+          188
+        ],
+        [
+          "function:UNKNOWN/build_prepare_payload",
+          188
+        ],
+        [
+          "function:UNKNOWN/min",
+          188
+        ],
+        [
+          "function:UNKNOWN/flush",
+          188
+        ],
+        [
+          "function:UNKNOWN/BootstrapBlock",
+          188
+        ],
+        [
+          "function:UNKNOWN/set",
+          188
+        ],
+        [
+          "function:UNKNOWN/enqueue_refresh_job",
+          188
+        ],
+        [
+          "function:UNKNOWN/_missions_path",
+          188
+        ],
+        [
+          "function:UNKNOWN/DevCorePaths",
+          188
+        ],
+        [
+          "class:UNKNOWN/BaseModel",
+          188
+        ],
+        [
+          "function:UNKNOWN/cls",
+          188
+        ],
+        [
+          "function:UNKNOWN/_append_jsonl",
+          188
+        ],
+        [
+          "function:UNKNOWN/MagicMock",
+          188
+        ],
+        [
+          "function:UNKNOWN/original_run_step",
+          188
+        ],
+        [
+          "function:UNKNOWN/BootstrapDirective",
+          141
+        ],
+        [
+          "function:UNKNOWN/_canonicalize_root",
+          141
+        ],
+        [
+          "function:UNKNOWN/sync_tasks",
+          141
+        ],
+        [
+          "function:UNKNOWN/complete_active_task",
+          141
+        ],
+        [
+          "function:UNKNOWN/sum",
+          141
+        ],
+        [
+          "function:UNKNOWN/emit_event",
+          141
+        ],
+        [
+          "function:UNKNOWN/check_port",
+          141
+        ],
+        [
+          "class:UNKNOWN/ABC",
+          94
+        ],
+        [
+          "function:UNKNOWN/interpret_french_prompt",
+          94
+        ],
+        [
+          "function:UNKNOWN/asdict",
+          94
+        ],
+        [
+          "function:UNKNOWN/render_confirmation_text",
+          94
+        ],
+        [
+          "function:UNKNOWN/_detect_project_id",
+          94
+        ],
+        [
+          "function:UNKNOWN/_detect_task_type",
+          94
+        ],
+        [
+          "function:UNKNOWN/AskInterpretation",
+          94
+        ],
+        [
+          "function:UNKNOWN/_build_intent",
+          94
+        ],
+        [
+          "function:UNKNOWN/_build_context_summary",
+          94
+        ],
+        [
+          "function:UNKNOWN/parse_bootstrap_markdown",
+          94
+        ],
+        [
+          "function:UNKNOWN/detect_bootstrap_context",
+          94
+        ],
+        [
+          "function:UNKNOWN/resolve_bootstrap",
+          94
+        ],
+        [
+          "function:UNKNOWN/BootstrapContext",
+          94
+        ],
+        [
+          "function:UNKNOWN/BootstrapResult",
+          94
+        ],
+        [
+          "function:UNKNOWN/_matches",
+          94
+        ],
+        [
+          "function:UNKNOWN/build_ask_launch_payload",
+          94
+        ],
+        [
+          "function:UNKNOWN/create_session",
+          94
+        ],
+        [
+          "function:UNKNOWN/write_router_decision",
+          94
+        ],
+        [
+          "function:UNKNOWN/log_prepare_event",
+          94
+        ],
+        [
+          "function:UNKNOWN/lru_cache",
+          94
+        ],
+        [
+          "function:UNKNOWN/Draft202012Validator",
+          94
+        ],
+        [
+          "function:UNKNOWN/_load_schema",
+          94
+        ],
+        [
+          "function:UNKNOWN/tuple",
+          94
+        ],
+        [
+          "function:UNKNOWN/get_crg_nodes_edges",
+          94
+        ],
+        [
+          "function:UNKNOWN/resolve_files",
+          94
+        ],
+        [
+          "function:UNKNOWN/parse_python",
+          94
+        ],
+        [
+          "function:UNKNOWN/parse_powershell",
+          94
+        ],
+        [
+          "function:UNKNOWN/listener",
+          94
+        ],
+        [
+          "function:UNKNOWN/_validate_session_id",
+          94
+        ],
+        [
+          "function:UNKNOWN/FileNotFoundError",
+          94
+        ],
+        [
+          "function:UNKNOWN/WorkflowChecker",
+          94
+        ],
+        [
+          "function:UNKNOWN/get_agent_runner",
+          94
+        ],
+        [
+          "function:UNKNOWN/_append_jsonl_durable",
+          94
+        ],
+        [
+          "function:UNKNOWN/load_harness_profiles",
+          94
+        ],
+        [
+          "function:UNKNOWN/log_outcome_event",
+          94
+        ],
+        [
+          "class:UNKNOWN/ValueError",
+          94
+        ],
+        [
+          "function:UNKNOWN/WorkflowDefinition",
+          94
+        ],
+        [
+          "function:UNKNOWN/RejectingChecker",
+          94
+        ]
+      ],
+      "relation_types": {
+        "file_function": 48410,
+        "file_imports": 24769,
+        "class_inherits": 940,
+        "function_calls": 33417,
+        "file_service": 470
+      },
+      "examples": [
+        {
+          "rowid": 1,
+          "from_node": "DEV_CORE/Scripts/adapt_client.ps1",
+          "to_node": "function:DEV_CORE/Scripts/adapt_client.ps1/Detect-Client",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 2,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/Ensure-AutoSkillDirs",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 3,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/New-EmptyRegistry",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 4,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/Read-Registry",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 5,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/Write-Registry",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 6,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/ConvertTo-SkillName",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 7,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/Get-FileHashHex",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 8,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/Read-JsonLines",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 9,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/Read-AllEvents",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 10,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/Get-RegistryEntry",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 11,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/Set-RegistryEntry",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 12,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/New-CandidateSkill",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 13,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/Invoke-Detect",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 14,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/Invoke-Promote",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 15,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/Invoke-Reject",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 16,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/Invoke-List",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 17,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/Invoke-Candidates",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 18,
+          "from_node": "DEV_CORE/Scripts/auto_skill_service.ps1",
+          "to_node": "function:DEV_CORE/Scripts/auto_skill_service.ps1/Invoke-Status",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 19,
+          "from_node": "DEV_CORE/Scripts/benchmark_reference.ps1",
+          "to_node": "function:DEV_CORE/Scripts/benchmark_reference.ps1/Measure-DevCoreAction",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        },
+        {
+          "rowid": 20,
+          "from_node": "DEV_CORE/Scripts/benchmark_reference.ps1",
+          "to_node": "function:DEV_CORE/Scripts/benchmark_reference.ps1/Get-Percentile",
+          "type": "file_function",
+          "properties": "{\"confidence\": \"INFERRED\"}",
+          "source_missing": true,
+          "target_missing": false
+        }
+      ]
+    }
+  },
+  "repair_policy": {
+    "automatic_repair": false,
+    "required_evidence": [
+      "exact_node_id",
+      "source_content_or_signature",
+      "project_scope"
+    ],
+    "unresolved_disposition": "retain_in_quarantine"
+  }
+}

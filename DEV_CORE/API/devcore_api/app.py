@@ -2,6 +2,7 @@ from uuid import uuid4
 import json
 
 import os
+import asyncio
 import re
 import sys
 import time
@@ -11,7 +12,7 @@ from pathlib import Path
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 DEVCORE_BASE = Path(__file__).resolve().parents[2]
@@ -25,8 +26,14 @@ from devcore_engine.services.task_mutations import (
     transition_task_usecase,
     validate_safe_id as validate_safe_mutation_id,
 )
+from devcore_engine.services.postgres_task_mutations import PostgresTaskMutations
+from devcore_engine.services.postgres_project_reads import PostgresProjectReader
+from devcore_engine.services.postgres_project_events import PostgresProjectEventReader, validate_event_cursor
+from devcore_engine.services.postgres_dashboard import PostgresDashboardProjection
 
 from .contracts import ContractCatalog, TaskListResponse, build_contract_catalog
+from .team_cockpit import render_team_cockpit
+from .team_login import render_team_login
 from .github_webhooks import (
     GitHubWebhookAccepted,
     build_github_webhook_response,
@@ -37,6 +44,7 @@ from .ports import (
     TaskBoardInvalid,
     TaskBoardNotFound,
     TaskRepository,
+    PostgresTaskRepository,
     canonical_db_status,
     configured_task_repository,
     default_data_root,
@@ -63,6 +71,11 @@ SAFE_RUN_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 
 
 def resolve_api_db_path(task_repository: TaskRepository | None = None) -> Path | None:
+    if (
+        os.environ.get("DEVCORE_TASK_READ_MODE", "").strip().lower() == "postgres"
+        or isinstance(task_repository, PostgresTaskRepository)
+    ):
+        raise RuntimeError("PostgreSQL team task routes cannot use the SQLite task database")
     if hasattr(task_repository, "db_path"):
         return Path(task_repository.db_path)
     if hasattr(task_repository, "sql_repository") and hasattr(task_repository.sql_repository, "db_path"):
@@ -146,6 +159,13 @@ def resolve_identity_store_path() -> Path | None:
     return None
 
 
+def resolve_postgres_identity_dsn() -> str | None:
+    if os.environ.get("DEVCORE_IDENTITY_READ_MODE", "").lower() != "postgres":
+        return None
+    value = os.environ.get("DEVCORE_DATABASE_URL", "").strip()
+    return value or None
+
+
 def trusted_session_origin(
     request: Request,
     allowed_origins: list[str] | None = None,
@@ -196,6 +216,30 @@ def create_app(
         if active_run_engine is None:
             active_run_engine = DurableRunEngine()
         return active_run_engine
+
+    def team_task_mutations() -> PostgresTaskMutations | None:
+        if not (
+            isinstance(task_repository, PostgresTaskRepository)
+            or os.environ.get("DEVCORE_TASK_READ_MODE", "").strip().lower() == "postgres"
+        ):
+            return None
+        dsn = os.environ.get("DEVCORE_DATABASE_URL", "").strip()
+        if not dsn:
+            raise ValueError("DEVCORE_DATABASE_URL is required for PostgreSQL task mutations")
+        return PostgresTaskMutations(dsn)
+
+    def team_project_reader() -> PostgresProjectReader | None:
+        if not (
+            isinstance(task_repository, PostgresTaskRepository)
+            or os.environ.get("DEVCORE_TASK_READ_MODE", "").strip().lower() == "postgres"
+        ):
+            return None
+        dsn = os.environ.get("DEVCORE_DATABASE_URL", "").strip()
+        if not dsn:
+            raise ValueError("DEVCORE_DATABASE_URL is required for PostgreSQL project reads")
+        return PostgresProjectReader(dsn)
+
+    project_stream_slots = asyncio.Semaphore(32)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -261,6 +305,7 @@ def create_app(
         method = request.method
 
         public_exact = {
+            "/login",
             f"{API_PREFIX}/health",
             "/api/health",
             f"{API_PREFIX}/contracts",
@@ -355,7 +400,10 @@ def create_app(
             )
 
         identity_path = resolve_identity_store_path()
-        if not identity_path or not identity_path.is_file():
+        postgres_identity_dsn = resolve_postgres_identity_dsn()
+        if postgres_identity_dsn:
+            identity_path = None
+        elif not identity_path or not identity_path.is_file():
             return build_error_response(
                 request=request,
                 status_code=503,
@@ -368,17 +416,23 @@ def create_app(
             AuthenticationRequired,
             IdentityUnavailable,
             ProjectAccessDenied,
+            PostgresIdentityProvider,
             SqliteIdentityProvider,
         )
 
         try:
             if browser_secret:
-                from devcore_engine.security.browser_sessions import authorize_session
+                if postgres_identity_dsn:
+                    from devcore_engine.security.postgres_browser_sessions import authorize_session
+                    identity_source = postgres_identity_dsn
+                else:
+                    from devcore_engine.security.browser_sessions import authorize_session
+                    identity_source = identity_path
 
                 origin = trusted_session_origin(request, allowed_origins, require_origin=method != "GET")
                 session = await asyncio.to_thread(
                     authorize_session,
-                    identity_path,
+                    identity_source,
                     browser_secret,
                     project,
                     action,
@@ -390,7 +444,8 @@ def create_app(
                 session_id = session.session_id
                 request.state.browser_session = session
             else:
-                provider = SqliteIdentityProvider(identity_path)
+                provider = (PostgresIdentityProvider(postgres_identity_dsn)
+                            if postgres_identity_dsn else SqliteIdentityProvider(identity_path))
                 principal = await asyncio.to_thread(provider.authorize, authorization, project, action)
                 session_id = None
         except AuthenticationRequired as exc:
@@ -916,10 +971,14 @@ def create_app(
         if not project or not task_id:
             return build_error_response(request=request, status_code=400, code="invalid_arguments",
                                         message="project and task_id required")
-        db_path = resolve_api_db_path(task_repository)
         context = getattr(request.state, "request_context", None)
         try:
-            success, msg = complete_task_usecase(project, task_id, expected_version, context=context, db_path=db_path)
+            team_store = team_task_mutations()
+            if team_store is not None:
+                success, msg = team_store.transition(project, task_id, "complete", expected_version, context)
+            else:
+                db_path = resolve_api_db_path(task_repository)
+                success, msg = complete_task_usecase(project, task_id, expected_version, context=context, db_path=db_path)
             if not success:
                 return build_error_response(request=request, status_code=404, code="task_not_found", message=msg)
             return JSONResponse(status_code=200, content={"status": "success", "message": msg, "project": project, "task_id": task_id})
@@ -950,10 +1009,14 @@ def create_app(
         if not project or not task_id:
             return build_error_response(request=request, status_code=400, code="invalid_arguments",
                                         message="project and task_id required")
-        db_path = resolve_api_db_path(task_repository)
         context = getattr(request.state, "request_context", None)
         try:
-            ok = transition_task_usecase(project, task_id, "pause", expected_version, context=context, db_path=db_path)
+            team_store = team_task_mutations()
+            if team_store is not None:
+                ok, _ = team_store.transition(project, task_id, "pause", expected_version, context)
+            else:
+                db_path = resolve_api_db_path(task_repository)
+                ok = transition_task_usecase(project, task_id, "pause", expected_version, context=context, db_path=db_path)
             if not ok:
                 return build_error_response(request=request, status_code=404, code="task_not_found", message="Task not found")
             return JSONResponse(status_code=200, content={"status": "success", "message": f"Task {task_id} paused", "project": project, "task_id": task_id})
@@ -984,10 +1047,14 @@ def create_app(
         if not project or not task_id:
             return build_error_response(request=request, status_code=400, code="invalid_arguments",
                                         message="project and task_id required")
-        db_path = resolve_api_db_path(task_repository)
         context = getattr(request.state, "request_context", None)
         try:
-            ok = transition_task_usecase(project, task_id, "resume", expected_version, context=context, db_path=db_path)
+            team_store = team_task_mutations()
+            if team_store is not None:
+                ok, _ = team_store.transition(project, task_id, "resume", expected_version, context)
+            else:
+                db_path = resolve_api_db_path(task_repository)
+                ok = transition_task_usecase(project, task_id, "resume", expected_version, context=context, db_path=db_path)
             if not ok:
                 return build_error_response(request=request, status_code=404, code="task_not_found", message="Task not found")
             return JSONResponse(status_code=200, content={"status": "success", "message": f"Task {task_id} resumed", "project": project, "task_id": task_id})
@@ -1018,10 +1085,14 @@ def create_app(
         if not project or not task_id:
             return build_error_response(request=request, status_code=400, code="invalid_arguments",
                                         message="project and task_id required")
-        db_path = resolve_api_db_path(task_repository)
         context = getattr(request.state, "request_context", None)
         try:
-            ok = delete_task_usecase(project, task_id, expected_version, context=context, db_path=db_path)
+            team_store = team_task_mutations()
+            if team_store is not None:
+                ok, _ = team_store.transition(project, task_id, "delete", expected_version, context)
+            else:
+                db_path = resolve_api_db_path(task_repository)
+                ok, _ = delete_task_usecase(project, task_id, expected_version, context=context, db_path=db_path)
             if not ok:
                 return build_error_response(request=request, status_code=404, code="task_not_found", message="Task not found")
             return JSONResponse(status_code=200, content={"status": "success", "message": f"Task {task_id} deleted", "project": project, "task_id": task_id})
@@ -1048,6 +1119,13 @@ def create_app(
         project = authorized_project or body_project
         if not project:
             return build_error_response(request=request, status_code=400, code="invalid_arguments", message="project required")
+        team_store = team_task_mutations()
+        if team_store is not None:
+            try:
+                active = team_store.next_task(project, getattr(request.state, "request_context", None))
+            except TaskMutationConflict as exc:
+                return build_error_response(request=request, status_code=409, code=exc.code, message=str(exc))
+            return JSONResponse(status_code=200, content={"status": "success", "task": active})
         db_path = resolve_api_db_path(task_repository)
         if not db_path or not db_path.is_file():
             return build_error_response(request=request, status_code=404, code="database_not_found", message="Task database not found")
@@ -1080,6 +1158,18 @@ def create_app(
         depends_on = data.get("depends_on")
         if not project or not title:
             return build_error_response(request=request, status_code=400, code="invalid_arguments", message="project and title required")
+        team_store = team_task_mutations()
+        if team_store is not None:
+            try:
+                created = team_store.create(
+                    project, title, mode, steps, depends_on,
+                    getattr(request.state, "request_context", None),
+                )
+            except TaskMutationConflict as exc:
+                return build_error_response(request=request, status_code=409, code=exc.code, message=str(exc))
+            except ValueError as exc:
+                return build_error_response(request=request, status_code=400, code="invalid_arguments", message=str(exc))
+            return JSONResponse(status_code=201, content={"status": "success", "task": created})
         db_path = resolve_api_db_path(task_repository)
         if not db_path or not db_path.is_file():
             return build_error_response(request=request, status_code=404, code="database_not_found", message="Task database not found")
@@ -1115,6 +1205,50 @@ def create_app(
         ]
         return JSONResponse(status_code=200, content=tasks_list)
 
+    def team_dashboard_snapshot(request: Request, project: str) -> dict | JSONResponse:
+        if team_project_reader() is None:
+            return build_error_response(request=request, status_code=503,
+                                        code="team_dashboard_unavailable",
+                                        message="PostgreSQL team dashboard required")
+        principal = getattr(request.state, "principal", None)
+        if principal is None:
+            return build_error_response(request=request, status_code=401,
+                                        code="individual_credential_required",
+                                        message="Individual credential required")
+        if principal.project_id != project:
+            return build_error_response(request=request, status_code=403,
+                                        code="project_access_denied",
+                                        message="Project action denied")
+        dsn = os.environ.get("DEVCORE_DATABASE_URL", "").strip()
+        return PostgresDashboardProjection(dsn).snapshot(principal)
+
+    @app.get("/api/dashboard", tags=["projects"])
+    @app.get(f"{API_PREFIX}/projects/dashboard", tags=["projects"])
+    def postgres_dashboard(request: Request, project: str) -> JSONResponse:
+        snapshot = team_dashboard_snapshot(request, project)
+        return snapshot if isinstance(snapshot, JSONResponse) else JSONResponse(status_code=200, content=snapshot)
+
+    @app.get("/login", tags=["projects"])
+    def postgres_login(project: str) -> HTMLResponse:
+        project = validate_project_id(project)
+        if team_project_reader() is None:
+            raise HTTPException(status_code=503, detail="PostgreSQL team dashboard required")
+        return HTMLResponse(render_team_login(project), headers={"Cache-Control": "no-store"})
+
+    @app.get("/cockpit", tags=["projects"])
+    @app.get("/cockpit/terminal", tags=["projects"])
+    @app.get("/index.html", tags=["projects"])
+    @app.get("/index_terminal.html", tags=["projects"])
+    def postgres_cockpit(request: Request, project: str) -> Response:
+        snapshot = team_dashboard_snapshot(request, project)
+        if isinstance(snapshot, JSONResponse):
+            return snapshot
+        page = render_team_cockpit(
+            DEVCORE_BASE / "Dashboard", snapshot,
+            terminal=request.url.path.endswith("/terminal") or request.url.path == "/index_terminal.html",
+        )
+        return HTMLResponse(page, headers={"Cache-Control": "no-store"})
+
     @app.get(f"{API_PREFIX}/project/context", tags=["projects"])
     @app.get("/api/project/context", tags=["legacy_facades"], deprecated=True)
     def get_project_context_endpoint(
@@ -1138,13 +1272,17 @@ def create_app(
         budget = max_bytes if budget_bytes is None else budget_bytes
         if budget > max_bytes:
             raise HTTPException(status_code=422, detail="Requested budget exceeds server context limit")
-        db_path = resolve_api_db_path(task_repository)
-        if not db_path or not db_path.is_file():
-            raise HTTPException(status_code=503, detail="Registered project context unavailable")
         try:
-            result = load_registered_project_context(
-                db_path, principal, budget_bytes=budget, query=query
-            )
+            team_reader = team_project_reader()
+            if team_reader is not None:
+                result = team_reader.context(principal, budget_bytes=budget, query=query)
+            else:
+                db_path = resolve_api_db_path(task_repository)
+                if not db_path or not db_path.is_file():
+                    raise ProjectContextUnavailable("Registered project context unavailable")
+                result = load_registered_project_context(
+                    db_path, principal, budget_bytes=budget, query=query
+                )
         except ContextBudgetExceeded as exc:
             raise HTTPException(status_code=413, detail=str(exc)) from exc
         except ProjectContextUnavailable as exc:
@@ -1176,18 +1314,21 @@ def create_app(
             principal is None or principal.project_id != project or principal.action != AUDIT_READ
         ):
             raise HTTPException(status_code=403, detail="Individual task audit admission required")
-        db_path = resolve_api_db_path(task_repository)
-        if not db_path or not db_path.is_file():
-            raise HTTPException(status_code=503, detail={"code": "task_audit_unavailable", "message": "Database unavailable"})
         try:
-            result = await asyncio.to_thread(
-                read_task_audit,
-                db_path,
-                principal,
-                limit=limit,
-                before_id=before_id,
-                task_id=task_id,
-            )
+            team_reader = team_project_reader()
+            if team_reader is not None:
+                result = await asyncio.to_thread(
+                    team_reader.task_audit, principal, limit=limit,
+                    before_id=before_id, task_id=task_id,
+                )
+            else:
+                db_path = resolve_api_db_path(task_repository)
+                if not db_path or not db_path.is_file():
+                    raise TaskAuditUnavailable("Task audit database unavailable")
+                result = await asyncio.to_thread(
+                    read_task_audit, db_path, principal, limit=limit,
+                    before_id=before_id, task_id=task_id,
+                )
         except (InvalidAuditCursor, ValueError):
             raise HTTPException(status_code=400, detail={"code": "invalid_audit_arguments", "message": "Invalid scoped audit arguments"})
         except TaskAuditUnavailable:
@@ -1198,17 +1339,101 @@ def create_app(
             headers={"Cache-Control": "no-store"},
         )
 
+    @app.get(f"{API_PREFIX}/projects/events/stream", tags=["projects"])
+    @app.get("/api/dashboard/stream", tags=["legacy_facades"], deprecated=True)
+    async def project_events_stream(request: Request, project: str) -> StreamingResponse:
+        from devcore_engine.security.identity import PostgresIdentityProvider
+
+        if not (require_auth if require_auth is not None else is_auth_enforced()):
+            raise HTTPException(status_code=403, detail="Individual admission required")
+        principal = getattr(request.state, "principal", None)
+        if principal is None or principal.project_id != project or principal.action != "task.read":
+            raise HTTPException(status_code=403, detail="Project read admission required")
+        dsn = resolve_postgres_identity_dsn()
+        if not dsn or team_project_reader() is None:
+            raise HTTPException(status_code=503, detail="Project event stream unavailable")
+        try:
+            after_id = validate_event_cursor(request.headers.get("Last-Event-ID"))
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        reader = PostgresProjectEventReader(dsn)
+        stream_lifetime = max(2, min(120, int(os.environ.get("DEVCORE_PROJECT_STREAM_MAX_SECONDS", "120"))))
+        authorization = request.headers.get("Authorization", "").strip()
+        secret = request.cookies.get("devcore_session") if not authorization else None
+        origin = trusted_session_origin(request, allowed_origins)
+        try:
+            await asyncio.wait_for(project_stream_slots.acquire(), timeout=0.02)
+        except TimeoutError as exc:
+            raise HTTPException(status_code=503, detail="Stream capacity reached",
+                                headers={"Retry-After": "5"}) from exc
+
+        async def credential_still_valid() -> bool:
+            try:
+                if authorization:
+                    admitted = await asyncio.to_thread(
+                        PostgresIdentityProvider(dsn).authorize,
+                        authorization, project, "task.read",
+                    )
+                else:
+                    from devcore_engine.security.postgres_browser_sessions import authorize_session
+                    session = await asyncio.to_thread(
+                        authorize_session, dsn, secret, project, "task.read", origin,
+                        mutate=False,
+                    )
+                    admitted = session.principal
+                return admitted.user_id == principal.user_id
+            except Exception:
+                return False
+
+        async def frames():
+            cursor = after_id
+            elapsed = 0
+            last_resync_cursor = object()
+            shutdown_event = getattr(request.app.state, "managed_shutdown_event", None)
+            try:
+                while (elapsed < stream_lifetime
+                       and (shutdown_event is None or not shutdown_event.is_set())
+                       and not await request.is_disconnected()):
+                    if not await credential_still_valid():
+                        break
+                    ids, cursor, resync = await asyncio.to_thread(reader.changes, project, cursor)
+                    sent = False
+                    if resync and cursor != last_resync_cursor:
+                        payload = json.dumps({"schema_version": 1, "has_changes": True,
+                                              "snapshot_required": True}, separators=(",", ":"))
+                        yield f"event: dashboard.delta\ndata: {payload}\n"
+                        if cursor:
+                            yield f"id: {cursor}\n"
+                        yield "\n"
+                        last_resync_cursor = cursor
+                        sent = True
+                    else:
+                        for event_id in ids:
+                            yield ("event: dashboard.delta\n"
+                                   "data: {\"schema_version\":1,\"has_changes\":true}\n"
+                                   f"id: {event_id}\n\n")
+                    if not ids and not sent:
+                        yield ": heartbeat\n\n"
+                    await asyncio.sleep(2)
+                    elapsed += 2
+            finally:
+                project_stream_slots.release()
+
+        return StreamingResponse(frames(), media_type="text/event-stream",
+                                 headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})
+
     @app.api_route(f"{API_PREFIX}/auth/session", methods=["GET", "POST", "DELETE"], tags=["auth"])
     @app.api_route("/api/auth/session", methods=["GET", "POST", "DELETE"], tags=["legacy_facades"], deprecated=True)
     async def browser_session_route(request: Request) -> Response:
         from devcore_engine.security.identity import AuthenticationRequired, IdentityUnavailable, ProjectAccessDenied
         from devcore_engine.security.browser_sessions import (
-            COOKIE, create_session, csrf_for_session, session_info, authorize_session, revoke_session,
+            COOKIE, csrf_for_session,
         )
         import asyncio
         origin = trusted_session_origin(request, allowed_origins, require_origin=request.method != "GET")
         identity_path = resolve_identity_store_path()
-        if not identity_path or not identity_path.is_file():
+        postgres_identity_dsn = resolve_postgres_identity_dsn()
+        if (not identity_path or not identity_path.is_file()) and not postgres_identity_dsn:
             return build_error_response(request=request, status_code=503, code="identity_unavailable", message="Individual identity store unavailable")
         secret = request.cookies.get(COOKIE)
         try:
@@ -1224,26 +1449,45 @@ def create_app(
                 if authorization:
                     if "user_id" in data or "password" in data:
                         return build_error_response(request=request, status_code=400, code="invalid_arguments", message="Mixed authentication methods")
-                    session, secret = await asyncio.to_thread(
-                        create_session, identity_path, authorization, project, origin, previous=secret,
-                    )
-                else:
-                    from devcore_engine.security.passwords import create_password_session, LoginBusy
-                    user_id = validate_project_id(data.get("user_id"))
-                    try:
+                    if postgres_identity_dsn:
+                        from devcore_engine.security.postgres_browser_sessions import create_session
                         session, secret = await asyncio.to_thread(
-                            create_password_session, identity_path, user_id, data.get("password"), project, origin, previous=secret,
+                            create_session, postgres_identity_dsn, authorization, project, origin, previous=secret,
                         )
-                    except LoginBusy:
-                        raise HTTPException(status_code=429, detail="Login capacity reached", headers={"Retry-After": "1"})
+                    else:
+                        from devcore_engine.security.browser_sessions import create_session
+                        session, secret = await asyncio.to_thread(
+                            create_session, identity_path, authorization, project, origin, previous=secret,
+                        )
+                else:
+                    if postgres_identity_dsn:
+                        from devcore_engine.security.postgres_password_sessions import create_password_session
+                        user_id = validate_project_id(data.get("user_id"))
+                        session, secret = await asyncio.to_thread(
+                            create_password_session, postgres_identity_dsn, user_id, data.get("password"), project, origin, previous=secret,
+                        )
+                    else:
+                        from devcore_engine.security.passwords import create_password_session, LoginBusy
+                        user_id = validate_project_id(data.get("user_id"))
+                        try:
+                            session, secret = await asyncio.to_thread(
+                                create_password_session, identity_path, user_id, data.get("password"), project, origin, previous=secret,
+                            )
+                        except LoginBusy:
+                            raise HTTPException(status_code=429, detail="Login capacity reached", headers={"Retry-After": "1"})
             else:
-                session = await asyncio.to_thread(session_info, identity_path, secret, origin)
+                if postgres_identity_dsn:
+                    from devcore_engine.security.postgres_browser_sessions import session_info, authorize_session, revoke_session
+                    session = await asyncio.to_thread(session_info, postgres_identity_dsn, secret, origin)
+                else:
+                    from devcore_engine.security.browser_sessions import session_info, authorize_session, revoke_session
+                    session = await asyncio.to_thread(session_info, identity_path, secret, origin)
                 if request.method == "DELETE":
                     await asyncio.to_thread(
-                        authorize_session, identity_path, secret, session.project_id, "task.read", origin,
+                        authorize_session, postgres_identity_dsn if postgres_identity_dsn else identity_path, secret, session.project_id, "task.read", origin,
                         csrf=request.headers.get("X-CSRF-Token"), mutate=True,
                     )
-                    await asyncio.to_thread(revoke_session, identity_path, secret)
+                    await asyncio.to_thread(revoke_session, postgres_identity_dsn if postgres_identity_dsn else identity_path, secret)
             content = {
                 "user_id": session.principal.user_id,
                 "project": session.project_id,

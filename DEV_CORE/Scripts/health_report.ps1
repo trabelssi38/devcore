@@ -1,4 +1,5 @@
 # Delegator wrapper for Python devcore_engine health report
+param([switch]$Json)
 $DEV_CORE = if ($env:DEVCORE_PLATFORM_ROOT -and (Test-Path (Join-Path $env:DEVCORE_PLATFORM_ROOT "Scripts\platform_version.ps1"))) {
     $env:DEVCORE_PLATFORM_ROOT
 } elseif (Test-Path (Join-Path $PSScriptRoot "platform_version.ps1")) {
@@ -16,5 +17,9 @@ if ($DEV_CORE -match '[/\\]Scripts[/\\]?$') {
 $env:PYTHONPATH = $DEV_CORE
 . (Join-Path $PSScriptRoot "platform_version.ps1")
 $pythonExe = Get-DevCorePython
-& $pythonExe -m devcore_engine.cli diagnose $args
+if ($Json) {
+    & $pythonExe -m devcore_engine.cli diagnose --json
+} else {
+    & $pythonExe -m devcore_engine.cli diagnose @args
+}
 exit $LASTEXITCODE

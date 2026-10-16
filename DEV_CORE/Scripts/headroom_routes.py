@@ -217,8 +217,17 @@ def main():
         import uvicorn
         app = RouteGuard(create_app(ProxyConfig(**config)), args.route)
         from service_runtime import run_managed
-        run_managed(app, host=config["host"], port=config["port"],
-            service='headroom-' + args.route, proxy_headers=False)
+        try:
+            run_managed(app, host=config["host"], port=config["port"],
+                service='headroom-' + args.route, proxy_headers=False)
+        finally:
+            # Headroom keeps a rotating proxy.log handler open on Windows.
+            # Release it before TemporaryDirectory removes process-local state.
+            import logging
+            logger = logging.getLogger("headroom")
+            for handler in list(logger.handlers):
+                logger.removeHandler(handler)
+                handler.close()
 
 
 if __name__ == "__main__":

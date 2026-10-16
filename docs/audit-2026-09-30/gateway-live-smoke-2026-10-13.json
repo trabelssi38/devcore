@@ -1,0 +1,25 @@
+{
+  "report_version": 1,
+  "created_utc": "2026-10-13T22:50:00Z",
+  "status": "gateway_live_smoke_passed",
+  "scope": "ephemeral Uvicorn process with temporary local/data roots",
+  "endpoint": "http://127.0.0.1:20131/api/v1/health",
+  "http_status": 200,
+  "body": {
+    "schema_version": 1,
+    "service": "devcore-api",
+    "status": "ok",
+    "api_version": "v1"
+  },
+  "lifecycle": {
+    "started": true,
+    "stopped_after_probe": true,
+    "active_data_modified": false
+  },
+  "blockers": [
+    "repowise_index_refresh_and_live_health",
+    "remote_langfuse_endpoint_not_qualified",
+    "global_cutover_window_not_executed"
+  ],
+  "ready_for_global_cutover": false
+}

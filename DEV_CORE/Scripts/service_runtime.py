@@ -1,5 +1,6 @@
 """Cooperative lifecycle for local Uvicorn services; no PID/port-based kill."""
 import json
+import ipaddress
 import os
 from pathlib import Path
 import sys
@@ -12,7 +13,8 @@ from scheduler_lock import SchedulerLeaseLock, SchedulerGuardBusy
 from scheduler_storage import write_json
 from windows_process_identity import process_identity
 
-SERVICES = {'dashboard': 20129, 'router': 20130, 'headroom-native': 8787, 'headroom-auxiliary': 8789}
+SERVICES = {'dashboard': 20129, 'router': 20130, 'headroom-native': 8787,
+            'headroom-auxiliary': 8789, 'gateway': 20131}
 
 
 def paths(root, service):
@@ -104,14 +106,31 @@ def run_managed(app, *, host, port, service, **kwargs):
     values = [os.environ.get(name) for name in names]
     if all(value is None for value in values):
         return uvicorn.run(app, host=host, port=port, **kwargs)
-    if not all(values) or host != '127.0.0.1' or type(port) is not int or SERVICES.get(service) != port:
-        raise ValueError('Managed service requires explicit roots and matching localhost profile')
+    if not all(values) or type(port) is not int or SERVICES.get(service) != port:
+        raise ValueError('Managed service requires explicit roots and matching port')
+    if host != '127.0.0.1':
+        try:
+            address = ipaddress.ip_address(host)
+        except ValueError as exc:
+            raise ValueError('Managed LAN requires an exact private IPv4 address') from exc
+        private_lan = tuple(ipaddress.ip_network(block) for block in
+                            ('10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'))
+        if (service != 'dashboard' or address.version != 4
+                or not any(address in block for block in private_lan)
+                or not kwargs.get('ssl_certfile') or not kwargs.get('ssl_keyfile')
+                or kwargs.get('proxy_headers') is not False):
+            raise ValueError('Managed LAN requires private Dashboard TLS without proxy headers')
+    elif kwargs.get('ssl_certfile') or kwargs.get('ssl_keyfile'):
+        raise ValueError('Managed localhost profile does not accept partial LAN TLS')
     if kwargs.get('timeout_graceful_shutdown') is not None:
         raise ValueError('Managed drain must not cancel active requests on a graceful timeout')
     kwargs['timeout_graceful_shutdown'] = None
     root, data_root, platform_root = values
     receipt_path, request_path, guard_path = paths(root, service)
     server = uvicorn.Server(uvicorn.Config(app, host=host, port=port, **kwargs))
+    shutdown_event = threading.Event()
+    if hasattr(app, 'state'):
+        app.state.managed_shutdown_event = shutdown_event
     token, pid = uuid.uuid4().hex, os.getpid()
     identity = process_identity(pid)
     receipt = {'protocol': 1, 'token': token, 'pid': pid, 'identity': identity,
@@ -124,6 +143,7 @@ def run_managed(app, *, host, port, service, **kwargs):
                 if (type(request.get('protocol')) is int and request['protocol'] == 1
                     and request.get('token') == token and type(request.get('pid')) is int
                     and request['pid'] == pid and request.get('identity') == identity):
+                    shutdown_event.set()
                     server.should_exit = True
                     return
             except (OSError, ValueError):

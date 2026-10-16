@@ -1,0 +1,1207 @@
+{
+  "report_version": 1,
+  "created_utc": "2026-10-12T10:45:32.669298+00:00",
+  "status": "inventory_only",
+  "root": "DEV_CORE",
+  "finding_count": 143,
+  "summary": {
+    "raw_count": 15,
+    "traversal": 16,
+    "write": 10,
+    "export_or_file_graph": 143
+  },
+  "findings": [
+    {
+      "file": "Dashboard/index.html",
+      "line": 745,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "<div style=\"font-size:9px; color:#64748b; font-family:'JetBrains Mono',monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;\" title=\"C:\\Users\\Administrateur\\Dropbox\\DEV_CORE_DATA\\Knowledge\\graph.json\">Blast radius echantil"
+    },
+    {
+      "file": "Dashboard/index.html",
+      "line": 6405,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "updateContainerHTML('knowledge-graph-summary', payload.sections.knowledge_graph_summary || '');"
+    },
+    {
+      "file": "Dashboard/index_terminal.html",
+      "line": 690,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "<div style=\"font-size:9px; color:#64748b; font-family:'JetBrains Mono',monospace; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;\" title=\"C:\\Users\\Administrateur\\Dropbox\\DEV_CORE_DATA\\Knowledge\\graph.json\">Blast radius echantil"
+    },
+    {
+      "file": "Dashboard/index_terminal.html",
+      "line": 6484,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "if(s.knowledge_graph_summary) updateContainerHTML('knowledge-graph-summary', s.knowledge_graph_summary);"
+    },
+    {
+      "file": "Dashboard/template.html",
+      "line": 1031,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "'event_bus_recent', 'plugin_status', 'knowledge_graph_summary', 'automation_hooks'];"
+    },
+    {
+      "file": "Dashboard/template.html",
+      "line": 1129,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "updateContainerHTML('knowledge-graph-summary', payload.sections.knowledge_graph_summary || '');"
+    },
+    {
+      "file": "Dashboard/template_terminal.html",
+      "line": 1148,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "'event_bus_recent', 'plugin_status', 'knowledge_graph_summary', 'automation_hooks'];"
+    },
+    {
+      "file": "Dashboard/template_terminal.html",
+      "line": 1209,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "updateContainerHTML('knowledge-graph-summary', (s.knowledge_graph_summary || ''));"
+    },
+    {
+      "file": "devcore_engine/db.py",
+      "line": 339,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "CREATE TABLE IF NOT EXISTS kg_edges ("
+    },
+    {
+      "file": "devcore_engine/db.py",
+      "line": 347,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "CREATE INDEX IF NOT EXISTS idx_kg_edges_project ON kg_edges(project_id);"
+    },
+    {
+      "file": "devcore_engine/db.py",
+      "line": 593,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "# Align kg_nodes, kg_edges, vault_notes for project_id"
+    },
+    {
+      "file": "devcore_engine/db.py",
+      "line": 594,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "for tbl in (\"kg_nodes\", \"kg_edges\", \"vault_notes\"):"
+    },
+    {
+      "file": "devcore_engine/migrate_to_unified_db.py",
+      "line": 50,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "stats[\"knowledge_graph\"] = self.migrate_knowledge_graph()"
+    },
+    {
+      "file": "devcore_engine/migrate_to_unified_db.py",
+      "line": 250,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "def migrate_knowledge_graph(self) -> int:"
+    },
+    {
+      "file": "devcore_engine/migrate_to_unified_db.py",
+      "line": 293,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "\"CREATE INDEX IF NOT EXISTS idx_kg_edges_relation ON kg_edges(from_node, to_node, type)\""
+    },
+    {
+      "file": "devcore_engine/migrate_to_unified_db.py",
+      "line": 307,
+      "categories": [
+        "write",
+        "export_or_file_graph"
+      ],
+      "snippet": "INSERT INTO kg_edges (from_node, to_node, type, properties)"
+    },
+    {
+      "file": "devcore_engine/migrate_to_unified_db.py",
+      "line": 312,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "SELECT 1 FROM kg_edges"
+    },
+    {
+      "file": "devcore_engine/services/knowledge.py",
+      "line": 3,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "Replaces knowledge_graph.ps1 by building and querying code graph relationships in devcore.db."
+    },
+    {
+      "file": "devcore_engine/services/knowledge.py",
+      "line": 41,
+      "categories": [
+        "raw_count",
+        "export_or_file_graph"
+      ],
+      "snippet": "edge_count = cursor.execute(\"SELECT COUNT(*) FROM kg_edges WHERE project_id = ?;\", (project_id,)).fetchone()[0]"
+    },
+    {
+      "file": "devcore_engine/services/knowledge.py",
+      "line": 44,
+      "categories": [
+        "raw_count",
+        "export_or_file_graph"
+      ],
+      "snippet": "edge_count = cursor.execute(\"SELECT COUNT(*) FROM kg_edges;\").fetchone()[0]"
+    },
+    {
+      "file": "devcore_engine/services/knowledge.py",
+      "line": 76,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "if self._has_project_column(\"kg_edges\"):"
+    },
+    {
+      "file": "devcore_engine/services/knowledge.py",
+      "line": 79,
+      "categories": [
+        "write",
+        "export_or_file_graph"
+      ],
+      "snippet": "INSERT INTO kg_edges (project_id, from_node, to_node, type, properties)"
+    },
+    {
+      "file": "devcore_engine/services/knowledge.py",
+      "line": 87,
+      "categories": [
+        "write",
+        "export_or_file_graph"
+      ],
+      "snippet": "INSERT INTO kg_edges (from_node, to_node, type, properties)"
+    },
+    {
+      "file": "devcore_engine/services/knowledge.py",
+      "line": 120,
+      "categories": [
+        "traversal",
+        "export_or_file_graph"
+      ],
+      "snippet": "\"SELECT from_node, to_node FROM kg_edges WHERE (from_node = ? OR to_node = ?) AND project_id = ?;\","
+    },
+    {
+      "file": "devcore_engine/services/knowledge.py",
+      "line": 125,
+      "categories": [
+        "traversal",
+        "export_or_file_graph"
+      ],
+      "snippet": "\"SELECT from_node, to_node FROM kg_edges WHERE from_node = ? OR to_node = ?;\","
+    },
+    {
+      "file": "devcore_engine/tests/test_knowledge_graph.py",
+      "line": 2,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "test_knowledge_graph.py -- Python Native Unit Test for KnowledgeGraph Service"
+    },
+    {
+      "file": "MCP/devcore-scripts/handlers/tool_handlers.py",
+      "line": 184,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "return run_powershell_script(DEVCORE_SCRIPTS / \"knowledge_graph.ps1\", [\"-Action\", \"ImpactAnalysis\", \"-Target\", target, \"-Json\"])"
+    },
+    {
+      "file": "MCP/devcore-scripts/handlers/tool_handlers.py",
+      "line": 187,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "return run_powershell_script(DEVCORE_SCRIPTS / \"knowledge_graph.ps1\", [\"-Action\", \"Status\", \"-Json\"])"
+    },
+    {
+      "file": "Scripts/analyze_graph_multiplicity.py",
+      "line": 18,
+      "categories": [
+        "traversal",
+        "export_or_file_graph"
+      ],
+      "snippet": "\"SELECT from_node, to_node, type, properties FROM kg_edges\""
+    },
+    {
+      "file": "Scripts/apply_graph_repair_preview.py",
+      "line": 3,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "The source is copied with SQLite's online backup API.  Original ``kg_edges``"
+    },
+    {
+      "file": "Scripts/apply_graph_repair_preview.py",
+      "line": 4,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "rows are never changed.  The output receives ``kg_edges_repair_preview`` with"
+    },
+    {
+      "file": "Scripts/apply_graph_repair_preview.py",
+      "line": 54,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "CREATE TABLE kg_edges_repair_preview ("
+    },
+    {
+      "file": "Scripts/apply_graph_repair_preview.py",
+      "line": 69,
+      "categories": [
+        "traversal",
+        "export_or_file_graph"
+      ],
+      "snippet": "\"SELECT rowid, from_node, to_node, type, properties FROM kg_edges\""
+    },
+    {
+      "file": "Scripts/apply_graph_repair_preview.py",
+      "line": 84,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "target.executemany(\"INSERT INTO kg_edges_repair_preview VALUES (?, ?, ?, ?, ?, ?, ?, ?)\", rows)"
+    },
+    {
+      "file": "Scripts/apply_graph_repair_preview.py",
+      "line": 87,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "target.executemany(\"INSERT INTO kg_edges_repair_preview VALUES (?, ?, ?, ?, ?, ?, ?, ?)\", rows)"
+    },
+    {
+      "file": "Scripts/assemble_fusion_candidate.py",
+      "line": 85,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "counts[\"fusion_kg_edges_repair_preview\"] = _copy_table(graph, target, \"kg_edges_repair_preview\", \"fusion_kg_edges_repair_preview\")"
+    },
+    {
+      "file": "Scripts/assemble_fusion_candidate.py",
+      "line": 95,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "counts[\"fusion_graph_edges_fk_preview\"] = _copy_table(graph_fk, target, \"kg_edges_fk_preview\", \"fusion_graph_edges_fk_preview\")"
+    },
+    {
+      "file": "Scripts/assemble_fusion_candidate.py",
+      "line": 96,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "counts[\"fusion_graph_quarantine_preview\"] = _copy_table(graph_fk, target, \"kg_edges_quarantine_preview\", \"fusion_graph_quarantine_preview\")"
+    },
+    {
+      "file": "Scripts/audit_graph_consumers.py",
+      "line": 1,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "\"\"\"Inventory code consumers of the kg_edges table for migration review.\"\"\""
+    },
+    {
+      "file": "Scripts/audit_graph_consumers.py",
+      "line": 13,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "\"raw_count\": re.compile(r\"COUNT\\(\\s*\\*\\s*\\).*kg_edges|kg_edges.*COUNT\\(\\s*\\*\\s*\\)\", re.I),"
+    },
+    {
+      "file": "Scripts/audit_graph_consumers.py",
+      "line": 14,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "\"traversal\": re.compile(r\"SELECT[^\\n]*\\b(from_node|to_node)\\b[^\\n]*FROM\\s+kg_edges|FROM\\s+kg_edges[^\\n]*\\b(from_node|to_node)\\b\", re.I),"
+    },
+    {
+      "file": "Scripts/audit_graph_consumers.py",
+      "line": 15,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "\"write\": re.compile(r\"(?:INSERT|UPDATE|DELETE)[^\\n]*\\bkg_edges\\b|\\bkg_edges\\b[^\\n]*(?:INSERT|UPDATE|DELETE)\", re.I),"
+    },
+    {
+      "file": "Scripts/audit_graph_consumers.py",
+      "line": 16,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "\"export_or_file_graph\": re.compile(r\"graph\\.json|knowledge_graph|kg_edges\", re.I),"
+    },
+    {
+      "file": "Scripts/audit_graph_consumers.py",
+      "line": 30,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "if \"kg_edges\" not in line and \"graph.json\" not in line and \"knowledge_graph\" not in line:"
+    },
+    {
+      "file": "Scripts/ci_powershell_tests.ps1",
+      "line": 41,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "\"test_knowledge_graph.ps1\","
+    },
+    {
+      "file": "Scripts/compare_graph_sources.py",
+      "line": 16,
+      "categories": [
+        "traversal",
+        "export_or_file_graph"
+      ],
+      "snippet": "return Counter((str(source), str(target), str(kind), properties) for source, target, kind, properties in connection.execute(\"SELECT from_node, to_node, type, properties FROM kg_edges\"))"
+    },
+    {
+      "file": "Scripts/dashboard/html_renderer.py",
+      "line": 328,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "repowise_kg_file = PLATFORM_ROOT.parent / \".repowise\" / \"knowledge-graph.json\""
+    },
+    {
+      "file": "Scripts/dashboard/html_renderer.py",
+      "line": 330,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "repowise_kg_file = DATA_ROOT / \".repowise\" / \"knowledge-graph.json\""
+    },
+    {
+      "file": "Scripts/dashboard/html_renderer.py",
+      "line": 332,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "repowise_kg_file = Path(\"C:/devcore/.repowise/knowledge-graph.json\")"
+    },
+    {
+      "file": "Scripts/dashboard/html_renderer.py",
+      "line": 963,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "def get_knowledge_graph_summary_html() -> str:"
+    },
+    {
+      "file": "Scripts/dashboard/html_renderer.py",
+      "line": 964,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "graph_path = DATA_ROOT / \"Knowledge\" / \"graph.json\""
+    },
+    {
+      "file": "Scripts/gen_dashboard.py",
+      "line": 43,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "get_knowledge_graph_summary_html,"
+    },
+    {
+      "file": "Scripts/gen_dashboard.py",
+      "line": 455,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "knowledge_graph_summary_html = get_knowledge_graph_summary_html()"
+    },
+    {
+      "file": "Scripts/gen_dashboard.py",
+      "line": 744,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "\"knowledge_graph_summary\": knowledge_graph_summary_html,"
+    },
+    {
+      "file": "Scripts/gen_dashboard.py",
+      "line": 780,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "template = template.replace('{{KNOWLEDGE_GRAPH_SUMMARY}}', knowledge_graph_summary_html)"
+    },
+    {
+      "file": "Scripts/gen_dashboard.py",
+      "line": 806,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "tterm = tterm.replace('{{KNOWLEDGE_GRAPH_SUMMARY}}', knowledge_graph_summary_html)"
+    },
+    {
+      "file": "Scripts/inspect_fusion_sources.py",
+      "line": 28,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "\"kg_edges\","
+    },
+    {
+      "file": "Scripts/inspect_fusion_sources.py",
+      "line": 29,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "\"kg_edges_quarantine\","
+    },
+    {
+      "file": "Scripts/inspect_graph_repair.py",
+      "line": 41,
+      "categories": [
+        "traversal",
+        "export_or_file_graph"
+      ],
+      "snippet": "\"SELECT rowid, from_node, to_node, type, properties FROM kg_edges\""
+    },
+    {
+      "file": "Scripts/inspect_graph_repair.py",
+      "line": 70,
+      "categories": [
+        "traversal",
+        "export_or_file_graph"
+      ],
+      "snippet": "\"SELECT e.from_node, e.to_node FROM kg_edges e \""
+    },
+    {
+      "file": "Scripts/knowledge_graph.ps1",
+      "line": 1,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "# knowledge_graph.ps1 -- Thin wrapper for devcore_engine knowledge"
+    },
+    {
+      "file": "Scripts/materialize_graph_dedup_preview.py",
+      "line": 22,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "CREATE TABLE kg_edges_dedup_preview (id INTEGER PRIMARY KEY, from_node TEXT NOT NULL, to_node TEXT NOT NULL, type TEXT NOT NULL, properties TEXT, source_rows INTEGER NOT NULL, FOREIGN KEY(from_node) REFERENCES kg_nodes_preview(id), FOREIGN "
+    },
+    {
+      "file": "Scripts/materialize_graph_dedup_preview.py",
+      "line": 23,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "CREATE TABLE kg_edges_quarantine_grouped_preview (from_node TEXT NOT NULL, to_node TEXT NOT NULL, type TEXT NOT NULL, properties TEXT, source_rows INTEGER NOT NULL, PRIMARY KEY(from_node,to_node,type,properties));"
+    },
+    {
+      "file": "Scripts/materialize_graph_dedup_preview.py",
+      "line": 30,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "INSERT INTO kg_edges_dedup_preview(from_node,to_node,type,properties,source_rows)"
+    },
+    {
+      "file": "Scripts/materialize_graph_dedup_preview.py",
+      "line": 32,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "FROM source_db.kg_edges_repair_preview r JOIN source_db.kg_edges e ON e.id=r.edge_rowid"
+    },
+    {
+      "file": "Scripts/materialize_graph_dedup_preview.py",
+      "line": 39,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "INSERT INTO kg_edges_quarantine_grouped_preview"
+    },
+    {
+      "file": "Scripts/materialize_graph_dedup_preview.py",
+      "line": 41,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "FROM source_db.kg_edges_repair_preview r JOIN source_db.kg_edges e ON e.id=r.edge_rowid"
+    },
+    {
+      "file": "Scripts/materialize_graph_dedup_preview.py",
+      "line": 48,
+      "categories": [
+        "raw_count",
+        "export_or_file_graph"
+      ],
+      "snippet": "\"source_rows\": src.execute(\"SELECT COUNT(*) FROM kg_edges\").fetchone()[0],"
+    },
+    {
+      "file": "Scripts/materialize_graph_dedup_preview.py",
+      "line": 49,
+      "categories": [
+        "raw_count",
+        "traversal",
+        "export_or_file_graph"
+      ],
+      "snippet": "\"source_distinct_relations\": src.execute(\"SELECT COUNT(*) FROM (SELECT DISTINCT from_node,to_node,type,properties FROM kg_edges)\").fetchone()[0],"
+    },
+    {
+      "file": "Scripts/materialize_graph_dedup_preview.py",
+      "line": 50,
+      "categories": [
+        "raw_count",
+        "export_or_file_graph"
+      ],
+      "snippet": "\"dedup_rows\": dst.execute(\"SELECT COUNT(*) FROM kg_edges_dedup_preview\").fetchone()[0],"
+    },
+    {
+      "file": "Scripts/materialize_graph_dedup_preview.py",
+      "line": 51,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "\"dedup_source_rows\": dst.execute(\"SELECT COALESCE(SUM(source_rows),0) FROM kg_edges_dedup_preview\").fetchone()[0],"
+    },
+    {
+      "file": "Scripts/materialize_graph_dedup_preview.py",
+      "line": 52,
+      "categories": [
+        "raw_count",
+        "export_or_file_graph"
+      ],
+      "snippet": "\"quarantine_groups\": dst.execute(\"SELECT COUNT(*) FROM kg_edges_quarantine_grouped_preview\").fetchone()[0],"
+    },
+    {
+      "file": "Scripts/materialize_graph_dedup_preview.py",
+      "line": 53,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "\"quarantine_source_rows\": dst.execute(\"SELECT COALESCE(SUM(source_rows),0) FROM kg_edges_quarantine_grouped_preview\").fetchone()[0],"
+    },
+    {
+      "file": "Scripts/materialize_graph_fk_preview.py",
+      "line": 19,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "\"FROM kg_edges_repair_preview WHERE status IN ('valid', 'repaired') \""
+    },
+    {
+      "file": "Scripts/materialize_graph_fk_preview.py",
+      "line": 24,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "\"FROM kg_edges_repair_preview WHERE status='unresolved' ORDER BY edge_rowid\""
+    },
+    {
+      "file": "Scripts/materialize_graph_fk_preview.py",
+      "line": 32,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "CREATE TABLE kg_edges_fk_preview (edge_rowid INTEGER PRIMARY KEY, from_node TEXT NOT NULL,"
+    },
+    {
+      "file": "Scripts/materialize_graph_fk_preview.py",
+      "line": 35,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "CREATE TABLE kg_edges_quarantine_preview (edge_rowid INTEGER PRIMARY KEY, from_node TEXT NOT NULL,"
+    },
+    {
+      "file": "Scripts/materialize_graph_fk_preview.py",
+      "line": 40,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "target.executemany(\"INSERT INTO kg_edges_fk_preview VALUES (?, ?, ?, ?)\", repaired)"
+    },
+    {
+      "file": "Scripts/materialize_graph_fk_preview.py",
+      "line": 41,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "target.executemany(\"INSERT INTO kg_edges_quarantine_preview VALUES (?, ?, ?, ?, ?)\", unresolved)"
+    },
+    {
+      "file": "Scripts/prepare_individual_pilot_copy.py",
+      "line": 21,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "\"projects\", \"tasks\", \"kg_nodes\", \"kg_edges\", \"kg_edges_quarantine\","
+    },
+    {
+      "file": "Scripts/prepare_individual_pilot_copy.py",
+      "line": 129,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "for table in (\"kg_nodes\", \"kg_edges\", \"kg_edges_quarantine\", \"vault_notes\"):"
+    },
+    {
+      "file": "Scripts/propose_graph_repairs.py",
+      "line": 44,
+      "categories": [
+        "traversal",
+        "export_or_file_graph"
+      ],
+      "snippet": "for source, target in connection.execute(\"SELECT from_node, to_node FROM kg_edges\"):"
+    },
+    {
+      "file": "Scripts/reconcile_sqlite_candidate.py",
+      "line": 276,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "for table in (\"projects\", \"tasks\", \"kg_nodes\", \"kg_edges\")"
+    },
+    {
+      "file": "Scripts/reconcile_sqlite_candidate.py",
+      "line": 287,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "source_edges_digest = digest_rows(source.execute(\"SELECT * FROM kg_edges ORDER BY id\"))"
+    },
+    {
+      "file": "Scripts/reconcile_sqlite_candidate.py",
+      "line": 304,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "row[1] for row in candidate.execute(\"PRAGMA table_info(kg_edges)\").fetchall()"
+    },
+    {
+      "file": "Scripts/reconcile_sqlite_candidate.py",
+      "line": 308,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "CREATE TABLE kg_edges_quarantine ("
+    },
+    {
+      "file": "Scripts/reconcile_sqlite_candidate.py",
+      "line": 319,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "INSERT INTO kg_edges_quarantine"
+    },
+    {
+      "file": "Scripts/reconcile_sqlite_candidate.py",
+      "line": 327,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "FROM kg_edges e"
+    },
+    {
+      "file": "Scripts/reconcile_sqlite_candidate.py",
+      "line": 334,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "CREATE TABLE kg_edges_quarantine ("
+    },
+    {
+      "file": "Scripts/reconcile_sqlite_candidate.py",
+      "line": 344,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "INSERT INTO kg_edges_quarantine"
+    },
+    {
+      "file": "Scripts/reconcile_sqlite_candidate.py",
+      "line": 352,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "FROM kg_edges e"
+    },
+    {
+      "file": "Scripts/reconcile_sqlite_candidate.py",
+      "line": 357,
+      "categories": [
+        "write",
+        "export_or_file_graph"
+      ],
+      "snippet": "candidate.execute(\"DELETE FROM kg_edges WHERE id IN (SELECT id FROM kg_edges_quarantine)\")"
+    },
+    {
+      "file": "Scripts/reconcile_sqlite_candidate.py",
+      "line": 363,
+      "categories": [
+        "raw_count",
+        "export_or_file_graph"
+      ],
+      "snippet": "\"SELECT reason, count(*) FROM kg_edges_quarantine GROUP BY reason ORDER BY reason\""
+    },
+    {
+      "file": "Scripts/reconcile_sqlite_candidate.py",
+      "line": 373,
+      "categories": [
+        "traversal",
+        "export_or_file_graph"
+      ],
+      "snippet": "SELECT id, project_id, from_node, to_node, type, properties FROM kg_edges"
+    },
+    {
+      "file": "Scripts/reconcile_sqlite_candidate.py",
+      "line": 375,
+      "categories": [
+        "traversal",
+        "export_or_file_graph"
+      ],
+      "snippet": "SELECT id, project_id, from_node, to_node, type, properties FROM kg_edges_quarantine"
+    },
+    {
+      "file": "Scripts/reconcile_sqlite_candidate.py",
+      "line": 381,
+      "categories": [
+        "traversal",
+        "export_or_file_graph"
+      ],
+      "snippet": "SELECT id, from_node, to_node, type, properties FROM kg_edges"
+    },
+    {
+      "file": "Scripts/reconcile_sqlite_candidate.py",
+      "line": 383,
+      "categories": [
+        "traversal",
+        "export_or_file_graph"
+      ],
+      "snippet": "SELECT id, from_node, to_node, type, properties FROM kg_edges_quarantine"
+    },
+    {
+      "file": "Scripts/reconcile_sqlite_candidate.py",
+      "line": 401,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "\"kg_edges_quarantine\","
+    },
+    {
+      "file": "Scripts/reconcile_sqlite_candidate.py",
+      "line": 439,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "or result[\"candidate_counts\"][\"kg_edges\"]"
+    },
+    {
+      "file": "Scripts/reconcile_sqlite_candidate.py",
+      "line": 440,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "+ result[\"candidate_counts\"][\"kg_edges_quarantine\"] != source_counts[\"kg_edges\"]"
+    },
+    {
+      "file": "Scripts/test_dashboard_api.py",
+      "line": 45,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "\"knowledge_graph_summary\": \"<div>knowledge</div>\","
+    },
+    {
+      "file": "Scripts/test_dashboard_api.py",
+      "line": 65,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "assert result[\"sections\"][\"knowledge_graph_summary\"] == \"<div>knowledge</div>\""
+    },
+    {
+      "file": "Scripts/test_dashboard_api.py",
+      "line": 562,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "assert \"Knowledge Graph\" in payload[\"sections\"][\"knowledge_graph_summary\"]"
+    },
+    {
+      "file": "Scripts/test_dashboard_sse_templates.py",
+      "line": 377,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "'knowledge_graph_summary','automation_hooks'];"
+    },
+    {
+      "file": "Scripts/test_dashboard_task_actions.py",
+      "line": 80,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "\"get_metrics_service_summary_html\", \"get_knowledge_graph_summary_html\", \"get_plugin_status_html\"):"
+    },
+    {
+      "file": "Scripts/test_dashboard_task_interactions.py",
+      "line": 133,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "\"get_metrics_service_summary_html\", \"get_knowledge_graph_summary_html\", \"get_plugin_status_html\"):"
+    },
+    {
+      "file": "Scripts/test_knowledge_graph.ps1",
+      "line": 1,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "# Delegator wrapper for Python unittest test_knowledge_graph.py"
+    },
+    {
+      "file": "Scripts/test_knowledge_graph.ps1",
+      "line": 20,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "& $pythonExe -m unittest (Join-Path $DEV_CORE \"devcore_engine/tests/test_knowledge_graph.py\")"
+    },
+    {
+      "file": "Scripts/validate_fusion_candidate.py",
+      "line": 14,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "APPLICATION_TABLES = (\"projects\", \"tasks\", \"kg_nodes\", \"kg_edges\", \"bus_events\")"
+    },
+    {
+      "file": "Scripts/validate_fusion_candidate.py",
+      "line": 19,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "\"fusion_kg_edges_repair_preview\": \"kg_edges_repair_preview\","
+    },
+    {
+      "file": "Scripts/validate_fusion_candidate.py",
+      "line": 96,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "expected_auxiliary.update({\"fusion_graph_nodes_fk_preview\": \"kg_nodes_preview\", \"fusion_graph_edges_fk_preview\": \"kg_edges_fk_preview\", \"fusion_graph_quarantine_preview\": \"kg_edges_quarantine_preview\"})"
+    },
+    {
+      "file": "Scripts/validate_fusion_candidate.py",
+      "line": 109,
+      "categories": [
+        "raw_count",
+        "export_or_file_graph"
+      ],
+      "snippet": "\"SELECT status, COUNT(*) FROM fusion_kg_edges_repair_preview GROUP BY status\""
+    },
+    {
+      "file": "Scripts/validate_graph_dedup_reachability.py",
+      "line": 18,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "FROM kg_edges_repair_preview r"
+    },
+    {
+      "file": "Scripts/validate_graph_dedup_reachability.py",
+      "line": 29,
+      "categories": [
+        "traversal",
+        "export_or_file_graph"
+      ],
+      "snippet": "for source, target in db.execute(\"SELECT from_node,to_node FROM kg_edges_dedup_preview\"):"
+    },
+    {
+      "file": "Scripts/validate_graph_dedup_reachability.py",
+      "line": 69,
+      "categories": [
+        "raw_count",
+        "export_or_file_graph"
+      ],
+      "snippet": "\"before_relation_rows\": graph.execute(\"SELECT COUNT(*) FROM kg_edges_repair_preview WHERE status IN ('valid','repaired')\").fetchone()[0],"
+    },
+    {
+      "file": "Scripts/validate_graph_dedup_reachability.py",
+      "line": 70,
+      "categories": [
+        "raw_count",
+        "export_or_file_graph"
+      ],
+      "snippet": "\"after_distinct_rows\": dedup.execute(\"SELECT COUNT(*) FROM kg_edges_dedup_preview\").fetchone()[0],"
+    },
+    {
+      "file": "Scripts/validate_graph_repair_preview.py",
+      "line": 19,
+      "categories": [
+        "traversal",
+        "export_or_file_graph"
+      ],
+      "snippet": "source_edges = source.execute(\"SELECT rowid, from_node, to_node, type, properties FROM kg_edges\").fetchall()"
+    },
+    {
+      "file": "Scripts/validate_graph_repair_preview.py",
+      "line": 22,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "\"proposed_to_node, repair_rule, status, properties FROM kg_edges_repair_preview\""
+    },
+    {
+      "file": "Scripts/validate_graph_repair_preview.py",
+      "line": 28,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "row = source.execute(\"SELECT type FROM kg_edges WHERE rowid=?\", (edge_rowid,)).fetchone()"
+    },
+    {
+      "file": "Scripts/validate_graph_repair_preview.py",
+      "line": 33,
+      "categories": [
+        "traversal",
+        "export_or_file_graph"
+      ],
+      "snippet": "\"FROM kg_edges GROUP BY from_node, to_node, type, properties HAVING n > 1\""
+    },
+    {
+      "file": "Scripts/validate_graph_repair_preview.py",
+      "line": 37,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "\"FROM kg_edges_repair_preview p JOIN kg_edges e ON e.rowid=p.edge_rowid \""
+    },
+    {
+      "file": "Scripts/validate_graph_repair_preview.py",
+      "line": 42,
+      "categories": [
+        "raw_count",
+        "export_or_file_graph"
+      ],
+      "snippet": "\"SELECT COUNT(*) FROM kg_edges_repair_preview p \""
+    },
+    {
+      "file": "tests/test_devcore_engine.py",
+      "line": 96,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "def test_knowledge_graph(tmp_path):"
+    },
+    {
+      "file": "tests/test_individual_pilot_copy.py",
+      "line": 20,
+      "categories": [
+        "write",
+        "export_or_file_graph"
+      ],
+      "snippet": "conn.execute(\"INSERT INTO kg_edges(from_node,to_node,type) VALUES ('node-a','node-b','valid')\")"
+    },
+    {
+      "file": "tests/test_individual_pilot_copy.py",
+      "line": 29,
+      "categories": [
+        "write",
+        "export_or_file_graph"
+      ],
+      "snippet": "conn.execute(\"INSERT INTO kg_edges(from_node,to_node,type) VALUES ('node-a','lost','orphan')\")"
+    },
+    {
+      "file": "tests/test_individual_pilot_copy.py",
+      "line": 55,
+      "categories": [
+        "raw_count",
+        "export_or_file_graph"
+      ],
+      "snippet": "assert conn.execute(\"SELECT count(*) FROM kg_edges\").fetchone()[0] == 1"
+    },
+    {
+      "file": "tests/test_individual_pilot_copy.py",
+      "line": 56,
+      "categories": [
+        "raw_count",
+        "export_or_file_graph"
+      ],
+      "snippet": "assert conn.execute(\"SELECT count(*) FROM kg_edges_quarantine\").fetchone()[0] == 1"
+    },
+    {
+      "file": "tests/test_inspect_fusion_sources.py",
+      "line": 20,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "CREATE TABLE kg_edges(from_node TEXT, to_node TEXT,"
+    },
+    {
+      "file": "tests/test_inspect_fusion_sources.py",
+      "line": 26,
+      "categories": [
+        "write",
+        "export_or_file_graph"
+      ],
+      "snippet": "INSERT INTO kg_edges VALUES ('node-a', 'missing');"
+    },
+    {
+      "file": "tests/test_knowledge_migration.py",
+      "line": 26,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "migrator.migrate_knowledge_graph()"
+    },
+    {
+      "file": "tests/test_knowledge_migration.py",
+      "line": 28,
+      "categories": [
+        "raw_count",
+        "export_or_file_graph"
+      ],
+      "snippet": "assert migrator.conn.execute(\"SELECT count(*) FROM kg_edges\").fetchone()[0] == 1"
+    },
+    {
+      "file": "tests/test_knowledge_migration.py",
+      "line": 29,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "migrator.migrate_knowledge_graph()"
+    },
+    {
+      "file": "tests/test_knowledge_migration.py",
+      "line": 30,
+      "categories": [
+        "raw_count",
+        "export_or_file_graph"
+      ],
+      "snippet": "assert migrator.conn.execute(\"SELECT count(*) FROM kg_edges\").fetchone()[0] == 1"
+    },
+    {
+      "file": "tests/test_knowledge_provider_evaluation.py",
+      "line": 248,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "def test_knowledge_graph_project_isolation(tmp_path):"
+    },
+    {
+      "file": "tests/test_sqlite_fk_preview.py",
+      "line": 75,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "conn.execute(\"DROP INDEX idx_kg_edges_project\")"
+    },
+    {
+      "file": "tests/test_sqlite_fk_preview.py",
+      "line": 77,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "for table in (\"kg_nodes\", \"kg_edges\", \"vault_notes\"):"
+    },
+    {
+      "file": "tests/test_sqlite_reconciliation.py",
+      "line": 20,
+      "categories": [
+        "write",
+        "export_or_file_graph"
+      ],
+      "snippet": "conn.execute(\"INSERT INTO kg_edges(from_node,to_node,type) VALUES ('node-a','node-b','valid')\")"
+    },
+    {
+      "file": "tests/test_sqlite_reconciliation.py",
+      "line": 24,
+      "categories": [
+        "write",
+        "export_or_file_graph"
+      ],
+      "snippet": "conn.execute(\"INSERT INTO kg_edges(from_node,to_node,type) VALUES ('node-a','lost','broken')\")"
+    },
+    {
+      "file": "tests/test_sqlite_reconciliation.py",
+      "line": 25,
+      "categories": [
+        "write",
+        "export_or_file_graph"
+      ],
+      "snippet": "conn.execute(\"INSERT INTO kg_edges(from_node,to_node,type) VALUES ('lost','also-lost','broken')\")"
+    },
+    {
+      "file": "tests/test_sqlite_reconciliation.py",
+      "line": 36,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "assert result[\"candidate_counts\"][\"kg_edges\"] == 1"
+    },
+    {
+      "file": "tests/test_sqlite_reconciliation.py",
+      "line": 37,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "assert result[\"candidate_counts\"][\"kg_edges_quarantine\"] == 2"
+    },
+    {
+      "file": "Tools/devcore/crg_sync.py",
+      "line": 141,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "graph_path = os.path.join(data_dir, \"crg_graph.json\")"
+    },
+    {
+      "file": "Tools/devcore/crg_sync.py",
+      "line": 154,
+      "categories": [
+        "export_or_file_graph"
+      ],
+      "snippet": "graph_path = os.path.join(data_dir, \"crg_graph.json\")"
+    }
+  ],
+  "migration_guidance": {
+    "raw_count": "Expose both physical row count and distinct relation count if deduplication is approved.",
+    "traversal": "Validate reachability and preserve project scoping before switching tables.",
+    "write": "Route future writes through a uniqueness/provenance policy; do not silently reintroduce duplicates.",
+    "export_or_file_graph": "Validate JSON/export consumers independently from SQL projections."
+  },
+  "policy": "inventory only; no source or operational database is changed"
+}

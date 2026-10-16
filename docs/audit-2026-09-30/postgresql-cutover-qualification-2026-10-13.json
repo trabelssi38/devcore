@@ -1,0 +1,34 @@
+{
+  "report_version": 1,
+  "created_utc": "2026-10-13T17:19:40.3609950Z",
+  "status": "cutover_verified",
+  "ready_for_cutover": true,
+  "service": {
+    "name": "DevCoreIndividual",
+    "status": "Running",
+    "start_type": "Automatic",
+    "binary": "E:\\DevCoreRuntime\\qualification\\service-profile-v250-postgres\\runtime\\releases\\devcore-py31316-20261013-postgres-v250\\pythonservice.exe",
+    "project_probe_http": 200,
+    "status_probe_http": 200
+  },
+  "dashboard_smoke": {
+    "schema_version": 1,
+    "profile": "individual-postgres-dashboard",
+    "qualified_utc": "2026-10-13T16:54:35.7807317Z",
+    "authenticated_smoke": true,
+    "routes": {
+      "tasks": 200,
+      "context": 200,
+      "audit_before": 200,
+      "pause": 200,
+      "resume": 200,
+      "audit_after": 200
+    },
+    "session_revoked": true,
+    "token_persisted": false
+  },
+  "blockers": [],
+  "limitations": [
+    "Existing pre-cutover reports remain historical evidence; this report records the successful final cutover."
+  ]
+}

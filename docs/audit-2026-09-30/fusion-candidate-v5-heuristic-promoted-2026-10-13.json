@@ -1,0 +1,14 @@
+{
+  "status": "heuristic_attachments_promoted",
+  "candidate": "E:\\DevCoreRuntime\\qualification\\fusion-candidate-v5-heuristic-promoted-2026-10-13.db",
+  "integrity_check": "ok",
+  "foreign_key_violations": 0,
+  "active_edges": 696267,
+  "quarantine_preview_edges": 0,
+  "archived_quarantine_edges": 94185,
+  "policy": "all user-approved heuristic attachments promoted; original rows retained in archive",
+  "ready_for_cutover": false,
+  "blockers": [
+    "postgresql_global_stack_not_qualified"
+  ]
+}

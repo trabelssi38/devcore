@@ -1,0 +1,64 @@
+{
+  "report_version": 1,
+  "created_utc": "2026-10-12T22:11:40.546993+00:00",
+  "stage": "P3_independent_rehearsal",
+  "status": "rehearsal_passed_with_blockers",
+  "ready_for_cutover": false,
+  "snapshot": "E:\\DevCoreRuntime\\qualification\\p1-capture-20261012g",
+  "graph_projection": "E:\\DevCoreRuntime\\qualification\\graph-heuristic-20261012.db",
+  "candidate_validation": "E:\\src_python\\devcore\\docs\\audit-2026-09-30\\fusion-candidate-v4-validation-2026-10-12.json",
+  "checks": {
+    "snapshot_stable": {
+      "passed": true,
+      "source": true
+    },
+    "restore:runs/runs.db": {
+      "passed": true,
+      "sha256_match": true,
+      "integrity": "ok",
+      "foreign_key_violations": 0,
+      "tables": {
+        "runs": 0,
+        "external_effects": 0
+      }
+    },
+    "rollback_simulation": {
+      "passed": true,
+      "restored_sha256": "81b855ae1414b85fd597254e4f2f9e249d3a20b5766b56f400667cbe39a719a7",
+      "expected_sha256": "81b855ae1414b85fd597254e4f2f9e249d3a20b5766b56f400667cbe39a719a7"
+    },
+    "graph_projection": {
+      "passed": true,
+      "integrity": "ok",
+      "foreign_key_violations": 0,
+      "tables": {
+        "manifest": 1,
+        "nodes": 2272,
+        "edges": 696267
+      },
+      "path": "E:\\DevCoreRuntime\\qualification\\graph-heuristic-20261012.db"
+    },
+    "candidate_validation": {
+      "passed": false,
+      "integrity_check": "ok",
+      "application_foreign_key_violations": 268912,
+      "unresolved_review_items": 137
+    },
+    "postgresql_global_stack": {
+      "passed": false,
+      "state": "deferred",
+      "reason": "No qualified PostgreSQL target supplied to rehearsal"
+    },
+    "operational_cutover": {
+      "passed": false,
+      "state": "deferred",
+      "reason": "Rehearsal is isolated and does not freeze or replace live data"
+    }
+  },
+  "blockers": [
+    "candidate_application_constraints_unresolved",
+    "operational_cutover_deferred",
+    "postgresql_global_stack_not_qualified"
+  ],
+  "policy": "isolated rehearsal only; no operational database or live service is modified"
+}

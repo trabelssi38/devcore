@@ -27,6 +27,7 @@ Assert-True ($dashboardSource -match "DEVCORE_ALLOW_PUBLIC_BIND") "dashboard_api
 $routerSource = Get-Content -LiteralPath $geminiRouterPath -Raw -Encoding UTF8
 Assert-True ($routerSource -match "def get_bind_host") "gemini_router.py should expose get_bind_host"
 Assert-True ($routerSource -match "DEVCORE_ALLOW_PUBLIC_BIND") "gemini_router.py should require explicit public bind opt-in"
-Assert-True ($routerSource -match "uvicorn\.run\(app, host=get_bind_host\(\), port=20130\)") "gemini_router.py should bind through get_bind_host"
+Assert-True (($routerSource -match "run_managed\(app, host=bind_host, port=20130") -or
+             ($routerSource -match "uvicorn\.run\(app, host=get_bind_host\(\), port=20130\)")) "gemini_router.py should bind through get_bind_host"
 
 Write-Host "[OK] network bind contract tests passed" -ForegroundColor Green

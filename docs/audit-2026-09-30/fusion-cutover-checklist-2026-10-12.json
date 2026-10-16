@@ -1,0 +1,71 @@
+{
+  "report_version": 1,
+  "created_utc": "2026-10-12T10:54:46.081125+00:00",
+  "status": "review_only",
+  "ready_for_cutover": false,
+  "checks": [
+    {
+      "id": "candidate_integrity",
+      "passed": true,
+      "evidence": "ok"
+    },
+    {
+      "id": "candidate_historical_fk_empty",
+      "passed": false,
+      "evidence": 268912
+    },
+    {
+      "id": "graph_sources_no_new_relations",
+      "passed": true,
+      "evidence": 0
+    },
+    {
+      "id": "impact_reachability_equal",
+      "passed": true,
+      "evidence": 0
+    },
+    {
+      "id": "graph_projection_fk",
+      "passed": true,
+      "evidence": 0
+    },
+    {
+      "id": "task_projection_fk",
+      "passed": true,
+      "evidence": 0
+    },
+    {
+      "id": "project_review_empty",
+      "passed": false,
+      "evidence": 3
+    },
+    {
+      "id": "scheduler_activation_forbidden",
+      "passed": true,
+      "evidence": false
+    },
+    {
+      "id": "quarantine_empty",
+      "passed": false,
+      "evidence": 94185
+    },
+    {
+      "id": "unresolved_task_conflicts_empty",
+      "passed": false,
+      "evidence": 134
+    },
+    {
+      "id": "consumer_contract_reviewed",
+      "passed": false,
+      "evidence": 15
+    }
+  ],
+  "blockers": [
+    "candidate_historical_fk_empty",
+    "project_review_empty",
+    "quarantine_empty",
+    "unresolved_task_conflicts_empty",
+    "consumer_contract_reviewed"
+  ],
+  "policy": "a checklist never enables cutover; every blocker requires an explicit reviewed decision and an independently validated candidate"
+}

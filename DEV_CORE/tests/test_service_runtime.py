@@ -32,6 +32,21 @@ def receipt(root):
     return path, guard, data
 
 
+@pytest.mark.parametrize("host,tls", [
+    ("0.0.0.0", True), ("8.8.8.8", True), ("localhost", True),
+    ("172.16.210.32", False),
+])
+def test_managed_lan_refuses_wide_or_incomplete_bind(tmp_path, monkeypatch, host, tls):
+    monkeypatch.setenv("DEVCORE_LOCAL_ROOT", str(tmp_path / "local"))
+    monkeypatch.setenv("DEVCORE_DATA_ROOT", str(tmp_path / "data"))
+    monkeypatch.setenv("DEVCORE_PLATFORM_ROOT", str(tmp_path / "platform"))
+    options = {"proxy_headers": False}
+    if tls:
+        options.update(ssl_certfile="fixture-cert", ssl_keyfile="fixture-key")
+    with pytest.raises(ValueError, match="Managed LAN"):
+        runtime.run_managed(None, host=host, port=20129, service="dashboard", **options)
+
+
 @pytest.mark.parametrize('field,value', [('pid', True), ('pid', 0), ('token', 'bad'), ('protocol', True),
     ('identity', {'creation_100ns': 1, 'image': 'wrong'}), ('profile', {})])
 def test_wrong_receipt_never_writes_stop(tmp_path, field, value):

@@ -1,0 +1,502 @@
+{
+  "report_version": 1,
+  "created_utc": "2026-10-12T13:30:24.288065+00:00",
+  "status": "proposal_only",
+  "ready_for_cutover": false,
+  "sequence": [
+    {
+      "phase": "P0",
+      "name": "Qualification post-L9",
+      "action": "qualifier PostgreSQL équipe et les piles globales RepoWise, Headroom, Gemini Router, Gateway, Scheduler, réseau et OTLP/Langfuse avant la migration de production",
+      "gate": "tous les endpoints, schémas, identifiants et retours arrière sont testés sur une copie hors production"
+    },
+    {
+      "phase": "P1",
+      "name": "Gel et nouvelle capture",
+      "action": "arrêter tous les écrivains, confirmer l'arrêt de l'autre poste, attendre la stabilité Dropbox, capturer des copies SQLite sans WAL et leurs empreintes",
+      "gate": "empreintes et comptes figés ; toute mutation invalide la fenêtre"
+    },
+    {
+      "phase": "P2",
+      "name": "Clôture des décisions",
+      "action": "approuver les racines des projets, les valeurs gagnantes par champ, les projets provisoires et la politique de quarantaine du graphe",
+      "gate": "aucun élément de revue non classé"
+    },
+    {
+      "phase": "P3",
+      "name": "Répétition indépendante",
+      "action": "restaurer la candidate dans un environnement indépendant et exécuter les contrôles API, recherche, impact, scheduler, réseau et OTLP",
+      "gate": "intégrité et FK correctes et répétition du retour arrière réussie"
+    },
+    {
+      "phase": "P4",
+      "name": "Bascule de production",
+      "action": "publier une génération immuable, maintenir le scheduler arrêté, basculer les lecteurs puis réactiver les écrivains dans une fenêtre observée",
+      "gate": "smoke tests réussis et responsable du retour arrière présent"
+    }
+  ],
+  "proposals": {
+    "projects": {
+      "decision": "keep current-only projects; retain same-id projects pending root/owner approval; import xtream_universal_manager only after validating its root",
+      "review_items": [
+        {
+          "project_id": "dashboard_recette_br",
+          "target_project_id": "dashboard_recette_br",
+          "source_status": "same_id_review",
+          "decision": "review_required",
+          "changed_fields": [
+            "created_at",
+            "root_path",
+            "updated_at"
+          ]
+        },
+        {
+          "project_id": "devcore",
+          "target_project_id": "devcore",
+          "source_status": "same_id_review",
+          "decision": "review_required",
+          "changed_fields": [
+            "created_at",
+            "root_path",
+            "updated_at"
+          ]
+        },
+        {
+          "project_id": "pramax_prefs_patch",
+          "target_project_id": "pramax_prefs_patch",
+          "source_status": "same_id_review",
+          "decision": "review_required",
+          "changed_fields": [
+            "created_at",
+            "root_path",
+            "updated_at"
+          ]
+        }
+      ],
+      "task_project_repairs": [
+        {
+          "project_id": "scripts",
+          "task_count": 13,
+          "task_ids": [
+            "T-01",
+            "T-02",
+            "T-03",
+            "T-04",
+            "T-05",
+            "T-06",
+            "T-07",
+            "T-233",
+            "T-234",
+            "T-235",
+            "T-236",
+            "T-237",
+            "T-238"
+          ],
+          "decision": "create_provisional_project_needs_review",
+          "evidence": "project_missing_on_both_sources",
+          "other_project": null
+        },
+        {
+          "project_id": "xtream_universal_manager",
+          "task_count": 33,
+          "task_ids": [
+            "T-01",
+            "T-02",
+            "T-03",
+            "T-04",
+            "T-05",
+            "T-06",
+            "T-07",
+            "T-08",
+            "T-09",
+            "T-10",
+            "T-11",
+            "T-12",
+            "T-13",
+            "T-14",
+            "T-15",
+            "T-16",
+            "T-17",
+            "T-18",
+            "T-19",
+            "T-20",
+            "T-21",
+            "T-22",
+            "T-23",
+            "T-24",
+            "T-25",
+            "T-26",
+            "T-27",
+            "T-28",
+            "T-29",
+            "T-30",
+            "T-31",
+            "T-32",
+            "T-33"
+          ],
+          "decision": "merge_project_from_other_source",
+          "evidence": "project_exists_on_other_source",
+          "other_project": {
+            "id": "xtream_universal_manager",
+            "name": "xtream_universal_manager",
+            "root_path": "C:\\src\\xtream_universal_manager",
+            "status": "active",
+            "metadata": "{}",
+            "created_at": "2026-09-19 14:15:45",
+            "updated_at": "2026-09-27 00:04:53"
+          }
+        }
+      ],
+      "acceptance": "every project has one approved root_path, owner, status and provenance record; no provisional project remains unapproved"
+    },
+    "tasks": {
+      "shared_without_material_conflict": 1202,
+      "review_required": 134,
+      "review_by_project": {
+        "cea_dashboard": 4,
+        "conso_api_madania": 1,
+        "dashboard_recette_br": 116,
+        "devcore": 1,
+        "job_tracker": 12
+      },
+      "conflicts_by_field": {
+        "worktree": 119,
+        "metadata": 11,
+        "status": 6,
+        "steps_done": 8,
+        "title": 1
+      },
+      "representative_items": [
+        {
+          "project_id": "cea_dashboard",
+          "task_id": "T-01",
+          "source_status": "both",
+          "mapping_status": "shared_review",
+          "decision": "review_required",
+          "changed_fields": [
+            "created_at",
+            "updated_at",
+            "worktree"
+          ]
+        },
+        {
+          "project_id": "cea_dashboard",
+          "task_id": "T-02",
+          "source_status": "both",
+          "mapping_status": "shared_review",
+          "decision": "review_required",
+          "changed_fields": [
+            "created_at",
+            "updated_at",
+            "worktree"
+          ]
+        },
+        {
+          "project_id": "cea_dashboard",
+          "task_id": "T-03",
+          "source_status": "both",
+          "mapping_status": "shared_review",
+          "decision": "review_required",
+          "changed_fields": [
+            "created_at",
+            "updated_at",
+            "worktree"
+          ]
+        },
+        {
+          "project_id": "cea_dashboard",
+          "task_id": "T-04",
+          "source_status": "both",
+          "mapping_status": "shared_review",
+          "decision": "review_required",
+          "changed_fields": [
+            "created_at",
+            "updated_at",
+            "worktree"
+          ]
+        },
+        {
+          "project_id": "conso_api_madania",
+          "task_id": "T-GIT-2654ADE",
+          "source_status": "both",
+          "mapping_status": "shared_review",
+          "decision": "review_required",
+          "changed_fields": [
+            "created_at",
+            "metadata",
+            "updated_at"
+          ]
+        },
+        {
+          "project_id": "dashboard_recette_br",
+          "task_id": "T-00",
+          "source_status": "both",
+          "mapping_status": "shared_review",
+          "decision": "review_required",
+          "changed_fields": [
+            "created_at",
+            "updated_at",
+            "worktree"
+          ]
+        },
+        {
+          "project_id": "dashboard_recette_br",
+          "task_id": "T-01",
+          "source_status": "both",
+          "mapping_status": "shared_review",
+          "decision": "review_required",
+          "changed_fields": [
+            "created_at",
+            "updated_at",
+            "worktree"
+          ]
+        },
+        {
+          "project_id": "dashboard_recette_br",
+          "task_id": "T-02",
+          "source_status": "both",
+          "mapping_status": "shared_review",
+          "decision": "review_required",
+          "changed_fields": [
+            "created_at",
+            "updated_at",
+            "worktree"
+          ]
+        },
+        {
+          "project_id": "dashboard_recette_br",
+          "task_id": "T-03",
+          "source_status": "both",
+          "mapping_status": "shared_review",
+          "decision": "review_required",
+          "changed_fields": [
+            "created_at",
+            "updated_at",
+            "worktree"
+          ]
+        },
+        {
+          "project_id": "dashboard_recette_br",
+          "task_id": "T-04",
+          "source_status": "both",
+          "mapping_status": "shared_review",
+          "decision": "review_required",
+          "changed_fields": [
+            "created_at",
+            "updated_at",
+            "worktree"
+          ]
+        },
+        {
+          "project_id": "dashboard_recette_br",
+          "task_id": "T-05",
+          "source_status": "both",
+          "mapping_status": "shared_review",
+          "decision": "review_required",
+          "changed_fields": [
+            "created_at",
+            "updated_at",
+            "worktree"
+          ]
+        },
+        {
+          "project_id": "dashboard_recette_br",
+          "task_id": "T-06",
+          "source_status": "both",
+          "mapping_status": "shared_review",
+          "decision": "review_required",
+          "changed_fields": [
+            "created_at",
+            "updated_at",
+            "worktree"
+          ]
+        },
+        {
+          "project_id": "dashboard_recette_br",
+          "task_id": "T-07",
+          "source_status": "both",
+          "mapping_status": "shared_review",
+          "decision": "review_required",
+          "changed_fields": [
+            "created_at",
+            "updated_at",
+            "worktree"
+          ]
+        },
+        {
+          "project_id": "dashboard_recette_br",
+          "task_id": "T-08",
+          "source_status": "both",
+          "mapping_status": "shared_review",
+          "decision": "review_required",
+          "changed_fields": [
+            "created_at",
+            "updated_at",
+            "worktree"
+          ]
+        },
+        {
+          "project_id": "dashboard_recette_br",
+          "task_id": "T-09",
+          "source_status": "both",
+          "mapping_status": "shared_review",
+          "decision": "review_required",
+          "changed_fields": [
+            "created_at",
+            "updated_at",
+            "worktree"
+          ]
+        },
+        {
+          "project_id": "dashboard_recette_br",
+          "task_id": "T-10",
+          "source_status": "both",
+          "mapping_status": "shared_review",
+          "decision": "review_required",
+          "changed_fields": [
+            "created_at",
+            "updated_at",
+            "worktree"
+          ]
+        },
+        {
+          "project_id": "dashboard_recette_br",
+          "task_id": "T-100",
+          "source_status": "both",
+          "mapping_status": "shared_review",
+          "decision": "review_required",
+          "changed_fields": [
+            "created_at",
+            "updated_at",
+            "worktree"
+          ]
+        },
+        {
+          "project_id": "dashboard_recette_br",
+          "task_id": "T-101",
+          "source_status": "both",
+          "mapping_status": "shared_review",
+          "decision": "review_required",
+          "changed_fields": [
+            "created_at",
+            "updated_at",
+            "worktree"
+          ]
+        },
+        {
+          "project_id": "dashboard_recette_br",
+          "task_id": "T-102",
+          "source_status": "both",
+          "mapping_status": "shared_review",
+          "decision": "review_required",
+          "changed_fields": [
+            "created_at",
+            "updated_at",
+            "worktree"
+          ]
+        },
+        {
+          "project_id": "dashboard_recette_br",
+          "task_id": "T-103",
+          "source_status": "both",
+          "mapping_status": "shared_review",
+          "decision": "review_required",
+          "changed_fields": [
+            "created_at",
+            "updated_at",
+            "worktree"
+          ]
+        },
+        {
+          "project_id": "dashboard_recette_br",
+          "task_id": "T-104",
+          "source_status": "both",
+          "mapping_status": "shared_review",
+          "decision": "review_required",
+          "changed_fields": [
+            "created_at",
+            "updated_at",
+            "worktree"
+          ]
+        },
+        {
+          "project_id": "dashboard_recette_br",
+          "task_id": "T-105",
+          "source_status": "both",
+          "mapping_status": "shared_review",
+          "decision": "review_required",
+          "changed_fields": [
+            "created_at",
+            "updated_at",
+            "worktree"
+          ]
+        },
+        {
+          "project_id": "dashboard_recette_br",
+          "task_id": "T-106",
+          "source_status": "both",
+          "mapping_status": "shared_review",
+          "decision": "review_required",
+          "changed_fields": [
+            "created_at",
+            "updated_at",
+            "worktree"
+          ]
+        },
+        {
+          "project_id": "dashboard_recette_br",
+          "task_id": "T-107",
+          "source_status": "both",
+          "mapping_status": "shared_review",
+          "decision": "review_required",
+          "changed_fields": [
+            "created_at",
+            "updated_at",
+            "worktree"
+          ]
+        },
+        {
+          "project_id": "dashboard_recette_br",
+          "task_id": "T-108",
+          "source_status": "both",
+          "mapping_status": "shared_review",
+          "decision": "review_required",
+          "changed_fields": [
+            "created_at",
+            "updated_at",
+            "worktree"
+          ]
+        }
+      ],
+      "rule": "preserve content only when equal; otherwise choose field-by-field from evidence (worktree existence, status transition, steps monotonicity, metadata merge, title provenance) and record both source values",
+      "acceptance": "zero task_review_required and every chosen field has source, timestamp and reviewer evidence"
+    },
+    "graph": {
+      "current_missing_identifiers": 250,
+      "deterministic_candidate_identifiers": 164,
+      "candidate_edges": 174681,
+      "quarantine_edges": 94185,
+      "policy": "apply only exact file-prefix and unique-function-suffix repairs; keep all other edges in quarantine; deduplicate only after remapping and retain source_rows plus source hash",
+      "acceptance": "zero FK violations in the active projection, reachability equal at depth 2, quarantine export restorable, and no consumer relying on raw row IDs"
+    },
+    "scheduler": {
+      "decision": "archive run_history separately; keep jobs disabled through cutover and first observation window",
+      "acceptance": "archive integrity ok, no historical command executed, explicit activation approval after smoke tests"
+    }
+  },
+  "blocking_evidence": [
+    "candidate_historical_fk_empty",
+    "project_review_empty",
+    "quarantine_empty",
+    "unresolved_task_conflicts_empty",
+    "consumer_contract_reviewed"
+  ],
+  "required_approvals": [
+    "project ownership and roots",
+    "task field conflict winners",
+    "quarantine retention policy",
+    "PostgreSQL/global stack readiness",
+    "cutover and rollback window"
+  ],
+  "policy": "proposal only; no source or operational database is modified"
+}

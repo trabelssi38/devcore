@@ -1,0 +1,9 @@
+{
+  "output": "E:\\src_python\\devcore\\docs\\audit-2026-09-30\\scheduler-archive-2026-10-12.db",
+  "status": "archive_only",
+  "run_history": 12245,
+  "source_integrity": "ok",
+  "jobs_activation_allowed": false,
+  "jobs_json_definitions": 8,
+  "created_utc": "2026-10-11T23:38:30.318494+00:00"
+}

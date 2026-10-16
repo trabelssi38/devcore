@@ -1,0 +1,20 @@
+{
+  "status": "preview_only",
+  "ready_for_cutover": false,
+  "source": "E:\\src_python\\devcore\\docs\\audit-2026-09-30\\fusion-graph-preview-2026-10-12.db",
+  "output": "E:\\DevCoreRuntime\\qualification\\graph-heuristic-20261012.db",
+  "source_sha256": "173bcc19ad115dbaab5f61d84149275cae3ce6c510cb20f3e8fe1959bfcc678a",
+  "output_sha256": "7754672f739b2b0cb14731e5561fa72ba8adcb8149e4bf1443a323fb3a61f895",
+  "nodes": 2272,
+  "edges": 696267,
+  "synthetic_nodes": 86,
+  "counts": {
+    "repaired_edges": 174681,
+    "unresolved_placeholder_edge_endpoints": 65403,
+    "unresolved_edges": 94185,
+    "heuristic_existing_file_edge_endpoints": 28782,
+    "valid_edges": 427401
+  },
+  "integrity": "ok",
+  "foreign_key_violations": 0
+}

@@ -1,0 +1,27 @@
+{
+  "output": "E:\\src_python\\devcore\\docs\\audit-2026-09-30\\fusion-candidate-v4-2026-10-12.db",
+  "status": "review_only",
+  "integrity": "ok",
+  "attached_counts": {
+    "fusion_project_merge_map": 28,
+    "fusion_task_merge_map": 1378,
+    "fusion_task_field_conflicts": 145,
+    "fusion_kg_edges_repair_preview": 696267,
+    "fusion_run_history_archive": 12245,
+    "fusion_projects_fk_preview": 29,
+    "fusion_tasks_fk_preview": 1378,
+    "fusion_graph_nodes_fk_preview": 2186,
+    "fusion_graph_edges_fk_preview": 602082,
+    "fusion_graph_quarantine_preview": 94185
+  },
+  "writes_to_application_tables": false,
+  "source_sha256": {
+    "base": "e3f644a436ebf623c7258a671dbafaec874f993cfbbc38cbf848a65e3cb48398",
+    "mapping": "a399bbe55d8a6117a7b30bb87844ed445e46395ab981cb9960e4810a1584e204",
+    "graph": "173bcc19ad115dbaab5f61d84149275cae3ce6c510cb20f3e8fe1959bfcc678a",
+    "scheduler": "8224175c85259a921b8c9bfd5101c527aae023bf1d6a933c026e70781044f73a",
+    "task_project": "00700a7fdfa0e4fb3fe465f462735bb3bea2c6d4a3ccaa062fc00f850349e4a5",
+    "graph_fk": "d0b54f210703e2af4f7de350f74a702f81eb15bda1e06656a247d2bb02f2c7fd"
+  },
+  "created_utc": "2026-10-12T10:04:57.492572+00:00"
+}

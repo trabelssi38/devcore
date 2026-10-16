@@ -1,0 +1,137 @@
+{
+  "report_version": 1,
+  "created_utc": "2026-10-13T22:26:43.303587+00:00",
+  "stage": "P3_independent_rehearsal",
+  "status": "rehearsal_passed_with_blockers",
+  "ready_for_cutover": false,
+  "snapshot": "E:\\DevCoreRuntime\\qualification\\p1-capture-20261012g",
+  "graph_projection": "E:\\DevCoreRuntime\\qualification\\fusion-candidate-v5-heuristic-promoted-scoped-2026-10-13.db",
+  "candidate_validation": "E:\\src_python\\devcore\\docs\\audit-2026-09-30\\fusion-candidate-v5-heuristic-promoted-scoped-validation-2026-10-13.json",
+  "checks": {
+    "snapshot_stable": {
+      "passed": true,
+      "source": true
+    },
+    "restore:runs/runs.db": {
+      "passed": true,
+      "sha256_match": true,
+      "integrity": "ok",
+      "foreign_key_violations": 0,
+      "tables": {
+        "runs": 0,
+        "external_effects": 0
+      },
+      "virtual_tables_unavailable": {}
+    },
+    "rollback_simulation": {
+      "passed": true,
+      "restored_sha256": "81b855ae1414b85fd597254e4f2f9e249d3a20b5766b56f400667cbe39a719a7",
+      "expected_sha256": "81b855ae1414b85fd597254e4f2f9e249d3a20b5766b56f400667cbe39a719a7"
+    },
+    "graph_projection": {
+      "passed": true,
+      "integrity": "ok",
+      "foreign_key_violations": 0,
+      "tables": {
+        "sqlite_sequence": 4,
+        "token_calls": 190,
+        "workflows": 0,
+        "service_status": 0,
+        "runs": 0,
+        "plugins": 0,
+        "audit_log": 0,
+        "schedules": 0,
+        "schedule_history": 0,
+        "outbox_messages": 0,
+        "memory_entries": 9,
+        "bus_events": 20989,
+        "vault_notes": 176,
+        "workflow_states": 64,
+        "plugins_registry": 6,
+        "skills_runtime": 13,
+        "metrics": 2952,
+        "config": 7,
+        "runtime_state": 1,
+        "conversations": 0,
+        "conversations_fts": 0,
+        "conversations_fts_data": 2,
+        "conversations_fts_idx": 0,
+        "conversations_fts_docsize": 0,
+        "conversations_fts_config": 1,
+        "events": 2,
+        "vec_decisions": null,
+        "vec_decisions_info": 4,
+        "vec_decisions_chunks": 0,
+        "vec_decisions_rowids": 0,
+        "vec_decisions_vector_chunks00": 0,
+        "vec_decisions_auxiliary": 0,
+        "vec_lessons": null,
+        "vec_lessons_info": 4,
+        "vec_lessons_chunks": 0,
+        "vec_lessons_rowids": 0,
+        "vec_lessons_vector_chunks00": 0,
+        "vec_lessons_auxiliary": 0,
+        "vec_patterns": null,
+        "vec_patterns_info": 4,
+        "vec_patterns_chunks": 0,
+        "vec_patterns_rowids": 0,
+        "vec_patterns_vector_chunks00": 0,
+        "vec_patterns_auxiliary": 0,
+        "vec_codebase": null,
+        "vec_codebase_info": 4,
+        "vec_codebase_chunks": 0,
+        "vec_codebase_rowids": 0,
+        "vec_codebase_vector_chunks00": 0,
+        "vec_codebase_auxiliary": 0,
+        "task_imports": 0,
+        "fusion_project_merge_map": 28,
+        "fusion_task_merge_map": 1378,
+        "fusion_task_field_conflicts": 145,
+        "fusion_kg_edges_repair_preview": 696267,
+        "fusion_run_history_archive": 12245,
+        "fusion_projects_fk_preview": 29,
+        "fusion_tasks_fk_preview": 1378,
+        "fusion_graph_nodes_fk_preview": 2186,
+        "fusion_graph_edges_fk_preview": 602082,
+        "fusion_graph_quarantine_archive": 94185,
+        "fusion_candidate_manifest": 1,
+        "projects": 29,
+        "tasks": 1378,
+        "migration_decision_provenance": 3,
+        "fusion_graph_quarantine_preview": 0,
+        "migration_promotion_provenance": 4,
+        "kg_nodes": 2272,
+        "kg_edges": 696267,
+        "graph_scope_provenance": 3
+      },
+      "virtual_tables_unavailable": {
+        "vec_decisions": "no such module: vec0",
+        "vec_lessons": "no such module: vec0",
+        "vec_patterns": "no such module: vec0",
+        "vec_codebase": "no such module: vec0"
+      },
+      "path": "E:\\DevCoreRuntime\\qualification\\fusion-candidate-v5-heuristic-promoted-scoped-2026-10-13.db"
+    },
+    "candidate_validation": {
+      "passed": true,
+      "integrity_check": "ok",
+      "application_foreign_key_violations": 0,
+      "unresolved_review_items": 0
+    },
+    "postgresql_global_stack": {
+      "passed": false,
+      "state": "deferred",
+      "reason": "No qualified PostgreSQL target supplied to rehearsal"
+    },
+    "operational_cutover": {
+      "passed": false,
+      "state": "deferred",
+      "reason": "Rehearsal is isolated and does not freeze or replace live data"
+    }
+  },
+  "blockers": [
+    "operational_cutover_deferred",
+    "postgresql_global_stack_not_qualified"
+  ],
+  "policy": "isolated rehearsal only; no operational database or live service is modified"
+}

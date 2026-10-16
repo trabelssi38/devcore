@@ -1,0 +1,21 @@
+{
+  "status": "identity_imported_sessions_revoked",
+  "source": "E:\\DevCoreRuntime\\qualification\\identity-snapshot-20261013.db",
+  "target": "postgresql qualification database",
+  "counts": {
+    "users": 1,
+    "memberships": 29,
+    "sessions": 3,
+    "passwords": 1
+  },
+  "unmapped_projects": [],
+  "active_service_modified": false,
+  "blockers": [
+    "active_service_identity_still_uses_sqlite",
+    "operational_cutover_deferred"
+  ],
+  "limitations": [
+    "browser sessions and admin credentials remain in the source-only audit scope",
+    "imported PostgreSQL sessions are forced revoked until an approved cutover"
+  ]
+}
