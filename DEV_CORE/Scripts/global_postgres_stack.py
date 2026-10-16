@@ -268,7 +268,11 @@ def _supervise(roots: dict, repowise: str | None, headroom_python: Path) -> int:
         return 0
     finally:
         manifest["status"] = "stopping"
-        _write_manifest(manifest_path, manifest)
+        manifest_error = None
+        try:
+            _write_manifest(manifest_path, manifest)
+        except OSError as exc:
+            manifest_error = exc
         outcomes = {}
         for name, process, log in reversed(started):
             graceful = False
@@ -307,13 +311,19 @@ def _supervise(roots: dict, repowise: str | None, headroom_python: Path) -> int:
             log.close()
         manifest["status"] = "stopped" if all(item["graceful"] for item in outcomes.values()) else "shutdown_incomplete"
         manifest["shutdown"] = outcomes
-        _write_manifest(manifest_path, manifest)
+        try:
+            _write_manifest(manifest_path, manifest)
+            manifest_error = None
+        except OSError as exc:
+            manifest_error = exc
         try:
             if json.loads(stop_path.read_text(encoding="utf-8")).get("token") == stop_token:
                 stop_path.unlink()
         except (OSError, ValueError, AttributeError):
             pass
         print(json.dumps({"status": manifest["status"], "manifest": str(manifest_path)}), flush=True)
+        if manifest_error is not None:
+            raise RuntimeError("Global children stopped but manifest update failed") from manifest_error
 
 
 def _request_stop(local_root: Path) -> int:
