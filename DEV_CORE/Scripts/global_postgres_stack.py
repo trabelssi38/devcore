@@ -154,6 +154,7 @@ def _supervise(roots: dict, repowise: str | None, headroom_python: Path) -> int:
     stop_path = runtime / "candidate-stop.json"
     stop_token = uuid4().hex
     scheduler_stop_path = runtime / f"scheduler-stop-{stop_token[:8]}.json"
+    repowise_stop_path = runtime / f"repowise-stop-{stop_token[:8]}.json"
     env = os.environ.copy()
     env["DEVCORE_GLOBAL_STACK_MANIFEST"] = str(manifest_path)
     runtime_python = Path(sys._base_executable)
@@ -162,6 +163,7 @@ def _supervise(roots: dict, repowise: str | None, headroom_python: Path) -> int:
                                           env.get("PYTHONPATH", "")))
     env["DEVCORE_GEMINI_ROUTER_BIND"] = "127.0.0.1"
     env["DEVCORE_SCHEDULER_STOP_TOKEN"] = stop_token
+    env["DEVCORE_REPOWISE_STOP_TOKEN"] = stop_token
     env.pop("GEMINI_API_KEY", None)
     env.pop("GOOGLE_API_KEY", None)
     external_env = env.copy()
@@ -175,9 +177,9 @@ def _supervise(roots: dict, repowise: str | None, headroom_python: Path) -> int:
                        "--stop-file", str(scheduler_stop_path)], REPO),
     ]
     if repowise:
-        specs.append(("repowise", [str(headroom_python), "-c",
-                                    "from repowise.cli.main import cli; cli()",
-                                    "serve", "--host", "127.0.0.1", "--port", "7337", "--no-ui"], REPO))
+        specs.append(("repowise", [str(headroom_python), str(SCRIPTS / "launch_managed_repowise.py"),
+                                    "--stop-file", str(repowise_stop_path), "serve", "--host", "127.0.0.1",
+                                    "--port", "7337", "--no-ui"], REPO))
     started: list[tuple[str, subprocess.Popen, object]] = []
     manifest = {"status": "starting", "created_utc": datetime.now(timezone.utc).isoformat(),
                 "roots": roots, "processes": {}, "supervisor_pid": os.getpid(),
@@ -258,6 +260,13 @@ def _supervise(roots: dict, repowise: str | None, headroom_python: Path) -> int:
         outcomes = {}
         for name, process, log in reversed(started):
             graceful = False
+            if process.poll() is None and name == "repowise":
+                _write_manifest(repowise_stop_path, {"pid": process.pid, "token": stop_token})
+                try:
+                    process.wait(timeout=20)
+                    graceful = process.returncode == 0
+                except subprocess.TimeoutExpired:
+                    pass
             if process.poll() is None and name == "scheduler":
                 _write_manifest(scheduler_stop_path, {"pid": process.pid, "token": stop_token})
                 try:
