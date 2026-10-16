@@ -110,10 +110,11 @@ Ordre d'exécution :
 Le superviseur candidat a maintenant démarré Router, les deux Headroom,
 Gateway et Scheduler PostgreSQL ensemble sur un cluster temporaire isolé.
 Leurs PID, ports, sondes et arrêt coordonné sont vérifiés ; le navigateur a
-ouvert les deux cockpits et clôturé une tâche fictive. RepoWise reste exclu de
-ce cycle : son index correspond au commit HEAD, mais l'arbre de travail modifié
-ne peut pas être déclaré couvert par cet index. Le profil actif demeure
-individuel et la reprise globale après redémarrage n'est pas prouvée.
+ouvert les deux cockpits et clôturé une tâche fictive. Un second cycle sur
+une copie Git propre a inclus RepoWise : index aligné sur le commit servi,
+six PID/sondes vérifiés, puis six arrêts coopératifs à code 0. Le dépôt de
+travail reste modifié et son propre index n'est pas à jour. Le profil actif
+demeure individuel et la reprise globale après redémarrage n'est pas prouvée.
 La section « services » du Cockpit équipe lit maintenant les battements et
 sondes du superviseur candidat sur copie, refuse un manifeste périmé et
 n'affiche que les composants effectivement lancés. Cette supervision n'a pas
@@ -157,13 +158,19 @@ PostgreSQL. Le contrôle dans le navigateur des deux vues et d'une clôture
 fictive a suivi ; les autres sections et les métriques restent à raccorder.
 Le profil actif v254 n'a pas changé.
 
-Les critères restants exigent encore un index RepoWise aligné sur l'état à
-servir, sa présence effective dans la pile, les fournisseurs LLM réels, les
-sections du cockpit encore non raccordées et la reprise opérationnelle après
-redémarrage. Le daemon Scheduler historique
+Les critères restants exigent encore la stabilisation du dépôt de travail et
+son index RepoWise, les fournisseurs LLM réels, les sections du cockpit encore
+non raccordées et la reprise opérationnelle après redémarrage. Le daemon Scheduler historique
 initialise SQLite et JSON. Un ordonnanceur PostgreSQL candidat et une migration
 RLS ont maintenant passé une recette isolée (dispatch unique, concurrence,
 arrêt/reprise), mais ils ne sont pas installés ni raccordés à la pile active.
+Le contrôle du schéma actif confirme aussi que les DDL de runs/plannings
+manquent et que le rôle applicatif opérationnel n'avait aucun droit sur leurs
+tables. Les SQL ont été corrigés et regroupés en une migration atomique testée
+sur recette ; la base active attend une sauvegarde complète et une fenêtre de
+maintenance avant application. Une commande locale vérifie maintenant la cible,
+l'empreinte des sources, la sauvegarde et le schéma final ; seul son préflight
+en lecture a été exécuté sur le profil actif. Son application reste en attente.
 Le démarrage de
 `DevCoreIndividual` seul n'active pas la pile globale.
 

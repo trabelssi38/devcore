@@ -22,5 +22,14 @@ CREATE POLICY rls_schedule_history_project_isolation ON schedule_history
         AND s.project_id = nullif(current_setting('app.current_project_id', true), '')
     ));
 
-GRANT SELECT, INSERT, UPDATE, DELETE ON schedules, schedule_history TO devcore_app;
+DO $grant_app_roles$
+DECLARE app_role text;
+BEGIN
+    FOREACH app_role IN ARRAY ARRAY['devcore_app', 'devcore_app_qualification'] LOOP
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = app_role) THEN
+            EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON schedules, schedule_history TO %I', app_role);
+        END IF;
+    END LOOP;
+END
+$grant_app_roles$;
 COMMIT;

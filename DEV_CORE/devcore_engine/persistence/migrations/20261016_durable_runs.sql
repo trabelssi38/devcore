@@ -45,6 +45,15 @@ DROP POLICY IF EXISTS rls_external_effects_project_isolation ON external_effects
 CREATE POLICY rls_external_effects_project_isolation ON external_effects
     FOR ALL USING (project_id = nullif(current_setting('app.current_project_id', true), ''))
     WITH CHECK (project_id = nullif(current_setting('app.current_project_id', true), ''));
-GRANT SELECT, INSERT, UPDATE, DELETE ON external_effects TO devcore_app;
+DO $grant_app_roles$
+DECLARE app_role text;
+BEGIN
+    FOREACH app_role IN ARRAY ARRAY['devcore_app', 'devcore_app_qualification'] LOOP
+        IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = app_role) THEN
+            EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON runs, external_effects TO %I', app_role);
+        END IF;
+    END LOOP;
+END
+$grant_app_roles$;
 
 COMMIT;
