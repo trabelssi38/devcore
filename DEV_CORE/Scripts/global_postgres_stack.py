@@ -134,7 +134,15 @@ def _preflight(skip_repowise: bool, headroom_python: Path) -> tuple[dict, str | 
 def _write_manifest(path: Path, payload: dict) -> None:
     temporary = path.with_suffix(".tmp")
     temporary.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    os.replace(temporary, path)
+    deadline = time.monotonic() + 5
+    while True:
+        try:
+            os.replace(temporary, path)
+            return
+        except PermissionError:
+            if time.monotonic() >= deadline:
+                raise
+            time.sleep(.05)
 
 
 def _stop_managed(name: str, roots: dict) -> bool:
