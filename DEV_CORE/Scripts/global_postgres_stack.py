@@ -71,13 +71,17 @@ def _port_free(port: int) -> bool:
 def _listener_pid(port: int) -> int | None:
     if os.name != "nt":
         return None
-    command = ("$x=Get-NetTCPConnection -State Listen -LocalAddress 127.0.0.1 "
-               f"-LocalPort {port} -ErrorAction SilentlyContinue; "
-               "if($x){$x | Select-Object -First 1 -ExpandProperty OwningProcess}")
-    result = subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", command],
-                            capture_output=True, text=True, timeout=5)
-    value = result.stdout.strip()
-    return int(value) if result.returncode == 0 and value.isdecimal() else None
+    result = subprocess.run(["netstat", "-ano", "-p", "TCP"],
+                            capture_output=True, text=True, timeout=10)
+    if result.returncode:
+        return None
+    address = f"127.0.0.1:{port}"
+    for line in result.stdout.splitlines():
+        fields = line.split()
+        if (len(fields) == 5 and fields[0] == "TCP" and fields[1] == address
+                and fields[3] == "LISTENING" and fields[4].isdecimal()):
+            return int(fields[4])
+    return None
 
 
 def _repowise_fresh(executable: str) -> dict:
