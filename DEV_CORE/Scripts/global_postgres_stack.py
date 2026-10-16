@@ -118,6 +118,11 @@ def _preflight(skip_repowise: bool, headroom_python: Path) -> tuple[dict, str | 
         repowise = shutil.which("repowise")
         if not repowise:
             raise RuntimeError("RepoWise executable missing")
+        import_check = subprocess.run([str(headroom_python), "-c",
+                                       "from repowise.cli.main import cli"],
+                                      capture_output=True, text=True, timeout=10)
+        if import_check.returncode:
+            raise RuntimeError("RepoWise package unavailable in the supervised Python runtime")
         _repowise_fresh(repowise)
     return roots, repowise
 
@@ -170,7 +175,9 @@ def _supervise(roots: dict, repowise: str | None, headroom_python: Path) -> int:
                        "--stop-file", str(scheduler_stop_path)], REPO),
     ]
     if repowise:
-        specs.append(("repowise", [repowise, "serve", "--host", "127.0.0.1", "--port", "7337", "--no-ui"], REPO))
+        specs.append(("repowise", [str(headroom_python), "-c",
+                                    "from repowise.cli.main import cli; cli()",
+                                    "serve", "--host", "127.0.0.1", "--port", "7337", "--no-ui"], REPO))
     started: list[tuple[str, subprocess.Popen, object]] = []
     manifest = {"status": "starting", "created_utc": datetime.now(timezone.utc).isoformat(),
                 "roots": roots, "processes": {}, "supervisor_pid": os.getpid(),
