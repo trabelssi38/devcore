@@ -176,6 +176,22 @@ def test_cross_project_access_denied_with_403(auth_env):
     assert bob_alpha.status_code == 403
 
 
+def test_gemini_route_requires_project_mutation_access(auth_env, monkeypatch):
+    """A project-scoped Gemini call cannot bypass identity or role checks."""
+    monkeypatch.delenv("DEVCORE_DATABASE_URL", raising=False)
+    monkeypatch.delenv("DEVCORE_TASK_READ_MODE", raising=False)
+    client = auth_env["client"]
+    route = "/api/v1/llm/gemini"
+    prompt = {"project": "alpha", "prompt": "Reply with OK."}
+    assert client.post(route, json=prompt).status_code == 401
+    reader = {"Authorization": f"Bearer {auth_env['credentials']['charlie']['token']}"}
+    assert client.post(route, json=prompt, headers=reader).status_code == 403
+    owner = {"Authorization": f"Bearer {auth_env['credentials']['alice']['token']}"}
+    assert client.post(route, json={"project": "beta", "prompt": "Reply with OK."},
+                       headers=owner).status_code == 403
+    assert client.post(route, json=prompt, headers=owner).status_code == 503
+
+
 def test_role_matrix_enforcement(auth_env):
     """Readers can query tasks but cannot mutate them."""
     client = auth_env["client"]
