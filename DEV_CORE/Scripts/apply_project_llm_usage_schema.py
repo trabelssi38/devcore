@@ -52,6 +52,12 @@ def ready(options: dict) -> bool:
         row = cur.fetchone()
         if row is None or tuple(row) != (True, True, True, True):
             return False
+        cur.execute("""SELECT polname,polcmd FROM pg_policy
+            WHERE polrelid=to_regclass('public.project_llm_usage')""")
+        if set(map(tuple, cur.fetchall())) != {
+                ("project_llm_usage_select", "r"),
+                ("project_llm_usage_insert", "a")}:
+            return False
         cur.execute("SELECT count(*) FROM project_llm_usage")
         return cur.fetchone()[0] == 0
     finally:

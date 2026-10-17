@@ -78,17 +78,15 @@ def main() -> int:
             raise ValueError("Backup directory missing")
         if sha256(DDL) != DDL_SHA256:
             raise ValueError("Graph DDL hash differs from qualified source")
-        source = audit(args.candidate, args.config)
-        if source["database"] != args.expected_database:
+        parsed = urlparse(json.loads(args.config.read_text(encoding="utf-8"))
+                          ["environment"]["DEVCORE_DATABASE_URL"])
+        if (parsed.scheme != "postgresql" or parsed.hostname != "127.0.0.1"
+                or parsed.path.lstrip("/") != args.expected_database):
             raise ValueError("PostgreSQL database identity differs from expected")
-        for key, expected in EXPECTED.items():
-            actual = source[key]["rows"] if key.startswith("kg_") else source[key]
-            if actual != expected:
-                raise ValueError(f"Graph {key} count differs from qualified source")
         for name in ("pg_dump.exe", "pg_restore.exe", "psql.exe"):
             if not (PG_BIN / name).is_file():
                 raise ValueError("PostgreSQL utility missing: " + name)
-        summary = {"database": source["database"], "ddl_sha256": DDL_SHA256,
+        summary = {"database": args.expected_database, "ddl_sha256": DDL_SHA256,
                    "nodes": EXPECTED["kg_nodes"], "edges": EXPECTED["kg_edges"],
                    "readable_edges": EXPECTED["same_project_edges"],
                    "quarantined_edges": EXPECTED["cross_project_edges_for_quarantine"]}
@@ -102,13 +100,16 @@ def main() -> int:
                 raise ValueError("Existing graph scope differs from qualified counts")
             print(json.dumps({"status": "graph_scope_already_verified", **summary}))
             return 0
+        source = audit(args.candidate, args.config)
+        for key, expected in EXPECTED.items():
+            actual = source[key]["rows"] if key.startswith("kg_") else source[key]
+            if actual != expected:
+                raise ValueError(f"Graph {key} count differs from qualified source")
         if not args.apply:
             print(json.dumps({"status": "graph_scope_apply_ready", **summary}))
             return 0
         password = getpass.getpass("PostgreSQL administrator password: ")
         try:
-            parsed = urlparse(json.loads(args.config.read_text(encoding="utf-8"))
-                              ["environment"]["DEVCORE_DATABASE_URL"])
             port = parsed.port or 5432
             admin = pg8000.dbapi.connect(user="postgres", password=password,
                                         host="127.0.0.1", port=port,
