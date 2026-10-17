@@ -14,6 +14,22 @@ _IDENTIFIER = re.compile(r"[A-Za-z0-9_.:/-]{1,128}\Z")
 
 
 class PostgresLlmUsageStore(PostgresProjectReader):
+    def assert_ready(self, principal: Principal) -> None:
+        if not isinstance(principal, Principal) or principal.action != "task.mutate":
+            raise ProjectAccessDenied("Project mutation principal required")
+        import pg8000.dbapi
+
+        db = pg8000.dbapi.connect(**self._options)
+        try:
+            cur = db.cursor()
+            cur.execute("SELECT set_config('app.current_project_id', %s, true)",
+                        (principal.project_id,))
+            cur.execute("SELECT 1 FROM project_llm_usage WHERE project_id=%s LIMIT 0",
+                        (principal.project_id,))
+        finally:
+            db.rollback()
+            db.close()
+
     def record_gemini(
         self, principal: Principal, *, trace_id: str, model: str,
         prompt_tokens: int | None, completion_tokens: int | None,

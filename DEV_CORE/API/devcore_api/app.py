@@ -502,9 +502,14 @@ def create_app(
         dsn = os.environ.get("DEVCORE_DATABASE_URL", "").strip()
         if not dsn or os.environ.get("DEVCORE_TASK_READ_MODE", "").lower() != "postgres":
             raise HTTPException(status_code=503, detail="Project usage store unavailable")
+        store = PostgresLlmUsageStore(dsn)
+        try:
+            await asyncio.to_thread(store.assert_ready, principal)
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail="Project usage store unavailable") from exc
         try:
             return await generate_project_summary(
-                principal, payload.get("prompt"), PostgresLlmUsageStore(dsn))
+                principal, payload.get("prompt"), store)
         except ValueError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         except GeminiRouteUnavailable as exc:
