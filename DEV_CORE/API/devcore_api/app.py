@@ -34,6 +34,7 @@ from devcore_engine.services.postgres_dashboard import PostgresDashboardProjecti
 from .contracts import ContractCatalog, TaskListResponse, build_contract_catalog
 from .team_cockpit import render_team_cockpit
 from .team_login import render_team_login
+from .team_gemini import GeminiRouteUnavailable, generate_project_summary
 from .github_webhooks import (
     GitHubWebhookAccepted,
     build_github_webhook_response,
@@ -485,6 +486,29 @@ def create_app(
         response = await call_next(request)
         response.headers["Cache-Control"] = "no-store"
         return response
+
+    @app.post(f"{API_PREFIX}/llm/gemini", tags=["llm"])
+    async def project_gemini(request: Request) -> dict:
+        """Generate through the loopback auxiliary route for an authorized project."""
+        from devcore_engine.services.postgres_llm_usage import PostgresLlmUsageStore
+
+        principal = getattr(request.state, "principal", None)
+        project = getattr(request.state, "authorized_project", None)
+        if principal is None or principal.project_id != project:
+            raise HTTPException(status_code=403, detail="Project access denied")
+        payload = await request.json()
+        if not isinstance(payload, dict) or payload.get("project") != project:
+            raise HTTPException(status_code=400, detail="Project mismatch")
+        dsn = os.environ.get("DEVCORE_DATABASE_URL", "").strip()
+        if not dsn or os.environ.get("DEVCORE_TASK_READ_MODE", "").lower() != "postgres":
+            raise HTTPException(status_code=503, detail="Project usage store unavailable")
+        try:
+            return await generate_project_summary(
+                principal, payload.get("prompt"), PostgresLlmUsageStore(dsn))
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except GeminiRouteUnavailable as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
 
     @app.get(f"{API_PREFIX}/health", response_model=HealthResponse, tags=["health"])
     async def health(request: Request) -> HealthResponse:

@@ -51,6 +51,14 @@ class PostgresDashboardProjection(PostgresProjectReader):
             cursor.execute("""SELECT model_tokens_daily,runs_daily,storage_mb FROM budgets
                 WHERE project_id=%s LIMIT 1""", (project,))
             budget = cursor.fetchone()
+            cursor.execute("""SELECT node_count,edge_rows FROM project_graph_stats
+                WHERE project_id=%s LIMIT 1""", (project,))
+            graph_stats = cursor.fetchone()
+            cursor.execute("""SELECT count(*),coalesce(sum(prompt_tokens),0),
+                coalesce(sum(completion_tokens),0),
+                count(*) FILTER (WHERE usage_source='unreported')
+                FROM project_llm_usage WHERE project_id=%s""", (project,))
+            usage = cursor.fetchone()
 
         label = _text(project)
         cards = (f'<div class="project-row" data-project="{label}">'
@@ -122,6 +130,20 @@ class PostgresDashboardProjection(PostgresProjectReader):
             model_tokens, daily_runs, storage_mb = budget
             metrics_panel = (f'<div>Plafonds du projet : {model_tokens} jetons modèle/jour, '
                              f'{daily_runs} runs/jour, {storage_mb} Mo de stockage.</div>')
+        if graph_stats is None:
+            graph_panel = "<div>Aucun graphe historique attribué à ce projet.</div>"
+        else:
+            nodes, edges = graph_stats
+            graph_panel = (f'<div>{nodes} nœuds · {edges} arêtes historiques '
+                           'du projet, hors relations en quarantaine.</div>')
+        calls, prompt_tokens, completion_tokens, unreported = usage
+        if calls == 0:
+            token_panel = "<div>Aucun appel LLM attribué à ce projet.</div>"
+        else:
+            token_panel = (f'<div>{calls} appel(s) Gemini attribué(s) au projet · '
+                           f'{prompt_tokens} jetons entrée · {completion_tokens} jetons sortie'
+                           + (f' · {unreported} appel(s) sans usage fournisseur' if unreported else "")
+                           + '</div>')
         return {
             "schema_version": 1,
             "project": project,
@@ -131,11 +153,11 @@ class PostgresDashboardProjection(PostgresProjectReader):
                 "tasks_pipeline": pipeline,
                 "services_monitoring": render_global_stack_health(global_stack_health()),
                 "automation_hooks": schedule_panel,
-                "token_activity_report": "<div>Usage LLM par projet non encore enregistré.</div>",
+                "token_activity_report": token_panel,
                 "context_composition": memory_panel,
                 "metrics_service_summary": metrics_panel,
                 "event_bus_recent": event_items,
-                "knowledge_graph_summary": "<div>Graphe PostgreSQL non encore disponible.</div>",
+                "knowledge_graph_summary": graph_panel,
                 "plugin_status": plugin_panel,
             },
             "runs": run_items,
