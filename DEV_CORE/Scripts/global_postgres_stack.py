@@ -135,11 +135,8 @@ def _preflight(skip_repowise: bool, headroom_python: Path) -> tuple[dict, str | 
         repowise = shutil.which("repowise")
         if not repowise:
             raise RuntimeError("RepoWise executable missing")
-        import_check = subprocess.run([str(headroom_python), "-c",
-                                       "from repowise.cli.main import cli"],
-                                      capture_output=True, text=True, timeout=90)
-        if import_check.returncode:
-            raise RuntimeError("RepoWise package unavailable in the supervised Python runtime")
+        # The managed process below imports RepoWise itself and must pass its
+        # HTTP health check. A separate cold-boot import can stall startup.
         _repowise_fresh(repowise)
     return roots, repowise
 
@@ -229,7 +226,7 @@ def _supervise(roots: dict, repowise: str | None, headroom_python: Path) -> int:
             manifest["processes"][name] = {"pid": process.pid, "port": PORTS.get(name),
                                            "log": str(log_path)}
             _write_manifest(manifest_path, manifest)
-            deadline = time.monotonic() + (180 if name == "repowise" else 90)
+            deadline = time.monotonic() + (300 if name == "repowise" else 90)
             while time.monotonic() < deadline and process.poll() is None and not stop:
                 if name == "scheduler":
                     for line in log_path.read_text(encoding="utf-8", errors="replace").splitlines()[-10:]:
