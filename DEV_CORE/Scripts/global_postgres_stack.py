@@ -85,7 +85,7 @@ def _listener_pid(port: int) -> int | None:
     if os.name != "nt":
         return None
     result = subprocess.run(["netstat", "-ano", "-p", "TCP"],
-                            capture_output=True, text=True, timeout=10)
+                            capture_output=True, text=True, timeout=30)
     if result.returncode:
         return None
     address = f"127.0.0.1:{port}"
@@ -98,12 +98,12 @@ def _listener_pid(port: int) -> int | None:
 
 
 def _repowise_fresh(executable: str) -> dict:
-    head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=REPO, text=True, timeout=5).strip()
-    dirty = subprocess.check_output(["git", "status", "--porcelain"], cwd=REPO, text=True, timeout=10)
+    head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=REPO, text=True, timeout=45).strip()
+    dirty = subprocess.check_output(["git", "status", "--porcelain"], cwd=REPO, text=True, timeout=45)
     if dirty.strip():
         raise RuntimeError("RepoWise index cannot cover the dirty working tree")
     result = subprocess.run([executable, "status", "--format", "json", "--no-workspace"],
-                            cwd=REPO, capture_output=True, text=True, timeout=20, check=True)
+                            cwd=REPO, capture_output=True, text=True, timeout=90, check=True)
     status = json.loads(result.stdout)
     if not status.get("indexed") or status.get("state", {}).get("last_sync_commit") != head:
         raise RuntimeError("RepoWise index is not aligned with the current commit")
@@ -137,7 +137,7 @@ def _preflight(skip_repowise: bool, headroom_python: Path) -> tuple[dict, str | 
             raise RuntimeError("RepoWise executable missing")
         import_check = subprocess.run([str(headroom_python), "-c",
                                        "from repowise.cli.main import cli"],
-                                      capture_output=True, text=True, timeout=10)
+                                      capture_output=True, text=True, timeout=90)
         if import_check.returncode:
             raise RuntimeError("RepoWise package unavailable in the supervised Python runtime")
         _repowise_fresh(repowise)
@@ -229,7 +229,7 @@ def _supervise(roots: dict, repowise: str | None, headroom_python: Path) -> int:
             manifest["processes"][name] = {"pid": process.pid, "port": PORTS.get(name),
                                            "log": str(log_path)}
             _write_manifest(manifest_path, manifest)
-            deadline = time.monotonic() + 90
+            deadline = time.monotonic() + (180 if name == "repowise" else 90)
             while time.monotonic() < deadline and process.poll() is None and not stop:
                 if name == "scheduler":
                     for line in log_path.read_text(encoding="utf-8", errors="replace").splitlines()[-10:]:
