@@ -27,7 +27,10 @@ class Cursor:
                         [("run-1", "running", "<img src=x>", now)],
                         [("<script>event</script>", now)],
                         [("schedule-1", "<script>job</script>", "active", "*/5 * * * *", "UTC", now, None, "true")],
-                        [("<img src=x>", "dispatched", "queued", now)]]
+                        [("<img src=x>", "dispatched", "queued", now)],
+                        [("<script>plugin</script>", "1.0", True)],
+                        [("<img src=x>", 2)],
+                        (100, 5, 50)]
         self.statements = []
 
     def execute(self, sql, params):
@@ -61,11 +64,16 @@ def test_dashboard_bounds_project_reads_and_escapes_database_text(monkeypatch):
     assert "&lt;script&gt;job&lt;/script&gt;" in data["sections"]["automation_hooks"]
     assert "&lt;img src=x&gt;" in data["sections"]["automation_hooks"]
     assert "exécution qualifiée : oui" in data["sections"]["automation_hooks"]
+    assert "&lt;script&gt;plugin&lt;/script&gt;" in data["sections"]["plugin_status"]
+    assert "&lt;img src=x&gt; · 2" in data["sections"]["context_composition"]
+    assert "100 jetons modèle/jour" in data["sections"]["metrics_service_summary"]
     assert all(params == ("alpha",) for _, params in cursor.statements)
     assert "LIMIT 60" in cursor.statements[1][0]
     assert "LIMIT 10" in cursor.statements[2][0]
     assert "LIMIT 20" in cursor.statements[4][0]
     assert "LIMIT 10" in cursor.statements[5][0]
+    assert "LIMIT 20" in cursor.statements[6][0]
+    assert "LIMIT 20" in cursor.statements[7][0]
 
 
 def test_dashboard_rejects_non_read_principal_before_database(monkeypatch):

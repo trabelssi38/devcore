@@ -42,6 +42,15 @@ class PostgresDashboardProjection(PostgresProjectReader):
                 FROM schedule_history h JOIN schedules s ON s.id=h.schedule_id
                 WHERE s.project_id=%s ORDER BY h.occurred_at DESC,h.id DESC LIMIT 10""", (project,))
             schedule_events = cursor.fetchall()
+            cursor.execute("""SELECT name,version,enabled FROM plugins WHERE project_id=%s
+                ORDER BY name,id LIMIT 20""", (project,))
+            plugins = cursor.fetchall()
+            cursor.execute("""SELECT task_type,count(*) FROM memory_entries WHERE project_id=%s
+                GROUP BY task_type ORDER BY task_type LIMIT 20""", (project,))
+            memory_groups = cursor.fetchall()
+            cursor.execute("""SELECT model_tokens_daily,runs_daily,storage_mb FROM budgets
+                WHERE project_id=%s LIMIT 1""", (project,))
+            budget = cursor.fetchone()
 
         label = _text(project)
         cards = (f'<div class="project-row" data-project="{label}">'
@@ -98,7 +107,21 @@ class PostgresDashboardProjection(PostgresProjectReader):
         )
         schedule_panel = ('<div>Planifications PostgreSQL</div>' + schedule_items
                           + ('<div>Historique récent</div>' + history_items if history_items else ""))
-        unavailable = "<div>Non encore raccordé au profil équipe.</div>"
+        plugin_panel = "".join(
+            f'<div>{_text(name)} · version {_text(version or "inconnue")} · '
+            f'{"actif" if enabled else "désactivé"}</div>'
+            for name, version, enabled in plugins
+        ) or "<div>Aucun plugin enregistré dans ce projet.</div>"
+        memory_panel = "".join(
+            f'<div>{_text(task_type)} · {count} entrée(s)</div>'
+            for task_type, count in memory_groups
+        ) or "<div>Aucune entrée mémoire dans ce projet.</div>"
+        if budget is None:
+            metrics_panel = "<div>Aucun budget de projet configuré.</div>"
+        else:
+            model_tokens, daily_runs, storage_mb = budget
+            metrics_panel = (f'<div>Plafonds du projet : {model_tokens} jetons modèle/jour, '
+                             f'{daily_runs} runs/jour, {storage_mb} Mo de stockage.</div>')
         return {
             "schema_version": 1,
             "project": project,
@@ -108,12 +131,12 @@ class PostgresDashboardProjection(PostgresProjectReader):
                 "tasks_pipeline": pipeline,
                 "services_monitoring": render_global_stack_health(global_stack_health()),
                 "automation_hooks": schedule_panel,
-                "token_activity_report": unavailable,
-                "context_composition": unavailable,
-                "metrics_service_summary": unavailable,
+                "token_activity_report": "<div>Usage LLM par projet non encore enregistré.</div>",
+                "context_composition": memory_panel,
+                "metrics_service_summary": metrics_panel,
                 "event_bus_recent": event_items,
-                "knowledge_graph_summary": unavailable,
-                "plugin_status": unavailable,
+                "knowledge_graph_summary": "<div>Graphe PostgreSQL non encore disponible.</div>",
+                "plugin_status": plugin_panel,
             },
             "runs": run_items,
             "task_details": {},

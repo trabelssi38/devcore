@@ -320,8 +320,12 @@ alter table external_effects force row level security;
 alter table events enable row level security;
 alter table audit_log enable row level security;
 alter table artifacts enable row level security;
+alter table plugins enable row level security;
+alter table plugins force row level security;
 alter table memory_entries enable row level security;
+alter table memory_entries force row level security;
 alter table budgets enable row level security;
+alter table budgets force row level security;
 alter table schedules enable row level security;
 alter table schedules force row level security;
 alter table schedule_history enable row level security;
@@ -345,6 +349,10 @@ create policy rls_audit_log_project_isolation on audit_log
 
 create policy rls_artifacts_project_isolation on artifacts
     for all using (project_id = nullif(current_setting('app.current_project_id', true), ''));
+
+create policy rls_plugins_project_isolation on plugins
+    for all using (project_id = nullif(current_setting('app.current_project_id', true), ''))
+    with check (project_id = nullif(current_setting('app.current_project_id', true), ''));
 
 create policy rls_memory_project_isolation on memory_entries
     for all using (project_id = nullif(current_setting('app.current_project_id', true), ''));
