@@ -134,6 +134,9 @@ def test_html_render_escapes_project_in_script_context():
         assert '</script><script>alert(1)</script>' not in html
         assert "\\u003c/script\\u003e" in html
         assert "{{PROJECT_CARDS}}" not in html
+        assert '<nav id="team-projects"' in html
+        assert 'id="project-cards"' not in html
+        assert 'team-project-refresh' not in html
         assert "X-CSRF-Token" in html
         assert "?project='+encodeURIComponent(window.devcoreActiveProject)" in html
         if terminal:
