@@ -137,11 +137,17 @@ def test_html_render_escapes_project_in_script_context():
         assert '<nav id="team-projects"' in html
         assert 'id="project-cards"' not in html
         assert 'team-project-refresh' not in html
+        assert 'performDashboardRefresh = () => refreshTeamProjectData()' in html
+        assert 'history.replaceState(null' in html
+        assert 'location.assign(path +' not in html
+        assert 'data-team-project-name' in html
+        assert 'staleProject' in html
         assert "X-CSRF-Token" in html
         assert "?project='+encodeURIComponent(window.devcoreActiveProject)" in html
         if terminal:
             assert 'id="api-ok">:20131' in html
             assert 'class="team-terminal"' in html
+            assert 'window.devcoreTeamEventSource = new EventSource(' in html
         assert "async function teamFetch" in html
         assert "[401, 403].includes(response.status)" in html
         assert "return teamFetch(target, options)" in html

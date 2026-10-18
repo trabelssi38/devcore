@@ -17,6 +17,7 @@ class Element {
   append(...elements) { this.children.push(...elements); }
   replaceChildren() { this.children = []; }
   setAttribute(key, value) { this.attributes[key] = value; }
+  removeAttribute(key) { delete this.attributes[key]; }
   getAttribute(key) { return this.attributes[key]; }
   addEventListener(type, callback) { this.listeners[type] = callback; }
   querySelectorAll(selector) {
@@ -33,16 +34,39 @@ class Element {
 }
 (async () => {
   const panel = new Element('nav');
+  const taskPanel = new Element('section');
+  taskPanel.innerHTML = 'Tasks alpha';
+  const globalPanel = new Element('section');
+  globalPanel.innerHTML = 'Global services';
   const calls = [];
   let destination;
+  let currentProject = 'alpha';
+  let pageReplacements = 0;
+  const updatedSections = [];
   const context = {
-    window: {}, URLSearchParams,
-    document: {getElementById: id => id === 'team-projects' ? panel : null,
-               querySelectorAll: () => [], createElement: tag => new Element(tag), createElementNS: (_ns, tag) => new Element(tag)},
-    location: {pathname:'/cockpit/terminal', assign: value => destination = value},
+    window: {}, console, URLSearchParams, AbortController, setTimeout, clearTimeout,
+    history: {replaceState: (_state, _title, url) => destination = url},
+    readDashboardJson: async response => response.json(),
+    validateDashboardSnapshot: () => {},
+    checkDashboardResponseAccess: () => {},
+    updateContainerHTML: (id, html) => { updatedSections.push(id); taskPanel.innerHTML = html; },
+    updateTokenReport: () => {}, updateRepowiseHealth: () => {},
+    recordAppliedDashboardSnapshot: () => {},
+    refreshDashboard: () => context.performDashboardRefresh(),
+    document: {getElementById: id => ({'team-projects':panel,'tasks-pipeline':taskPanel,
+      'global-only-panel':globalPanel})[id] || null,
+               querySelector: () => null, querySelectorAll: () => [],
+               createElement: tag => new Element(tag), createElementNS: (_ns, tag) => new Element(tag)},
+    location: {pathname:'/cockpit/terminal', search:'?project=alpha', assign: () => pageReplacements++},
     teamFetch: async (url, options) => {
       calls.push([url, options]);
-      return {ok:true, json:async () => ({project:'alpha', csrf_token:'fixture-csrf', projects:[
+      if (String(url).startsWith('/api/dashboard?')) {
+        const project = new URLSearchParams(String(url).split('?')[1]).get('project');
+        return {ok:true, json:async () => ({project, sections:{tasks_pipeline:`Tasks ${project}`},
+          task_details:{},task_interactions:{},token_metrics:{},counts:{tasks:2},service_health:{}})};
+      }
+      if (options?.method === 'POST' && JSON.parse(options.body).switch_project) currentProject = JSON.parse(options.body).project;
+      return {ok:true, json:async () => ({project:currentProject, csrf_token:'fixture-csrf', projects:[
         {id:'alpha',name:'Alpha',role:'owner',status:'active',tasks:275,completed_tasks:275,active_tasks:0,tokens:0,can_archive:true},
         {id:'old',name:'Old',role:'contributor',status:'archived',tasks:0,completed_tasks:0,active_tasks:0,tokens:0,can_archive:true},
         {id:'beta',name:'Beta <script>',role:'reader',status:'needs_review',tasks:2,completed_tasks:1,active_tasks:1,tokens:7,can_archive:false},
@@ -79,14 +103,24 @@ class Element {
   assert.equal(tabs[1].getAttribute('aria-selected'), 'true');
   tabs[0].listeners.click();
   cards = list.children;
+  const originalList = list;
+  const originalCard = cards[1];
   buttons = cards[1].children[3].children[1].querySelectorAll('button');
   await buttons[0].listeners.click();
   assert.equal(destination, '/cockpit/terminal?project=beta');
+  assert.equal(pageReplacements, 0);
+  assert.equal(panel.children.find(child => child.className === 'team-project-list'), originalList);
+  assert.equal(list.children[1], originalCard);
+  assert.equal(originalCard.getAttribute('aria-current'), 'page');
+  assert.equal(list.children[0].getAttribute('aria-current'), undefined);
+  assert.equal(context.window.devcoreActiveProject, 'beta');
+  assert.deepEqual(updatedSections, ['tasks-pipeline']);
+  assert.equal(taskPanel.innerHTML, 'Tasks beta');
+  assert.equal(globalPanel.innerHTML, 'Global services');
   assert.equal(calls[1][1].headers['X-CSRF-Token'], 'fixture-csrf');
   assert.deepEqual(JSON.parse(calls[1][1].body), {project:'beta',switch_project:true});
-  assert.equal(panel.classList.contains('team-projects-switching'), true);
-  assert.equal(cards[1].classList.contains('team-project-pending'), true);
-  assert.equal(panel.getAttribute('aria-busy'), 'true');
+  assert.equal(panel.classList.contains('team-projects-switching'), false);
+  assert.equal(panel.getAttribute('aria-busy'), 'false');
   await context.loadTeamProjects();
   assert.equal(panel.classList.contains('team-projects-switching'), false);
   list = panel.children.find(child => child.className === 'team-project-list');
@@ -96,13 +130,13 @@ class Element {
   buttons = cards[0].children[3].children[1].querySelectorAll('button');
   assert.equal(buttons[1].getAttribute('aria-label'), 'Désarchiver Old');
   await buttons[1].listeners.click();
-  assert.deepEqual(JSON.parse(calls[3][1].body), {project:'old',archive_project:true,archived:false});
+  assert.deepEqual(JSON.parse(calls.filter(call => call[1]?.method === 'POST')[1][1].body), {project:'old',archive_project:true,archived:false});
   list = panel.children.find(child => child.className === 'team-project-list');
   tabs = panel.querySelectorAll('.team-project-tab');
   tabs[0].listeners.click();
   cards = list.children;
   buttons = cards[2].children[3].children[1].querySelectorAll('button');
   await buttons[1].listeners.click();
-  assert.deepEqual(JSON.parse(calls[5][1].body), {project:'contrib',archive_project:true,archived:true});
+  assert.deepEqual(JSON.parse(calls.filter(call => call[1]?.method === 'POST')[2][1].body), {project:'contrib',archive_project:true,archived:true});
   console.log('Project navigation UI checks passed');
 })().catch(error => { console.error(error); process.exitCode = 1; });

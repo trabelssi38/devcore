@@ -56,7 +56,7 @@ def _configuration(snapshot: dict) -> str:
                    + ('En ligne' if states.get(name) else 'Non supervisé') + '</span></div>'
                    for name, label in names.items())
     return ('<section class="team-panel"><h3>Configuration du projet</h3><div class="team-panel-body">'
-            '<div class="component"><span>Projet connecté</span><strong>' + escape(snapshot['project']) + '</strong></div>'
+            '<div class="component"><span>Projet connecté</span><strong data-team-project-name>' + escape(snapshot['project']) + '</strong></div>'
             '<div class="component"><span>Profil</span><strong>Équipe · PostgreSQL</strong></div>'
             '<div class="component"><span>Rafraîchissement</span><strong>60 secondes</strong></div>'
             '<h4>Composants supervisés</h4>' + rows
@@ -103,6 +103,14 @@ def render_team_cockpit(template_dir: Path, snapshot: dict, *, terminal: bool = 
                             'aria-disabled="true" title="Document historique non publié dans ce profil"')
     page = page.replace('recordAppliedDashboardSnapshot(data);',
                         'recordAppliedDashboardSnapshot(data); syncTeamCockpit(data);')
+    # An in-flight response for the previous session must never repaint the new project.
+    page = page.replace('validateDashboardSnapshot(payload);',
+                        'validateDashboardSnapshot(payload); if (payload.project !== window.devcoreActiveProject) return false;')
+    page = page.replace('validateDashboardSnapshot(data);',
+                        'validateDashboardSnapshot(data); if (data.project !== window.devcoreActiveProject) return false;')
+    if terminal:
+        page = page.replace('const sse = new EventSource(',
+                            'const sse = window.devcoreTeamEventSource = new EventSource(')
     page = page.replace('/api/dashboard?project=${encodeURIComponent(window.devcoreActiveProject)}',
                         '/api/dashboard?project=${encodeURIComponent(window.devcoreActiveProject)}&task_offset=${Number(new URLSearchParams(window.location.search).get("task_offset") || 0)}')
     # The former optimization percentages were static claims, not project data.
@@ -125,7 +133,10 @@ def render_team_cockpit(template_dir: Path, snapshot: dict, *, terminal: bool = 
 async function teamFetch(url, options) {
   const response = await fetch(url, options);
   const target = new URL(typeof url === 'string' ? url : url.url || String(url), location.href);
-  if (target.origin === location.origin && [401, 403].includes(response.status)) {
+  const staleProject = target.searchParams.has('project') &&
+    target.searchParams.get('project') !== window.devcoreActiveProject &&
+    (target.pathname === '/api/dashboard' || target.pathname === '/api/dashboard/stream');
+  if (!staleProject && target.origin === location.origin && [401, 403].includes(response.status)) {
     const project = window.devcoreActiveProject || new URLSearchParams(location.search).get('project');
     if (project) location.assign('/login?' + new URLSearchParams({
       project, next: location.pathname + location.search

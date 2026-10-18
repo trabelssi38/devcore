@@ -90,6 +90,84 @@ closeInteractions = function() {
 syncTeamCockpit();
 
 let teamProjectTab = null;
+let teamProjectRequest = null;
+let teamProjectGeneration = 0;
+
+async function refreshTeamProjectData(project = window.devcoreActiveProject) {
+  const generation = ++teamProjectGeneration;
+  teamProjectRequest?.abort();
+  const controller = new AbortController();
+  teamProjectRequest = controller;
+  const deadline = setTimeout(() => controller.abort(), 20000);
+  try {
+    const offset = Number(new URLSearchParams(location.search).get('task_offset') || 0);
+    const url = `/api/dashboard?${new URLSearchParams({project, task_offset: String(offset)})}`;
+    const response = await teamFetch(url, {cache:'no-store', signal:controller.signal});
+    checkDashboardResponseAccess(response);
+    if (!response.ok) throw new Error('Données du projet indisponibles');
+    const data = await readDashboardJson(response);
+    validateDashboardSnapshot(data);
+    if (data.project !== project || generation !== teamProjectGeneration ||
+        project !== window.devcoreActiveProject) return false;
+    for (const [key, id] of Object.entries({
+      tasks_pipeline:'tasks-pipeline', token_activity_report:'token-activity-report',
+      services_monitoring:'services-monitoring', automation_hooks:'automation-hooks',
+      context_composition:'context-composition', metrics_service_summary:'metrics-service-summary',
+      event_bus_recent:'event-bus-recent', knowledge_graph_summary:'knowledge-graph-summary',
+      plugin_status:'plugin-status'
+    })) {
+      const element = document.getElementById(id);
+      const html = data.sections[key];
+      if (element && typeof html === 'string' && element.innerHTML !== html) {
+        const wasOpen = key === 'token_activity_report' && element.querySelector('details')?.open;
+        updateContainerHTML(id, html);
+        if (wasOpen) element.querySelector('details')?.setAttribute('open', '');
+      }
+    }
+    for (const [id, value] of [
+      ['task-details-data', data.task_details || {}],
+      ['task-interactions-data', data.task_interactions || {}],
+      ['token-metrics-data', data.token_metrics || {}]
+    ]) {
+      const element = document.getElementById(id);
+      if (element) element.textContent = JSON.stringify(value);
+    }
+    const projectName = document.querySelector('[data-team-project-name]');
+    if (projectName) projectName.textContent = project;
+    window.taskDetailsMap = data.task_details || {};
+    window.activeFilteredProject = null;
+    updateTokenReport(null);
+    updateRepowiseHealth(null);
+    recordAppliedDashboardSnapshot(data);
+    syncTeamCockpit(data);
+    return true;
+  } catch (failure) {
+    if (failure.name !== 'AbortError') console.error('Project data load failed:', failure);
+    return false;
+  } finally {
+    clearTimeout(deadline);
+    if (teamProjectRequest === controller) teamProjectRequest = null;
+  }
+}
+
+// The team view changes data in place; the historical template's broad refresh
+// would also repaint unrelated service and layout panels.
+performDashboardRefresh = () => refreshTeamProjectData();
+
+function reconnectTeamProjectStream() {
+  if (typeof dashboardStreamAbort !== 'undefined') {
+    dashboardStreamAbort?.abort();
+    dashboardStreamAbort = null;
+    dashboardLastEventId = null;
+    dashboardAppliedSnapshotCursor = null;
+    if (dashboardStreamRetryId) clearTimeout(dashboardStreamRetryId);
+    dashboardStreamRetryId = null;
+    connectDashboardStream();
+  } else if (window.devcoreTeamEventSource) {
+    window.devcoreTeamEventSource.close();
+    connectStream();
+  }
+}
 
 function makeProjectIconButton(className, label, paths, disabled, onClick) {
   const button = document.createElement('button');
@@ -120,7 +198,7 @@ async function loadTeamProjects() {
     const response = await teamFetch('/api/auth/session', {cache:'no-store'});
     if (!response.ok) throw new Error('Session indisponible');
     const session = await response.json();
-    const projects = session.projects || [];
+    let projects = session.projects || [];
     if (teamProjectTab === null) {
       teamProjectTab = projects.find(project => project.id === session.project)?.status === 'archived'
         ? 'archived' : 'active';
@@ -161,6 +239,31 @@ async function loadTeamProjects() {
     list.setAttribute('tabindex', '0');
     panel.append(list);
     panel.append(error);
+    function openButton(project) {
+      const button = makeProjectIconButton('team-project-open', `Ouvrir ${project.name}`,
+        [{tag:'path',attrs:{d:'M14 3h7v7'}},{tag:'path',attrs:{d:'M10 14 21 3'}},
+         {tag:'path',attrs:{d:'M19 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6'}}],
+        false, () => switchProject(project));
+      button.dataset.project = project.id;
+      return button;
+    }
+    function markSelectedProject() {
+      for (const card of panel.querySelectorAll('.team-project-card')) {
+        const selected = card.dataset.project === session.project;
+        card.classList.toggle('selected', selected);
+        if (selected) card.setAttribute('aria-current', 'page');
+        else card.removeAttribute('aria-current');
+        const actions = card.querySelectorAll('.team-project-actions')[0];
+        if (!actions) continue;
+        const buttons = Array.from(actions.children);
+        const open = buttons.find(button => button.className?.includes('team-project-open'));
+        if (selected && open) actions.replaceChildren(...buttons.filter(button => button !== open));
+        if (!selected && !open) {
+          const item = projects.find(project => project.id === card.dataset.project);
+          if (item) actions.append(openButton(item));
+        }
+      }
+    }
     function renderProjects() {
       list.replaceChildren();
       for (const [key, button] of Object.entries(tabButtons)) {
@@ -202,12 +305,7 @@ async function loadTeamProjects() {
         const actions = document.createElement('div');
         actions.className = 'team-project-actions';
         if (project.id !== session.project) {
-          const open = makeProjectIconButton('team-project-open', `Ouvrir ${project.name}`,
-            [{tag:'path',attrs:{d:'M14 3h7v7'}},{tag:'path',attrs:{d:'M10 14 21 3'}},
-             {tag:'path',attrs:{d:'M19 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6'}}],
-            false, () => switchProject(project));
-          open.dataset.project = project.id;
-          actions.append(open);
+          actions.append(openButton(project));
         }
         const isArchived = project.status === 'archived';
         const archive = makeProjectIconButton('team-project-archive',
@@ -261,9 +359,20 @@ async function loadTeamProjects() {
           body:JSON.stringify({project:project.id, switch_project:true})
         });
         if (!result.ok) throw new Error('Changement de projet refusé');
+        const nextSession = await result.json();
+        if (nextSession.project !== project.id) throw new Error('Session de projet incohérente');
+        Object.assign(session, nextSession);
+        projects = nextSession.projects || projects;
+        window.devcoreActiveProject = project.id;
         const path = ['/cockpit', '/cockpit/terminal', '/index.html', '/index_terminal.html'].includes(location.pathname)
           ? location.pathname : '/cockpit';
-        location.assign(path + '?' + new URLSearchParams({project:project.id}));
+        history.replaceState(null, '', path + '?' + new URLSearchParams({project:project.id}));
+        reconnectTeamProjectStream();
+        const loaded = await refreshDashboard();
+        if (!loaded) throw new Error('Données du projet indisponibles ; réessayez depuis la liste');
+        markSelectedProject();
+        panel.classList.remove('team-projects-switching');
+        panel.setAttribute('aria-busy', 'false');
         return true;
       } catch (failure) {
         error.textContent = failure.message;
