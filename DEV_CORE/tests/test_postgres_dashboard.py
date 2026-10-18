@@ -137,6 +137,9 @@ def test_html_render_escapes_project_in_script_context():
         if terminal:
             assert 'id="api-ok">:20131' in html
             assert 'class="team-terminal"' in html
+        assert "async function teamFetch" in html
+        assert "[401, 403].includes(response.status)" in html
+        assert "return teamFetch(target, options)" in html
         assert 'syncTeamCockpit(data)' in html
         assert 'counts.tasks' in html
         assert 'Token Optimization Stack' not in html
@@ -152,7 +155,7 @@ def test_login_escapes_project_and_uses_same_origin_session():
     assert '</strong><script>alert(1)</script>' not in html
     assert '&lt;/strong&gt;&lt;script&gt;' in html
     assert "fetch('/api/auth/session'" in html
-    assert "location.assign('/cockpit?project='" in html
+    assert 'location.assign("/cockpit?project=' in html
 
 
 def test_global_stack_monitor_requires_fresh_ready_heartbeat(tmp_path):
@@ -179,3 +182,15 @@ def test_global_stack_monitor_requires_fresh_ready_heartbeat(tmp_path):
     state["status"] = "stopping"
     path.write_text(json.dumps(state), encoding="utf-8")
     assert global_stack_health(str(path), now=now)["status"] == "unavailable"
+
+
+@pytest.mark.parametrize("target", ["https://elsewhere/cockpit?project=alpha", "//elsewhere/cockpit?project=alpha", "/login?project=alpha", "/cockpit?project=beta", "/cockpit?project=alpha&project=beta", "/cockpit?project=alpha&task_offset=-1"])
+def test_login_return_target_is_local_and_project_scoped(target):
+    from devcore_api.team_login import cockpit_destination
+    assert cockpit_destination("alpha", target) == "/cockpit?project=alpha"
+
+
+def test_login_restores_terminal_page_and_offset():
+    from devcore_api.team_login import render_team_login
+    page = render_team_login("alpha", "/index_terminal.html?project=alpha&task_offset=120")
+    assert 'location.assign("/index_terminal.html?project=alpha&task_offset=120")' in page

@@ -12,7 +12,8 @@ from pathlib import Path
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, RedirectResponse
+from urllib.parse import urlencode
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 DEVCORE_BASE = Path(__file__).resolve().parents[2]
@@ -33,7 +34,7 @@ from devcore_engine.services.postgres_dashboard import PostgresDashboardProjecti
 
 from .contracts import ContractCatalog, TaskListResponse, build_contract_catalog
 from .team_cockpit import render_team_cockpit
-from .team_login import render_team_login
+from .team_login import COCKPIT_PATHS, render_team_login
 from .team_gemini import GeminiRouteUnavailable, generate_project_summary
 from .github_webhooks import (
     GitHubWebhookAccepted,
@@ -485,6 +486,17 @@ def create_app(
 
         response = await call_next(request)
         response.headers["Cache-Control"] = "no-store"
+        return response
+
+    @app.middleware("http")
+    async def cockpit_login_redirect(request: Request, call_next):
+        response = await call_next(request)
+        if (request.method == "GET" and request.url.path in COCKPIT_PATHS
+                and response.status_code in {401, 403}):
+            project = request.query_params.get("project", "")
+            target = request.url.path + "?" + request.url.query
+            return RedirectResponse("/login?" + urlencode({"project": project, "next": target}),
+                                    status_code=303, headers={"Cache-Control": "no-store"})
         return response
 
     @app.post(f"{API_PREFIX}/llm/gemini", tags=["llm"])
@@ -1259,11 +1271,11 @@ def create_app(
         return snapshot if isinstance(snapshot, JSONResponse) else JSONResponse(status_code=200, content=snapshot)
 
     @app.get("/login", tags=["projects"])
-    def postgres_login(project: str) -> HTMLResponse:
+    def postgres_login(project: str, next: str = "") -> HTMLResponse:
         project = validate_project_id(project)
         if team_project_reader() is None:
             raise HTTPException(status_code=503, detail="PostgreSQL team dashboard required")
-        return HTMLResponse(render_team_login(project), headers={"Cache-Control": "no-store"})
+        return HTMLResponse(render_team_login(project, next), headers={"Cache-Control": "no-store"})
 
     @app.get("/cockpit", tags=["projects"])
     @app.get("/cockpit/terminal", tags=["projects"])

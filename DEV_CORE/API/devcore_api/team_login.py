@@ -3,10 +3,38 @@
 from __future__ import annotations
 
 from html import escape
+import json
+from urllib.parse import parse_qs, urlencode, urlsplit
 
 
-def render_team_login(project: str) -> str:
+COCKPIT_PATHS = frozenset({"/cockpit", "/cockpit/terminal", "/index.html", "/index_terminal.html"})
+
+
+def cockpit_destination(project: str, target: str = "") -> str:
+    fallback = "/cockpit?" + urlencode({"project": project})
+    try:
+        parts = urlsplit(target)
+        query = parse_qs(parts.query)
+        if (parts.scheme or parts.netloc or parts.fragment or parts.path not in COCKPIT_PATHS
+                or query.get("project") != [project]):
+            return fallback
+        params = {"project": project}
+        if "task_offset" in query:
+            values = query["task_offset"]
+            if len(values) != 1 or not values[0].isascii() or not values[0].isdecimal():
+                return fallback
+            offset = int(values[0])
+            if offset > 100000:
+                return fallback
+            params["task_offset"] = offset
+        return parts.path + "?" + urlencode(params)
+    except (ValueError, TypeError):
+        return fallback
+
+
+def render_team_login(project: str, return_to: str = "") -> str:
     safe_project = escape(project, quote=True)
+    destination = json.dumps(cockpit_destination(project, return_to)).replace("<", "\\u003c")
     return f"""<!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>DevCore — connexion</title>
@@ -31,6 +59,6 @@ document.querySelector('#login').addEventListener('submit', async event => {{
     }})}});
   document.querySelector('#password').value = '';
   if (!response.ok) {{ error.textContent = 'Connexion refusée'; return; }}
-  location.assign('/cockpit?project=' + encodeURIComponent(project));
+  location.assign({destination});
 }});
 </script></body></html>"""

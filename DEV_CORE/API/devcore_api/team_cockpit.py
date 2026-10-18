@@ -26,8 +26,8 @@ apiFetch = async function(url, options = {}) {
   const target = new URL(url, window.location.href);
   if (target.origin !== window.location.origin) throw new Error('Cross-origin action refused');
   const method = String(options.method || 'GET').toUpperCase();
-  if (!['POST', 'DELETE', 'PUT', 'PATCH'].includes(method)) return fetch(target, options);
-  const sessionResponse = await fetch('/api/auth/session', {cache: 'no-store'});
+  if (!['POST', 'DELETE', 'PUT', 'PATCH'].includes(method)) return teamFetch(target, options);
+  const sessionResponse = await teamFetch('/api/auth/session', {cache: 'no-store'});
   if (!sessionResponse.ok) throw new Error('Session unavailable');
   const session = await sessionResponse.json();
   if (session.project !== window.devcoreActiveProject ||
@@ -35,7 +35,7 @@ apiFetch = async function(url, options = {}) {
       typeof session.csrf_token !== 'string') throw new Error('Project action denied');
   const headers = new Headers(options.headers || {});
   headers.set('X-CSRF-Token', session.csrf_token);
-  return fetch(target, {...options, headers});
+  return teamFetch(target, {...options, headers});
 };
 </script>"""
 
@@ -108,6 +108,22 @@ def render_team_cockpit(template_dir: Path, snapshot: dict, *, terminal: bool = 
     display = (assets / 'team_cockpit_display.js').read_text(encoding='utf-8')
     bootstrap = ('window.devcoreTeamCounts=' + _script_json(snapshot.get('counts', {}))
                  + ';window.devcoreTeamHealth=' + _script_json(snapshot.get('service_health', {})) + ';')
+    # Browser requests keep API errors machine-readable and return the user to login.
+    page = page.replace('fetch(', 'teamFetch(')
+    login_guard = """<script>
+async function teamFetch(url, options) {
+  const response = await fetch(url, options);
+  const target = new URL(typeof url === 'string' ? url : url.url || String(url), location.href);
+  if (target.origin === location.origin && [401, 403].includes(response.status)) {
+    const project = window.devcoreActiveProject || new URLSearchParams(location.search).get('project');
+    if (project) location.assign('/login?' + new URLSearchParams({
+      project, next: location.pathname + location.search
+    }).toString());
+  }
+  return response;
+}
+</script>"""
+    page = page.replace('</head>', login_guard + '</head>', 1)
     page = page.replace("</head>", '<style>' + style + '</style></head>', 1)
     page = page.replace("</body>", _TEAM_ACTIONS + '<script>' + bootstrap + display + '</script></body>', 1)
     return page

@@ -510,3 +510,33 @@ def test_postgres_browser_cookie_uses_postgres_identity_without_sqlite_fallback(
     assert calls[-1][3:] == (WRITE, "http://127.0.0.1:20131", "csrf-ok", True)
 
 
+
+
+@pytest.mark.parametrize("path", ["/cockpit", "/cockpit/terminal", "/index.html", "/index_terminal.html"])
+def test_cockpit_denied_redirects_to_project_login(auth_env, path):
+    from urllib.parse import parse_qs, urlsplit
+    client = auth_env["client"]
+    response = client.get(path + "?project=alpha&task_offset=120", follow_redirects=False)
+    assert response.status_code == 303
+    parts = urlsplit(response.headers["location"])
+    assert parts.path == "/login"
+    assert parse_qs(parts.query) == {"project": ["alpha"], "next": [path + "?project=alpha&task_offset=120"]}
+    assert response.headers["cache-control"] == "no-store"
+    invalid = client.get(path + "?project=alpha", headers={"Authorization": "Bearer invalid"}, follow_redirects=False)
+    assert invalid.status_code == 303
+    token = auth_env["credentials"]["alice"]["token"]
+    denied = client.get(path + "?project=beta", headers={"Authorization": "Bearer " + token}, follow_redirects=False)
+    assert denied.status_code == 303
+    assert "project=beta" in denied.headers["location"]
+
+
+def test_dashboard_api_errors_remain_json(auth_env):
+    client = auth_env["client"]
+    response = client.get("/api/dashboard?project=alpha", follow_redirects=False)
+    assert response.status_code == 401
+    assert "location" not in response.headers
+    assert response.headers["content-type"].startswith("application/json")
+    token = auth_env["credentials"]["alice"]["token"]
+    response = client.get("/api/dashboard?project=beta", headers={"Authorization": "Bearer " + token}, follow_redirects=False)
+    assert response.status_code == 403
+    assert "location" not in response.headers
