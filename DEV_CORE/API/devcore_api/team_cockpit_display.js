@@ -367,10 +367,11 @@ async function loadTeamProjects() {
         const path = ['/cockpit', '/cockpit/terminal', '/index.html', '/index_terminal.html'].includes(location.pathname)
           ? location.pathname : '/cockpit';
         history.replaceState(null, '', path + '?' + new URLSearchParams({project:project.id}));
-        reconnectTeamProjectStream();
         const loaded = await refreshDashboard();
         if (!loaded) throw new Error('Données du projet indisponibles ; réessayez depuis la liste');
+        reconnectTeamProjectStream();
         markSelectedProject();
+        target?.classList.remove('team-project-pending');
         panel.classList.remove('team-projects-switching');
         panel.setAttribute('aria-busy', 'false');
         return true;
