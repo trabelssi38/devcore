@@ -4,6 +4,9 @@
 .team-panel-body{padding:10px 12px;font-size:11px}
 .team-panel-body h4{font-size:10px;margin:12px 0 6px;color:var(--txt2,#94a3b8)}
 .team-panel-body p{font-size:11px;color:var(--txt2,#94a3b8);padding:5px 0}
+.team-empty-state{display:flex;flex-direction:column;gap:5px;padding:8px 10px;border-left:2px solid var(--yellow,#facc15);background:var(--bg3,#182334);color:var(--txt2,#94a3b8);line-height:1.4}
+.team-empty-state strong{color:var(--yellow,#facc15);font-size:11px}
+.team-empty-state small{color:var(--txt2,#94a3b8);font-size:10px}
 .team-metric-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:10px 0}
 .team-metric-grid.team-two-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
 .team-metric-grid .card{display:flex;flex-direction:column;align-items:center;gap:5px;margin:0;text-align:center;min-width:0;padding:8px 4px}

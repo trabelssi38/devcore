@@ -17,6 +17,12 @@ def _text(value: object) -> str:
     return escape(str(value if value is not None else ""), quote=True)
 
 
+def _empty_state(status: str, detail: str, source: str) -> str:
+    return ('<div class="team-empty-state"><strong>' + _text(status) + '</strong>'
+            + '<span>' + _text(detail) + '</span>'
+            + '<small>Source : ' + _text(source) + '</small></div>')
+
+
 class PostgresDashboardProjection(PostgresProjectReader):
     def snapshot(self, principal: Principal, *, task_offset: int = 0) -> dict:
         if not isinstance(principal, Principal) or principal.action != "task.read":
@@ -102,19 +108,27 @@ class PostgresDashboardProjection(PostgresProjectReader):
             f' · dernier : {_text(last_due.isoformat() if last_due else "—")}'
             f' · exécution qualifiée : {"oui" if qualified == "true" else "non"}</div>'
             for schedule_id, name, status, cron, zone, next_due, last_due, qualified in schedules
-        ) or "<div>Aucun job planifié dans ce projet.</div>"
+        )
         history_items = "".join(
             f'<div>{_text(name)} · {_text(event_type)} · {_text(status)}'
             f' · {_text(occurred.isoformat() if occurred else "")}</div>'
             for name, event_type, status, occurred in schedule_events
         )
-        schedule_panel = ('<div>Planifications PostgreSQL</div>' + schedule_items
+        schedule_panel = (schedule_items
                           + ('<div>Historique récent</div>' + history_items if history_items else ""))
+        if not schedule_panel:
+            schedule_panel = _empty_state(
+                "Aucune planification",
+                "Aucun job du projet n'est enregistré ici. Les tâches Windows ne sont pas incluses.",
+                "planifications PostgreSQL du projet")
         plugin_panel = "".join(
             f'<div>{_text(name)} · version {_text(version or "inconnue")} · '
             f'{"actif" if enabled else "désactivé"}</div>'
             for name, version, enabled in plugins
-        ) or "<div>Aucun plugin enregistré dans ce projet.</div>"
+        ) or _empty_state(
+            "Aucun plugin",
+            "Le registre de ce projet est vide. Les plugins Codex du poste ne sont pas inclus.",
+            "registre Plugin SDK du projet")
         plugin_panel = ('<div class="team-metric-grid">'
                         + metric("Plugins affichés", len(plugins))
                         + metric("Activés affichés", sum(bool(enabled) for _, _, enabled in plugins))
@@ -122,9 +136,14 @@ class PostgresDashboardProjection(PostgresProjectReader):
         memory_panel = "".join(
             f'<div>{_text(task_type)} · {count} entrée(s)</div>'
             for task_type, count in memory_groups
-        ) or "<div>Aucune entrée mémoire dans ce projet.</div>"
+        ) or _empty_state(
+            "Aucune entrée mémoire",
+            "Aucune mémoire n'est attribuée à ce projet. La fiche de contexte Codex n'est pas comptée ici.",
+            "mémoire du projet")
         if budget is None:
-            metrics_panel = "<div>Aucun budget de projet configuré.</div>"
+            metrics_panel = _empty_state(
+                "Non configuré", "Aucun plafond de consommation n'est enregistré pour ce projet.",
+                "budget du projet")
         else:
             model_tokens, daily_runs, storage_mb = budget
             metrics_panel = (f'<div>Plafonds du projet : {model_tokens} jetons modèle/jour, '
@@ -141,7 +160,14 @@ class PostgresDashboardProjection(PostgresProjectReader):
         service_metrics = ('<div class="team-metric-grid team-two-metrics">'
                            + metric("Événements récents", len(events)) + metric("Runs récents", len(runs))
                            + metric("Jetons attribués", usage[1] + usage[2]) + metric("Coût", "—", "Non disponible") + '</div>')
-        availability = '<div>Aucune mesure quotidienne de dépassement disponible.</div>' if budget else '<div>Aucun budget de projet configuré pour déclencher une alerte.</div>'
+        availability = _empty_state(
+            "Non mesurées",
+            "La mesure quotidienne des dépassements n'est pas disponible pour ce projet."
+            if budget else "Aucun budget n'est enregistré et aucun dépassement quotidien n'est mesuré.",
+            "budget et consommation quotidienne du projet")
+        protocol_compliance = _empty_state(
+            "Non mesurée", "Aucun contrôle du protocole agent n'est produit pour ce projet.",
+            "contrôles de conformité du projet")
         postgres_card = ('<div class="component team-service"><div><strong>PostgreSQL · lecture du projet vérifiée</strong>'
                          f'<div class="component-detail">{task_count} tâches · source transactionnelle du projet</div>'
                          '<span class="team-service-tag">Lecture vérifiée</span><span class="team-service-tag">Droits par projet</span>'
@@ -157,7 +183,7 @@ class PostgresDashboardProjection(PostgresProjectReader):
                 "automation_hooks": panel("Planifications PostgreSQL", schedule_panel),
                 "token_activity_report": usage_panel(usage, usage_models, usage_recent, run_items),
                 "context_composition": panel("Composition du contexte", memory_panel),
-                "metrics_service_summary": panel("Metrics Service", service_metrics) + panel("Budget du projet", metrics_panel) + panel("Alertes de consommation", availability) + panel("Conformité du protocole agent", "<div>Non mesurée pour ce déploiement.</div>"),
+                "metrics_service_summary": panel("Metrics Service", service_metrics) + panel("Budget du projet", metrics_panel) + panel("Alertes de consommation", availability) + panel("Conformité du protocole agent", protocol_compliance),
                 "event_bus_recent": panel("Événements récents", '<div class="team-scroll">' + event_items + '</div>'),
                 "knowledge_graph_summary": panel("Graphe du projet", graph_panel),
                 "plugin_status": panel("Plugin SDK", plugin_panel),

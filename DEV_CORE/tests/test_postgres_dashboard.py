@@ -101,6 +101,42 @@ def test_dashboard_bounds_project_reads_and_escapes_database_text(monkeypatch):
     assert "project_llm_usage" in cursor.statements[10][0]
 
 
+def test_empty_sidebar_panels_name_the_missing_project_source(monkeypatch):
+    reader = PostgresDashboardProjection("postgresql://app@127.0.0.1/fixture")
+    cursor = Cursor()
+    for index in (4, 5, 6, 7):
+        cursor.answers[index] = []
+    cursor.answers[8] = None
+
+    @contextmanager
+    def transaction(project):
+        assert project == "alpha"
+        yield cursor
+
+    monkeypatch.setattr(reader, "_transaction", transaction)
+    data = reader.snapshot(Principal("user", "credential", "alpha", "task.read"))
+    sections = data["sections"]
+    expected = {
+        "context_composition": ("Aucune entrée mémoire", "fiche de contexte Codex", "Source : mémoire du projet"),
+        "metrics_service_summary": ("Non configuré", "Non mesurées", "contrôles de conformité du projet"),
+        "plugin_status": ("Aucun plugin", "plugins Codex du poste", "Source : registre Plugin SDK du projet"),
+        "automation_hooks": ("Aucune planification", "tâches Windows", "Source : planifications PostgreSQL du projet"),
+    }
+    for section, phrases in expected.items():
+        assert 'class="team-empty-state"' in sections[section]
+        for phrase in phrases:
+            assert phrase in sections[section]
+    assert sections["metrics_service_summary"].count('class="team-empty-state"') == 3
+    assert "Aucun budget n&#x27;est enregistré" in sections["metrics_service_summary"]
+    assert "Aucun contrôle du protocole agent" in sections["metrics_service_summary"]
+    directory = Path(__file__).resolve().parents[1] / "Dashboard"
+    for terminal in (False, True):
+        html = render_team_cockpit(directory, data, terminal=terminal)
+        assert "Aucune entrée mémoire" in html
+        assert "Source : registre Plugin SDK du projet" in html
+        assert "Source : planifications PostgreSQL du projet" in html
+
+
 def test_dashboard_rejects_non_read_principal_before_database(monkeypatch):
     reader = PostgresDashboardProjection("postgresql://app@127.0.0.1/fixture")
     monkeypatch.setattr(reader, "_transaction", lambda _: (_ for _ in ()).throw(
