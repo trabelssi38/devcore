@@ -1490,7 +1490,18 @@ def create_app(
                     return build_error_response(request=request, status_code=400, code="invalid_arguments", message="JSON object required")
                 project = validate_project_id(data.get("project"))
                 authorization = request.headers.get("Authorization")
-                if data.get("switch_project") is True:
+                if data.get("archive_project") is True:
+                    if authorization or "user_id" in data or "password" in data or not postgres_identity_dsn:
+                        raise ValueError("Project archiving requires an authorized PostgreSQL session")
+                    from devcore_engine.security.postgres_project_navigation import set_project_archived
+                    result = await asyncio.to_thread(
+                        set_project_archived, postgres_identity_dsn, secret, project, origin,
+                        request.headers.get("X-CSRF-Token"), data.get("archived"),
+                    )
+                    return JSONResponse(content={"status":"project_archived" if data["archived"] else "project_restored",
+                                                 "project":result["id"],"project_status":result["status"]},
+                                        headers={"Cache-Control":"no-store"})
+                elif data.get("switch_project") is True:
                     if authorization or "user_id" in data or "password" in data or not postgres_identity_dsn:
                         raise ValueError("Project switching requires a PostgreSQL browser session")
                     from devcore_engine.security.postgres_project_navigation import switch_project

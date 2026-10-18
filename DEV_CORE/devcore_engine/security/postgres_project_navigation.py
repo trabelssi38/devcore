@@ -2,12 +2,27 @@
 import hashlib
 import json
 import secrets
+from pathlib import Path
 from datetime import datetime, timezone
 from uuid import uuid4
 
 from .browser_sessions import BrowserSession, csrf_for_session
 from .identity import AuthenticationRequired, Principal, ProjectAccessDenied, READ
 from .postgres_browser_sessions import _connect, _read_session, _scope, session_info
+
+
+def _is_git_project(root_path):
+    """Accept project roots inside a Git worktree, including linked worktrees."""
+    if not root_path:
+        return False
+    try:
+        root = Path(root_path)
+        if not root.is_absolute() or not root.is_dir():
+            return False
+        return any((parent / '.git').is_dir() or (parent / '.git').is_file()
+                   for parent in (root, *root.parents))
+    except (OSError, ValueError):
+        return False
 
 
 def accessible_projects(dsn, secret, origin):
@@ -18,14 +33,31 @@ def accessible_projects(dsn, secret, origin):
         cursor.execute('SELECT metadata FROM sessions WHERE id=%s', (session.session_id,))
         row = cursor.fetchone()
         metadata = row[0] if isinstance(row[0], dict) else json.loads(row[0])
-        cursor.execute('''SELECT p.id,p.name,m.role FROM projects p
+        cursor.execute('''SELECT p.id,p.name,m.role,p.status,p.root_path FROM projects p
             JOIN project_memberships m ON m.project_id=p.id
-            WHERE m.user_id=%s AND p.status IN ('active','needs_review') ORDER BY lower(p.name),p.id''',
+            WHERE m.user_id=%s ORDER BY lower(p.name),p.id''',
             (session.principal.user_id,))
-        return [{'id': pid, 'name': name, 'role': role}
-                for pid, name, role in cursor.fetchall()
-                if READ in _scope(role) and
-                (metadata.get('password_admitted') is True or pid == session.project_id)]
+        projects = []
+        for pid, name, role, status, root_path in cursor.fetchall():
+            if READ not in _scope(role) or (metadata.get('password_admitted') is not True and pid != session.project_id):
+                continue
+            if not _is_git_project(root_path):
+                continue
+            cursor.execute("SELECT set_config('app.current_project_id',%s,true)", (pid,))
+            cursor.execute("""SELECT count(*),count(*) FILTER (WHERE status='done'),
+                count(*) FILTER (WHERE status IN ('active','in_progress')) FROM tasks WHERE project_id=%s""", (pid,))
+            total, completed, active = cursor.fetchone()
+            tokens = 0
+            cursor.execute("SELECT to_regclass('public.project_llm_usage')")
+            if cursor.fetchone()[0] is not None:
+                cursor.execute("""SELECT coalesce(sum(prompt_tokens+completion_tokens),0)
+                    FROM project_llm_usage WHERE project_id=%s""", (pid,))
+                tokens = int(cursor.fetchone()[0] or 0)
+            projects.append({'id': pid, 'name': name, 'role': role, 'status': status,
+                             'tasks': int(total), 'completed_tasks': int(completed),
+                             'active_tasks': int(active), 'tokens': tokens,
+                             'can_archive': True})
+        return projects
     finally:
         connection.close()
 
@@ -45,7 +77,7 @@ def switch_project(dsn, secret, project, origin, csrf):
         if metadata.get('password_admitted') is not True:
             raise ProjectAccessDenied('Password session required to switch projects')
         cursor.execute('''SELECT m.role FROM project_memberships m JOIN projects p ON p.id=m.project_id
-            WHERE m.user_id=%s AND m.project_id=%s AND p.status IN ('active','needs_review') ''',
+            WHERE m.user_id=%s AND m.project_id=%s ''',
             (current.principal.user_id, project))
         row = cursor.fetchone()
         actions = _scope(row[0]) if row else ()
@@ -66,6 +98,41 @@ def switch_project(dsn, secret, project, origin, csrf):
         connection.commit()
         return BrowserSession(Principal(current.principal.user_id, identifier, project, READ),
                               identifier, project, expiry.timestamp(), actions), new_secret
+    except BaseException:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
+
+
+def set_project_archived(dsn, secret, project, origin, csrf, archived):
+    if type(archived) is not bool:
+        raise ValueError('Archive state must be boolean')
+    session = session_info(dsn, secret, origin)
+    connection = _connect(dsn)
+    try:
+        cursor = connection.cursor()
+        cursor.execute('''SELECT metadata FROM sessions WHERE id=%s FOR UPDATE''',
+                      (session.session_id,))
+        session_row = cursor.fetchone()
+        if session_row is None:
+            raise AuthenticationRequired('Invalid session')
+        session = _read_session(dsn, secret, session.project_id, READ, origin,
+                                csrf=csrf, mutate=True, connection=connection)
+        try:
+            cursor.execute('SELECT devcore_set_project_archived(%s,%s,%s)',
+                           (project, session.principal.user_id, archived))
+        except Exception as exc:
+            detail = exc.args[0] if exc.args else None
+            code = detail.get('C', '') if isinstance(detail, dict) else detail if isinstance(detail, str) else ''
+            if code == '42501':
+                raise ProjectAccessDenied('Project access denied') from exc
+            if code == '22023':
+                raise ValueError('Project is already in the requested state') from exc
+            raise
+        result_status = cursor.fetchone()[0]
+        connection.commit()
+        return {'id': project, 'status': result_status}
     except BaseException:
         connection.rollback()
         raise
