@@ -128,7 +128,9 @@ def test_html_render_escapes_project_in_script_context():
     }
     directory = Path(__file__).resolve().parents[1] / "Dashboard"
     for terminal in (False, True):
-        html = render_team_cockpit(directory, snapshot, terminal=terminal)
+        html = render_team_cockpit(directory, snapshot, terminal=terminal, user_id='majdi<script>')
+        assert 'Utilisateur connecté : <strong>majdi&lt;script&gt;</strong>' in html
+        assert 'majdi<script>' not in html
         assert '</script><script>alert(1)</script>' not in html
         assert "\\u003c/script\\u003e" in html
         assert "{{PROJECT_CARDS}}" not in html

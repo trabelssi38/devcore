@@ -63,9 +63,15 @@ def _configuration(snapshot: dict) -> str:
             + '<p>Cette vue est en lecture seule. Les services et les clés API sont administrés sur le serveur.</p></div></section>')
 
 
-def render_team_cockpit(template_dir: Path, snapshot: dict, *, terminal: bool = False) -> str:
+def render_team_cockpit(template_dir: Path, snapshot: dict, *, terminal: bool = False, user_id: str | None = None) -> str:
     name = "template_terminal.html" if terminal else "template.html"
     page = (template_dir / name).read_text(encoding="utf-8")
+    if user_id is not None:
+        identity = ('<div id="team-connected-user" role="status" style="position:fixed;'
+                    'bottom:12px;right:16px;z-index:1000;padding:8px 12px;'
+                    'background:#172334;color:#fff;border:1px solid #52667e;border-radius:6px">'
+                    'Utilisateur connecté : <strong>' + escape(user_id) + '</strong></div>')
+        page = page.replace('</body>', identity + '</body>', 1)
     for section, placeholder in _PLACEHOLDERS.items():
         page = page.replace("{{" + placeholder + "}}", snapshot["sections"][section])
     for key, placeholder in (

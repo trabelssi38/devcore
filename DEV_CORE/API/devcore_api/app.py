@@ -1289,6 +1289,7 @@ def create_app(
         page = render_team_cockpit(
             DEVCORE_BASE / "Dashboard", snapshot,
             terminal=request.url.path.endswith("/terminal") or request.url.path == "/index_terminal.html",
+            user_id=request.state.principal.user_id,
         )
         return HTMLResponse(page, headers={"Cache-Control": "no-store"})
 
