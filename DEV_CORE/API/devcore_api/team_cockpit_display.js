@@ -89,7 +89,28 @@ closeInteractions = function() {
 };
 syncTeamCockpit();
 
-let teamProjectTab = 'active';
+const TEAM_PROJECTS_PER_PAGE = 4;
+let teamProjectPage = 0;
+
+function makeProjectIconButton(className, label, paths, disabled, onClick) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'team-project-icon ' + className;
+  button.setAttribute('aria-label', label);
+  button.setAttribute('title', label);
+  button.disabled = disabled;
+  const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  icon.setAttribute('viewBox', '0 0 24 24');
+  icon.setAttribute('aria-hidden', 'true');
+  for (const definition of paths) {
+    const shape = document.createElementNS('http://www.w3.org/2000/svg', definition.tag);
+    for (const [key, value] of Object.entries(definition.attrs)) shape.setAttribute(key, value);
+    icon.append(shape);
+  }
+  button.append(icon);
+  button.addEventListener('click', onClick);
+  return button;
+}
 
 async function loadTeamProjects() {
   const panel = document.getElementById('team-projects');
@@ -98,34 +119,53 @@ async function loadTeamProjects() {
     const response = await teamFetch('/api/auth/session', {cache:'no-store'});
     if (!response.ok) throw new Error('Session indisponible');
     const session = await response.json();
-    teamProjectTab = session.projects.find(p => p.id === session.project)?.status === 'archived'
-      ? 'archived' : 'active';
+    const projects = session.projects || [];
+    const pageCount = Math.max(1, Math.ceil(projects.length / TEAM_PROJECTS_PER_PAGE));
+    teamProjectPage = Math.min(teamProjectPage, pageCount - 1);
     panel.replaceChildren();
     const heading = document.createElement('h3');
     heading.textContent = 'Mes projets';
     panel.append(heading);
-    const tabs = document.createElement('div');
-    tabs.className = 'team-project-tabs';
-    for (const [key, label] of [['active','Actifs'],['archived','Archivés']]) {
-      const button = document.createElement('button');
-      const count = session.projects.filter(p => (p.status === 'archived') === (key === 'archived')).length;
-      button.type = 'button';
-      button.className = 'team-project-tab' + (teamProjectTab === key ? ' selected' : '');
-      button.textContent = `${label} (${count})`;
-      button.setAttribute('aria-pressed', String(teamProjectTab === key));
-      button.addEventListener('click', () => { teamProjectTab = key; renderProjects(); });
-      tabs.append(button);
-    }
-    panel.append(tabs);
     const error = document.createElement('p');
     error.setAttribute('role', 'alert');
     const list = document.createElement('div');
     list.className = 'team-project-list';
+    const pagination = document.createElement('div');
+    pagination.className = 'team-project-pagination';
+    const previous = document.createElement('button');
+    previous.type = 'button';
+    previous.className = 'team-project-page team-project-previous';
+    previous.textContent = '‹';
+    previous.setAttribute('aria-label', 'Projets précédents');
+    const pageLabel = document.createElement('span');
+    pageLabel.className = 'team-project-page-label';
+    const next = document.createElement('button');
+    next.type = 'button';
+    next.className = 'team-project-page team-project-next';
+    next.textContent = '›';
+    next.setAttribute('aria-label', 'Projets suivants');
+    previous.addEventListener('click', () => { teamProjectPage--; renderProjects(); });
+    next.addEventListener('click', () => { teamProjectPage++; renderProjects(); });
+    pagination.append(previous, pageLabel, next);
+    const loading = document.createElement('div');
+    loading.className = 'team-project-refresh';
+    loading.setAttribute('role', 'status');
+    loading.setAttribute('aria-live', 'polite');
     panel.append(list);
+    panel.append(pagination);
     panel.append(error);
+    panel.append(loading);
     function renderProjects() {
       list.replaceChildren();
-      for (const project of session.projects.filter(p => (p.status === 'archived') === (teamProjectTab === 'archived'))) {
+      const pages = Math.max(1, Math.ceil(projects.length / TEAM_PROJECTS_PER_PAGE));
+      teamProjectPage = Math.max(0, Math.min(teamProjectPage, pages - 1));
+      previous.disabled = teamProjectPage === 0;
+      next.disabled = teamProjectPage >= pages - 1;
+      pagination.hidden = pages <= 1;
+      pageLabel.textContent = `${teamProjectPage + 1} / ${pages}`;
+      const visibleProjects = projects.slice(teamProjectPage * TEAM_PROJECTS_PER_PAGE,
+        (teamProjectPage + 1) * TEAM_PROJECTS_PER_PAGE);
+      for (const project of visibleProjects) {
         const card = document.createElement('article');
         card.className = 'project-row team-project-card' + (project.id === session.project ? ' selected' : '');
         card.dataset.project = project.id;
@@ -141,9 +181,10 @@ async function loadTeamProjects() {
         headingRow.append(dot, name, progress);
         const active = document.createElement('div');
         active.className = 'component-detail';
+        const projectState = project.status === 'archived' ? 'Archivé' : 'Actif';
         active.textContent = project.active_tasks
-          ? `${project.active_tasks} tâche(s) active(s) · ${project.tasks} tâches`
-          : `Aucune tâche active · ${project.tasks} tâches`;
+          ? `${projectState} · ${project.active_tasks} tâche(s) active(s) · ${project.tasks} tâches`
+          : `${projectState} · Aucune tâche active · ${project.tasks} tâches`;
         const bar = document.createElement('div');
         bar.className = 'team-progress';
         const fill = document.createElement('span');
@@ -154,47 +195,51 @@ async function loadTeamProjects() {
         totals.textContent = `${project.completed_tasks} terminées · ${new Intl.NumberFormat('fr-FR').format(project.tokens)} jetons attribués`;
         const actions = document.createElement('div');
         actions.className = 'team-project-actions';
-        const open = document.createElement('button');
-        open.type = 'button';
-        open.className = 'team-project-open';
-        open.textContent = project.id === session.project ? 'Projet ouvert' : 'Ouvrir';
-        open.disabled = project.id === session.project;
-        open.addEventListener('click', () => switchProject(project));
-        const archive = document.createElement('button');
-        archive.type = 'button';
-        archive.className = 'team-project-archive';
-        archive.textContent = project.status === 'archived' ? 'Désarchiver' : 'Archiver';
-        archive.disabled = !project.can_archive;
-        archive.addEventListener('click', async () => {
-          archive.disabled = true;
-          error.textContent = '';
-          try {
-            const response = await teamFetch('/api/auth/session', {method:'POST',
-              headers:{'Content-Type':'application/json','X-CSRF-Token':session.csrf_token},
-              body:JSON.stringify({project:project.id,archive_project:true,archived:project.status!=='archived'})});
-            if (!response.ok) throw new Error('Archivage refusé');
-            const nowArchived = project.status !== 'archived';
-            if (project.id === session.project && nowArchived) {
-              const next = session.projects.find(item => item.id !== project.id && item.status !== 'archived');
-              if (next) { await switchProject(next); return; }
-              teamProjectTab = 'archived';
-            }
-            await loadTeamProjects();
-          } catch (failure) { error.textContent = failure.message; archive.disabled = false; }
-        });
+        const open = makeProjectIconButton('team-project-open', `Ouvrir ${project.name}`,
+          [{tag:'path',attrs:{d:'M14 3h7v7'}},{tag:'path',attrs:{d:'M10 14 21 3'}},
+           {tag:'path',attrs:{d:'M19 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6'}}],
+          project.id === session.project, () => switchProject(project));
+        open.dataset.project = project.id;
+        const isArchived = project.status === 'archived';
+        const archive = makeProjectIconButton('team-project-archive',
+          `${isArchived ? 'Désarchiver' : 'Archiver'} ${project.name}`,
+          isArchived
+            ? [{tag:'path',attrs:{d:'M3 9h18v11H3z'}},{tag:'path',attrs:{d:'M2 4h20v5H2z'}},
+               {tag:'path',attrs:{d:'M12 17v-5m0 0-2 2m2-2 2 2'}}]
+            : [{tag:'path',attrs:{d:'M3 9h18v11H3z'}},{tag:'path',attrs:{d:'M2 4h20v5H2z'}},
+               {tag:'path',attrs:{d:'M9 13h6'}}],
+          !project.can_archive, async () => {
+            archive.disabled = true;
+            error.textContent = '';
+            try {
+              const response = await teamFetch('/api/auth/session', {method:'POST',
+                headers:{'Content-Type':'application/json','X-CSRF-Token':session.csrf_token},
+                body:JSON.stringify({project:project.id,archive_project:true,archived:!isArchived})});
+              if (!response.ok) throw new Error('Archivage refusé');
+              if (project.id === session.project && !isArchived) {
+                const nextActive = projects.find(item => item.id !== project.id && item.status !== 'archived');
+                if (nextActive) { await switchProject(nextActive); return; }
+              }
+              await loadTeamProjects();
+            } catch (failure) { error.textContent = failure.message; archive.disabled = !project.can_archive; }
+          });
         actions.append(open, archive);
         card.append(headingRow, active, bar, totals, actions);
         list.append(card);
       }
       if (!list.children.length) {
         const empty = document.createElement('p');
-        empty.textContent = teamProjectTab === 'archived' ? 'Aucun projet archivé.' : 'Aucun projet actif.';
+        empty.textContent = 'Aucun projet Git accessible.';
         list.append(empty);
       }
     }
     async function switchProject(project) {
       panel.querySelectorAll('.team-project-open').forEach(item => item.disabled = true);
       error.textContent = '';
+      panel.classList.add('team-projects-switching');
+      panel.setAttribute('aria-busy', 'true');
+      loading.textContent = `Actualisation des données de ${project.name}…`;
+      loading.hidden = false;
       try {
         const result = await teamFetch('/api/auth/session', {
           method:'POST', headers:{'Content-Type':'application/json', 'X-CSRF-Token':session.csrf_token},
@@ -206,6 +251,10 @@ async function loadTeamProjects() {
         location.assign(path + '?' + new URLSearchParams({project:project.id}));
       } catch (failure) {
         error.textContent = failure.message;
+        panel.classList.remove('team-projects-switching');
+        panel.setAttribute('aria-busy', 'false');
+        loading.textContent = '';
+        loading.hidden = true;
         panel.querySelectorAll('.team-project-open').forEach(item => item.disabled = item.dataset.project === session.project);
       }
     }
