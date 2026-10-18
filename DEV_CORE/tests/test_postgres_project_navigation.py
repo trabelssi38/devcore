@@ -47,7 +47,7 @@ def navigation(cluster, tmp_path, monkeypatch):
     cursor.execute("INSERT INTO organizations(id,name) VALUES ('o','Fixture')")
     cursor.execute("INSERT INTO workspaces(id,organization_id,name) VALUES ('w','o','Fixture')")
     cursor.execute("""INSERT INTO projects(id,workspace_id,name,root_path,status) VALUES
-        ('alpha','w','Alpha','C:/fixture','active'),('beta','w','Beta <script>','C:/fixture','active'),
+        ('alpha','w','Alpha','C:/fixture','active'),('beta','w','Beta <script>','C:/fixture','needs_review'),
         ('hidden','w','Private','C:/fixture','active'),('archived','w','Archived','C:/fixture','archived')""")
     from argon2 import PasswordHasher
     cursor.execute("INSERT INTO users(id,email,display_name,password_hash,status) VALUES ('alice','alice@fixture','Alice',%s,'active')",(PasswordHasher().hash('fixture-password'),))

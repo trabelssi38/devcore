@@ -20,7 +20,7 @@ def accessible_projects(dsn, secret, origin):
         metadata = row[0] if isinstance(row[0], dict) else json.loads(row[0])
         cursor.execute('''SELECT p.id,p.name,m.role FROM projects p
             JOIN project_memberships m ON m.project_id=p.id
-            WHERE m.user_id=%s AND p.status='active' ORDER BY lower(p.name),p.id''',
+            WHERE m.user_id=%s AND p.status IN ('active','needs_review') ORDER BY lower(p.name),p.id''',
             (session.principal.user_id,))
         return [{'id': pid, 'name': name, 'role': role}
                 for pid, name, role in cursor.fetchall()
@@ -45,7 +45,7 @@ def switch_project(dsn, secret, project, origin, csrf):
         if metadata.get('password_admitted') is not True:
             raise ProjectAccessDenied('Password session required to switch projects')
         cursor.execute('''SELECT m.role FROM project_memberships m JOIN projects p ON p.id=m.project_id
-            WHERE m.user_id=%s AND m.project_id=%s AND p.status='active' ''',
+            WHERE m.user_id=%s AND m.project_id=%s AND p.status IN ('active','needs_review') ''',
             (current.principal.user_id, project))
         row = cursor.fetchone()
         actions = _scope(row[0]) if row else ()
