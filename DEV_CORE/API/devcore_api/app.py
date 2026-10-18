@@ -1234,7 +1234,7 @@ def create_app(
         ]
         return JSONResponse(status_code=200, content=tasks_list)
 
-    def team_dashboard_snapshot(request: Request, project: str) -> dict | JSONResponse:
+    def team_dashboard_snapshot(request: Request, project: str, task_offset: int = 0) -> dict | JSONResponse:
         if team_project_reader() is None:
             return build_error_response(request=request, status_code=503,
                                         code="team_dashboard_unavailable",
@@ -1249,12 +1249,13 @@ def create_app(
                                         code="project_access_denied",
                                         message="Project action denied")
         dsn = os.environ.get("DEVCORE_DATABASE_URL", "").strip()
-        return PostgresDashboardProjection(dsn).snapshot(principal)
+        return PostgresDashboardProjection(dsn).snapshot(principal, task_offset=task_offset)
 
     @app.get("/api/dashboard", tags=["projects"])
     @app.get(f"{API_PREFIX}/projects/dashboard", tags=["projects"])
-    def postgres_dashboard(request: Request, project: str) -> JSONResponse:
-        snapshot = team_dashboard_snapshot(request, project)
+    def postgres_dashboard(request: Request, project: str,
+                           task_offset: int = Query(default=0, ge=0, le=100000)) -> JSONResponse:
+        snapshot = team_dashboard_snapshot(request, project, task_offset)
         return snapshot if isinstance(snapshot, JSONResponse) else JSONResponse(status_code=200, content=snapshot)
 
     @app.get("/login", tags=["projects"])
@@ -1268,8 +1269,9 @@ def create_app(
     @app.get("/cockpit/terminal", tags=["projects"])
     @app.get("/index.html", tags=["projects"])
     @app.get("/index_terminal.html", tags=["projects"])
-    def postgres_cockpit(request: Request, project: str) -> Response:
-        snapshot = team_dashboard_snapshot(request, project)
+    def postgres_cockpit(request: Request, project: str,
+                         task_offset: int = Query(default=0, ge=0, le=100000)) -> Response:
+        snapshot = team_dashboard_snapshot(request, project, task_offset)
         if isinstance(snapshot, JSONResponse):
             return snapshot
         page = render_team_cockpit(

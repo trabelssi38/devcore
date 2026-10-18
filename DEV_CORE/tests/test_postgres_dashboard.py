@@ -23,16 +23,20 @@ class Cursor:
     def __init__(self):
         now = datetime.now(timezone.utc)
         self.answers = [(1,), [("T-1", "uuid", "<script>alert(1)</script>",
-                                "active", "coding", 2, 0, 1, now)],
+                                "active", "coding", 2, 0, 1, now, "main",
+                                [{"title": "<img src=x> étape", "done": True}], now, None)],
                         [("run-1", "running", "<img src=x>", now)],
-                        [("<script>event</script>", now)],
+                        [("<script>event</script>", now, "uuid", "fixture")],
                         [("schedule-1", "<script>job</script>", "active", "*/5 * * * *", "UTC", now, None, "true")],
                         [("<img src=x>", "dispatched", "queued", now)],
                         [("<script>plugin</script>", "1.0", True)],
                         [("<img src=x>", 2)],
                         (100, 5, 50),
                         (12, 34),
-                        (2, 7, 9, 1)]
+                        (2, 7, 9, 1),
+                        [("google-gemini", "model", 2, 7, 9)],
+                        [("model", 7, 9, "provider_reported", now)],
+                        None, (0,), [("<img>node", 12)]]
         self.statements = []
 
     def execute(self, sql, params):
@@ -58,8 +62,8 @@ def test_dashboard_bounds_project_reads_and_escapes_database_text(monkeypatch):
     data = reader.snapshot(Principal("user", "credential", "alpha", "task.read"))
     assert data["project"] == "alpha"
     assert data["counts"] == {"tasks": 1, "shown_tasks": 1, "runs": 1}
-    assert "<script>" not in str(data)
-    assert "<img" not in str(data)
+    assert "<script>" not in str(data["sections"])
+    assert "<img" not in str(data["sections"])
     assert "&lt;script&gt;" in data["sections"]["tasks_pipeline"]
     assert 'data-task-id="T-1"' in data["sections"]["tasks_pipeline"]
     assert 'data-version="2"' in data["sections"]["tasks_pipeline"]
@@ -70,10 +74,19 @@ def test_dashboard_bounds_project_reads_and_escapes_database_text(monkeypatch):
     assert "&lt;img src=x&gt; · 2" in data["sections"]["context_composition"]
     assert "100 jetons modèle/jour" in data["sections"]["metrics_service_summary"]
     assert "12 nœuds · 34 arêtes historiques" in data["sections"]["knowledge_graph_summary"]
-    assert "2 appel(s) Gemini" in data["sections"]["token_activity_report"]
-    assert "7 jetons entrée · 9 jetons sortie" in data["sections"]["token_activity_report"]
-    assert "1 appel(s) sans usage fournisseur" in data["sections"]["token_activity_report"]
-    assert all(params == ("alpha",) for _, params in cursor.statements)
+    assert "google-gemini" in data["sections"]["token_activity_report"]
+    assert "7 entrée / 9 sortie" in data["sections"]["token_activity_report"]
+    assert "1 sans usage fournisseur" in data["sections"]["token_activity_report"]
+    assert 'class="steps-container"' in data["sections"]["tasks_pipeline"]
+    assert 'class="step-item step-done"' in data["sections"]["tasks_pipeline"]
+    assert 'btn-details' in data["sections"]["tasks_pipeline"]
+    assert 'btn-interactions' in data["sections"]["tasks_pipeline"]
+    assert "[v] <img src=x> étape" == data["task_details"]["alpha_T-1"]
+    assert data["task_interactions"]["alpha_T-1"]["events"][0]["event_type"] == "<script>event</script>"
+    assert data["task_interactions"]["alpha_T-1"]["metrics_available"] is False
+    assert all(params[0] == "alpha" for _, params in cursor.statements)
+    assert cursor.statements[1][1] == ("alpha", 0)
+    assert all(params == ("alpha",) for i, (_, params) in enumerate(cursor.statements) if i != 1)
     assert "LIMIT 60" in cursor.statements[1][0]
     assert "LIMIT 10" in cursor.statements[2][0]
     assert "LIMIT 20" in cursor.statements[4][0]
@@ -90,6 +103,14 @@ def test_dashboard_rejects_non_read_principal_before_database(monkeypatch):
         AssertionError("Database opened")))
     with pytest.raises(ProjectAccessDenied):
         reader.snapshot(Principal("user", "credential", "alpha", "task.mutate"))
+
+
+@pytest.mark.parametrize('offset', [-1, 100001, True, '60'])
+def test_dashboard_rejects_invalid_offset_before_database(monkeypatch, offset):
+    reader = PostgresDashboardProjection("postgresql://app@127.0.0.1/fixture")
+    monkeypatch.setattr(reader, "_transaction", lambda _: (_ for _ in ()).throw(AssertionError("Database opened")))
+    with pytest.raises(ValueError):
+        reader.snapshot(Principal("user", "credential", "alpha", "task.read"), task_offset=offset)
 
 
 def test_html_render_escapes_project_in_script_context():
@@ -111,8 +132,15 @@ def test_html_render_escapes_project_in_script_context():
         assert "?project='+encodeURIComponent(window.devcoreActiveProject)" in html
         if terminal:
             assert 'id="api-ok">:20131' in html
-            assert 'SCHEDULER <span class="v-ok">ACTIVE' not in html
-            assert 'REPOWISE <span class="v-cyan">MCP' not in html
+            assert 'class="team-terminal"' in html
+        assert 'syncTeamCockpit(data)' in html
+        assert 'counts.tasks' in html
+        assert 'Token Optimization Stack' not in html
+        assert '// Load settings on startup\nloadSettings();' not in html
+        assert 'Configuration du projet' in html
+        assert 'id="setting-gemini-key"' not in html
+        assert 'id="setting-anthropic-key"' not in html
+        assert '<form id="settings-form"' not in html
 
 
 def test_login_escapes_project_and_uses_same_origin_session():

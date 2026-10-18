@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import re
+from html import escape
 from pathlib import Path
 
 
@@ -44,6 +46,23 @@ def _script_json(value: object) -> str:
             .replace("&", "\\u0026"))
 
 
+def _configuration(snapshot: dict) -> str:
+    names = {'router': 'Gemini Router', 'headroom-native': 'Headroom natif',
+             'headroom-auxiliary': 'Headroom auxiliaire', 'gateway': 'API Gateway',
+             'scheduler': 'Scheduler PostgreSQL', 'repowise': 'RepoWise'}
+    states = snapshot.get('service_health', {}).get('services', {})
+    rows = ''.join('<div class="component"><span>' + label + '</span>'
+                   + '<span data-team-service="' + name + '">'
+                   + ('En ligne' if states.get(name) else 'Non supervisé') + '</span></div>'
+                   for name, label in names.items())
+    return ('<section class="team-panel"><h3>Configuration du projet</h3><div class="team-panel-body">'
+            '<div class="component"><span>Projet connecté</span><strong>' + escape(snapshot['project']) + '</strong></div>'
+            '<div class="component"><span>Profil</span><strong>Équipe · PostgreSQL</strong></div>'
+            '<div class="component"><span>Rafraîchissement</span><strong>60 secondes</strong></div>'
+            '<h4>Composants supervisés</h4>' + rows
+            + '<p>Cette vue est en lecture seule. Les services et les clés API sont administrés sur le serveur.</p></div></section>')
+
+
 def render_team_cockpit(template_dir: Path, snapshot: dict, *, terminal: bool = False) -> str:
     name = "template_terminal.html" if terminal else "template.html"
     page = (template_dir / name).read_text(encoding="utf-8")
@@ -66,12 +85,29 @@ def render_team_cockpit(template_dir: Path, snapshot: dict, *, terminal: bool = 
     # template calls it on load even though the settings panel is hidden.
     page = page.replace("// Load settings on startup\nloadSettings();",
                         "// Team profile has no shared settings endpoint.")
+    page = page.replace(":20129", ":20131")
+    page = page.replace('Auto-refresh 15s', 'Auto-refresh 60s')
+    for old_path in ('../../README.md', '../../DEV_CORE_DATA/Logs/scripts/'):
+        page = page.replace('onclick="window.open(\'' + old_path + '\',\'_blank\')"',
+                            'aria-disabled="true" title="Document historique non publié dans ce profil"')
+    page = page.replace('recordAppliedDashboardSnapshot(data);',
+                        'recordAppliedDashboardSnapshot(data); syncTeamCockpit(data);')
+    page = page.replace('/api/dashboard?project=${encodeURIComponent(window.devcoreActiveProject)}',
+                        '/api/dashboard?project=${encodeURIComponent(window.devcoreActiveProject)}&task_offset=${Number(new URLSearchParams(window.location.search).get("task_offset") || 0)}')
+    # The former optimization percentages were static claims, not project data.
+    page = re.sub(r'<h2>Token Optimization Stack</h2>.*?(?=<div id="context-composition")',
+                  '', page, flags=re.DOTALL)
     if terminal:
-        page = page.replace('id="sys-status">ONLINE', 'id="sys-status">—')
-        page = page.replace('id="api-ok">:20129 ✓', 'id="api-ok">:20131')
-        page = page.replace('SCHEDULER <span class="v-ok">ACTIVE', 'SCHEDULER <span class="v-ok">—')
-        page = page.replace('REPOWISE <span class="v-cyan">MCP', 'REPOWISE <span class="v-cyan">—')
-    # The historical settings and plugin controls have no scoped team backend.
-    page = page.replace("</head>", "<style>#tab-settings-title,#tab-settings-content{display:none!important}</style></head>", 1)
-    page = page.replace("</body>", _TEAM_ACTIONS + "</body>", 1)
+        page = page.replace('<body>', '<body class="team-terminal">', 1)
+    # Keep the familiar tab with observable settings, without exposing shared
+    # service administration or credential controls to project contributors.
+    page = re.sub(r'<form id="settings-form".*?</form>', lambda _: _configuration(snapshot),
+                  page, count=1, flags=re.DOTALL)
+    assets = Path(__file__).parent
+    style = (assets / 'team_cockpit_style.css').read_text(encoding='utf-8')
+    display = (assets / 'team_cockpit_display.js').read_text(encoding='utf-8')
+    bootstrap = ('window.devcoreTeamCounts=' + _script_json(snapshot.get('counts', {}))
+                 + ';window.devcoreTeamHealth=' + _script_json(snapshot.get('service_health', {})) + ';')
+    page = page.replace("</head>", '<style>' + style + '</style></head>', 1)
+    page = page.replace("</body>", _TEAM_ACTIONS + '<script>' + bootstrap + display + '</script></body>', 1)
     return page

@@ -9,6 +9,8 @@ from devcore_engine.security.identity import Principal, ProjectAccessDenied
 
 from .postgres_project_reads import PostgresProjectReader
 from .global_stack_monitor import global_stack_health, render_global_stack_health
+from .cockpit_presentation import (task_cards, project_card, usage_panel, panel, metric,
+                                   project_code_health, code_health_card)
 
 
 def _text(value: object) -> str:
@@ -16,22 +18,25 @@ def _text(value: object) -> str:
 
 
 class PostgresDashboardProjection(PostgresProjectReader):
-    def snapshot(self, principal: Principal) -> dict:
+    def snapshot(self, principal: Principal, *, task_offset: int = 0) -> dict:
         if not isinstance(principal, Principal) or principal.action != "task.read":
             raise ProjectAccessDenied("Task read principal required")
+        if type(task_offset) is not int or not 0 <= task_offset <= 100000:
+            raise ValueError("Task offset must be an integer in 0..100000")
         project = principal.project_id
         with self._transaction(project) as cursor:
             cursor.execute("SELECT count(*) FROM tasks WHERE project_id=%s", (project,))
             task_count = cursor.fetchone()[0]
             cursor.execute("""SELECT legacy_id,task_uuid,title,status,mode,version,
-                steps_done,steps_total,updated_at FROM tasks WHERE project_id=%s
+                steps_done,steps_total,updated_at,worktree,metadata,started_at,completed_at
+                FROM tasks WHERE project_id=%s
                 ORDER BY (status IN ('active','in_progress')) DESC,updated_at DESC,task_uuid
-                LIMIT 60""", (project,))
+                LIMIT 60 OFFSET %s""", (project, task_offset))
             tasks = cursor.fetchall()
             cursor.execute("""SELECT id,status,title,updated_at FROM runs
                 WHERE project_id=%s ORDER BY updated_at DESC,id LIMIT 10""", (project,))
             runs = cursor.fetchall()
-            cursor.execute("""SELECT event_type,created_at FROM events
+            cursor.execute("""SELECT event_type,created_at,task_uuid,source FROM events
                 WHERE project_id=%s ORDER BY created_at DESC,id DESC LIMIT 10""", (project,))
             events = cursor.fetchall()
             cursor.execute("""SELECT id,name,status,cron,timezone,next_run_at,last_run_at,
@@ -59,46 +64,34 @@ class PostgresDashboardProjection(PostgresProjectReader):
                 count(*) FILTER (WHERE usage_source='unreported')
                 FROM project_llm_usage WHERE project_id=%s""", (project,))
             usage = cursor.fetchone()
+            cursor.execute("""SELECT provider,model,count(*),coalesce(sum(prompt_tokens),0),
+                coalesce(sum(completion_tokens),0) FROM project_llm_usage WHERE project_id=%s
+                GROUP BY provider,model ORDER BY count(*) DESC,provider,model LIMIT 20""", (project,))
+            usage_models = cursor.fetchall()
+            cursor.execute("""SELECT model,prompt_tokens,completion_tokens,usage_source,recorded_at
+                FROM project_llm_usage WHERE project_id=%s ORDER BY recorded_at DESC,id DESC LIMIT 10""", (project,))
+            usage_recent = cursor.fetchall()
+            cursor.execute("SELECT root_path FROM projects WHERE id=%s AND status='active'", (project,))
+            registered = cursor.fetchone()
+            cursor.execute("SELECT count(*) FROM tasks WHERE project_id=%s AND status='done'", (project,))
+            done_count = cursor.fetchone()[0]
+            cursor.execute("""SELECT type,count(*) FROM legacy_kg_nodes WHERE project_id=%s
+                GROUP BY type ORDER BY count(*) DESC,type LIMIT 12""", (project,))
+            graph_types = cursor.fetchall()
 
         label = _text(project)
-        cards = (f'<div class="project-row" data-project="{label}">'
-                 f'<strong>{label}</strong> · {task_count} tâches</div>')
-        missions = []
-        for legacy, task_uuid, title, status, mode, version, done, total, updated in tasks:
-            task_id = str(legacy or task_uuid)
-            css_status = "done" if status == "done" else "active" if status in {"active", "in_progress"} else "todo"
-            date = updated.isoformat() if updated else ""
-            attributes = (f'data-project="{label}" data-task-id="{_text(task_id)}" '
-                          f'data-version="{version}"')
-            complete_button = (
-                f'<button class="btn-action" {attributes} '
-                'onclick="completeTask(this.dataset.project,this.dataset.taskId,event,'
-                'Number(this.dataset.version))">Clôturer</button>'
-                if status not in {"done", "deleted"} else ""
-            )
-            delete_button = (
-                f'<button class="btn-action" {attributes} '
-                'onclick="deleteTask(this.dataset.project,this.dataset.taskId,event,'
-                'Number(this.dataset.version))">Supprimer</button>'
-                if status != "deleted" else ""
-            )
-            missions.append(
-                f'<div class="mission {css_status}" data-date="{_text(date)}">'
-                f'<div class="mission-header"><span class="badge {css_status}">{_text(status)}</span>'
-                f'<div class="mission-title">{_text(task_id)}: {_text(title)}</div></div>'
-                f'<div>Mode: {_text(mode)} · {done}/{total} étapes · version {version}</div>'
-                f'<div>{complete_button}{delete_button}</div></div>'
-            )
-        pipeline = (f'<details open class="project-tasks-group" data-project="{label}">'
-                    f'<summary>Projet : {label} · {task_count} tâches</summary>'
-                    + "".join(missions) + "</details>")
+        active_id = next((str(row[0] or row[1]) for row in tasks if row[3] in {"active", "in_progress"}), "")
+        cards = project_card(project, task_count, done_count, active_id, usage[1] + usage[2])
+        pipeline, task_details, task_interactions = task_cards(project, tasks, task_count, events, offset=task_offset)
+        health = global_stack_health()
         run_items = "".join(
             f'<div>{_text(run_id)} · {_text(status)} · {_text(title)}</div>'
             for run_id, status, title, _ in runs
         ) or "<div>Aucun run récent.</div>"
         event_items = "".join(
-            f'<div>{_text(kind)} · {_text(created.isoformat() if created else "")}</div>'
-            for kind, created in events
+            f'<div class="team-event-row"><time>{_text(created.isoformat() if created else "")}</time>'
+            f'<strong>{_text(kind)}</strong><span>{_text(source or "")}</span></div>'
+            for kind, created, _, source in events
         ) or "<div>Aucun événement récent.</div>"
         schedule_items = "".join(
             f'<div class="schedule-row" data-schedule="{_text(schedule_id)}">'
@@ -120,6 +113,10 @@ class PostgresDashboardProjection(PostgresProjectReader):
             f'{"actif" if enabled else "désactivé"}</div>'
             for name, version, enabled in plugins
         ) or "<div>Aucun plugin enregistré dans ce projet.</div>"
+        plugin_panel = ('<div class="team-metric-grid">'
+                        + metric("Plugins affichés", len(plugins))
+                        + metric("Activés affichés", sum(bool(enabled) for _, _, enabled in plugins))
+                        + metric("Contrôles", "—", "Non mesurés") + '</div>' + plugin_panel)
         memory_panel = "".join(
             f'<div>{_text(task_type)} · {count} entrée(s)</div>'
             for task_type, count in memory_groups
@@ -134,16 +131,19 @@ class PostgresDashboardProjection(PostgresProjectReader):
             graph_panel = "<div>Aucun graphe historique attribué à ce projet.</div>"
         else:
             nodes, edges = graph_stats
-            graph_panel = (f'<div>{nodes} nœuds · {edges} arêtes historiques '
-                           'du projet, hors relations en quarantaine.</div>')
-        calls, prompt_tokens, completion_tokens, unreported = usage
-        if calls == 0:
-            token_panel = "<div>Aucun appel LLM attribué à ce projet.</div>"
-        else:
-            token_panel = (f'<div>{calls} appel(s) Gemini attribué(s) au projet · '
-                           f'{prompt_tokens} jetons entrée · {completion_tokens} jetons sortie'
-                           + (f' · {unreported} appel(s) sans usage fournisseur' if unreported else "")
-                           + '</div>')
+            graph_panel = ('<div class="team-metric-grid team-two-metrics">'
+                           + metric("Nœuds", nodes) + metric("Arêtes", edges) + '</div>'
+                           + f'<div class="component-detail">{nodes} nœuds · {edges} arêtes historiques du projet, hors relations en quarantaine.</div>'
+                           + ''.join(f'<div class="token-layer"><span class="token-name">{_text(kind)}</span>'
+                                     f'<span class="token-reduction">{count} nœuds</span></div>' for kind, count in graph_types))
+        service_metrics = ('<div class="team-metric-grid team-two-metrics">'
+                           + metric("Événements récents", len(events)) + metric("Runs récents", len(runs))
+                           + metric("Jetons attribués", usage[1] + usage[2]) + metric("Coût", "—", "Non disponible") + '</div>')
+        availability = '<div>Aucune mesure quotidienne de dépassement disponible.</div>' if budget else '<div>Aucun budget de projet configuré pour déclencher une alerte.</div>'
+        postgres_card = ('<div class="component team-service"><div><strong>PostgreSQL · lecture du projet vérifiée</strong>'
+                         f'<div class="component-detail">{task_count} tâches · source transactionnelle du projet</div>'
+                         '<span class="team-service-tag">Lecture vérifiée</span><span class="team-service-tag">Droits par projet</span>'
+                         '<span class="team-service-tag">Persistance</span></div><span class="status-ok">✓</span></div>')
         return {
             "schema_version": 1,
             "project": project,
@@ -151,19 +151,21 @@ class PostgresDashboardProjection(PostgresProjectReader):
             "sections": {
                 "project_cards": cards,
                 "tasks_pipeline": pipeline,
-                "services_monitoring": render_global_stack_health(global_stack_health()),
-                "automation_hooks": schedule_panel,
-                "token_activity_report": token_panel,
-                "context_composition": memory_panel,
-                "metrics_service_summary": metrics_panel,
-                "event_bus_recent": event_items,
-                "knowledge_graph_summary": graph_panel,
-                "plugin_status": plugin_panel,
+                "services_monitoring": code_health_card(project, project_code_health(registered[0] if registered else None)) + render_global_stack_health(health) + postgres_card + panel("Planifications du projet", schedule_panel),
+                "automation_hooks": panel("Planifications PostgreSQL", schedule_panel),
+                "token_activity_report": usage_panel(usage, usage_models, usage_recent, run_items),
+                "context_composition": panel("Composition du contexte", memory_panel),
+                "metrics_service_summary": panel("Metrics Service", service_metrics) + panel("Budget du projet", metrics_panel) + panel("Alertes de consommation", availability) + panel("Conformité du protocole agent", "<div>Non mesurée pour ce déploiement.</div>"),
+                "event_bus_recent": panel("Événements récents", '<div class="team-scroll">' + event_items + '</div>'),
+                "knowledge_graph_summary": panel("Graphe du projet", graph_panel),
+                "plugin_status": panel("Plugin SDK", plugin_panel),
             },
             "runs": run_items,
-            "task_details": {},
-            "task_interactions": {},
-            "token_metrics": {},
+            "task_details": task_details,
+            "task_interactions": task_interactions,
+            "token_metrics": {"totals": {"tokens": usage[1] + usage[2]},
+                              "projects": {project: {"tokens": usage[1] + usage[2]}}},
+            "service_health": health,
             "cache": {},
             "counts": {"tasks": task_count, "shown_tasks": len(tasks), "runs": len(runs)},
         }

@@ -45,14 +45,26 @@ def global_stack_health(path: str | None = None, *, now: datetime | None = None)
 
 
 def render_global_stack_health(state: dict) -> str:
+    from .cockpit_presentation import panel
+
     status = state.get("status")
     if status != "ready" and status != "degraded":
-        return "<div>Supervision de pile globale indisponible.</div>"
+        return panel("Services & infrastructure", "<div>Supervision de pile globale indisponible.</div>")
+    ports = {"router": "20130", "headroom-native": "8787", "headroom-auxiliary": "8789",
+             "gateway": "20131", "scheduler": "PostgreSQL · baux durables", "repowise": "7337"}
+    roles = {"router": "Routage Gemini", "headroom-native": "Route native", "headroom-auxiliary": "Route auxiliaire",
+             "gateway": "Cockpit API", "scheduler": "Orchestration", "repowise": "Analytics & MCP"}
     rows = []
     for name, label in NAMES.items():
         if name not in state["services"]:
             continue
         state_label = "en ligne" if state["services"][name] else "indisponible"
-        rows.append(f'<div class="service-row" data-service="{escape(name, quote=True)}">'
-                    f'{escape(label)} · {state_label}</div>')
-    return '<div>Supervision locale de la pile globale</div>' + "".join(rows)
+        css = 'status-ok' if state['services'][name] else 'status-error'
+        rows.append(f'<div class="component service-row team-service" data-service="{escape(name, quote=True)}">'
+                    f'<div><strong>{escape(label)} · {state_label}</strong>'
+                    f'<div class="component-detail">{ports[name]}</div>'
+                    f'<span class="team-service-tag">Sonde : {state_label}</span>'
+                    '<span class="team-service-tag">Solic. : non mesurée</span>'
+                    f'<span class="team-service-tag team-impact">{roles[name]}</span></div>'
+                    f'<span class="{css}">{"✓" if state["services"][name] else "✗"}</span></div>')
+    return panel('Services & infrastructure', "".join(rows))
