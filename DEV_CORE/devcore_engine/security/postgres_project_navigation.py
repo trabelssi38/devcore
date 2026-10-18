@@ -56,7 +56,7 @@ def accessible_projects(dsn, secret, origin):
             projects.append({'id': pid, 'name': name, 'role': role, 'status': status,
                              'tasks': int(total), 'completed_tasks': int(completed),
                              'active_tasks': int(active), 'tokens': tokens,
-                             'can_archive': True})
+                             'can_archive': role in ('owner', 'maintainer', 'contributor')})
         return projects
     finally:
         connection.close()

@@ -19,7 +19,7 @@ BEGIN
     WHERE p.id=target_project AND m.user_id=target_user
     FOR UPDATE OF p;
 
-    IF NOT FOUND OR member_role NOT IN ('owner','maintainer','contributor','reader') THEN
+    IF NOT FOUND OR member_role NOT IN ('owner','maintainer','contributor') THEN
         RAISE EXCEPTION 'Project access denied' USING ERRCODE='42501';
     END IF;
     IF (current_status='archived')=should_archive THEN
