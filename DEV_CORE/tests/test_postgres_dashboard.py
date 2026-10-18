@@ -130,6 +130,12 @@ def test_html_render_escapes_project_in_script_context():
     for terminal in (False, True):
         html = render_team_cockpit(directory, snapshot, terminal=terminal, user_id='majdi<script>')
         assert 'Utilisateur connecté : <strong>majdi&lt;script&gt;</strong>' in html
+        assert '<details id="team-profile" class="team-profile">' in html
+        assert '<summary id="team-connected-user"' in html
+        assert 'id="team-logout"' in html
+        assert 'data-team-profile-project' in html
+        assert "method:'DELETE'" in html
+        assert '<h3>Mes projets</h3>' not in html
         assert 'majdi<script>' not in html
         assert '</script><script>alert(1)</script>' not in html
         assert "\\u003c/script\\u003e" in html
@@ -148,6 +154,9 @@ def test_html_render_escapes_project_in_script_context():
             assert 'id="api-ok">:20131' in html
             assert 'class="team-terminal"' in html
             assert 'window.devcoreTeamEventSource = new EventSource(' in html
+            assert html.index('<div id="tbar-r">') < html.index('<details id="team-profile"') < html.index('<!-- ─── MAIN GRID ─── -->')
+        else:
+            assert html.index('<header>') < html.index('<details id="team-profile"') < html.index('</header>')
         assert "async function teamFetch" in html
         assert "[401, 403].includes(response.status)" in html
         assert "return teamFetch(target, options)" in html

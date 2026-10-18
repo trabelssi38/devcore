@@ -64,6 +64,20 @@ body.team-terminal .steps-container{margin:6px 0 3px 36px;padding:7px 9px}
 body.team-terminal .step-item{white-space:normal;align-items:flex-start;margin-bottom:6px}
 @media(max-width:1200px){body.team-terminal .main{grid-template-columns:220px minmax(350px,1fr) 330px}.team-task-actions{gap:1px}.team-mission-header{gap:6px}.team-metric-grid .card-val{font-size:14px}}
 @media(max-width:1000px){body.team-terminal .main{display:flex;flex-direction:column;overflow-y:auto}body.team-terminal .col{flex-shrink:0;height:320px}body.team-terminal .col:nth-child(2){height:850px}body.team-terminal .col:last-child{height:800px}}
+.team-profile{position:relative;z-index:1001;flex:none;font-size:11px;color:#c9d9e7}
+.team-profile>summary{display:flex;align-items:center;gap:6px;list-style:none;cursor:pointer;padding:3px 7px;border:1px solid #314661;border-radius:3px;background:#111b29;white-space:nowrap}
+.team-profile>summary::-webkit-details-marker{display:none}
+.team-profile>summary::after{content:'⌄';color:#7291a8;margin-left:2px}
+.team-profile>summary:hover,.team-profile[open]>summary{border-color:#00c6e8;color:#fff}
+.team-profile>summary:focus-visible,.team-profile-panel a:focus-visible{outline:2px solid #00c6e8;outline-offset:2px}
+.team-profile-avatar{color:#00e89a;font-size:10px}
+.team-profile-panel{position:absolute;top:calc(100% + 7px);right:0;min-width:205px;padding:10px 12px;background:#101b29;border:1px solid #314661;border-radius:4px;box-shadow:0 12px 28px rgba(0,0,0,.45);font-size:11px;line-height:1.7;white-space:normal}
+.team-profile-panel h3{margin:0 0 6px;font-size:11px;color:#70c4ff}
+.team-profile-panel strong{color:#e2e8f0;overflow-wrap:anywhere}
+.team-profile-panel a{display:block;margin-top:9px;padding-top:7px;border-top:1px solid #314661;color:#70c4ff;text-decoration:none}
+.team-profile-panel a:hover{text-decoration:underline}
+.team-profile-panel a[aria-disabled="true"]{opacity:.5;pointer-events:none}
+.team-profile-panel [role="alert"]{margin:0;color:#fb7185;font-size:10px}
 #team-projects { margin-bottom:12px; }
 #team-projects.team-projects-initial { min-height:390px; }
 .team-project-loading-label { display:block; padding:6px 0; color:#7291a8; font-size:10px; }

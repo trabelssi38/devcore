@@ -6,6 +6,7 @@ import json
 import re
 from html import escape
 from pathlib import Path
+from urllib.parse import quote
 
 
 _PLACEHOLDERS = {
@@ -67,11 +68,24 @@ def render_team_cockpit(template_dir: Path, snapshot: dict, *, terminal: bool = 
     name = "template_terminal.html" if terminal else "template.html"
     page = (template_dir / name).read_text(encoding="utf-8")
     if user_id is not None:
-        identity = ('<div id="team-connected-user" role="status" style="position:fixed;'
-                    'bottom:12px;right:16px;z-index:1000;padding:8px 12px;'
-                    'background:#172334;color:#fff;border:1px solid #52667e;border-radius:6px">'
-                    'Utilisateur connecté : <strong>' + escape(user_id) + '</strong></div>')
-        page = page.replace('</body>', identity + '</body>', 1)
+        safe_user = escape(user_id)
+        safe_project = escape(snapshot['project'])
+        login_href = '/login?project=' + escape(quote(snapshot['project'], safe=''), quote=True)
+        identity = ('<details id="team-profile" class="team-profile">'
+                    '<summary id="team-connected-user" aria-label="Profil de ' + safe_user + '">'
+                    '<span class="team-profile-avatar" aria-hidden="true">●</span>'
+                    '<span>' + safe_user + '</span></summary>'
+                    '<div class="team-profile-panel" aria-label="Profil">'
+                    '<h3>Profil</h3>'
+                    '<div>Utilisateur connecté : <strong>' + safe_user + '</strong></div>'
+                    '<div>Projet : <strong data-team-profile-project>' + safe_project + '</strong></div>'
+                    '<a id="team-logout" href="' + login_href + '">Déconnexion</a>'
+                    '<p id="team-profile-error" role="alert"></p>'
+                    '</div></details>')
+        if terminal:
+            page = page.replace('<div id="tbar-r">', '<div id="tbar-r">' + identity, 1)
+        else:
+            page = page.replace('</header>', identity + '</header>', 1)
     for section, placeholder in _PLACEHOLDERS.items():
         value = '' if section == 'project_cards' else snapshot["sections"][section]
         page = page.replace("{{" + placeholder + "}}", value)

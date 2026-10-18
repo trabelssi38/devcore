@@ -38,10 +38,17 @@ class Element {
   taskPanel.innerHTML = 'Tasks alpha';
   const globalPanel = new Element('section');
   globalPanel.innerHTML = 'Global services';
+  const profile = new Element('details');
+  profile.contains = () => false;
+  const profileProject = new Element('strong');
+  const logout = new Element('a');
+  const profileError = new Element('p');
   const calls = [];
   let destination;
+  let logoutDestination;
   let currentProject = 'alpha';
   let pageReplacements = 0;
+  let logoutDenied = true;
   const updatedSections = [];
   const context = {
     window: {}, console, URLSearchParams, AbortController, setTimeout, clearTimeout,
@@ -54,10 +61,15 @@ class Element {
     recordAppliedDashboardSnapshot: () => {},
     refreshDashboard: () => context.performDashboardRefresh(),
     document: {getElementById: id => ({'team-projects':panel,'tasks-pipeline':taskPanel,
-      'global-only-panel':globalPanel})[id] || null,
-               querySelector: () => null, querySelectorAll: () => [],
+      'global-only-panel':globalPanel,'team-profile':profile,'team-logout':logout,
+      'team-profile-error':profileError})[id] || null,
+               addEventListener: () => {},
+               querySelector: selector => selector === '[data-team-profile-project]' ? profileProject : null,
+               querySelectorAll: () => [],
                createElement: tag => new Element(tag), createElementNS: (_ns, tag) => new Element(tag)},
-    location: {pathname:'/cockpit/terminal', search:'?project=alpha', assign: () => pageReplacements++},
+    location: {pathname:'/cockpit/terminal', search:'?project=alpha', assign: value => {
+      pageReplacements++; logoutDestination = value;
+    }},
     teamFetch: async (url, options) => {
       calls.push([url, options]);
       if (String(url).startsWith('/api/dashboard?')) {
@@ -65,6 +77,7 @@ class Element {
         return {ok:true, json:async () => ({project, sections:{tasks_pipeline:`Tasks ${project}`},
           task_details:{},task_interactions:{},token_metrics:{},counts:{tasks:2},service_health:{}})};
       }
+      if (options?.method === 'DELETE') return {ok:!logoutDenied};
       if (options?.method === 'POST' && JSON.parse(options.body).switch_project) currentProject = JSON.parse(options.body).project;
       return {ok:true, json:async () => ({project:currentProject, csrf_token:'fixture-csrf', projects:[
         {id:'alpha',name:'Alpha',role:'owner',status:'active',tasks:275,completed_tasks:275,active_tasks:0,tokens:0,can_archive:true},
@@ -87,11 +100,13 @@ class Element {
   assert.equal(tabs[0].getAttribute('aria-selected'), 'true');
   assert.equal(panel.querySelectorAll('.team-project-pagination').length, 0);
   assert.equal(panel.querySelectorAll('.team-project-refresh').length, 0);
+  assert.equal(panel.querySelectorAll('h3').length, 0);
   assert.equal(cards.length, 5);
   assert.equal(cards[0].getAttribute('aria-current'), 'page');
   assert.equal(cards[0].children[1].textContent, 'Aucune tâche active · 275 tâches');
   assert.equal(cards[0].children[2].children[0].style.width, '100%');
-  assert.equal(cards[0].children[3].children[1].querySelectorAll('button').length, 1);
+  assert.equal(cards[0].children[3].children[1].querySelectorAll('button').length, 2);
+  assert.equal(cards[0].children[3].children[1].querySelectorAll('button')[0].disabled, true);
   assert.equal(cards[1].children[0].children[1].textContent, 'Beta <script>');
   let buttons = cards[1].children[3].children[1].querySelectorAll('button');
   assert.equal(buttons[1].getAttribute('aria-label'), 'Archiver Beta <script>');
@@ -113,7 +128,13 @@ class Element {
   assert.equal(list.children[1], originalCard);
   assert.equal(originalCard.getAttribute('aria-current'), 'page');
   assert.equal(list.children[0].getAttribute('aria-current'), undefined);
+  assert.equal(list.children[0].children[3].children[1].querySelectorAll('button')[0].disabled, false);
+  assert.equal(originalCard.children[3].children[1].querySelectorAll('button')[0].disabled, true);
+  assert.equal(list.children[2].children[3].children[1].querySelectorAll('button')[0].getAttribute('aria-label'), 'Ouvrir Contributor');
+  assert.equal(list.children[2].children[3].children[1].querySelectorAll('button')[1].getAttribute('aria-label'), 'Archiver Contributor');
+  assert.equal(list.children[2].children[3].children[1].querySelectorAll('button')[0].disabled, false);
   assert.equal(context.window.devcoreActiveProject, 'beta');
+  assert.equal(profileProject.textContent, 'beta');
   assert.deepEqual(updatedSections, ['tasks-pipeline']);
   assert.equal(taskPanel.innerHTML, 'Tasks beta');
   assert.equal(globalPanel.innerHTML, 'Global services');
@@ -138,5 +159,14 @@ class Element {
   buttons = cards[2].children[3].children[1].querySelectorAll('button');
   await buttons[1].listeners.click();
   assert.deepEqual(JSON.parse(calls.filter(call => call[1]?.method === 'POST')[2][1].body), {project:'contrib',archive_project:true,archived:true});
+  await logout.listeners.click({preventDefault() {}});
+  assert.equal(pageReplacements, 0);
+  assert.equal(profileError.textContent, 'Déconnexion impossible');
+  assert.equal(logout.dataset.busy, 'false');
+  logoutDenied = false;
+  await logout.listeners.click({preventDefault() {}});
+  const deletion = calls.find(call => call[1]?.method === 'DELETE');
+  assert.equal(deletion[1].headers['X-CSRF-Token'], 'fixture-csrf');
+  assert.equal(logoutDestination, '/login?project=beta');
   console.log('Project navigation UI checks passed');
 })().catch(error => { console.error(error); process.exitCode = 1; });

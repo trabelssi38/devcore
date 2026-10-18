@@ -134,6 +134,8 @@ async function refreshTeamProjectData(project = window.devcoreActiveProject) {
     }
     const projectName = document.querySelector('[data-team-project-name]');
     if (projectName) projectName.textContent = project;
+    const profileProject = document.querySelector('[data-team-profile-project]');
+    if (profileProject) profileProject.textContent = project;
     window.taskDetailsMap = data.task_details || {};
     window.activeFilteredProject = null;
     updateTokenReport(null);
@@ -204,9 +206,6 @@ async function loadTeamProjects() {
         ? 'archived' : 'active';
     }
     panel.replaceChildren();
-    const heading = document.createElement('h3');
-    heading.textContent = 'Mes projets';
-    panel.append(heading);
     const tabs = document.createElement('div');
     tabs.className = 'team-project-tabs';
     tabs.setAttribute('role', 'tablist');
@@ -243,7 +242,10 @@ async function loadTeamProjects() {
       const button = makeProjectIconButton('team-project-open', `Ouvrir ${project.name}`,
         [{tag:'path',attrs:{d:'M14 3h7v7'}},{tag:'path',attrs:{d:'M10 14 21 3'}},
          {tag:'path',attrs:{d:'M19 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6'}}],
-        false, () => switchProject(project));
+        project.id === session.project, () => {
+          if (project.id !== session.project) return switchProject(project);
+          return false;
+        });
       button.dataset.project = project.id;
       return button;
     }
@@ -255,13 +257,9 @@ async function loadTeamProjects() {
         else card.removeAttribute('aria-current');
         const actions = card.querySelectorAll('.team-project-actions')[0];
         if (!actions) continue;
-        const buttons = Array.from(actions.children);
-        const open = buttons.find(button => button.className?.includes('team-project-open'));
-        if (selected && open) actions.replaceChildren(...buttons.filter(button => button !== open));
-        if (!selected && !open) {
-          const item = projects.find(project => project.id === card.dataset.project);
-          if (item) actions.append(openButton(item));
-        }
+        const open = Array.from(actions.children).find(button =>
+          button.className?.includes('team-project-open'));
+        if (open) open.disabled = selected;
       }
     }
     function renderProjects() {
@@ -304,9 +302,7 @@ async function loadTeamProjects() {
         footer.className = 'team-project-footer';
         const actions = document.createElement('div');
         actions.className = 'team-project-actions';
-        if (project.id !== session.project) {
-          actions.append(openButton(project));
-        }
+        actions.append(openButton(project));
         const isArchived = project.status === 'archived';
         const archive = makeProjectIconButton('team-project-archive',
           `${isArchived ? 'Désarchiver' : 'Archiver'} ${project.name}`,
@@ -380,7 +376,8 @@ async function loadTeamProjects() {
         panel.classList.remove('team-projects-switching');
         panel.setAttribute('aria-busy', 'false');
         target?.classList.remove('team-project-pending');
-        panel.querySelectorAll('.team-project-open').forEach(item => item.disabled = false);
+        panel.querySelectorAll('.team-project-open').forEach(item =>
+          item.disabled = item.dataset.project === session.project);
         return false;
       }
     }
@@ -395,4 +392,38 @@ async function loadTeamProjects() {
     }
   }
 }
+
+function setupTeamProfile() {
+  const profile = document.getElementById('team-profile');
+  const logout = document.getElementById('team-logout');
+  const error = document.getElementById('team-profile-error');
+  if (!profile || !logout || !error) return;
+  document.addEventListener('click', event => {
+    if (!profile.contains(event.target)) profile.open = false;
+  });
+  logout.addEventListener('click', async event => {
+    event.preventDefault();
+    if (logout.dataset.busy === 'true') return;
+    logout.dataset.busy = 'true';
+    logout.setAttribute('aria-disabled', 'true');
+    error.textContent = '';
+    try {
+      const sessionResponse = await teamFetch('/api/auth/session', {cache:'no-store'});
+      if (!sessionResponse.ok) throw new Error('Session indisponible');
+      const session = await sessionResponse.json();
+      const response = await teamFetch('/api/auth/session', {
+        method:'DELETE', credentials:'same-origin',
+        headers:{'X-CSRF-Token':session.csrf_token}
+      });
+      if (!response.ok) throw new Error('Déconnexion impossible');
+      location.assign('/login?' + new URLSearchParams({project:session.project}));
+    } catch (failure) {
+      error.textContent = failure.message;
+      logout.dataset.busy = 'false';
+      logout.removeAttribute('aria-disabled');
+    }
+  });
+}
+
+setupTeamProfile();
 loadTeamProjects();
