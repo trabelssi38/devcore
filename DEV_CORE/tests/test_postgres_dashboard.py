@@ -143,6 +143,8 @@ def test_html_render_escapes_project_in_script_context():
         assert '<nav id="team-projects"' in html
         assert 'id="project-cards"' not in html
         assert 'team-project-refresh' not in html
+        assert 'team-project-select' in html
+        assert 'team-project-open' not in html
         assert 'performDashboardRefresh = () => refreshTeamProjectData()' in html
         assert 'history.replaceState(null' in html
         assert 'location.assign(path +' not in html

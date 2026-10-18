@@ -238,28 +238,19 @@ async function loadTeamProjects() {
     list.setAttribute('tabindex', '0');
     panel.append(list);
     panel.append(error);
-    function openButton(project) {
-      const button = makeProjectIconButton('team-project-open', `Ouvrir ${project.name}`,
-        [{tag:'path',attrs:{d:'M14 3h7v7'}},{tag:'path',attrs:{d:'M10 14 21 3'}},
-         {tag:'path',attrs:{d:'M19 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h6'}}],
-        project.id === session.project, () => {
-          if (project.id !== session.project) return switchProject(project);
-          return false;
-        });
-      button.dataset.project = project.id;
-      return button;
-    }
     function markSelectedProject() {
       for (const card of panel.querySelectorAll('.team-project-card')) {
         const selected = card.dataset.project === session.project;
         card.classList.toggle('selected', selected);
         if (selected) card.setAttribute('aria-current', 'page');
         else card.removeAttribute('aria-current');
-        const actions = card.querySelectorAll('.team-project-actions')[0];
-        if (!actions) continue;
-        const open = Array.from(actions.children).find(button =>
-          button.className?.includes('team-project-open'));
-        if (open) open.disabled = selected;
+        const select = card.querySelectorAll('.team-project-select')[0];
+        if (select) {
+          select.disabled = selected;
+          select.setAttribute('aria-label', selected
+            ? `Projet ouvert : ${projects.find(project => project.id === card.dataset.project)?.name || card.dataset.project}`
+            : `Consulter ${projects.find(project => project.id === card.dataset.project)?.name || card.dataset.project}`);
+        }
       }
     }
     function renderProjects() {
@@ -275,6 +266,14 @@ async function loadTeamProjects() {
         card.className = 'project-row team-project-card' + (project.id === session.project ? ' selected' : '');
         card.dataset.project = project.id;
         if (project.id === session.project) card.setAttribute('aria-current', 'page');
+        const select = document.createElement('button');
+        select.type = 'button';
+        select.className = 'team-project-select';
+        select.dataset.project = project.id;
+        select.disabled = project.id === session.project;
+        select.setAttribute('aria-label', select.disabled
+          ? `Projet ouvert : ${project.name}` : `Consulter ${project.name}`);
+        select.addEventListener('click', () => switchProject(project));
         const headingRow = document.createElement('div');
         headingRow.className = 'team-project-heading';
         const dot = document.createElement('span');
@@ -302,7 +301,6 @@ async function loadTeamProjects() {
         footer.className = 'team-project-footer';
         const actions = document.createElement('div');
         actions.className = 'team-project-actions';
-        actions.append(openButton(project));
         const isArchived = project.status === 'archived';
         const archive = makeProjectIconButton('team-project-archive',
           `${isArchived ? 'Désarchiver' : 'Archiver'} ${project.name}`,
@@ -311,7 +309,8 @@ async function loadTeamProjects() {
                {tag:'path',attrs:{d:'M12 17v-5m0 0-2 2m2-2 2 2'}}]
             : [{tag:'path',attrs:{d:'M3 9h18v11H3z'}},{tag:'path',attrs:{d:'M2 4h20v5H2z'}},
                {tag:'path',attrs:{d:'M9 13h6'}}],
-          !project.can_archive, async () => {
+          !project.can_archive, async event => {
+            event?.stopPropagation();
             archive.disabled = true;
             error.textContent = '';
             try {
@@ -332,7 +331,7 @@ async function loadTeamProjects() {
           });
         actions.append(archive);
         footer.append(totals, actions);
-        card.append(headingRow, active, bar, footer);
+        card.append(select, headingRow, active, bar, footer);
         list.append(card);
       }
       if (!list.children.length) {
@@ -342,7 +341,7 @@ async function loadTeamProjects() {
       }
     }
     async function switchProject(project) {
-      panel.querySelectorAll('.team-project-open').forEach(item => item.disabled = true);
+      panel.querySelectorAll('.team-project-select').forEach(item => item.disabled = true);
       error.textContent = '';
       panel.classList.add('team-projects-switching');
       panel.setAttribute('aria-busy', 'true');
@@ -376,8 +375,7 @@ async function loadTeamProjects() {
         panel.classList.remove('team-projects-switching');
         panel.setAttribute('aria-busy', 'false');
         target?.classList.remove('team-project-pending');
-        panel.querySelectorAll('.team-project-open').forEach(item =>
-          item.disabled = item.dataset.project === session.project);
+        markSelectedProject();
         return false;
       }
     }
