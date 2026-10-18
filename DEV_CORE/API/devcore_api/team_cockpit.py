@@ -62,9 +62,11 @@ def render_team_cockpit(template_dir: Path, snapshot: dict, *, terminal: bool = 
                         "window.location.href='/index_terminal.html?project='+encodeURIComponent(window.devcoreActiveProject)")
     page = page.replace("window.location.href='/'",
                         "window.location.href='/index.html?project='+encodeURIComponent(window.devcoreActiveProject)")
+    # Team profile deliberately has no shared settings endpoint. The standard
+    # template calls it on load even though the settings panel is hidden.
+    page = page.replace("// Load settings on startup\nloadSettings();",
+                        "// Team profile has no shared settings endpoint.")
     if terminal:
-        page = page.replace("// Load settings on startup\nloadSettings();",
-                            "// Team profile has no shared settings endpoint.")
         page = page.replace('id="sys-status">ONLINE', 'id="sys-status">—')
         page = page.replace('id="api-ok">:20129 ✓', 'id="api-ok">:20131')
         page = page.replace('SCHEDULER <span class="v-ok">ACTIVE', 'SCHEDULER <span class="v-ok">—')
