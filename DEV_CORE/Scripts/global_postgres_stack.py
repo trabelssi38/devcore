@@ -102,8 +102,15 @@ def _repowise_fresh(executable: str) -> dict:
     dirty = subprocess.check_output(["git", "status", "--porcelain"], cwd=REPO, text=True, timeout=45)
     if dirty.strip():
         raise RuntimeError("RepoWise index cannot cover the dirty working tree")
-    result = subprocess.run([executable, "status", "--format", "json", "--no-workspace"],
-                            cwd=REPO, capture_output=True, text=True, timeout=90, check=True)
+    # RepoWise CLI imports can take over 90 seconds during a cold Windows boot.
+    # Keep the index gate mandatory and bounded, allowing the same cold-start
+    # budget as the managed RepoWise process below.
+    try:
+        result = subprocess.run([executable, "status", "--format", "json", "--no-workspace"],
+                                cwd=REPO, capture_output=True, text=True, timeout=300, check=True)
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError("RepoWise index status did not finish within 300 seconds; "
+                           "no global component was started") from exc
     status = json.loads(result.stdout)
     if not status.get("indexed") or status.get("state", {}).get("last_sync_commit") != head:
         raise RuntimeError("RepoWise index is not aligned with the current commit")
