@@ -2,6 +2,8 @@
 
 from contextlib import contextmanager
 from datetime import datetime, timezone
+from decimal import Decimal
+import json
 from pathlib import Path
 import sys
 
@@ -33,7 +35,7 @@ class Cursor:
                         [("<img src=x>", 2)],
                         (100, 5, 50),
                         (12, 34),
-                        (2, 7, 9, 1),
+                        (2, Decimal(7), Decimal(9), 1),
                         [("google-gemini", "model", 2, 7, 9)],
                         [("model", 7, 9, "provider_reported", now)],
                         None, (0,), [("<img>node", 12)]]
@@ -61,6 +63,8 @@ def test_dashboard_bounds_project_reads_and_escapes_database_text(monkeypatch):
     monkeypatch.setattr(reader, "_transaction", transaction)
     data = reader.snapshot(Principal("user", "credential", "alpha", "task.read"))
     assert data["project"] == "alpha"
+    assert type(data['token_metrics']['totals']['tokens']) is int
+    json.dumps(data)
     assert data["counts"] == {"tasks": 1, "shown_tasks": 1, "runs": 1}
     assert "<script>" not in str(data["sections"])
     assert "<img" not in str(data["sections"])

@@ -43,3 +43,11 @@ encodage corrigé. Aucune donnée active n'a été utilisée comme fixture de te
 Le candidat nécessite une bascule élevée de DevCoreGlobal, suivie du contrôle
 de l'interface avec une session réelle. L'ancienne source reste disponible pour
 le retour arrière ; aucun changement du schéma ou du pare-feu n'est requis.
+
+Le préflight réel a détecté un type PostgreSQL absent des premières fixtures :
+`SUM(bigint)` est renvoyé en `Decimal` par pg8000. Les compteurs sont convertis en
+entiers avant leur projection JSON, et le cas Decimal est maintenant dans le test.
+`verify_cockpit_presentation_candidate.py` impose une sérialisation JSON et rend
+les deux pages en mémoire sur la base explicitement ciblée. Il ne sauvegarde ni
+données projet ni HTML réel. Il passe pour devcore, scripts et la page historique
+d'offset 120 (un détail, huit étapes). Ce contrôle précède la bascule Windows.

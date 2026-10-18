@@ -63,7 +63,9 @@ class PostgresDashboardProjection(PostgresProjectReader):
                 coalesce(sum(completion_tokens),0),
                 count(*) FILTER (WHERE usage_source='unreported')
                 FROM project_llm_usage WHERE project_id=%s""", (project,))
-            usage = cursor.fetchone()
+            # SUM(bigint) is PostgreSQL numeric, decoded as Decimal by pg8000.
+            # These counters are integral and must remain JSON serializable.
+            usage = tuple(int(value or 0) for value in cursor.fetchone())
             cursor.execute("""SELECT provider,model,count(*),coalesce(sum(prompt_tokens),0),
                 coalesce(sum(completion_tokens),0) FROM project_llm_usage WHERE project_id=%s
                 GROUP BY provider,model ORDER BY count(*) DESC,provider,model LIMIT 20""", (project,))
