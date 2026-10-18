@@ -88,3 +88,51 @@ closeInteractions = function() {
   modal.style.display = 'none';
 };
 syncTeamCockpit();
+
+async function loadTeamProjects() {
+  const panel = document.getElementById('team-projects');
+  if (!panel) return;
+  try {
+    const response = await teamFetch('/api/auth/session', {cache:'no-store'});
+    if (!response.ok) throw new Error('Session indisponible');
+    const session = await response.json();
+    panel.replaceChildren();
+    const title = document.createElement('h3');
+    title.textContent = 'Mes projets (' + session.projects.length + ')';
+    panel.append(title);
+    const error = document.createElement('p');
+    error.setAttribute('role', 'alert');
+    for (const project of session.projects) {
+      const button = document.createElement('button');
+      const selected = project.id === session.project;
+      button.type = 'button';
+      button.className = 'team-project-choice';
+      button.textContent = project.name + (selected ? ' · Projet ouvert' : '');
+      button.title = project.id + ' · ' + project.role;
+      button.setAttribute('aria-current', selected ? 'page' : 'false');
+      button.disabled = selected;
+      button.addEventListener('click', async () => {
+        panel.querySelectorAll('button').forEach(item => item.disabled = true);
+        error.textContent = '';
+        try {
+          const result = await teamFetch('/api/auth/session', {
+            method:'POST', headers:{'Content-Type':'application/json', 'X-CSRF-Token':session.csrf_token},
+            body:JSON.stringify({project:project.id, switch_project:true})
+          });
+          if (!result.ok) throw new Error('Changement de projet refusé');
+          const path = ['/cockpit', '/cockpit/terminal', '/index.html', '/index_terminal.html'].includes(location.pathname)
+            ? location.pathname : '/cockpit';
+          location.assign(path + '?' + new URLSearchParams({project:project.id}));
+        } catch (failure) {
+          error.textContent = failure.message;
+          panel.querySelectorAll('button').forEach(item => item.disabled = item.getAttribute('aria-current') === 'page');
+        }
+      });
+      panel.append(button);
+    }
+    panel.append(error);
+  } catch (failure) {
+    panel.textContent = 'Liste des projets indisponible. Rechargez la page.';
+  }
+}
+loadTeamProjects();

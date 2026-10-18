@@ -1490,7 +1490,15 @@ def create_app(
                     return build_error_response(request=request, status_code=400, code="invalid_arguments", message="JSON object required")
                 project = validate_project_id(data.get("project"))
                 authorization = request.headers.get("Authorization")
-                if authorization:
+                if data.get("switch_project") is True:
+                    if authorization or "user_id" in data or "password" in data or not postgres_identity_dsn:
+                        raise ValueError("Project switching requires a PostgreSQL browser session")
+                    from devcore_engine.security.postgres_project_navigation import switch_project
+                    session, secret = await asyncio.to_thread(
+                        switch_project, postgres_identity_dsn, secret, project, origin,
+                        request.headers.get("X-CSRF-Token"),
+                    )
+                elif authorization:
                     if "user_id" in data or "password" in data:
                         return build_error_response(request=request, status_code=400, code="invalid_arguments", message="Mixed authentication methods")
                     if postgres_identity_dsn:
@@ -1539,6 +1547,10 @@ def create_app(
                 "csrf_token": csrf_for_session(secret),
                 "actions": list(session.actions),
             }
+            if postgres_identity_dsn and request.method != "DELETE":
+                from devcore_engine.security.postgres_project_navigation import accessible_projects
+                content["projects"] = await asyncio.to_thread(
+                    accessible_projects, postgres_identity_dsn, secret, origin)
             resp = JSONResponse(
                 content={"status": "logged_out"} if request.method == "DELETE" else content,
                 headers={"Cache-Control": "no-store"},

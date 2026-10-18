@@ -74,6 +74,8 @@ def render_team_cockpit(template_dir: Path, snapshot: dict, *, terminal: bool = 
         page = page.replace('</body>', identity + '</body>', 1)
     for section, placeholder in _PLACEHOLDERS.items():
         page = page.replace("{{" + placeholder + "}}", snapshot["sections"][section])
+    page = page.replace('<div id="project-cards"',
+                        '<nav id="team-projects" aria-label="Mes projets"><p>Chargement des projets…</p></nav><div id="project-cards"', 1)
     for key, placeholder in (
         ("task_details", "TASK_DETAILS_MAP"),
         ("task_interactions", "TASK_INTERACTIONS_MAP"),

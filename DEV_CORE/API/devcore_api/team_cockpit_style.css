@@ -64,3 +64,7 @@ body.team-terminal .steps-container{margin:6px 0 3px 36px;padding:7px 9px}
 body.team-terminal .step-item{white-space:normal;align-items:flex-start;margin-bottom:6px}
 @media(max-width:1200px){body.team-terminal .main{grid-template-columns:220px minmax(350px,1fr) 330px}.team-task-actions{gap:1px}.team-mission-header{gap:6px}.team-metric-grid .card-val{font-size:14px}}
 @media(max-width:1000px){body.team-terminal .main{display:flex;flex-direction:column;overflow-y:auto}body.team-terminal .col{flex-shrink:0;height:320px}body.team-terminal .col:nth-child(2){height:850px}body.team-terminal .col:last-child{height:800px}}
+.team-project-choice { display:block; width:100%; text-align:left; margin:5px 0; padding:9px 11px; border:1px solid #405066; border-radius:5px; background:#172334; color:#e8edf5; cursor:pointer; font:inherit; }
+.team-project-choice:hover { border-color:#70c4ff; }
+.team-project-choice[aria-current="page"] { border-color:#70c4ff; color:#70c4ff; opacity:1; cursor:default; }
+#team-projects { margin-bottom:16px; }
