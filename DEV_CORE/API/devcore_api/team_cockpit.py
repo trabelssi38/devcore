@@ -140,7 +140,8 @@ def render_team_cockpit(template_dir: Path, snapshot: dict, *, terminal: bool = 
     style = (assets / 'team_cockpit_style.css').read_text(encoding='utf-8')
     display = (assets / 'team_cockpit_display.js').read_text(encoding='utf-8')
     bootstrap = ('window.devcoreTeamCounts=' + _script_json(snapshot.get('counts', {}))
-                 + ';window.devcoreTeamHealth=' + _script_json(snapshot.get('service_health', {})) + ';')
+                 + ';window.devcoreTeamHealth=' + _script_json(snapshot.get('service_health', {}))
+                 + ';window.devcoreTeamContextSources=' + _script_json(snapshot.get('context_sources', {})) + ';')
     # Browser requests keep API errors machine-readable and return the user to login.
     page = page.replace('fetch(', 'teamFetch(')
     login_guard = """<script>

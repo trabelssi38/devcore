@@ -1,8 +1,93 @@
-// Presentation for the project-scoped team snapshot; no extra data requests.
+// Presentation for the project-scoped team snapshot. Context is read with its
+// separate context.read permission and never inferred from task.read data.
+let teamContextRequest = null;
+let teamContextProject = null;
+let teamContextData = null;
+let teamContextLoadedAt = 0;
+
+function renderTeamContext(slot, data) {
+  slot.replaceChildren();
+  const addRow = (label, value) => {
+    const row = document.createElement('div');
+    row.className = 'team-context-row';
+    const name = document.createElement('strong');
+    name.textContent = label;
+    const detail = document.createElement('span');
+    detail.textContent = value;
+    row.append(name, detail);
+    slot.append(row);
+  };
+  const heading = String(data.card).split(/\r?\n/).find(line => line.startsWith('# '));
+  addRow('Fiche', heading ? heading.slice(2).trim() : 'Fiche du projet');
+  const decisions = data.decisions.map(item => item.id);
+  addRow('Décisions applicables', decisions.length ? decisions.join(', ') : 'Aucune');
+  addRow('Réponse bornée', `${new Intl.NumberFormat('fr-FR').format(data.measurement.used)} / ${new Intl.NumberFormat('fr-FR').format(data.measurement.budget)} octets UTF-8 · pas une mesure des tokens Codex`);
+  addRow('Provenance', `registre du projet · revue ${data.provenance.reviewed_at}`);
+  const warnings = {
+    card_changed_since_review: 'fiche modifiée depuis sa revue',
+    context_review_expired: 'revue à renouveler',
+    review_date_in_future: 'date de revue future'
+  };
+  if (data.warnings.length) addRow('À vérifier', data.warnings.map(item => warnings[item] || item).join(' · '));
+  if (data.omitted.length) addRow('Décisions omises', String(data.omitted.length));
+  const repowise = window.devcoreTeamContextSources?.repowise;
+  addRow('RepoWise', repowise?.available
+    ? `index du projet · commit ${repowise.indexed_commit} · ${repowise.file_count} fichiers analysés ; extraits consultés à la demande`
+    : 'index du projet indisponible ; aucun extrait compté dans ce relevé');
+}
+
+function loadTeamContextComposition() {
+  const slot = document.querySelector('[data-team-context-document]');
+  const project = window.devcoreActiveProject;
+  if (!slot || !project) return;
+  if (teamContextProject === project && teamContextData && Date.now() - teamContextLoadedAt < 60000) {
+    renderTeamContext(slot, teamContextData);
+    return;
+  }
+  if (teamContextRequest?.project === project) return;
+  teamContextRequest?.controller.abort();
+  const controller = new AbortController();
+  const request = {project, controller};
+  teamContextRequest = request;
+  slot.textContent = 'Chargement de la fiche et des décisions du projet…';
+  const url = '/api/v1/project/context?' + new URLSearchParams({project, budget_bytes:'12000'});
+  fetch(url, {credentials:'same-origin', cache:'no-store', signal:controller.signal})
+    .then(async response => {
+      if (!response.ok) {
+        if (response.status === 403) throw new Error('Accès au contexte non autorisé.');
+        if (response.status === 413) throw new Error('Fiche et décisions au-delà du plafond de 12 000 octets.');
+        throw new Error('Fiche et décisions indisponibles pour ce projet.');
+      }
+      return response.json();
+    })
+    .then(data => {
+      if (teamContextRequest !== request || project !== window.devcoreActiveProject) return;
+      if (data.project !== project || !Array.isArray(data.decisions) ||
+          !Array.isArray(data.warnings) || !Array.isArray(data.omitted) ||
+          typeof data.card !== 'string' || !data.measurement || !data.provenance ||
+          data.measurement.unit !== 'utf8_bytes' || data.measurement.model_tokens_measured !== false) {
+        throw new Error('Réponse de contexte incohérente.');
+      }
+      teamContextProject = project;
+      teamContextData = data;
+      teamContextLoadedAt = Date.now();
+      const currentSlot = document.querySelector('[data-team-context-document]');
+      if (currentSlot) renderTeamContext(currentSlot, data);
+    })
+    .catch(error => {
+      if (error.name === 'AbortError' || teamContextRequest !== request ||
+          project !== window.devcoreActiveProject) return;
+      const currentSlot = document.querySelector('[data-team-context-document]');
+      if (currentSlot) currentSlot.textContent = error.message;
+    })
+    .finally(() => { if (teamContextRequest === request) teamContextRequest = null; });
+}
+
 function syncTeamCockpit(data) {
   if (data) {
     window.devcoreTeamCounts = data.counts || {};
     window.devcoreTeamHealth = data.service_health || {};
+    window.devcoreTeamContextSources = data.context_sources || {};
   }
   const counts = window.devcoreTeamCounts || {};
   const health = window.devcoreTeamHealth || {};
@@ -31,6 +116,7 @@ function syncTeamCockpit(data) {
       span.className = health.services?.[key] ? 'v-ok' : 'v-dim';
     }
   }
+  loadTeamContextComposition();
 }
 
 showDetails = function(project, taskId, status, button, event) {

@@ -172,6 +172,7 @@ class PostgresDashboardProjection(PostgresProjectReader):
                          f'<div class="component-detail">{task_count} tâches · source transactionnelle du projet</div>'
                          '<span class="team-service-tag">Lecture vérifiée</span><span class="team-service-tag">Droits par projet</span>'
                          '<span class="team-service-tag">Persistance</span></div><span class="status-ok">✓</span></div>')
+        code_health = project_code_health(registered[0] if registered else None)
         return {
             "schema_version": 1,
             "project": project,
@@ -179,10 +180,14 @@ class PostgresDashboardProjection(PostgresProjectReader):
             "sections": {
                 "project_cards": cards,
                 "tasks_pipeline": pipeline,
-                "services_monitoring": code_health_card(project, project_code_health(registered[0] if registered else None)) + render_global_stack_health(health) + postgres_card + panel("Planifications du projet", schedule_panel),
+                "services_monitoring": code_health_card(project, code_health) + render_global_stack_health(health) + postgres_card + panel("Planifications du projet", schedule_panel),
                 "automation_hooks": panel("Planifications PostgreSQL", schedule_panel),
                 "token_activity_report": usage_panel(usage, usage_models, usage_recent, run_items),
-                "context_composition": panel("Composition du contexte", memory_panel),
+                "context_composition": panel(
+                    "Composition du contexte",
+                    '<div class="team-context-document" data-team-context-document '
+                    'role="status">Chargement de la fiche et des décisions du projet…</div>'
+                    + memory_panel),
                 "metrics_service_summary": panel("Metrics Service", service_metrics) + panel("Budget du projet", metrics_panel) + panel("Alertes de consommation", availability) + panel("Conformité du protocole agent", protocol_compliance),
                 "event_bus_recent": panel("Événements récents", '<div class="team-scroll">' + event_items + '</div>'),
                 "knowledge_graph_summary": panel("Graphe du projet", graph_panel),
@@ -194,6 +199,9 @@ class PostgresDashboardProjection(PostgresProjectReader):
             "token_metrics": {"totals": {"tokens": usage[1] + usage[2]},
                               "projects": {project: {"tokens": usage[1] + usage[2]}}},
             "service_health": health,
+            "context_sources": {"repowise": {"available": code_health is not None,
+                                              "indexed_commit": code_health["commit"] if code_health else "",
+                                              "file_count": code_health["count"] if code_health else 0}},
             "cache": {},
             "counts": {"tasks": task_count, "shown_tasks": len(tasks), "runs": len(runs)},
         }

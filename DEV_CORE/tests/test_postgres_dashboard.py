@@ -66,6 +66,7 @@ def test_dashboard_bounds_project_reads_and_escapes_database_text(monkeypatch):
     assert type(data['token_metrics']['totals']['tokens']) is int
     json.dumps(data)
     assert data["counts"] == {"tasks": 1, "shown_tasks": 1, "runs": 1}
+    assert data["context_sources"]["repowise"]["available"] is False
     assert "<script>" not in str(data["sections"])
     assert "<img" not in str(data["sections"])
     assert "&lt;script&gt;" in data["sections"]["tasks_pipeline"]
@@ -126,6 +127,8 @@ def test_empty_sidebar_panels_name_the_missing_project_source(monkeypatch):
         assert 'class="team-empty-state"' in sections[section]
         for phrase in phrases:
             assert phrase in sections[section]
+    assert 'data-team-context-document' in sections['context_composition']
+    assert 'Chargement de la fiche et des décisions du projet' in sections['context_composition']
     assert sections["metrics_service_summary"].count('class="team-empty-state"') == 3
     assert "Aucun budget n&#x27;est enregistré" in sections["metrics_service_summary"]
     assert "Aucun contrôle du protocole agent" in sections["metrics_service_summary"]
