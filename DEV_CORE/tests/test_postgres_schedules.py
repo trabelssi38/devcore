@@ -34,6 +34,13 @@ def test_daily_metrics_uses_only_managed_command_and_database_secret_is_not_inhe
     command, timeout, zone = PostgresScheduleDispatcher._qualified_command(
         "0 9 * * *", "Europe/Paris", metadata)
     assert command == metadata["command"] and timeout == 30 and zone.key == "Europe/Paris"
+    tunis_command, _, tunis_zone = PostgresScheduleDispatcher._qualified_command(
+        "0 8 * * *", "Africa/Tunis", metadata)
+    assert tunis_command == command and tunis_zone.key == "Africa/Tunis"
+    base_command = [sys._base_executable, str(DAILY_SCRIPT)]
+    accepted, _, _ = PostgresScheduleDispatcher._qualified_command(
+        "0 8 * * *", "Africa/Tunis", {**metadata, "command": base_command})
+    assert accepted == base_command
     with pytest.raises(ValueError, match="managed argv"):
         PostgresScheduleDispatcher._qualified_command(
             "0 9 * * *", "Europe/Paris", {**metadata, "command": ["python", "other.py"]})

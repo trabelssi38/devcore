@@ -59,7 +59,12 @@ class PostgresScheduleDispatcher(PostgresRunStore):
                 or any(not isinstance(part, str) or not 1 <= len(part) <= 4096 for part in command)
                 or sum(len(part) for part in command) > 16384):
             raise ValueError("Qualified schedule requires an argv command")
-        if metadata.get("job_kind") == "daily_metrics" and command != [sys.executable, str(DAILY_SCRIPT)]:
+        # The installed venv launcher supervises with its base interpreter.
+        # Accept only these two identities for this exact managed script.
+        trusted_pythons = {sys.executable, sys._base_executable}
+        if (metadata.get("job_kind") == "daily_metrics"
+                and (len(command) != 2 or command[0] not in trusted_pythons
+                     or command[1] != str(DAILY_SCRIPT))):
             raise ValueError("Daily metrics requires the managed argv command")
         timeout = metadata.get("timeout_seconds", 300)
         if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not 0 < timeout <= 3600:
