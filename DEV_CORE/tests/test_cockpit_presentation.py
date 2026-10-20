@@ -4,8 +4,13 @@ import sqlite3
 from datetime import datetime, timezone
 
 from devcore_engine.services.cockpit_presentation import (
-    task_cards, project_code_health, code_health_card, display,
+    task_cards, project_code_health, code_health_card, display, _date,
 )
+
+
+def test_aware_cockpit_dates_use_tunisia_timezone():
+    assert _date(datetime(2026, 10, 20, 10, 44, tzinfo=timezone.utc)) == \
+        '2026-10-20 11:44:00+01:00'
 
 
 def test_historical_array_steps_and_actions_remain_scoped():

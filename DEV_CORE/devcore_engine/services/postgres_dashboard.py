@@ -10,7 +10,7 @@ from devcore_engine.security.identity import Principal, ProjectAccessDenied
 from .postgres_project_reads import PostgresProjectReader
 from .global_stack_monitor import global_stack_health, render_global_stack_health
 from .cockpit_presentation import (task_cards, project_card, usage_panel, panel, metric,
-                                   project_code_health, code_health_card)
+                                   project_code_health, code_health_card, cockpit_datetime)
 
 
 def _text(value: object) -> str:
@@ -24,7 +24,8 @@ def _empty_state(status: str, detail: str, source: str) -> str:
 
 
 def _when(value: datetime | None) -> str:
-    return _text(value.isoformat() if value else "—")
+    local_value = cockpit_datetime(value)
+    return _text(local_value.isoformat() if local_value else "—")
 
 
 def _automation_panel(hooks: list, hook_successes: list, jobs: list, successes: list,
@@ -193,21 +194,21 @@ class PostgresDashboardProjection(PostgresProjectReader):
             for run_id, status, title, _ in runs
         ) or "<div>Aucun run récent.</div>"
         event_items = "".join(
-            f'<div class="team-event-row"><time>{_text(created.isoformat() if created else "")}</time>'
+            f'<div class="team-event-row"><time>{_when(created) if created else ""}</time>'
             f'<strong>{_text(kind)}</strong><span>{_text(source or "")}</span></div>'
             for kind, created, _, source in events
         ) or "<div>Aucun événement récent.</div>"
         schedule_items = "".join(
             f'<div class="schedule-row" data-schedule="{_text(schedule_id)}">'
             f'{_text(name)} · {_text(status)} · {_text(cron)} ({_text(zone)})'
-            f' · prochain : {_text(next_due.isoformat() if next_due else "—")}'
-            f' · dernier : {_text(last_due.isoformat() if last_due else "—")}'
+            f' · prochain : {_when(next_due)}'
+            f' · dernier : {_when(last_due)}'
             f' · exécution qualifiée : {"oui" if qualified == "true" else "non"}</div>'
             for schedule_id, name, status, cron, zone, next_due, last_due, qualified in schedules
         )
         history_items = "".join(
             f'<div>{_text(name)} · {_text(event_type)} · {_text(status)}'
-            f' · {_text(occurred.isoformat() if occurred else "")}</div>'
+            f' · {_when(occurred) if occurred else ""}</div>'
             for name, event_type, status, occurred in schedule_events
         )
         schedule_panel = (schedule_items

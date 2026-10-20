@@ -599,8 +599,8 @@ function updateContainerHTML(containerId, newHTMLString) {
 
 /* ── CLOCK ── */
 function tick(){
-  const n=new Date(),p=v=>String(v).padStart(2,'0');
-  document.getElementById('ts').textContent=`${n.getFullYear()}-${p(n.getMonth()+1)}-${p(n.getDate())} ${p(n.getHours())}:${p(n.getMinutes())}:${p(n.getSeconds())}`;
+  const clock=new Intl.DateTimeFormat('sv-SE',{timeZone:'Africa/Tunis',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'});
+  document.getElementById('ts').textContent=clock.format(new Date())+' · Tunis';
 }
 tick();setInterval(tick,1000);
 

@@ -4,11 +4,21 @@ from __future__ import annotations
 
 from collections import defaultdict
 from contextlib import closing
+from datetime import datetime
 from html import escape
 import json
 from pathlib import Path
 import sqlite3
 from urllib.parse import urlencode
+from zoneinfo import ZoneInfo
+
+
+COCKPIT_TIMEZONE = ZoneInfo("Africa/Tunis")
+
+
+def cockpit_datetime(value: datetime | None) -> datetime | None:
+    """Present aware database timestamps in the Cockpit's Tunisia time zone."""
+    return value.astimezone(COCKPIT_TIMEZONE) if value and value.tzinfo else value
 
 
 def display(value: object) -> str:
@@ -48,6 +58,7 @@ def number(value: int) -> str:
 
 
 def _date(value: object) -> str:
+    value = cockpit_datetime(value) if isinstance(value, datetime) else value
     return value.isoformat(sep=" ", timespec="seconds") if value else ""
 
 

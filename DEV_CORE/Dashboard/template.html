@@ -654,7 +654,7 @@ function updateContainerHTML(containerId, newHTMLString) {
 
 function updateTimestamp() {
   const now = new Date();
-  document.getElementById('timestamp').textContent = now.toLocaleString('fr-FR');
+  document.getElementById('timestamp').textContent = now.toLocaleString('fr-TN', {timeZone: 'Africa/Tunis'}) + ' · Tunis';
 }
 
 function applyFilter(btn, days) {

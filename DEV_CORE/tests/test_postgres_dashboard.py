@@ -17,8 +17,13 @@ from devcore_api.team_cockpit import render_team_cockpit
 from devcore_api.team_login import render_team_login
 
 from devcore_engine.security.identity import Principal, ProjectAccessDenied
-from devcore_engine.services.postgres_dashboard import PostgresDashboardProjection
+from devcore_engine.services.postgres_dashboard import PostgresDashboardProjection, _when
 from devcore_engine.services.global_stack_monitor import global_stack_health, render_global_stack_health
+
+
+def test_automation_timestamp_uses_tunisia_timezone():
+    assert _when(datetime(2026, 10, 21, 7, tzinfo=timezone.utc)) == \
+        '2026-10-21T08:00:00+01:00'
 
 
 class Cursor:
