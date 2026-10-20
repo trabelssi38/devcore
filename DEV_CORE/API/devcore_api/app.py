@@ -54,6 +54,10 @@ from .ports import (
     validate_project_id,
 )
 from .schemas import (
+    AutomationHookRequest,
+    GitScanRequest,
+    ProjectJobRequest,
+    DailyMetricsScheduleRequest,
     ErrorBody,
     ErrorResponse,
     HealthResponse,
@@ -240,6 +244,12 @@ def create_app(
         if not dsn:
             raise ValueError("DEVCORE_DATABASE_URL is required for PostgreSQL project reads")
         return PostgresProjectReader(dsn)
+
+    def team_automation_hooks():
+        if team_project_reader() is None:
+            raise HTTPException(status_code=503, detail="Team automation profile unavailable")
+        from devcore_engine.services.postgres_automation_lifecycle import PostgresAutomationLifecycle
+        return PostgresAutomationLifecycle(os.environ["DEVCORE_DATABASE_URL"])
 
     project_stream_slots = asyncio.Semaphore(32)
 
@@ -1292,6 +1302,141 @@ def create_app(
             user_id=request.state.principal.user_id,
         )
         return HTMLResponse(page, headers={"Cache-Control": "no-store"})
+
+    @app.post(f"{API_PREFIX}/automation/hooks", tags=["automation"])
+    async def record_team_automation_hook(request: Request, payload: AutomationHookRequest) -> dict:
+        from devcore_engine.security.identity import Principal, ProjectAccessDenied, WRITE
+        from devcore_engine.services.postgres_automation_lifecycle import HookOperationFailed
+
+        principal = getattr(request.state, "principal", None)
+        if (not isinstance(principal, Principal) or principal.project_id != payload.project
+                or principal.action != WRITE):
+            raise HTTPException(status_code=403, detail="Project mutation admission required")
+        try:
+            service = team_automation_hooks()
+            result = await asyncio.to_thread(
+                service.execute, principal, payload.project, payload.hook, payload.source,
+                session=payload.session, commit=payload.commit, tool=payload.tool,
+                reported_outcome=payload.reported_outcome, occurrence=payload.occurrence,
+            )
+            if payload.hook == "git_commit" and result["event"]["status"] == "succeeded":
+                from devcore_engine.services.postgres_git_scan_jobs import PostgresGitScanJobs
+                from devcore_engine.services.postgres_repowise_jobs import PostgresRepoWiseJobs
+
+                jobs = {}
+                for name, job in (("git_scan", PostgresGitScanJobs(os.environ["DEVCORE_DATABASE_URL"])),
+                                  ("repowise_index", PostgresRepoWiseJobs(os.environ["DEVCORE_DATABASE_URL"]))):
+                    try:
+                        if name == "git_scan":
+                            jobs[name] = await asyncio.to_thread(job.submit, principal, payload.project,
+                                                                  commit=payload.commit)
+                        else:
+                            jobs[name] = await asyncio.to_thread(job.submit, principal, payload.project)
+                    except (ProjectAccessDenied, ValueError, RuntimeError, OSError) as exc:
+                        jobs[name] = {"status": "admission_failed", "error": type(exc).__name__}
+                result["jobs"] = jobs
+            return result
+        except ProjectAccessDenied as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except HookOperationFailed as exc:
+            raise HTTPException(status_code=409, detail={"event_id": exc.event_id, "code": exc.code}) from exc
+
+    @app.get(f"{API_PREFIX}/automation/hooks", tags=["automation"])
+    async def list_team_automation_hooks(
+        request: Request, project: str, limit: int = Query(default=20, ge=1, le=100),
+    ) -> dict:
+        from devcore_engine.security.identity import Principal, READ
+
+        principal = getattr(request.state, "principal", None)
+        if (not isinstance(principal, Principal) or principal.project_id != project
+                or principal.action != READ):
+            raise HTTPException(status_code=403, detail="Project read admission required")
+        service = team_automation_hooks()
+        events = await asyncio.to_thread(service.recent, principal, project, limit=limit)
+        return {"project": project, "events": events}
+
+    @app.post(f"{API_PREFIX}/automation/jobs/git-scan", tags=["automation"])
+    async def submit_team_git_scan(request: Request, payload: GitScanRequest) -> dict:
+        from devcore_engine.security.identity import Principal, ProjectAccessDenied, WRITE
+        from devcore_engine.services.postgres_git_scan_jobs import PostgresGitScanJobs
+
+        principal = getattr(request.state, "principal", None)
+        if (not isinstance(principal, Principal) or principal.project_id != payload.project
+                or principal.action != WRITE):
+            raise HTTPException(status_code=403, detail="Project mutation admission required")
+        if team_project_reader() is None:
+            raise HTTPException(status_code=503, detail="Team automation profile unavailable")
+        try:
+            service = PostgresGitScanJobs(os.environ["DEVCORE_DATABASE_URL"])
+            return await asyncio.to_thread(service.submit, principal, payload.project,
+                                           commit=payload.commit)
+        except ProjectAccessDenied as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    @app.post(f"{API_PREFIX}/automation/jobs/repowise", tags=["automation"])
+    async def submit_team_repowise(request: Request, payload: ProjectJobRequest) -> dict:
+        from devcore_engine.security.identity import Principal, ProjectAccessDenied, WRITE
+        from devcore_engine.services.postgres_repowise_jobs import PostgresRepoWiseJobs
+
+        principal = getattr(request.state, "principal", None)
+        if (not isinstance(principal, Principal) or principal.project_id != payload.project
+                or principal.action != WRITE):
+            raise HTTPException(status_code=403, detail="Project mutation admission required")
+        if team_project_reader() is None:
+            raise HTTPException(status_code=503, detail="Team automation profile unavailable")
+        try:
+            service = PostgresRepoWiseJobs(os.environ["DEVCORE_DATABASE_URL"])
+            return await asyncio.to_thread(service.submit, principal, payload.project)
+        except ProjectAccessDenied as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    @app.post(f"{API_PREFIX}/automation/jobs/daily-metrics", tags=["automation"])
+    async def register_team_daily_metrics(request: Request, payload: DailyMetricsScheduleRequest) -> dict:
+        from devcore_engine.security.identity import Principal, ProjectAccessDenied, WRITE
+        from devcore_engine.services.postgres_daily_metrics_schedules import PostgresDailyMetricsSchedules
+
+        principal = getattr(request.state, "principal", None)
+        if (not isinstance(principal, Principal) or principal.project_id != payload.project
+                or principal.action != WRITE):
+            raise HTTPException(status_code=403, detail="Project mutation admission required")
+        if team_project_reader() is None:
+            raise HTTPException(status_code=503, detail="Team automation profile unavailable")
+        try:
+            service = PostgresDailyMetricsSchedules(os.environ["DEVCORE_DATABASE_URL"])
+            return await asyncio.to_thread(service.register, principal, payload.project,
+                                           timezone=payload.timezone, hour=payload.hour,
+                                           minute=payload.minute)
+        except ProjectAccessDenied as exc:
+            raise HTTPException(status_code=403, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.delete(f"{API_PREFIX}/automation/jobs/daily-metrics", tags=["automation"])
+    async def disable_team_daily_metrics(request: Request, project: str) -> dict:
+        from devcore_engine.security.identity import Principal, WRITE
+        from devcore_engine.services.postgres_daily_metrics_schedules import PostgresDailyMetricsSchedules
+
+        principal = getattr(request.state, "principal", None)
+        if (not isinstance(principal, Principal) or principal.project_id != project
+                or principal.action != WRITE):
+            raise HTTPException(status_code=403, detail="Project mutation admission required")
+        if team_project_reader() is None:
+            raise HTTPException(status_code=503, detail="Team automation profile unavailable")
+        try:
+            service = PostgresDailyMetricsSchedules(os.environ["DEVCORE_DATABASE_URL"])
+            return await asyncio.to_thread(service.disable, principal, project)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.get(f"{API_PREFIX}/project/context", tags=["projects"])
     @app.get("/api/project/context", tags=["legacy_facades"], deprecated=True)

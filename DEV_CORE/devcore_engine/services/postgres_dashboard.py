@@ -23,6 +23,99 @@ def _empty_state(status: str, detail: str, source: str) -> str:
             + '<small>Source : ' + _text(source) + '</small></div>')
 
 
+def _when(value: datetime | None) -> str:
+    return _text(value.isoformat() if value else "—")
+
+
+def _automation_panel(hooks: list, hook_successes: list, jobs: list, successes: list,
+                      schedules: list, schedule_events: list,
+                      schedule_successes: list) -> str:
+    hook_success_by_kind = dict(hook_successes)
+    hook_rows = ''.join(
+        '<div class="team-automation-row"><strong>' + _text(hook) + '</strong>'
+        + '<span class="team-automation-status" data-status="' + _text(status) + '">'
+        + _text(status) + '</span><small>' + _text(actor) + ' · ' + _text(source)
+        + ' · tentative ' + _when(created) + ' · dernier succès '
+        + _when(hook_success_by_kind.get(hook))
+        + ((' · erreur : ' + _text(str(error)[:160])) if error else '')
+        + '</small></div>'
+        for hook, actor, source, status, error, created in hooks)
+    hook_content = hook_rows or _empty_state(
+        "Aucun hook enregistré", "Aucune tentative de session ou Git pour ce projet.",
+        "automation_hook_events du projet")
+    success_by_kind = {kind: finished for kind, finished in successes}
+    labels = {"git_scan": "Analyse Git", "repowise_index": "Index RepoWise",
+              "daily_metrics": "Métriques quotidiennes"}
+    job_rows = ''.join(
+        '<div class="team-automation-row"><strong>' + _text(labels.get(kind, kind)) + '</strong>'
+        + '<span class="team-automation-status" data-status="' + _text(status) + '">'
+        + _text(status) + '</span><small>' + _text(actor) + ' · tentative ' + _when(created)
+        + ' · dernier succès ' + _when(success_by_kind.get(kind))
+        + ((' · erreur : ' + _text(str(error)[:160])) if error else '') + '</small></div>'
+        for kind, status, actor, error, created in jobs)
+    job_content = job_rows or _empty_state(
+        "Aucun job lancé", "Aucune analyse Git, indexation RepoWise ou métrique quotidienne exécutée.",
+        "runs PostgreSQL du projet")
+    history_by_schedule = {schedule_id: (status, occurred, error)
+                           for schedule_id, status, occurred, error in schedule_events}
+    schedule_success_by_id = dict(schedule_successes)
+    schedule_rows = ''.join(
+        '<div class="team-automation-row"><strong>' + _text(name) + '</strong>'
+        + '<span class="team-automation-status" data-status="' + _text(status) + '">'
+        + _text(status) + '</span><small>prochain passage ' + _when(next_due)
+        + ' · dernière tentative ' + _when(history_by_schedule.get(schedule_id, (None, None, None))[1])
+        + ' · dernier succès ' + _when(schedule_success_by_id.get(schedule_id))
+        + ((' · résultat : ' + _text(history_by_schedule[schedule_id][0]))
+           if schedule_id in history_by_schedule else '')
+        + ((' · erreur : ' + _text(str(history_by_schedule[schedule_id][2])[:160]))
+           if schedule_id in history_by_schedule and history_by_schedule[schedule_id][2] else '')
+        + '</small></div>'
+        for schedule_id, name, status, next_due, _last_due in schedules)
+    schedule_content = schedule_rows or _empty_state(
+        "Aucune planification", "Aucun job planifié pour ce projet.",
+        "schedules PostgreSQL du projet")
+    return (panel("Hooks de session et Git", hook_content)
+            + panel("Jobs exécutés", job_content)
+            + panel("Jobs planifiés", schedule_content))
+
+
+def _read_automation(cursor, project: str) -> tuple[list, list, list, list, list, list]:
+    """Read only the selected project's hook and job evidence under its RLS transaction."""
+    cursor.execute("""SELECT DISTINCT ON (hook) hook,actor,source,status,error,created_at
+        FROM automation_hook_events WHERE project_id=%s
+        ORDER BY hook,created_at DESC,id DESC""", (project,))
+    hooks = cursor.fetchall()
+    cursor.execute("""SELECT DISTINCT ON (hook) hook,finished_at
+        FROM automation_hook_events WHERE project_id=%s AND status='succeeded'
+        ORDER BY hook,finished_at DESC,id DESC""", (project,))
+    hook_successes = cursor.fetchall()
+    cursor.execute("""SELECT DISTINCT ON (metadata->>'job_kind')
+        metadata->>'job_kind',status,actor,error,created_at FROM runs
+        WHERE project_id=%s AND execution_ready
+        AND metadata->>'job_kind' IN ('git_scan','repowise_index','daily_metrics')
+        ORDER BY metadata->>'job_kind',created_at DESC,id DESC""", (project,))
+    jobs = cursor.fetchall()
+    cursor.execute("""SELECT DISTINCT ON (metadata->>'job_kind')
+        metadata->>'job_kind',finished_at FROM runs
+        WHERE project_id=%s AND execution_ready AND status='succeeded'
+        AND metadata->>'job_kind' IN ('git_scan','repowise_index','daily_metrics')
+        ORDER BY metadata->>'job_kind',finished_at DESC,id DESC""", (project,))
+    successes = cursor.fetchall()
+    cursor.execute("""SELECT DISTINCT ON (s.id) s.id,h.status,h.occurred_at,
+        r.error FROM schedule_history h
+        JOIN schedules s ON s.id=h.schedule_id
+        LEFT JOIN runs r ON r.id=h.run_id AND r.project_id=s.project_id
+        WHERE s.project_id=%s
+        ORDER BY s.id,h.occurred_at DESC,h.id DESC""", (project,))
+    schedule_events = cursor.fetchall()
+    cursor.execute("""SELECT DISTINCT ON (s.id) s.id,h.occurred_at
+        FROM schedule_history h JOIN schedules s ON s.id=h.schedule_id
+        WHERE s.project_id=%s AND h.status='succeeded'
+        ORDER BY s.id,h.occurred_at DESC,h.id DESC""", (project,))
+    schedule_successes = cursor.fetchall()
+    return hooks, hook_successes, jobs, successes, schedule_events, schedule_successes
+
+
 class PostgresDashboardProjection(PostgresProjectReader):
     def snapshot(self, principal: Principal, *, task_offset: int = 0) -> dict:
         if not isinstance(principal, Principal) or principal.action != "task.read":
@@ -53,6 +146,9 @@ class PostgresDashboardProjection(PostgresProjectReader):
                 FROM schedule_history h JOIN schedules s ON s.id=h.schedule_id
                 WHERE s.project_id=%s ORDER BY h.occurred_at DESC,h.id DESC LIMIT 10""", (project,))
             schedule_events = cursor.fetchall()
+            (automation_hooks, automation_hook_successes, automation_jobs,
+             automation_successes, automation_schedule_events,
+             automation_schedule_successes) = _read_automation(cursor, project)
             cursor.execute("""SELECT name,version,enabled FROM plugins WHERE project_id=%s
                 ORDER BY name,id LIMIT 20""", (project,))
             plugins = cursor.fetchall()
@@ -181,7 +277,11 @@ class PostgresDashboardProjection(PostgresProjectReader):
                 "project_cards": cards,
                 "tasks_pipeline": pipeline,
                 "services_monitoring": code_health_card(project, code_health) + render_global_stack_health(health) + postgres_card + panel("Planifications du projet", schedule_panel),
-                "automation_hooks": panel("Planifications PostgreSQL", schedule_panel),
+                "automation_hooks": _automation_panel(
+                    automation_hooks, automation_hook_successes,
+                    automation_jobs, automation_successes,
+                    [(row[0], row[1], row[2], row[5], row[6]) for row in schedules],
+                    automation_schedule_events, automation_schedule_successes),
                 "token_activity_report": usage_panel(usage, usage_models, usage_recent, run_items),
                 "context_composition": panel(
                     "Composition du contexte",

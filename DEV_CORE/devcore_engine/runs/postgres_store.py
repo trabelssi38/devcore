@@ -59,6 +59,25 @@ def _record(row):
     )
 
 
+def _record_project_job_result(cursor, project_id: str, row: dict) -> None:
+    metadata = _json(row.get("metadata"), {})
+    if metadata.get("job_kind") in {"git_scan", "repowise_index"}:
+        kind = metadata["job_kind"]
+        cursor.execute("""INSERT INTO events
+            (id,project_id,run_id,event_type,source,payload)
+            VALUES (%s,%s,%s,'project_job.finished',%s,%s::jsonb)
+            ON CONFLICT (id) DO NOTHING""",
+            ("event-job-terminal-" + row["id"], project_id, row["id"], kind,
+             json.dumps({"status": row["status"], "exit_code": row.get("exit_code")})))
+    if metadata.get("schedule_id"):
+        cursor.execute("""INSERT INTO schedule_history
+            (id,schedule_id,run_id,event_type,status,details)
+            VALUES (%s,%s,%s,'finished',%s,%s::jsonb)
+            ON CONFLICT (id) DO NOTHING""",
+            ("schedule-result-" + row["id"], metadata["schedule_id"], row["id"],
+             row["status"], json.dumps({"exit_code": row.get("exit_code")})))
+
+
 class PostgresRunStore:
     """Uses an explicit transaction-local RLS project for every run query."""
 
@@ -254,6 +273,7 @@ class PostgresRunStore:
                 (status, exit_code, output, error, run_id, project_id, worker_token))
             updated = _row(cursor, cursor.fetchone())
             if updated is not None:
+                _record_project_job_result(cursor, project_id, updated)
                 return _record(updated)
             cursor.execute("SELECT status, worker_token FROM runs WHERE id=%s AND project_id=%s",
                            (run_id, project_id))
@@ -296,6 +316,8 @@ class PostgresRunStore:
             updated = _row(cursor, cursor.fetchone())
             if updated is None:
                 raise RunTransitionError("Historical run is not executable")
+            if updated["status"] == "cancelled":
+                _record_project_job_result(cursor, project_id, updated)
             return _record(updated)
 
     def confirm_cancellation(self, run_id: str, worker_token: str | None = None,
@@ -311,6 +333,7 @@ class PostgresRunStore:
             updated = _row(cursor, cursor.fetchone())
             if updated is None:
                 raise RunTransitionError(f"Cannot confirm cancellation of run {run_id}")
+            _record_project_job_result(cursor, project_id, updated)
             return _record(updated)
 
     def pause_run(self, run_id: str) -> RunRecord:
@@ -375,7 +398,10 @@ class PostgresRunStore:
                     else:
                         cursor.execute("""UPDATE runs SET status='timed_out',
                             error='execution_heartbeat_expired', finished_at=now(),
-                            updated_at=now() WHERE id=%s AND project_id=%s""",
+                            updated_at=now() WHERE id=%s AND project_id=%s RETURNING *""",
                             (run_id, project_id))
+                        terminal = _row(cursor, cursor.fetchone())
+                        if terminal is not None:
+                            _record_project_job_result(cursor, project_id, terminal)
                     recovered.append(run_id)
         return recovered

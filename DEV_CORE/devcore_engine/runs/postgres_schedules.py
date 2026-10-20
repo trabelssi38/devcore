@@ -2,15 +2,20 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 import hashlib
 import json
+from pathlib import Path
+import sys
 from uuid import uuid4
 from zoneinfo import ZoneInfo
 
 from croniter import croniter
 
 from .postgres_store import PostgresRunStore
+
+
+DAILY_SCRIPT = Path(__file__).resolve().parents[2] / "Scripts" / "team_daily_metrics_job.py"
 
 
 class PostgresScheduleDispatcher(PostgresRunStore):
@@ -54,6 +59,8 @@ class PostgresScheduleDispatcher(PostgresRunStore):
                 or any(not isinstance(part, str) or not 1 <= len(part) <= 4096 for part in command)
                 or sum(len(part) for part in command) > 16384):
             raise ValueError("Qualified schedule requires an argv command")
+        if metadata.get("job_kind") == "daily_metrics" and command != [sys.executable, str(DAILY_SCRIPT)]:
+            raise ValueError("Daily metrics requires the managed argv command")
         timeout = metadata.get("timeout_seconds", 300)
         if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not 0 < timeout <= 3600:
             raise ValueError("Invalid schedule timeout")
@@ -61,6 +68,20 @@ class PostgresScheduleDispatcher(PostgresRunStore):
                 or not croniter.is_valid(expression)):
             raise ValueError("Invalid schedule cron")
         return command, float(timeout), ZoneInfo(timezone)
+
+    @staticmethod
+    def _daily_snapshot(cursor, project: str, day: str, timezone: str) -> dict:
+        cursor.execute("""SELECT count(*) FILTER (WHERE (created_at AT TIME ZONE %s)::date=%s::date),
+            count(*) FILTER (WHERE (completed_at AT TIME ZONE %s)::date=%s::date)
+            FROM tasks WHERE project_id=%s""", (timezone, day, timezone, day, project))
+        created, completed = cursor.fetchone()
+        cursor.execute("""SELECT count(*) FILTER (WHERE status='succeeded'),
+            count(*) FILTER (WHERE status IN ('failed','timed_out'))
+            FROM runs WHERE project_id=%s AND (finished_at AT TIME ZONE %s)::date=%s::date""",
+            (project, timezone, day))
+        succeeded, failed = cursor.fetchone()
+        return {"tasks_created": created, "tasks_completed": completed,
+                "runs_succeeded": succeeded, "runs_failed": failed}
 
     def poll_once(self, now: datetime | None = None) -> list[dict]:
         now = now or datetime.now(UTC)
@@ -91,12 +112,39 @@ class PostgresScheduleDispatcher(PostgresRunStore):
                 return None
             name, expression, timezone, scheduled, metadata = row
             command, timeout, zone = self._qualified_command(expression, timezone, metadata)
+            next_due = croniter(expression, now.astimezone(zone)).get_next(datetime).astimezone(UTC)
+            key = f"schedule:{schedule_id}:{scheduled.astimezone(UTC).isoformat()}"
+            cursor.execute("""SELECT count(*) FROM runs WHERE project_id=%s
+                AND metadata->>'schedule_id'=%s AND execution_ready
+                AND status IN ('queued','running','paused','waiting_approval')""",
+                (project, schedule_id))
+            if cursor.fetchone()[0] > 0:
+                cursor.execute("""UPDATE schedules SET last_run_at=%s,next_run_at=%s,
+                    updated_at=now() WHERE project_id=%s AND id=%s""",
+                    (scheduled, next_due, project, schedule_id))
+                cursor.execute("""INSERT INTO schedule_history
+                    (id,schedule_id,event_type,status,details)
+                    VALUES (%s,%s,'overlap','skipped',%s::jsonb)
+                    ON CONFLICT (id) DO NOTHING""",
+                    ("schedule-overlap-" + hashlib.sha256(key.encode()).hexdigest()[:32],
+                     schedule_id, json.dumps({"scheduled_at": scheduled.isoformat()})))
+                return {"project": project, "schedule_id": schedule_id,
+                        "status": "skipped_overlap", "next_run_at": next_due.isoformat()}
+            job_kind = metadata.get("job_kind")
+            if job_kind == "daily_metrics":
+                from devcore_engine.services.postgres_automation_hooks import _registered_git_root
+                cursor.execute("SELECT root_path FROM projects WHERE id=%s AND status='active'", (project,))
+                registered = cursor.fetchone()
+                if registered is None or not _registered_git_root(registered[0]):
+                    raise ValueError("Daily metrics requires a registered Git project")
+                day = (scheduled.astimezone(zone).date() - timedelta(days=1)).isoformat()
+                snapshot = self._daily_snapshot(cursor, project, day, timezone)
+                command = [*command, "--project", project, "--day", day,
+                           "--snapshot-json", json.dumps(snapshot, separators=(",", ":"))]
             cursor.execute("""SELECT count(*) FROM runs WHERE project_id=%s
                 AND status='queued' AND execution_ready""", (project,))
             if cursor.fetchone()[0] >= 50:
                 return None
-            next_due = croniter(expression, now.astimezone(zone)).get_next(datetime).astimezone(UTC)
-            key = f"schedule:{schedule_id}:{scheduled.astimezone(UTC).isoformat()}"
             run_id = "run-" + uuid4().hex[:12]
             cursor.execute("""INSERT INTO runs
                 (id,project_id,title,status,command,timeout_seconds,attempt_number,
@@ -106,7 +154,8 @@ class PostgresScheduleDispatcher(PostgresRunStore):
                         '{}'::jsonb,%s::jsonb,true)
                 ON CONFLICT DO NOTHING RETURNING id""",
                 (run_id, project, name, json.dumps(command), float(timeout), key,
-                 json.dumps({"schedule_id": schedule_id, "scheduled_at": scheduled.isoformat()})))
+                 json.dumps({"schedule_id": schedule_id, "scheduled_at": scheduled.isoformat(),
+                             "job_kind": job_kind})))
             inserted = cursor.fetchone()
             if inserted is None:
                 cursor.execute("SELECT id FROM runs WHERE project_id=%s AND idempotency_key=%s",

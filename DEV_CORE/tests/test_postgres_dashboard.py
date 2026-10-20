@@ -31,6 +31,12 @@ class Cursor:
                         [("<script>event</script>", now, "uuid", "fixture")],
                         [("schedule-1", "<script>job</script>", "active", "*/5 * * * *", "UTC", now, None, "true")],
                         [("<img src=x>", "dispatched", "queued", now)],
+                        [("session_end", "<script>actor</script>", "codex", "failed", "context_error", now)],
+                        [("session_end", now)],
+                        [("git_scan", "failed", "majdi", "<img src=x>", now)],
+                        [("git_scan", now)],
+                        [("schedule-1", "failed", now, "timeout")],
+                        [("schedule-1", now)],
                         [("<script>plugin</script>", "1.0", True)],
                         [("<img src=x>", 2)],
                         (100, 5, 50),
@@ -74,7 +80,10 @@ def test_dashboard_bounds_project_reads_and_escapes_database_text(monkeypatch):
     assert 'data-version="2"' in data["sections"]["tasks_pipeline"]
     assert "&lt;script&gt;job&lt;/script&gt;" in data["sections"]["automation_hooks"]
     assert "&lt;img src=x&gt;" in data["sections"]["automation_hooks"]
-    assert "exécution qualifiée : oui" in data["sections"]["automation_hooks"]
+    assert "exécution qualifiée : oui" in data["sections"]["services_monitoring"]
+    assert "&lt;script&gt;actor&lt;/script&gt;" in data["sections"]["automation_hooks"]
+    assert "dernier succès" in data["sections"]["automation_hooks"]
+    assert 'data-status="failed"' in data["sections"]["automation_hooks"]
     assert "&lt;script&gt;plugin&lt;/script&gt;" in data["sections"]["plugin_status"]
     assert "&lt;img src=x&gt; · 2" in data["sections"]["context_composition"]
     assert "100 jetons modèle/jour" in data["sections"]["metrics_service_summary"]
@@ -96,18 +105,20 @@ def test_dashboard_bounds_project_reads_and_escapes_database_text(monkeypatch):
     assert "LIMIT 10" in cursor.statements[2][0]
     assert "LIMIT 20" in cursor.statements[4][0]
     assert "LIMIT 10" in cursor.statements[5][0]
-    assert "LIMIT 20" in cursor.statements[6][0]
-    assert "LIMIT 20" in cursor.statements[7][0]
-    assert "project_graph_stats" in cursor.statements[9][0]
-    assert "project_llm_usage" in cursor.statements[10][0]
+    assert "automation_hook_events" in cursor.statements[6][0]
+    assert "DISTINCT ON" in cursor.statements[7][0]
+    assert "LIMIT 20" in cursor.statements[12][0]
+    assert "LIMIT 20" in cursor.statements[13][0]
+    assert "project_graph_stats" in cursor.statements[15][0]
+    assert "project_llm_usage" in cursor.statements[16][0]
 
 
 def test_empty_sidebar_panels_name_the_missing_project_source(monkeypatch):
     reader = PostgresDashboardProjection("postgresql://app@127.0.0.1/fixture")
     cursor = Cursor()
-    for index in (4, 5, 6, 7):
+    for index in (4, 5, 6, 7, 8, 9, 10, 11, 12, 13):
         cursor.answers[index] = []
-    cursor.answers[8] = None
+    cursor.answers[14] = None
 
     @contextmanager
     def transaction(project):
@@ -121,7 +132,7 @@ def test_empty_sidebar_panels_name_the_missing_project_source(monkeypatch):
         "context_composition": ("Aucune entrée mémoire", "fiche de contexte Codex", "Source : mémoire du projet"),
         "metrics_service_summary": ("Non configuré", "Non mesurées", "contrôles de conformité du projet"),
         "plugin_status": ("Aucun plugin", "plugins Codex du poste", "Source : registre Plugin SDK du projet"),
-        "automation_hooks": ("Aucune planification", "tâches Windows", "Source : planifications PostgreSQL du projet"),
+        "automation_hooks": ("Aucun hook enregistré", "Aucun job lancé", "Aucune planification"),
     }
     for section, phrases in expected.items():
         assert 'class="team-empty-state"' in sections[section]
@@ -137,7 +148,32 @@ def test_empty_sidebar_panels_name_the_missing_project_source(monkeypatch):
         html = render_team_cockpit(directory, data, terminal=terminal)
         assert "Aucune entrée mémoire" in html
         assert "Source : registre Plugin SDK du projet" in html
-        assert "Source : planifications PostgreSQL du projet" in html
+        assert "Source : automation_hook_events du projet" in html
+
+
+def test_automation_renders_both_views_and_isolates_switched_project(monkeypatch):
+    reader = PostgresDashboardProjection("postgresql://app@127.0.0.1/fixture")
+    snapshots = {}
+    for project in ("alpha", "beta"):
+        cursor = Cursor()
+        if project == "beta":
+            for index in (4, 5, 6, 7, 8, 9, 10, 11):
+                cursor.answers[index] = []
+
+        @contextmanager
+        def transaction(selected):
+            assert selected == project
+            yield cursor
+
+        monkeypatch.setattr(reader, "_transaction", transaction)
+        snapshots[project] = reader.snapshot(Principal("majdi", "credential", project, "task.read"))
+    directory = Path(__file__).resolve().parents[1] / "Dashboard"
+    for terminal in (False, True):
+        alpha = render_team_cockpit(directory, snapshots["alpha"], terminal=terminal)
+        beta = render_team_cockpit(directory, snapshots["beta"], terminal=terminal)
+        assert "context_error" in alpha and "Aucun hook enregistré" in beta
+        assert "context_error" not in beta
+        assert 'data-status="succeeded"' not in snapshots["beta"]["sections"]["automation_hooks"]
 
 
 def test_dashboard_rejects_non_read_principal_before_database(monkeypatch):

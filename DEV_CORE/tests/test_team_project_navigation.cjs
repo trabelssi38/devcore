@@ -36,6 +36,8 @@ class Element {
   const panel = new Element('nav');
   const taskPanel = new Element('section');
   taskPanel.innerHTML = 'Tasks alpha';
+  const automationPanel = new Element('section');
+  automationPanel.innerHTML = 'Hooks alpha';
   const globalPanel = new Element('section');
   globalPanel.innerHTML = 'Global services';
   const profile = new Element('details');
@@ -56,11 +58,13 @@ class Element {
     readDashboardJson: async response => response.json(),
     validateDashboardSnapshot: () => {},
     checkDashboardResponseAccess: () => {},
-    updateContainerHTML: (id, html) => { updatedSections.push(id); taskPanel.innerHTML = html; },
+    updateContainerHTML: (id, html) => { updatedSections.push(id); ({'tasks-pipeline':taskPanel,
+      'automation-hooks':automationPanel})[id].innerHTML = html; },
     updateTokenReport: () => {}, updateRepowiseHealth: () => {},
     recordAppliedDashboardSnapshot: () => {},
     refreshDashboard: () => context.performDashboardRefresh(),
     document: {getElementById: id => ({'team-projects':panel,'tasks-pipeline':taskPanel,
+      'automation-hooks':automationPanel,
       'global-only-panel':globalPanel,'team-profile':profile,'team-logout':logout,
       'team-profile-error':profileError})[id] || null,
                addEventListener: () => {},
@@ -74,7 +78,8 @@ class Element {
       calls.push([url, options]);
       if (String(url).startsWith('/api/dashboard?')) {
         const project = new URLSearchParams(String(url).split('?')[1]).get('project');
-        return {ok:true, json:async () => ({project, sections:{tasks_pipeline:`Tasks ${project}`},
+        return {ok:true, json:async () => ({project, sections:{tasks_pipeline:`Tasks ${project}`,
+          automation_hooks:`Hooks ${project}`},
           task_details:{},task_interactions:{},token_metrics:{},counts:{tasks:2},service_health:{}})};
       }
       if (options?.method === 'DELETE') return {ok:!logoutDenied};
@@ -137,8 +142,12 @@ class Element {
   assert.equal(select(list.children[2]).disabled, false);
   assert.equal(context.window.devcoreActiveProject, 'beta');
   assert.equal(profileProject.textContent, 'beta');
-  assert.deepEqual(updatedSections, ['tasks-pipeline']);
+  assert.deepEqual(updatedSections, ['tasks-pipeline', 'automation-hooks']);
   assert.equal(taskPanel.innerHTML, 'Tasks beta');
+  assert.equal(automationPanel.innerHTML, 'Hooks beta');
+  assert.equal(await context.refreshTeamProjectData('alpha'), false);
+  assert.equal(automationPanel.innerHTML, 'Hooks beta');
+  assert.deepEqual(updatedSections, ['tasks-pipeline', 'automation-hooks']);
   assert.equal(globalPanel.innerHTML, 'Global services');
   assert.equal(calls[1][1].headers['X-CSRF-Token'], 'fixture-csrf');
   assert.deepEqual(JSON.parse(calls[1][1].body), {project:'beta',switch_project:true});
