@@ -1613,6 +1613,7 @@ function parseDashboardSseBlock(block) {
   }
 }
 
+let dashboardStreamConnected = false;
 function connectDashboardStream() {
   if (!window.ReadableStream || dashboardStreamAbort) return;
   if (dashboardStreamRetryId) {
@@ -1627,6 +1628,8 @@ function connectDashboardStream() {
   })
     .then(response => {
       if (!response.ok || !response.body) throw new Error('Dashboard stream unavailable');
+      if (dashboardStreamConnected) refreshDashboardForSse();
+      dashboardStreamConnected = true;
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';

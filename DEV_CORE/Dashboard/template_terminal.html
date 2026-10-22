@@ -1259,6 +1259,13 @@ setInterval(refreshDashboard, REFRESH_RATE*1000);
 /* ── SSE Real-time Stream ── */
 function connectStream() {
   const sse = new EventSource(`/api/dashboard/stream?project=${encodeURIComponent(window.devcoreActiveProject)}`);
+  let openedBefore = false;
+  sse.onopen = function() {
+    // A restarted service can reconnect without emitting a project delta.
+    // Fetch only the selected project's data; the team view updates changed sections.
+    if (openedBefore) refreshDashboardForSse();
+    openedBefore = true;
+  };
   sse.addEventListener('dashboard.delta', function(e) {
     try {
       const payload = JSON.parse(e.data);
