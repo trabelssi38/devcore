@@ -102,16 +102,16 @@ def _read_automation(cursor, project: str) -> tuple[list, list, list, list, list
         AND metadata->>'job_kind' IN ('git_scan','repowise_index','daily_metrics')
         ORDER BY metadata->>'job_kind',finished_at DESC,id DESC""", (project,))
     successes = cursor.fetchall()
-    cursor.execute("""SELECT DISTINCT ON (s.id) s.id,h.status,h.occurred_at,
+    cursor.execute("""SELECT DISTINCT ON (s.id) s.id,COALESCE(r.status,h.status),h.occurred_at,
         r.error FROM schedule_history h
         JOIN schedules s ON s.id=h.schedule_id
         LEFT JOIN runs r ON r.id=h.run_id AND r.project_id=s.project_id
-        WHERE s.project_id=%s
+        WHERE s.project_id=%s AND h.event_type='dispatched'
         ORDER BY s.id,h.occurred_at DESC,h.id DESC""", (project,))
     schedule_events = cursor.fetchall()
     cursor.execute("""SELECT DISTINCT ON (s.id) s.id,h.occurred_at
         FROM schedule_history h JOIN schedules s ON s.id=h.schedule_id
-        WHERE s.project_id=%s AND h.status='succeeded'
+        WHERE s.project_id=%s AND h.event_type='finished' AND h.status='succeeded'
         ORDER BY s.id,h.occurred_at DESC,h.id DESC""", (project,))
     schedule_successes = cursor.fetchall()
     return hooks, hook_successes, jobs, successes, schedule_events, schedule_successes
