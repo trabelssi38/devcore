@@ -131,7 +131,8 @@ class IndividualContextClient:
                 or not isinstance(provenance.get("reviewed_at"), str)):
             raise ValueError("Invalid context provenance")
         date.fromisoformat(provenance["reviewed_at"])
-        if (any(w not in {"card_changed_since_review", "context_review_expired", "review_date_in_future"}
+        if (any(w not in {"card_changed_since_review", "context_review_expired", "review_date_in_future",
+                             "automatic_context_unavailable"}
                 for w in value["warnings"])
                 or any(not isinstance(e, str) or not e or e in identifiers for e in excluded)
                 or any(not isinstance(o, dict) or not isinstance(o.get("id"), str) or not o["id"]

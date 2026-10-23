@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import UTC, date, datetime, timedelta
 import hashlib
 import json
 from pathlib import Path
@@ -104,7 +104,8 @@ def _validate(manifest: dict, project: str) -> list[dict]:
 
 def load_project_context(directory: Path, project: str, *, budget_bytes: int = 12000,
                          query: str = "", today: date | None = None,
-                         max_age_days: int = 7) -> dict:
+                         max_age_days: int = 7,
+                         now: datetime | None = None) -> dict:
     """Bound the complete JSON response, including diagnostics, in UTF-8 bytes.
 
     Required facts are never truncated. Bytes are not reported as model tokens.
@@ -154,6 +155,31 @@ def load_project_context(directory: Path, project: str, *, budget_bytes: int = 1
         "excluded_superseded": superseded,
         "omitted": [{"id": d["id"], "reason": "not_relevant"} for d in optional],
     }
+    if manifest.get("automatic_context") is not None:
+        if manifest["automatic_context"] != "automatic.json":
+            raise ValueError("invalid automatic context path")
+        try:
+            automatic = json.loads(_read_inside(directory, "automatic.json"))
+            generated = datetime.fromisoformat(automatic["generated_at"])
+            current = now or datetime.now(UTC)
+            if (not isinstance(automatic, dict) or automatic.get("schema_version") != 1
+                    or automatic.get("project") != project or generated.tzinfo is None
+                    or generated > current + timedelta(minutes=5)
+                    or generated < current - timedelta(hours=36)
+                    or automatic.get("manifest_sha256") != hashlib.sha256(manifest_raw).hexdigest()
+                    or automatic.get("card_sha256") != digest
+                    or not isinstance(automatic.get("card_matches_review"), bool)
+                    or not isinstance(automatic.get("tracked_changes"), bool)
+                    or not isinstance(automatic.get("git_head"), str)
+                    or not re.fullmatch(r"[0-9a-f]{40}", automatic["git_head"])):
+                raise ValueError("automatic context is stale or inconsistent")
+            result["automatic_context"] = {
+                "generated_at": generated.isoformat(), "git_head": automatic["git_head"],
+                "tracked_changes": automatic["tracked_changes"],
+                "card_matches_review": automatic["card_matches_review"],
+            }
+        except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError):
+            warnings.append("automatic_context_unavailable")
     if _measure(result) > budget_bytes:
         raise ContextBudgetExceeded("required card and decisions exceed budget_bytes; no partial context returned")
     for item in relevant:

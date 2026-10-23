@@ -16,6 +16,7 @@ from .postgres_store import PostgresRunStore
 
 
 DAILY_SCRIPT = Path(__file__).resolve().parents[2] / "Scripts" / "team_daily_metrics_job.py"
+CONTEXT_SCRIPT = Path(__file__).resolve().parents[2] / "Scripts" / "team_context_refresh_job.py"
 
 
 class PostgresScheduleDispatcher(PostgresRunStore):
@@ -66,6 +67,11 @@ class PostgresScheduleDispatcher(PostgresRunStore):
                 and (len(command) != 2 or command[0] not in trusted_pythons
                      or command[1] != str(DAILY_SCRIPT))):
             raise ValueError("Daily metrics requires the managed argv command")
+        if (metadata.get("job_kind") == "context_refresh"
+                and (len(command) != 6 or command[0] not in trusted_pythons
+                     or command[1] != str(CONTEXT_SCRIPT)
+                     or command[2] != "--project" or command[4] != "--root")):
+            raise ValueError("Context refresh requires the managed argv command")
         timeout = metadata.get("timeout_seconds", 300)
         if isinstance(timeout, bool) or not isinstance(timeout, (int, float)) or not 0 < timeout <= 3600:
             raise ValueError("Invalid schedule timeout")
@@ -146,6 +152,14 @@ class PostgresScheduleDispatcher(PostgresRunStore):
                 snapshot = self._daily_snapshot(cursor, project, day, timezone)
                 command = [*command, "--project", project, "--day", day,
                            "--snapshot-json", json.dumps(snapshot, separators=(",", ":"))]
+            elif job_kind == "context_refresh":
+                from devcore_engine.services.postgres_automation_hooks import _registered_git_root
+                cursor.execute("SELECT root_path FROM projects WHERE id=%s AND status='active'", (project,))
+                registered = cursor.fetchone()
+                if registered is None or not _registered_git_root(registered[0]):
+                    raise ValueError("Context refresh requires a registered Git project")
+                if command[3] != project or Path(command[5]).resolve() != Path(registered[0]).resolve():
+                    raise ValueError("Context refresh command differs from registered project")
             cursor.execute("""SELECT count(*) FROM runs WHERE project_id=%s
                 AND status='queued' AND execution_ready""", (project,))
             if cursor.fetchone()[0] >= 50:
