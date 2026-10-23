@@ -23,10 +23,18 @@ function renderTeamContext(slot, data) {
   addRow('Décisions applicables', decisions.length ? decisions.join(', ') : 'Aucune');
   addRow('Réponse bornée', `${new Intl.NumberFormat('fr-FR').format(data.measurement.used)} / ${new Intl.NumberFormat('fr-FR').format(data.measurement.budget)} octets UTF-8 · pas une mesure des tokens Codex`);
   addRow('Provenance', `registre du projet · revue ${data.provenance.reviewed_at}`);
+  const automatic = data.automatic_context;
+  if (automatic) {
+    const updated = new Date(automatic.generated_at);
+    const tunis = Number.isNaN(updated.getTime()) ? automatic.generated_at
+      : updated.toLocaleString('fr-FR', {timeZone:'Africa/Tunis', dateStyle:'short', timeStyle:'short'});
+    addRow('Faits vérifiés par DevCore', `${tunis} (Tunis) · Git ${automatic.git_head.slice(0, 8)} · ${automatic.tracked_changes ? 'modifications suivies' : 'dépôt suivi propre'} · ${automatic.card_matches_review ? 'fiche conforme à sa revue' : 'fiche modifiée depuis sa revue'}`);
+  }
   const warnings = {
     card_changed_since_review: 'fiche modifiée depuis sa revue',
     context_review_expired: 'revue à renouveler',
-    review_date_in_future: 'date de revue future'
+    review_date_in_future: 'date de revue future',
+    automatic_context_unavailable: 'instantané automatique indisponible ou périmé'
   };
   if (data.warnings.length) addRow('À vérifier', data.warnings.map(item => warnings[item] || item).join(' · '));
   if (data.omitted.length) addRow('Décisions omises', String(data.omitted.length));
