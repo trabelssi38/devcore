@@ -15,19 +15,23 @@ Les décisions applicables et leurs remplacements sont dans `context.json`.
 
 ## État vérifié le 25 octobre 2026
 
-- `DevCoreGlobal` exécute la candidate Git `1f5ec0f6e9d31898d11f0f41dc5d2682d916b7c6`.
-  Son démarrage au troisième reboot du 23 octobre était automatique. Depuis
-  le 24 octobre, un déclencheur temporel toutes les cinq minutes complète
-  celui du boot et ignore les passages si la tâche tourne déjà. Après arrêt
-  contrôlé du processus RepoWise, le superviseur a quitté avec code 1 puis
-  Windows a relancé seul la pile : `ready` en 255 secondes. Le même superviseur
-  PID 3628 est encore actif le 25 octobre à 12:30 Tunis, six composants et
-  cinq sondes HTTP sains. Un état gateway faux sur un battement a disparu à
-  la sonde suivante, sans arrêt. Voir journal v494–v495.
+- `DevCoreGlobal` exécute la candidate Git `d4dbfe28531518fc4e8ca05116cbb8245a74fd27`
+  depuis le 25 octobre à 19:47 Tunis ; le superviseur PID 6708 est `ready`,
+  six composants et cinq listeners sont sains au contrôle. Les deux
+  déclencheurs Windows, boot et passage toutes les cinq minutes, sont conservés.
+  La source précédente `1f5ec0f6…` avait prouvé une reprise automatique après
+  arrêt contrôlé de RepoWise le 24 octobre, en 255 secondes. Cette preuve ne
+  mesure pas encore la stabilité prolongée de la nouvelle source. Voir journal
+  v494–v495 et [qualification du pilote](../audit-2026-09-30/pre-p0-qualification-2026-10-25.md).
 - Le Cockpit équipe affiche les projets Git autorisés à l'utilisateur connecté,
   permet leur sélection et leur archivage, et charge les données propres au
   projet sans recharger la page. La projection PostgreSQL a rendu les deux
   vues pour `devcore`, `dashboard_recette_br` et `job_tracker` en lecture seule.
+- Le pilote agent est activé seulement pour `devcore`, sans hook ni schedule.
+  Sous `majdi`, le run PostgreSQL `run-22282cc0c0ad` a réussi en lecture seule ;
+  la proposition `d72917d96936c036b3d63294dedbe120` a été approuvée par
+  `majdi` sur son SHA-256 exact, appliquée dans le checkout pilote dédié et
+  auditée. Seule une docstring a changé ; le commit pilote est `0b5589e`.
 - « Composition du contexte » lit séparément la fiche et les décisions sous
   le droit `context.read`, affiche leur revue, leur provenance et les alertes
   de fraîcheur. La réponse complète est bornée en octets UTF-8 ; ce volume

@@ -1,6 +1,6 @@
 # Reprise des hooks et jobs DevCore — plan par phases
 
-Date : 19 octobre 2026. État revu le 25 octobre : phases 0 à 4 qualifiées en isolation ; sortie de phase 5 vérifiée pour le seul pilote `devcore`. Les deux schedules du pilote sont ensuite désactivés à la demande de l'utilisateur. L'extension à d'autres projets et la phase 6 optionnelle ne sont pas réalisées. La source qualifiée et la documentation sont publiées sur `codex/devcore-hooks-jobs-20261025` (commit de code `1242dc6b…`) ; `main` n'est pas fusionnée.
+Date : 19 octobre 2026. État revu le 25 octobre : phases 0 à 4 qualifiées en isolation ; sortie de phase 5 vérifiée pour le seul pilote `devcore`. Les deux schedules du pilote sont ensuite désactivés à la demande de l'utilisateur. La phase 6 est close pour le pilote manuel `devcore` avec approbation humaine avant modification ; aucun agent planifié ni extension aux autres projets n'est autorisé. La source active de phase 6 est publiée sur `codex/devcore-agent-service-20261025` (`d4dbfe2`) ; `main` n'est pas fusionnée.
 
 ## Objectif et périmètre
 
@@ -400,7 +400,8 @@ application d'un patch identifié par SHA-256 après approbation humaine.
 Elle n'est liée à aucun hook ou schedule. L'API et la page pilote sont
 déployées uniquement pour `devcore` sous la source figée `d4dbfe2` ; le
 run authentifié `majdi` `run-22282cc0c0ad` a réussi sur PostgreSQL.
-Sa proposition attend encore l'application approuvée. Voir
+Sa proposition a été approuvée sur son SHA-256 exact par `majdi`, appliquée
+et auditée ; le checkout pilote est propre au commit `0b5589e`. Voir
 `docs/audit-2026-09-30/pre-p0-qualification-2026-10-25.md`.
 
 **Essai réel du 25 octobre :** après retrait du quota quotidien arbitraire,
@@ -417,10 +418,15 @@ du diff est ajouté au code et testé. L'identité enregistrée est le compte
 Windows local, pas une approbation Cockpit `majdi` ; hook, run durable et
 arrêt/reprise de l'agent restent à qualifier.
 
-**Intégration déployée :** une API authentifiée `devcore` soumet la
+**Intégration déployée et sortie de phase 6 :** une API authentifiée `devcore` soumet la
 proposition au moteur de runs, expose le patch et accepte seulement l'empreinte
 approuvée par un principal `task.mutate`. La session navigateur vérifie origine
 et CSRF. Les tests isolés du parcours et du moteur passent ; le run réel en
 service et son attribution `actor=majdi` sont vérifiés en lecture seule.
-L'application exacte sous session `majdi` reste ouverte. Aucun schedule
-n'est réactivé.
+L'application sous session `majdi` est vérifiée par le diff indexé exact,
+`git diff --cached --check`, l'audit `human_approved`/`patch_applied` et
+l'état `applied` dans le Cockpit. Le pilote est limité à une proposition
+manuelle en lecture seule puis à un patch humainement approuvé ; les tests
+ciblés couvrent l'isolation, l'arrêt, le fencing et la reprise idempotente.
+Aucun schedule n'est réactivé. La stabilité prolongée de la nouvelle source
+de service reste à mesurer séparément avant le plan P0.

@@ -139,17 +139,28 @@ affiche `Utilisateur : majdi`. Le nouveau rendu du profil Cockpit expose le
 lien « Agent pilote » seulement pour `devcore`. Une soumission documentaire
 via cette session a créé le run PostgreSQL `run-22282cc0c0ad`, d'abord
 `queued`, puis `running`, puis `succeeded`, et la proposition
-`d72917d96936c036b3d63294dedbe120` en `waiting_approval`. Le SHA-256
+`d72917d96936c036b3d63294dedbe120`, initialement en `waiting_approval`. Le SHA-256
 `ac942048aa7001536b3c3f16582cdaa4a7f8d733278b026a3efbc2c12cf14eb5`
 désigne deux lignes ajoutées à la docstring de
 `DEV_CORE/Scripts/global_restart_budget.py`. Le checkout pilote est resté
-propre et le journal n'a que `proposal_started` et `proposal_ready` pour
-cette proposition. L'approbation exacte a été demandée à l'utilisateur ;
-aucune application ni identité d'approbateur n'est encore revendiquée.
+propre pendant la proposition ; le journal a d'abord enregistré
+`proposal_started` et `proposal_ready` sans application.
 Une transaction PostgreSQL `BEGIN READ ONLY` et RLS `devcore` confirme pour
 ce run `actor=majdi`, `attempt_number=1`, `exit_code=0`, ainsi que les
 métadonnées `agent_pilot=true` et `approval_required=true` ; le lecteur est
 `E:/DevCoreRuntime/qualification/agent-pilot-cutover-20261025/verify_run_readonly.py`.
+
+L'utilisateur a ensuite approuvé explicitement cette empreinte dans le fil.
+Après reconnexion de `majdi`, la page pilote a confirmé la même empreinte,
+puis affiché « Patch appliqué par majdi » et l'état `applied`. Le journal
+`AgentPilot/audit.jsonl` contient `human_approved` à 22:36:56 UTC et
+`patch_applied` à 22:36:57 UTC, tous deux avec `actor=majdi`,
+`source=authenticated_project_api` et le SHA-256 approuvé. Le diff indexé
+ne contient que les deux lignes de docstring, et `git diff --cached --check`
+passe. Le checkout pilote est redevenu propre après le commit local
+`0b5589ece73ae47b75215748371ab4b4fb5f56bc`, sans hook Git. Cette preuve
+qualifie l'approbation authentifiée et l'application exacte pour le pilote.
+Aucun déclenchement autonome par tâche ou schedule n'est activé.
 
 ## Stabilité
 
@@ -167,6 +178,7 @@ le manifeste a un heartbeat récent et les cinq chemins exacts de sonde
 lanceur n'a pas de nouvelle sortie en échec après celle du 24 octobre à
 11:20 UTC. Cela représente environ 30 heures, sans prouver chaque intervalle
 de disponibilité.
-Ce contrôle ponctuel ne démontre pas la disponibilité continue. Les 48 heures
-depuis le premier `ready` ne peuvent être vérifiées avant le 26 octobre à
-12:24:27 `Africa/Tunis`, puis doivent être confrontées aux journaux et incidents.
+Ce contrôle ponctuel ne démontre pas la disponibilité continue. La bascule
+vers `d4dbfe2` à 19:47 Tunis a démarré un nouveau superviseur PID 6708 ;
+la fenêtre de stabilité prolongée de cette source repart de ce démarrage.
+Le suivi du plan P0 doit confronter ses journaux et incidents ultérieurs.

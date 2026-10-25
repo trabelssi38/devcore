@@ -4,7 +4,7 @@
   "reviewed_at": "2026-10-25",
   "card": "devcore.md",
   "automatic_context": "automatic.json",
-  "card_sha256": "88f2b91f25dc670fcb59a46bccd04062574daf185d5daee6768c53fd6ef87910",
+  "card_sha256": "1508c28ce96cac4fa88090fe9dc723310c7aadb13d919af890e8118addde6810",
   "decisions": [
     {
       "id": "D-001",
