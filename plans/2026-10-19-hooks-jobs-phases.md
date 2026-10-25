@@ -396,10 +396,11 @@ aucun agent autonome planifié.
 **Décision utilisateur du 25 octobre 2026 :** pilote limité à `devcore`,
 approbation humaine avant toute modification de fichiers. L'implémentation
 isolée `devcore_agent_pilot.py` sépare proposition en lecture seule et
-application interactive d'un patch identifié par SHA-256. Elle n'est liée
-à aucun hook ou schedule. Statut : implémentation et tests en isolation en
-cours ; la qualification opérationnelle et l'intégration à une identité
-authentifiée restent ouvertes. Voir
+application d'un patch identifié par SHA-256 après approbation humaine.
+Elle n'est liée à aucun hook ou schedule. L'API et la page pilote sont
+déployées uniquement pour `devcore` sous la source figée `d4dbfe2` ; le
+run authentifié `majdi` `run-22282cc0c0ad` a réussi sur PostgreSQL.
+Sa proposition attend encore l'application approuvée. Voir
 `docs/audit-2026-09-30/pre-p0-qualification-2026-10-25.md`.
 
 **Essai réel du 25 octobre :** après retrait du quota quotidien arbitraire,
@@ -416,9 +417,10 @@ du diff est ajouté au code et testé. L'identité enregistrée est le compte
 Windows local, pas une approbation Cockpit `majdi` ; hook, run durable et
 arrêt/reprise de l'agent restent à qualifier.
 
-**Intégration isolée suivante :** une API authentifiée `devcore` soumet la
+**Intégration déployée :** une API authentifiée `devcore` soumet la
 proposition au moteur de runs, expose le patch et accepte seulement l'empreinte
 approuvée par un principal `task.mutate`. La session navigateur vérifie origine
-et CSRF. Les tests isolés du parcours et du moteur passent ; le déploiement,
-un run réel en service et la qualification de reprise de ce pilote restent
-ouverts. Aucun schedule n'est réactivé.
+et CSRF. Les tests isolés du parcours et du moteur passent ; le run réel en
+service et son attribution `actor=majdi` sont vérifiés en lecture seule.
+L'application exacte sous session `majdi` reste ouverte. Aucun schedule
+n'est réactivé.

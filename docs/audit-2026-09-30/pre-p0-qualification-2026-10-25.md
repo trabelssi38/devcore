@@ -116,11 +116,40 @@ Huit tests ciblés passent sur identité, base et Git temporaires, dont refus
 sans identité, refus d'un lecteur, refus sans CSRF, application par une session
 `majdi` de test et reprise idempotente. Trois tests ciblés existants du moteur
 passent pour fencing après interruption, confinement de descendance Windows et
-arrêt du worker. La candidate n'est pas encore déployée dans `DevCoreGlobal` ;
-aucun run réel piloté par cette API n'est revendiqué.
-L'approbation est interactive dans un terminal local. Les tests utilisent un
+arrêt du worker. Les tests utilisent un
 dépôt Git et des racines DEVCORE temporaires ; ils ne touchent pas aux données
 actives.
+
+### Mise en service et proposition réelle sous majdi
+
+La candidate figée `d4dbfe28531518fc4e8ca05116cbb8245a74fd27`, issue de
+la source précédente `1f5ec0f6…`, a été indexée par RepoWise dans un nouveau
+checkout propre. Le script administrateur
+`cutover_global_agent_pilot_20261025_elevated.ps1` a été lancé directement
+avec `Start-Process pwsh.exe -Verb RunAs -Wait`, code 0. Son rapport
+`E:/DevCoreRuntime/qualification/agent-pilot-cutover-20261025/result.json`
+constate à 19:47:33 heure de Tunis six composants sains, cinq ports, deux
+déclencheurs Windows conservés et HTTP 401 pour la page pilote sans session.
+La configuration active autorise ce pilote seulement et fournit le chemin de
+Codex au processus S4U. La tâche `DevCoreGlobal` pointe sur ce commit ; les
+deux schedules quotidiens qualifiés restent désactivés.
+
+Dans un nouvel onglet, sans recharger le Cockpit déjà ouvert, la page pilote
+affiche `Utilisateur : majdi`. Le nouveau rendu du profil Cockpit expose le
+lien « Agent pilote » seulement pour `devcore`. Une soumission documentaire
+via cette session a créé le run PostgreSQL `run-22282cc0c0ad`, d'abord
+`queued`, puis `running`, puis `succeeded`, et la proposition
+`d72917d96936c036b3d63294dedbe120` en `waiting_approval`. Le SHA-256
+`ac942048aa7001536b3c3f16582cdaa4a7f8d733278b026a3efbc2c12cf14eb5`
+désigne deux lignes ajoutées à la docstring de
+`DEV_CORE/Scripts/global_restart_budget.py`. Le checkout pilote est resté
+propre et le journal n'a que `proposal_started` et `proposal_ready` pour
+cette proposition. L'approbation exacte a été demandée à l'utilisateur ;
+aucune application ni identité d'approbateur n'est encore revendiquée.
+Une transaction PostgreSQL `BEGIN READ ONLY` et RLS `devcore` confirme pour
+ce run `actor=majdi`, `attempt_number=1`, `exit_code=0`, ainsi que les
+métadonnées `agent_pilot=true` et `approval_required=true` ; le lecteur est
+`E:/DevCoreRuntime/qualification/agent-pilot-cutover-20261025/verify_run_readonly.py`.
 
 ## Stabilité
 
