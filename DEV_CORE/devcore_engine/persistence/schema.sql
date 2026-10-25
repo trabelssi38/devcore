@@ -122,11 +122,45 @@ create table if not exists runs (
     task_uuid uuid references tasks(task_uuid) on delete set null,
     status text not null default 'queued',
     runner text,
+    task_id text,
+    title text,
+    command jsonb,
+    timeout_seconds double precision,
+    attempt_number integer not null default 0,
+    max_attempts integer not null default 3,
+    worker_token text,
+    heartbeat_at timestamptz,
+    cancellation_requested boolean not null default false,
+    output text,
+    error text,
+    exit_code integer,
+    idempotency_key text,
+    actor text not null default 'system',
+    env jsonb not null default '{}'::jsonb,
+    execution_ready boolean not null default false,
     started_at timestamptz,
     finished_at timestamptz,
     metadata jsonb not null default '{}'::jsonb,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
+);
+
+create unique index if not exists uq_runs_project_idempotency
+    on runs(project_id, idempotency_key) where idempotency_key is not null;
+create index if not exists idx_runs_ready_project_status_created
+    on runs(project_id, status, created_at) where execution_ready;
+
+create table if not exists external_effects (
+    project_id text not null references projects(id) on delete cascade,
+    idempotency_key text not null,
+    effect_type text not null,
+    status text not null,
+    result jsonb,
+    error text,
+    created_at timestamptz not null default now(),
+    completed_at timestamptz,
+    primary key (project_id, idempotency_key, effect_type),
+    constraint external_effects_status check (status in ('pending', 'completed', 'failed'))
 );
 
 create table if not exists plugins (
@@ -280,17 +314,32 @@ create index if not exists idx_memory_project_name
 -- Row Level Security (RLS) setup for project isolation
 alter table tasks enable row level security;
 alter table runs enable row level security;
+alter table runs force row level security;
+alter table external_effects enable row level security;
+alter table external_effects force row level security;
 alter table events enable row level security;
 alter table audit_log enable row level security;
 alter table artifacts enable row level security;
+alter table plugins enable row level security;
+alter table plugins force row level security;
 alter table memory_entries enable row level security;
+alter table memory_entries force row level security;
 alter table budgets enable row level security;
+alter table budgets force row level security;
+alter table schedules enable row level security;
+alter table schedules force row level security;
+alter table schedule_history enable row level security;
+alter table schedule_history force row level security;
 
 create policy rls_tasks_project_isolation on tasks
     for all using (project_id = nullif(current_setting('app.current_project_id', true), ''));
 
 create policy rls_runs_project_isolation on runs
     for all using (project_id = nullif(current_setting('app.current_project_id', true), ''));
+
+create policy rls_external_effects_project_isolation on external_effects
+    for all using (project_id = nullif(current_setting('app.current_project_id', true), ''))
+    with check (project_id = nullif(current_setting('app.current_project_id', true), ''));
 
 create policy rls_events_project_isolation on events
     for all using (project_id = nullif(current_setting('app.current_project_id', true), ''));
@@ -301,8 +350,25 @@ create policy rls_audit_log_project_isolation on audit_log
 create policy rls_artifacts_project_isolation on artifacts
     for all using (project_id = nullif(current_setting('app.current_project_id', true), ''));
 
+create policy rls_plugins_project_isolation on plugins
+    for all using (project_id = nullif(current_setting('app.current_project_id', true), ''))
+    with check (project_id = nullif(current_setting('app.current_project_id', true), ''));
+
 create policy rls_memory_project_isolation on memory_entries
     for all using (project_id = nullif(current_setting('app.current_project_id', true), ''));
 
 create policy rls_budgets_project_isolation on budgets
     for all using (project_id = nullif(current_setting('app.current_project_id', true), ''));
+
+create policy rls_schedules_project_isolation on schedules
+    for all using (project_id = nullif(current_setting('app.current_project_id', true), ''))
+    with check (project_id = nullif(current_setting('app.current_project_id', true), ''));
+
+create policy rls_schedule_history_project_isolation on schedule_history
+    for all using (exists (
+        select 1 from schedules s where s.id = schedule_history.schedule_id
+        and s.project_id = nullif(current_setting('app.current_project_id', true), '')
+    )) with check (exists (
+        select 1 from schedules s where s.id = schedule_history.schedule_id
+        and s.project_id = nullif(current_setting('app.current_project_id', true), '')
+    ));

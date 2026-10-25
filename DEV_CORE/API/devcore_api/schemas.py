@@ -23,6 +23,33 @@ class ErrorResponse(BaseModel):
     trace_id: str = Field(min_length=1)
 
 
+class AutomationHookRequest(BaseModel):
+    project: str = Field(min_length=1)
+    hook: Literal["session_start", "session_end", "git_commit", "tool_use"]
+    source: Literal["codex", "claude", "gemini", "git"]
+    session: Optional[str] = None
+    commit: Optional[str] = None
+    tool: Optional[str] = None
+    reported_outcome: Optional[Literal["succeeded", "failed"]] = None
+    occurrence: Optional[str] = None
+
+
+class GitScanRequest(BaseModel):
+    project: str = Field(min_length=1)
+    commit: Optional[str] = None
+
+
+class ProjectJobRequest(BaseModel):
+    project: str = Field(min_length=1)
+
+
+class DailyMetricsScheduleRequest(BaseModel):
+    project: str = Field(min_length=1)
+    timezone: str = Field(min_length=1, max_length=80)
+    hour: int = Field(ge=0, le=23)
+    minute: int = Field(ge=0, le=59)
+
+
 class WorkflowStepState(BaseModel):
     id: str
     status: str

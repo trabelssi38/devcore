@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import concurrent.futures
+import os
 import threading
 import time
 from pathlib import Path
@@ -11,6 +12,8 @@ from uuid import uuid4
 from ..context import validate_project_id
 from ..db import get_local_data_root
 from .effects import EffectIdempotencyStore
+from .postgres_effects import PostgresEffectIdempotencyStore
+from .postgres_store import PostgresRunStore
 from .executor import ProcessRunExecutor
 from .models import (
     RunQuotaConfig,
@@ -26,20 +29,24 @@ class DurableRunEngine:
 
     def __init__(
         self,
-        store: SqliteRunStore | None = None,
+        store: SqliteRunStore | PostgresRunStore | None = None,
         quota_config: RunQuotaConfig | None = None,
         executor: ProcessRunExecutor | None = None,
         local_root: Path | None = None,
     ):
         self.local_root = local_root or get_local_data_root()
-        self.store = store or SqliteRunStore()
+        self.store = store if store is not None else self._configured_store()
         self.quota_config = quota_config or RunQuotaConfig()
         self.scheduler = FairRunScheduler(self.store, self.quota_config)
         self.executor = executor or ProcessRunExecutor(
             local_root=self.local_root,
             output_limit_bytes=self.quota_config.output_limit_bytes,
         )
-        self.effects = EffectIdempotencyStore(self.store)
+        self.effects = (
+            PostgresEffectIdempotencyStore(self.store)
+            if isinstance(self.store, PostgresRunStore)
+            else EffectIdempotencyStore(self.store)
+        )
         self._worker_thread: threading.Thread | None = None
         self._worker_running = False
         self._wake_event = threading.Event()
@@ -49,6 +56,24 @@ class DurableRunEngine:
         self._futures_lock = threading.Lock()
         self._active_runs: set[str] = set()
         self._runs_lock = threading.Lock()
+
+    @staticmethod
+    def _configured_store() -> SqliteRunStore | PostgresRunStore:
+        mode = os.environ.get("DEVCORE_RUN_STORE", "").strip().lower()
+        team_mode = (
+            os.environ.get("DEVCORE_TASK_READ_MODE", "").strip().lower() == "postgres"
+            or os.environ.get("DEVCORE_IDENTITY_READ_MODE", "").strip().lower() == "postgres"
+        )
+        if mode not in {"", "sqlite", "postgres"}:
+            raise ValueError(f"Invalid DEVCORE_RUN_STORE: {mode}")
+        if mode == "sqlite" and team_mode:
+            raise ValueError("SQLite run store is forbidden in PostgreSQL team mode")
+        if mode == "postgres" or team_mode:
+            dsn = os.environ.get("DEVCORE_DATABASE_URL", "").strip()
+            if not dsn:
+                raise ValueError("DEVCORE_DATABASE_URL is required for PostgreSQL runs")
+            return PostgresRunStore(dsn)
+        return SqliteRunStore()
 
 
 
@@ -74,6 +99,8 @@ class DurableRunEngine:
         """Start a dedicated background execution thread with concurrent run dispatch."""
         if self._worker_running:
             return
+        if isinstance(self.store, PostgresRunStore):
+            self.store.verify_ready()
         self._stop_event.clear()
         self._worker_running = True
         self._thread_pool = concurrent.futures.ThreadPoolExecutor(

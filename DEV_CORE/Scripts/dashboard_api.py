@@ -10,10 +10,13 @@ import hmac
 import hashlib
 import secrets
 import sqlite3
-from contextlib import closing
+from contextlib import closing, contextmanager
+from queue import Empty, LifoQueue
+from threading import BoundedSemaphore
 from datetime import datetime
 import time
 import random
+import uuid
 
 sys.path.append(str(Path(__file__).resolve().parent))
 from dashboard.snapshots import resolve_snapshot, read_snapshot_artifact, pin_snapshot
@@ -39,6 +42,8 @@ DEFAULT_ALLOWED_ORIGINS = ["http://127.0.0.1:20129", "http://localhost:20129"]
 DEFAULT_MAX_REQUEST_BODY_BYTES = 1024 * 1024
 DEFAULT_DASHBOARD_RESOURCE_PAGE_SIZE = 20
 DASHBOARD_AUTH_PROFILE = os.environ.get("DEVCORE_DASHBOARD_AUTH_PROFILE", "legacy").strip()
+POSTGRES_DASHBOARD = os.environ.get("DEVCORE_IDENTITY_READ_MODE", "").strip().lower() == "postgres"
+POSTGRES_DSN = os.environ.get("DEVCORE_DATABASE_URL", "").strip()
 if DASHBOARD_AUTH_PROFILE not in {"legacy", "individual"}:
     raise ValueError("Unknown DEVCORE_DASHBOARD_AUTH_PROFILE")
 HTTP_CONTEXT_MAX_BYTES = int(os.environ.get("DEVCORE_HTTP_CONTEXT_MAX_BYTES", "12000"))
@@ -784,6 +789,8 @@ from devcore_engine.services.task_mutations import (
 
 
 def complete_task(project, task_id, expected_version=None, *, context=None):
+    if POSTGRES_DASHBOARD:
+        return _postgres_task_mutation(project, task_id, expected_version, "task.complete", "done", context)
     return complete_task_usecase(
         project,
         task_id,
@@ -794,6 +801,9 @@ def complete_task(project, task_id, expected_version=None, *, context=None):
 
 
 def transition_individual_task(project, task_id, expected_version, *, operation, context):
+    if POSTGRES_DASHBOARD:
+        target = "paused" if operation == "pause" else "in_progress"
+        return _postgres_task_mutation(project, task_id, expected_version, f"task.{operation}", target, context)[0]
     return transition_task_usecase(
         project,
         task_id,
@@ -805,6 +815,8 @@ def transition_individual_task(project, task_id, expected_version, *, operation,
 
 
 def delete_task(project, task_id, expected_version=None, *, context=None):
+    if POSTGRES_DASHBOARD:
+        return _postgres_task_mutation(project, task_id, expected_version, "task.delete", "deleted", context)
     return delete_task_usecase(
         project,
         task_id,
@@ -812,6 +824,186 @@ def delete_task(project, task_id, expected_version=None, *, context=None):
         context=context,
         db_path=get_local_path("devcore.db"),
     )
+
+
+def _postgres_connect():
+    from urllib.parse import urlparse
+    import pg8000.dbapi
+    parsed = urlparse(POSTGRES_DSN.replace("postgresql+pg8000://", "postgresql://", 1))
+    return pg8000.dbapi.connect(user=parsed.username, password=parsed.password,
+        host=parsed.hostname or "127.0.0.1", port=parsed.port or 5432,
+        database=(parsed.path or "/postgres").lstrip("/"))
+
+
+_task_read_idle = LifoQueue(maxsize=20)
+_task_read_slots = BoundedSemaphore(20)
+
+
+@contextmanager
+def _postgres_task_read_connection():
+    """Bound reused connections; rollback removes transaction-local RLS context."""
+    if not _task_read_slots.acquire(timeout=5):
+        raise RuntimeError("PostgreSQL task reader capacity reached")
+    conn = None
+    try:
+        try:
+            conn = _task_read_idle.get_nowait()
+        except Empty:
+            conn = _postgres_connect()
+        yield conn
+    finally:
+        if conn is not None:
+            try:
+                conn.rollback()
+                _task_read_idle.put_nowait(conn)
+            except Exception:
+                conn.close()
+        _task_read_slots.release()
+
+
+def _postgres_scoped_browser_tasks(secret, project, origin, limit, offset):
+    """Authorize and project tasks on one connection in one worker thread."""
+    from devcore_engine.security.identity import READ, AuthenticationRequired, ProjectAccessDenied, IdentityUnavailable
+    from devcore_engine.security.postgres_browser_sessions import authorize_session
+
+    try:
+        with _postgres_task_read_connection() as conn:
+            authorize_session(POSTGRES_DSN, secret, project, READ, origin, connection=conn)
+            cur = conn.cursor()
+            cur.execute("SELECT set_config('app.current_project_id', %s, true)", (project,))
+            cur.execute("SELECT legacy_id, project_id, title, status, mode, steps_total, steps_done, started_at, completed_at, version FROM tasks WHERE project_id = %s AND status <> 'deleted' ORDER BY created_at, task_number LIMIT %s OFFSET %s", (project, limit, offset))
+            rows = cur.fetchall()
+        return [{"id": r[0], "project": r[1], "title": r[2], "status": r[3],
+                 "mode": r[4], "steps_total": r[5], "steps_done": r[6],
+                 "started_at": r[7], "completed_at": r[8], "version": r[9]} for r in rows]
+    except (AuthenticationRequired, ProjectAccessDenied, IdentityUnavailable):
+        raise
+    except Exception as exc:
+        raise IdentityUnavailable("PostgreSQL task reader unavailable") from exc
+
+
+def _postgres_task_mutation(project, task_id, expected_version, action, target, context):
+    if context is None or context.project_id != project or not context.user_id:
+        raise TaskMutationConflict("Project mutation principal required", "project_access_denied")
+    if type(expected_version) is not int or expected_version < 1:
+        raise TaskMutationConflict("Task version required", "task_version_required")
+    conn = _postgres_connect()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT set_config('app.current_project_id', %s, false)", (project,))
+        cur.execute("SELECT pg_advisory_xact_lock(hashtext(%s))", (project,))
+        cur.execute("SELECT task_uuid, legacy_id, status, version, depends_on_uuid FROM tasks WHERE project_id=%s AND (legacy_id=%s OR task_uuid::text=%s) FOR UPDATE", (project, task_id, task_id))
+        rows = cur.fetchall()
+        if len(rows) > 1:
+            raise TaskMutationConflict("Ambiguous task identifier", "ambiguous_task_identifier")
+        row = rows[0] if rows else None
+        if row is None:
+            return (False, f"Task {task_id} not found in project")
+        task_uuid, legacy_id, before, version, dependency_uuid = row
+        if expected_version is not None and expected_version != version:
+            raise TaskMutationConflict("Task version conflict", "stale_task_version")
+        allowed = {"task.pause": "in_progress", "task.resume": "paused", "task.complete": None, "task.delete": None}
+        if action in ("task.pause", "task.resume") and before != allowed[action]:
+            raise TaskMutationConflict("Task transition is not valid", "invalid_transition")
+        if before == "deleted":
+            return (False, f"Task {task_id} not found in project")
+        if action == "task.complete" and before == "done":
+            conn.commit()
+            return (True, "Task already completed")
+        if action == "task.delete":
+            cur.execute("SELECT legacy_id FROM tasks WHERE project_id=%s AND depends_on_uuid=%s AND status IN ('todo','in_progress') LIMIT 1", (project, task_uuid))
+            dependent = cur.fetchone()
+            if dependent:
+                conn.rollback()
+                return (False, f"Task {task_id} is required by {dependent[0]}")
+        if action == "task.resume":
+            cur.execute("SELECT 1 FROM tasks WHERE project_id=%s AND status='in_progress' LIMIT 1", (project,))
+            if cur.fetchone():
+                raise TaskMutationConflict("Project already has an active task", "task_transition_conflict")
+            if dependency_uuid:
+                cur.execute("SELECT status FROM tasks WHERE project_id=%s AND task_uuid=%s", (project, dependency_uuid))
+                dependency = cur.fetchone()
+                if dependency is None or dependency[0] != "done":
+                    raise TaskMutationConflict("Task dependency incomplete", "task_transition_conflict")
+        new_version = version + 1
+        cur.execute("UPDATE tasks SET status=%s, version=%s, steps_done=CASE WHEN %s='done' THEN steps_total ELSE steps_done END, completed_at=CASE WHEN %s='done' THEN now() ELSE completed_at END, updated_at=now() WHERE task_uuid=%s", (target, new_version, target, target, task_uuid))
+        details = json.dumps({"schema_version": 1, "before": {"status": before, "version": version}, "after": {"status": target, "version": new_version}})
+        actor = getattr(context, "user_id", None) or "system"
+        cur.execute("INSERT INTO audit_log (id, project_id, task_uuid, actor, action, entity_type, entity_id, details) VALUES (%s,%s,%s,%s,%s,'task',%s,%s::jsonb)", (str(uuid.uuid4()), project, task_uuid, actor, action, legacy_id or str(task_uuid), details))
+        event_type = {"task.complete": "TaskCompleted", "task.delete": "TaskDeleted",
+                      "task.pause": "TaskPaused", "task.resume": "TaskResumed"}[action]
+        payload = json.dumps({"task_id": legacy_id or str(task_uuid), "before_status": before,
+                              "after_status": target, "version": new_version})
+        cur.execute("INSERT INTO events (id, project_id, task_uuid, event_type, source, payload) VALUES (%s,%s,%s,%s,%s,%s::jsonb)",
+                    (str(uuid.uuid4()), project, task_uuid, event_type, "dashboard", payload))
+        conn.commit()
+        return (True, "Task transition completed" if action in ("task.pause", "task.resume") else "Task updated")
+    except TaskMutationConflict:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def _postgres_task_audit(principal, limit, before_id, task_id):
+    from devcore_engine.services.task_audit import (
+        InvalidAuditCursor, TaskAuditUnavailable, QUALIFIED_ACTIONS, audit_identifier,
+        safe_identifier, MAX_AUDIT_BYTES,
+    )
+    from devcore_engine.services.project_context import encode_context
+    if not 1 <= limit <= 100:
+        raise ValueError("Invalid audit limit")
+    if before_id is not None:
+        try:
+            audit_identifier(before_id)
+        except (ValueError, TypeError, AttributeError) as exc:
+            raise InvalidAuditCursor("Invalid scoped audit cursor") from exc
+    if task_id is not None:
+        safe_identifier(task_id)
+    conn = _postgres_connect()
+    try:
+        cur = conn.cursor()
+        cur.execute("SELECT set_config('app.current_project_id', %s, false)", (principal.project_id,))
+        where = "a.project_id=%s AND a.entity_type='task' AND a.action IN ('task.complete','task.delete','task.pause','task.resume')"
+        values = [principal.project_id]
+        if task_id is not None:
+            where += " AND a.entity_id=%s"
+            values.append(task_id)
+        if before_id is not None:
+            cur.execute("SELECT created_at,id FROM audit_log WHERE " + where.replace("a.", "") + " AND id=%s", (*values, before_id))
+            boundary = cur.fetchone()
+            if boundary is None:
+                raise InvalidAuditCursor("Invalid scoped audit cursor")
+            where += " AND (a.created_at,a.id)<(%s,%s)"
+            values.extend(boundary)
+        cur.execute("SELECT a.id,a.entity_id,a.actor,a.action,a.created_at,a.details FROM audit_log a WHERE " + where + " ORDER BY a.created_at DESC,a.id DESC LIMIT %s", (*values, limit + 1))
+        rows = cur.fetchall()
+        result = {"success": True, "project": principal.project_id, "events": [],
+                  "supported_actions": list(QUALIFIED_ACTIONS), "next_before_id": None,
+                  "has_more": len(rows) > limit}
+        for row in rows[:limit]:
+            details = row[5] if isinstance(row[5], dict) else json.loads(row[5])
+            if details.get("schema_version") != 1 or not all(
+                isinstance(details.get(state), dict) and details[state].get("status") in
+                {"todo", "in_progress", "paused", "done", "blocked", "deleted"}
+                and type(details[state].get("version")) is int for state in ("before", "after")):
+                raise TaskAuditUnavailable("Qualified task audit unavailable")
+            event = {"id": audit_identifier(row[0]), "project": principal.project_id,
+                     "task_id": safe_identifier(row[1]), "actor": row[2], "action": row[3],
+                     "created_at": row[4].strftime("%Y-%m-%d %H:%M:%S"),
+                     "before": details["before"], "after": details["after"]}
+            result["events"].append(event)
+            result["next_before_id"] = event["id"] if result["has_more"] else None
+            if len((encode_context(result) + "\n").encode("utf-8")) > MAX_AUDIT_BYTES:
+                result["events"].pop()
+                if not result["events"]:
+                    raise TaskAuditUnavailable("Qualified task audit unavailable")
+                result["has_more"] = True
+                result["next_before_id"] = result["events"][-1]["id"]
+                break
+        return result
+    finally:
+        conn.close()
 
 # FastAPI imports and Application Setup
 from fastapi import FastAPI, Request, HTTPException, Response, Query
@@ -894,19 +1086,36 @@ async def individual_project_access(request: Request, call_next):
     if engine_source not in sys.path:
         sys.path.insert(0, engine_source)
     from devcore_engine.security.identity import (
-        SqliteIdentityProvider, AuthenticationRequired, ProjectAccessDenied,
+        SqliteIdentityProvider, PostgresIdentityProvider, AuthenticationRequired, ProjectAccessDenied,
         IdentityUnavailable, READ, WRITE, CONTEXT_READ, AUDIT_READ,
     )
     identity_path = os.environ.get("DEVCORE_IDENTITY_STORE", str(get_local_path("Security", "individual_identity.db")))
     action = ({"/api/project/context": CONTEXT_READ, "/api/project/task-audit": AUDIT_READ}.get(path, READ)
               if method == "GET" else WRITE)
     try:
-        provider = SqliteIdentityProvider(identity_path)
+        if POSTGRES_DASHBOARD and browser_secret and method == "GET" and path == "/api/dashboard/tasks":
+            try:
+                limit = int(request.query_params.get("limit", "20"))
+                offset = int(request.query_params.get("offset", "0"))
+            except (TypeError, ValueError):
+                return JSONResponse(status_code=422, content={"detail": "Invalid pagination"})
+            if not 1 <= limit <= 100 or offset < 0:
+                return JSONResponse(status_code=400, content={"detail": "Invalid pagination"})
+            origin = trusted_session_origin(request)
+            tasks = await asyncio.to_thread(
+                _postgres_scoped_browser_tasks, browser_secret, project, origin, limit, offset,
+            )
+            from fastapi.encoders import jsonable_encoder
+            return JSONResponse(content=jsonable_encoder(tasks), headers={"Cache-Control": "no-store"})
+        provider = PostgresIdentityProvider(POSTGRES_DSN) if POSTGRES_DASHBOARD else SqliteIdentityProvider(identity_path)
         if browser_secret:
-            from devcore_engine.security.browser_sessions import authorize_session
+            if POSTGRES_DASHBOARD:
+                from devcore_engine.security.postgres_browser_sessions import authorize_session
+            else:
+                from devcore_engine.security.browser_sessions import authorize_session
             origin = trusted_session_origin(request, require_origin=method != "GET")
             session = await asyncio.to_thread(
-                authorize_session, identity_path, browser_secret, project,
+                authorize_session, POSTGRES_DSN if POSTGRES_DASHBOARD else identity_path, browser_secret, project,
                 action, origin,
                 csrf=request.headers.get(CSRF_HEADER), mutate=method != "GET",
             )
@@ -999,6 +1208,12 @@ async def browser_session_route(request: Request):
     from devcore_engine.security.browser_sessions import (
         COOKIE, create_session, csrf_for_session, session_info, authorize_session, revoke_session,
     )
+    if POSTGRES_DASHBOARD:
+        from devcore_engine.security.postgres_browser_sessions import (
+            create_session as pg_create_session, session_info as pg_session_info,
+            authorize_session as pg_authorize_session, revoke_session as pg_revoke_session,
+        )
+        from devcore_engine.security.postgres_password_sessions import create_password_session as pg_password_session
     origin = trusted_session_origin(request, require_origin=request.method != "GET")
     identity_path = os.environ.get("DEVCORE_IDENTITY_STORE", str(get_local_path("Security", "individual_identity.db")))
     secret = request.cookies.get(COOKIE)
@@ -1015,23 +1230,34 @@ async def browser_session_route(request: Request):
                 if "user_id" in data or "password" in data:
                     raise ValueError("Mixed authentication methods")
                 session, secret = await asyncio.to_thread(
-                    create_session, identity_path, authorization, project, origin, previous=secret,
+                    pg_create_session if POSTGRES_DASHBOARD else create_session,
+                    POSTGRES_DSN if POSTGRES_DASHBOARD else identity_path,
+                    authorization, project, origin, previous=secret,
                 )
             else:
                 from devcore_engine.security.passwords import create_password_session, LoginBusy
                 user_id = validate_safe_id(data.get("user_id"), "user")
                 try:
                     session, secret = await asyncio.to_thread(
-                        create_password_session, identity_path, user_id, data.get("password"), project, origin, previous=secret,
+                        pg_password_session if POSTGRES_DASHBOARD else create_password_session,
+                        POSTGRES_DSN if POSTGRES_DASHBOARD else identity_path,
+                        user_id, data.get("password"), project, origin, previous=secret,
                     )
                 except LoginBusy:
                     raise HTTPException(429, detail="Login capacity reached", headers={"Retry-After": "1"})
         else:
-            session = await asyncio.to_thread(session_info, identity_path, secret, origin)
+            session = await asyncio.to_thread(
+                pg_session_info if POSTGRES_DASHBOARD else session_info,
+                POSTGRES_DSN if POSTGRES_DASHBOARD else identity_path, secret, origin)
             if request.method == "DELETE":
-                await asyncio.to_thread(authorize_session, identity_path, secret, session.project_id, "task.read", origin,
+                await asyncio.to_thread(
+                    pg_authorize_session if POSTGRES_DASHBOARD else authorize_session,
+                    POSTGRES_DSN if POSTGRES_DASHBOARD else identity_path,
+                    secret, session.project_id, "task.read", origin,
                     csrf=request.headers.get(CSRF_HEADER), mutate=True)
-                await asyncio.to_thread(revoke_session, identity_path, secret)
+                await asyncio.to_thread(
+                    pg_revoke_session if POSTGRES_DASHBOARD else revoke_session,
+                    POSTGRES_DSN if POSTGRES_DASHBOARD else identity_path, secret)
         content = {"user_id": session.principal.user_id, "project": session.project_id,
                    "expires_at": session.expires_at, "csrf_token": csrf_for_session(secret),
                    "actions": list(session.actions)}
@@ -1262,8 +1488,29 @@ def get_project_context_route(request: Request, project: str,
     if budget > HTTP_CONTEXT_MAX_BYTES:
         raise HTTPException(status_code=422, detail="Requested budget exceeds server context limit")
     try:
-        result = load_registered_project_context(get_local_path("devcore.db"), principal,
-                                                 budget_bytes=budget, query=query)
+        if POSTGRES_DASHBOARD:
+            from devcore_engine.services.project_context import load_project_context
+            conn = _postgres_connect()
+            try:
+                cur = conn.cursor()
+                cur.execute("SELECT set_config('app.current_project_id', %s, false)", (project,))
+                cur.execute("SELECT root_path FROM projects WHERE id=%s AND status='active'", (project,))
+                row = cur.fetchone()
+            finally:
+                conn.close()
+            if not row:
+                raise ProjectContextUnavailable("Registered project context unavailable")
+            root = Path(row[0])
+            if not root.is_absolute() or not root.is_dir():
+                raise ProjectContextUnavailable("Registered project context unavailable")
+            root = root.resolve()
+            directory = (root / "docs" / "project-context").resolve()
+            if not directory.is_relative_to(root) or not directory.is_dir():
+                raise ProjectContextUnavailable("Registered project context unavailable")
+            result = load_project_context(directory, project, budget_bytes=budget, query=query)
+        else:
+            result = load_registered_project_context(get_local_path("devcore.db"), principal,
+                                                     budget_bytes=budget, query=query)
     except ContextBudgetExceeded as exc:
         raise HTTPException(status_code=413, detail=str(exc)) from exc
     except ProjectContextUnavailable as exc:
@@ -1287,8 +1534,12 @@ async def task_audit_route(request: Request, project: str):
         limit_text = request.query_params.get("limit", "20")
         if len(limit_text) > 3 or not limit_text.isascii() or not limit_text.isdigit():
             raise ValueError("Invalid limit")
-        result = await asyncio.to_thread(read_task_audit, get_local_path("devcore.db"), principal,
-            limit=int(limit_text), before_id=request.query_params.get("before_id"), task_id=request.query_params.get("task_id"))
+        if POSTGRES_DASHBOARD:
+            result = await asyncio.to_thread(_postgres_task_audit, principal,
+                int(limit_text), request.query_params.get("before_id"), request.query_params.get("task_id"))
+        else:
+            result = await asyncio.to_thread(read_task_audit, get_local_path("devcore.db"), principal,
+                limit=int(limit_text), before_id=request.query_params.get("before_id"), task_id=request.query_params.get("task_id"))
     except (InvalidAuditCursor, ValueError):
         raise HTTPException(status_code=400, detail={"code": "invalid_audit_arguments", "message": "Invalid scoped audit arguments"})
     except TaskAuditUnavailable:
@@ -1306,6 +1557,23 @@ def get_dashboard_tasks_route(request: Request, project: str, limit: int = 20, o
         project = validate_safe_id(project, "project")
         if not 1 <= limit <= 100 or offset < 0:
             raise ValueError("Invalid pagination")
+        if POSTGRES_DASHBOARD:
+            from urllib.parse import urlparse
+            import pg8000.dbapi
+            parsed = urlparse(POSTGRES_DSN.replace("postgresql+pg8000://", "postgresql://", 1))
+            conn = pg8000.dbapi.connect(user=parsed.username, password=parsed.password,
+                host=parsed.hostname or "127.0.0.1", port=parsed.port or 5432,
+                database=(parsed.path or "/postgres").lstrip("/"))
+            try:
+                cur = conn.cursor()
+                cur.execute("SELECT set_config('app.current_project_id', %s, false)", (project,))
+                cur.execute("SELECT legacy_id, project_id, title, status, mode, steps_total, steps_done, started_at, completed_at, version FROM tasks WHERE project_id = %s AND status <> 'deleted' ORDER BY created_at, task_number LIMIT %s OFFSET %s", (project, limit, offset))
+                rows = cur.fetchall()
+            finally:
+                conn.close()
+            return [{"id": r[0], "project": r[1], "title": r[2], "status": r[3],
+                     "mode": r[4], "steps_total": r[5], "steps_done": r[6],
+                     "started_at": r[7], "completed_at": r[8], "version": r[9]} for r in rows]
         db_path = get_local_path("devcore.db")
         if not db_path.is_file():
             raise FileNotFoundError(f"Task database not found: {db_path}")

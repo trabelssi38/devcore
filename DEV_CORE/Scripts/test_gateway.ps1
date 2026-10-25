@@ -45,7 +45,7 @@ foreach ($requiredCommand in @("guide onboarding", "guide onboarding --json", "g
 
 $healthJson = powershell -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $gatewayScript -Command "health --json" | Out-String
 $health = $healthJson | ConvertFrom-Json
-if (-not $health.overall) {
+if (-not $health.overall_status) {
     throw "gateway health --json should return health report JSON"
 }
 

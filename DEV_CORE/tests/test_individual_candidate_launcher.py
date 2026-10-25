@@ -1,5 +1,6 @@
 """Launcher preflight refuses incomplete inputs before server imports/listening."""
 import hashlib
+import ipaddress
 import json
 import os
 from pathlib import Path
@@ -7,11 +8,47 @@ import subprocess
 import sys
 import socket
 import time
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
 from Scripts import launch_individual_candidate as launcher
 from Scripts.build_individual_bundle import build
+
+
+def test_lan_tls_requires_exact_private_address_and_matching_certificate(tmp_path):
+    from cryptography import x509
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    from cryptography.x509.oid import NameOID
+
+    address = ipaddress.ip_address("172.16.210.32")
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    subject = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "DevCore LAN fixture")])
+    now = datetime.now(timezone.utc)
+    certificate = (x509.CertificateBuilder().subject_name(subject).issuer_name(subject)
+                   .public_key(key.public_key()).serial_number(x509.random_serial_number())
+                   .not_valid_before(now - timedelta(minutes=1))
+                   .not_valid_after(now + timedelta(days=1))
+                   .add_extension(x509.SubjectAlternativeName([x509.IPAddress(address)]), critical=False)
+                   .sign(key, hashes.SHA256()))
+    certfile, keyfile = tmp_path / "cert.pem", tmp_path / "key.pem"
+    certfile.write_bytes(certificate.public_bytes(serialization.Encoding.PEM))
+    keyfile.write_bytes(key.private_bytes(serialization.Encoding.PEM,
+                                         serialization.PrivateFormat.TraditionalOpenSSL,
+                                         serialization.NoEncryption()))
+
+    assert launcher.lan_tls_settings(None, None, None, 20129)["origin"] == "http://127.0.0.1:20129"
+    for bind in ("0.0.0.0", "127.0.0.1", "169.254.1.2", "8.8.8.8", "devcore.local"):
+        with pytest.raises(ValueError):
+            launcher.lan_tls_settings(bind, certfile, keyfile, 20129)
+    with pytest.raises(ValueError, match="both TLS files"):
+        launcher.lan_tls_settings(str(address), certfile, None, 20129)
+    with pytest.raises(ValueError, match="SAN"):
+        launcher.lan_tls_settings("172.16.210.33", certfile, keyfile, 20129)
+    settings = launcher.lan_tls_settings(str(address), certfile, keyfile, 20129)
+    assert settings["host"] == str(address)
+    assert settings["origin"] == "https://172.16.210.32:20129"
 
 
 @pytest.mark.parametrize("pin,port", [("", 20129), ("F" * 64, 20129), ("0" * 64, 0), ("0" * 64, 65536)])

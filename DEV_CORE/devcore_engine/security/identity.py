@@ -196,6 +196,73 @@ class SqliteIdentityProvider:
             return principal_for_credential(conn, row, project, action, timestamp)
 
 
+class PostgresIdentityProvider:
+    """Read-only bearer authorization against the qualified team schema."""
+
+    def __init__(self, dsn: str):
+        if not isinstance(dsn, str) or not dsn.strip():
+            raise ValueError("PostgreSQL identity DSN required")
+        self.dsn = dsn
+
+    def authorize(self, authorization, project, action, *, now=None):
+        project = validate_project_id(project)
+        if action not in ACTIONS:
+            raise ProjectAccessDenied("Unsupported action")
+        if not isinstance(authorization, str) or not authorization.startswith("Bearer "):
+            raise AuthenticationRequired("Individual credential required")
+        token = authorization[7:].strip()
+        if not token or len(token) > 512:
+            raise AuthenticationRequired("Invalid individual credential")
+        timestamp = time.time() if now is None else now
+        try:
+            from urllib.parse import urlparse
+            import pg8000.dbapi as pg
+            parsed = urlparse(self.dsn.replace("postgresql+pg8000://", "postgresql://", 1))
+            conn = pg.connect(
+                user=parsed.username,
+                password=parsed.password,
+                host=parsed.hostname or "127.0.0.1",
+                port=parsed.port or 5432,
+                database=(parsed.path or "/postgres").lstrip("/"),
+            )
+            try:
+                cur = conn.cursor()
+                cur.execute(
+                    """select s.id,s.user_id,s.expires_at,s.revoked_at,s.metadata,u.status,m.role
+                       from sessions s join users u on u.id=s.user_id
+                       left join project_memberships m
+                         on m.user_id=s.user_id and m.project_id=%s
+                       where s.token_hash=%s""",
+                    (project, hashlib.sha256(token.encode()).hexdigest()),
+                )
+                row = cur.fetchone()
+            finally:
+                conn.close()
+        except Exception as exc:
+            raise IdentityUnavailable("PostgreSQL identity store unavailable") from exc
+        if row is None or row[5] != "active" or row[3] is not None:
+            raise AuthenticationRequired("Invalid or expired individual credential")
+        expires = row[2]
+        if hasattr(expires, "timestamp"):
+            expires = expires.timestamp()
+        if float(expires) <= timestamp:
+            raise AuthenticationRequired("Invalid or expired individual credential")
+        try:
+            metadata = row[4] if isinstance(row[4], dict) else json.loads(row[4] or "{}")
+            projects, actions = metadata["projects"], metadata["actions"]
+            if not isinstance(projects, list) or not isinstance(actions, list):
+                raise ValueError("Invalid scope")
+        except (KeyError, TypeError, ValueError):
+            raise AuthenticationRequired("Invalid individual credential scope") from None
+        if project not in projects or action not in actions:
+            raise ProjectAccessDenied("Project action denied")
+        role = row[6]
+        allowed = ACTIONS if role in ("owner", "maintainer") else ROLES.get(role, ())
+        if action not in allowed:
+            raise ProjectAccessDenied("Project action denied")
+        return Principal(row[1], row[0], project, action)
+
+
 def principal_for_credential(conn, row, project, action, timestamp):
     if row is None or row["enabled"] != 1 or row["revoked"] != 0 or not row["issued_at"] <= timestamp < row["expires_at"]:
         raise AuthenticationRequired("Invalid or expired individual credential")

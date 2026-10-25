@@ -284,7 +284,14 @@ def reconcile(source_path: Path, destination_path: Path) -> dict:
                 source.execute("SELECT key, value FROM runtime_state ORDER BY key")
             )
         source_tasks_digest = digest_rows(source.execute("SELECT * FROM tasks ORDER BY project_id, id"))
-        source_edges_digest = digest_rows(source.execute("SELECT * FROM kg_edges ORDER BY id"))
+        source_edge_columns = [row[1] for row in source.execute("PRAGMA table_info(kg_edges)")]
+        if "project_id" in source_edge_columns:
+            source_edges_digest = digest_rows(source.execute(
+                "SELECT id, project_id, from_node, to_node, type, properties "
+                "FROM kg_edges ORDER BY id"))
+        else:
+            source_edges_digest = digest_rows(source.execute(
+                "SELECT id, from_node, to_node, type, properties FROM kg_edges ORDER BY id"))
         candidate.execute("PRAGMA foreign_keys=ON")
         candidate.execute("BEGIN IMMEDIATE")
         missing_projects = candidate.execute("""
@@ -307,7 +314,7 @@ def reconcile(source_path: Path, destination_path: Path) -> dict:
             candidate.execute("""
                 CREATE TABLE kg_edges_quarantine (
                     id INTEGER PRIMARY KEY,
-                    project_id TEXT NOT NULL DEFAULT 'devcore',
+                    project_id TEXT,
                     from_node TEXT NOT NULL,
                     to_node TEXT NOT NULL,
                     type TEXT NOT NULL,

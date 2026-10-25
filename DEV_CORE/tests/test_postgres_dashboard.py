@@ -1,0 +1,298 @@
+"""Project isolation and output safety for the team Cockpit projection."""
+
+from contextlib import contextmanager
+from datetime import datetime, timezone
+from decimal import Decimal
+import json
+from pathlib import Path
+import sys
+
+import pytest
+
+API_ROOT = Path(__file__).resolve().parents[1] / "API"
+if str(API_ROOT) not in sys.path:
+    sys.path.insert(0, str(API_ROOT))
+
+from devcore_api.team_cockpit import render_team_cockpit
+from devcore_api.team_login import render_team_login
+
+from devcore_engine.security.identity import Principal, ProjectAccessDenied
+from devcore_engine.services.postgres_dashboard import PostgresDashboardProjection, _when
+from devcore_engine.services.global_stack_monitor import global_stack_health, render_global_stack_health
+
+
+def test_automation_timestamp_uses_tunisia_timezone():
+    assert _when(datetime(2026, 10, 21, 7, tzinfo=timezone.utc)) == \
+        '2026-10-21T08:00:00+01:00'
+
+
+class Cursor:
+    def __init__(self):
+        now = datetime.now(timezone.utc)
+        self.answers = [(1,), [("T-1", "uuid", "<script>alert(1)</script>",
+                                "active", "coding", 2, 0, 1, now, "main",
+                                [{"title": "<img src=x> étape", "done": True}], now, None)],
+                        [("run-1", "running", "<img src=x>", now)],
+                        [("<script>event</script>", now, "uuid", "fixture")],
+                        [("schedule-1", "<script>job</script>", "active", "*/5 * * * *", "UTC", now, None, "true")],
+                        [("<img src=x>", "dispatched", "queued", now)],
+                        [("session_end", "<script>actor</script>", "codex", "failed", "context_error", now)],
+                        [("session_end", now)],
+                        [("git_scan", "failed", "majdi", "<img src=x>", now)],
+                        [("git_scan", now)],
+                        [("schedule-1", "failed", now, "timeout")],
+                        [("schedule-1", now)],
+                        [("<script>plugin</script>", "1.0", True)],
+                        [("<img src=x>", 2)],
+                        (100, 5, 50),
+                        (12, 34),
+                        (2, Decimal(7), Decimal(9), 1),
+                        [("google-gemini", "model", 2, 7, 9)],
+                        [("model", 7, 9, "provider_reported", now)],
+                        None, (0,), [("<img>node", 12)]]
+        self.statements = []
+
+    def execute(self, sql, params):
+        self.statements.append((sql, params))
+
+    def fetchone(self):
+        return self.answers.pop(0)
+
+    def fetchall(self):
+        return self.answers.pop(0)
+
+
+def test_dashboard_bounds_project_reads_and_escapes_database_text(monkeypatch):
+    reader = PostgresDashboardProjection("postgresql://app@127.0.0.1/fixture")
+    cursor = Cursor()
+
+    @contextmanager
+    def transaction(project):
+        assert project == "alpha"
+        yield cursor
+
+    monkeypatch.setattr(reader, "_transaction", transaction)
+    data = reader.snapshot(Principal("user", "credential", "alpha", "task.read"))
+    assert data["project"] == "alpha"
+    assert type(data['token_metrics']['totals']['tokens']) is int
+    json.dumps(data)
+    assert data["counts"] == {"tasks": 1, "shown_tasks": 1, "runs": 1}
+    assert data["context_sources"]["repowise"]["available"] is False
+    assert "<script>" not in str(data["sections"])
+    assert "<img" not in str(data["sections"])
+    assert "&lt;script&gt;" in data["sections"]["tasks_pipeline"]
+    assert 'data-task-id="T-1"' in data["sections"]["tasks_pipeline"]
+    assert 'data-version="2"' in data["sections"]["tasks_pipeline"]
+    assert "&lt;script&gt;job&lt;/script&gt;" in data["sections"]["automation_hooks"]
+    assert "&lt;img src=x&gt;" in data["sections"]["automation_hooks"]
+    assert "exécution qualifiée : oui" in data["sections"]["services_monitoring"]
+    assert "&lt;script&gt;actor&lt;/script&gt;" in data["sections"]["automation_hooks"]
+    assert "dernier succès" in data["sections"]["automation_hooks"]
+    assert 'data-status="failed"' in data["sections"]["automation_hooks"]
+    assert "&lt;script&gt;plugin&lt;/script&gt;" in data["sections"]["plugin_status"]
+    assert "&lt;img src=x&gt; · 2" in data["sections"]["context_composition"]
+    assert "100 jetons modèle/jour" in data["sections"]["metrics_service_summary"]
+    assert "12 nœuds · 34 arêtes historiques" in data["sections"]["knowledge_graph_summary"]
+    assert "google-gemini" in data["sections"]["token_activity_report"]
+    assert "7 entrée / 9 sortie" in data["sections"]["token_activity_report"]
+    assert "1 sans usage fournisseur" in data["sections"]["token_activity_report"]
+    assert 'class="steps-container"' in data["sections"]["tasks_pipeline"]
+    assert 'class="step-item step-done"' in data["sections"]["tasks_pipeline"]
+    assert 'btn-details' in data["sections"]["tasks_pipeline"]
+    assert 'btn-interactions' in data["sections"]["tasks_pipeline"]
+    assert "[v] <img src=x> étape" == data["task_details"]["alpha_T-1"]
+    assert data["task_interactions"]["alpha_T-1"]["events"][0]["event_type"] == "<script>event</script>"
+    assert data["task_interactions"]["alpha_T-1"]["metrics_available"] is False
+    assert all(params[0] == "alpha" for _, params in cursor.statements)
+    assert cursor.statements[1][1] == ("alpha", 0)
+    assert all(params == ("alpha",) for i, (_, params) in enumerate(cursor.statements) if i != 1)
+    assert "LIMIT 60" in cursor.statements[1][0]
+    assert "LIMIT 10" in cursor.statements[2][0]
+    assert "LIMIT 20" in cursor.statements[4][0]
+    assert "LIMIT 10" in cursor.statements[5][0]
+    assert "automation_hook_events" in cursor.statements[6][0]
+    assert "DISTINCT ON" in cursor.statements[7][0]
+    assert "LIMIT 20" in cursor.statements[12][0]
+    assert "LIMIT 20" in cursor.statements[13][0]
+    assert "project_graph_stats" in cursor.statements[15][0]
+    assert "project_llm_usage" in cursor.statements[16][0]
+
+
+def test_empty_sidebar_panels_name_the_missing_project_source(monkeypatch):
+    reader = PostgresDashboardProjection("postgresql://app@127.0.0.1/fixture")
+    cursor = Cursor()
+    for index in (4, 5, 6, 7, 8, 9, 10, 11, 12, 13):
+        cursor.answers[index] = []
+    cursor.answers[14] = None
+
+    @contextmanager
+    def transaction(project):
+        assert project == "alpha"
+        yield cursor
+
+    monkeypatch.setattr(reader, "_transaction", transaction)
+    data = reader.snapshot(Principal("user", "credential", "alpha", "task.read"))
+    sections = data["sections"]
+    expected = {
+        "context_composition": ("Aucune entrée mémoire", "fiche de contexte Codex", "Source : mémoire du projet"),
+        "metrics_service_summary": ("Non configuré", "Non mesurées", "contrôles de conformité du projet"),
+        "plugin_status": ("Aucun plugin", "plugins Codex du poste", "Source : registre Plugin SDK du projet"),
+        "automation_hooks": ("Aucun hook enregistré", "Aucun job lancé", "Aucune planification"),
+    }
+    for section, phrases in expected.items():
+        assert 'class="team-empty-state"' in sections[section]
+        for phrase in phrases:
+            assert phrase in sections[section]
+    assert 'data-team-context-document' in sections['context_composition']
+    assert 'Chargement de la fiche et des décisions du projet' in sections['context_composition']
+    assert sections["metrics_service_summary"].count('class="team-empty-state"') == 3
+    assert "Aucun budget n&#x27;est enregistré" in sections["metrics_service_summary"]
+    assert "Aucun contrôle du protocole agent" in sections["metrics_service_summary"]
+    directory = Path(__file__).resolve().parents[1] / "Dashboard"
+    for terminal in (False, True):
+        html = render_team_cockpit(directory, data, terminal=terminal)
+        assert "Aucune entrée mémoire" in html
+        assert "Source : registre Plugin SDK du projet" in html
+        assert "Source : automation_hook_events du projet" in html
+
+
+def test_automation_renders_both_views_and_isolates_switched_project(monkeypatch):
+    reader = PostgresDashboardProjection("postgresql://app@127.0.0.1/fixture")
+    snapshots = {}
+    for project in ("alpha", "beta"):
+        cursor = Cursor()
+        if project == "beta":
+            for index in (4, 5, 6, 7, 8, 9, 10, 11):
+                cursor.answers[index] = []
+
+        @contextmanager
+        def transaction(selected):
+            assert selected == project
+            yield cursor
+
+        monkeypatch.setattr(reader, "_transaction", transaction)
+        snapshots[project] = reader.snapshot(Principal("majdi", "credential", project, "task.read"))
+    directory = Path(__file__).resolve().parents[1] / "Dashboard"
+    for terminal in (False, True):
+        alpha = render_team_cockpit(directory, snapshots["alpha"], terminal=terminal)
+        beta = render_team_cockpit(directory, snapshots["beta"], terminal=terminal)
+        assert "context_error" in alpha and "Aucun hook enregistré" in beta
+        assert "context_error" not in beta
+        assert 'data-status="succeeded"' not in snapshots["beta"]["sections"]["automation_hooks"]
+
+
+def test_dashboard_rejects_non_read_principal_before_database(monkeypatch):
+    reader = PostgresDashboardProjection("postgresql://app@127.0.0.1/fixture")
+    monkeypatch.setattr(reader, "_transaction", lambda _: (_ for _ in ()).throw(
+        AssertionError("Database opened")))
+    with pytest.raises(ProjectAccessDenied):
+        reader.snapshot(Principal("user", "credential", "alpha", "task.mutate"))
+
+
+@pytest.mark.parametrize('offset', [-1, 100001, True, '60'])
+def test_dashboard_rejects_invalid_offset_before_database(monkeypatch, offset):
+    reader = PostgresDashboardProjection("postgresql://app@127.0.0.1/fixture")
+    monkeypatch.setattr(reader, "_transaction", lambda _: (_ for _ in ()).throw(AssertionError("Database opened")))
+    with pytest.raises(ValueError):
+        reader.snapshot(Principal("user", "credential", "alpha", "task.read"), task_offset=offset)
+
+
+def test_html_render_escapes_project_in_script_context():
+    snapshot = {
+        "project": '</script><script>alert(1)</script>',
+        "sections": {name: "" for name in (
+            "project_cards", "tasks_pipeline", "services_monitoring", "automation_hooks",
+            "token_activity_report", "context_composition", "metrics_service_summary",
+            "event_bus_recent", "knowledge_graph_summary", "plugin_status")},
+        "task_details": {}, "task_interactions": {}, "token_metrics": {},
+    }
+    directory = Path(__file__).resolve().parents[1] / "Dashboard"
+    for terminal in (False, True):
+        html = render_team_cockpit(directory, snapshot, terminal=terminal, user_id='majdi<script>')
+        assert 'Utilisateur connecté : <strong>majdi&lt;script&gt;</strong>' in html
+        assert '<details id="team-profile" class="team-profile">' in html
+        assert '<summary id="team-connected-user"' in html
+        assert 'id="team-logout"' in html
+        assert 'data-team-profile-project' in html
+        assert "method:'DELETE'" in html
+        assert '<h3>Mes projets</h3>' not in html
+        assert 'majdi<script>' not in html
+        assert '</script><script>alert(1)</script>' not in html
+        assert "\\u003c/script\\u003e" in html
+        assert "{{PROJECT_CARDS}}" not in html
+        assert '<nav id="team-projects"' in html
+        assert 'id="project-cards"' not in html
+        assert 'team-project-refresh' not in html
+        assert 'team-project-select' in html
+        assert 'team-project-open' not in html
+        assert 'performDashboardRefresh = () => refreshTeamProjectData()' in html
+        assert 'history.replaceState(null' in html
+        assert 'location.assign(path +' not in html
+        assert 'data-team-project-name' in html
+        assert 'staleProject' in html
+        assert "X-CSRF-Token" in html
+        assert "?project='+encodeURIComponent(window.devcoreActiveProject)" in html
+        if terminal:
+            assert 'id="api-ok">:20131' in html
+            assert 'class="team-terminal"' in html
+            assert 'window.devcoreTeamEventSource = new EventSource(' in html
+            assert html.index('<div id="tbar-r">') < html.index('<details id="team-profile"') < html.index('<!-- ─── MAIN GRID ─── -->')
+        else:
+            assert html.index('<header>') < html.index('<details id="team-profile"') < html.index('</header>')
+        assert "async function teamFetch" in html
+        assert "[401, 403].includes(response.status)" in html
+        assert "return teamFetch(target, options)" in html
+        assert 'syncTeamCockpit(data)' in html
+        assert 'counts.tasks' in html
+        assert 'Token Optimization Stack' not in html
+        assert '// Load settings on startup\nloadSettings();' not in html
+        assert 'Configuration du projet' in html
+        assert 'id="setting-gemini-key"' not in html
+        assert 'id="setting-anthropic-key"' not in html
+        assert '<form id="settings-form"' not in html
+
+
+def test_login_escapes_project_and_uses_same_origin_session():
+    html = render_team_login('</strong><script>alert(1)</script>')
+    assert '</strong><script>alert(1)</script>' not in html
+    assert '&lt;/strong&gt;&lt;script&gt;' in html
+    assert "fetch('/api/auth/session'" in html
+    assert 'location.assign("/cockpit?project=' in html
+
+
+def test_global_stack_monitor_requires_fresh_ready_heartbeat(tmp_path):
+    import json
+    from datetime import timedelta
+
+    path = tmp_path / "manifest.json"
+    now = datetime.now(timezone.utc)
+    names = ("router", "headroom-native", "headroom-auxiliary", "gateway", "scheduler")
+    state = {"status": "ready", "heartbeat_utc": now.isoformat(),
+             "processes": {name: {"pid": 1} for name in names},
+             "health": {name: True for name in names}}
+    path.write_text(json.dumps(state), encoding="utf-8")
+    result = global_stack_health(str(path), now=now)
+    assert result["status"] == "ready"
+    assert "Scheduler PostgreSQL · en ligne" in render_global_stack_health(result)
+    assert "RepoWise" not in render_global_stack_health(result)
+    state["health"]["scheduler"] = False
+    path.write_text(json.dumps(state), encoding="utf-8")
+    degraded = global_stack_health(str(path), now=now)
+    assert degraded["status"] == "degraded"
+    assert "Scheduler PostgreSQL · indisponible" in render_global_stack_health(degraded)
+    assert global_stack_health(str(path), now=now + timedelta(seconds=9))["status"] == "unavailable"
+    state["status"] = "stopping"
+    path.write_text(json.dumps(state), encoding="utf-8")
+    assert global_stack_health(str(path), now=now)["status"] == "unavailable"
+
+
+@pytest.mark.parametrize("target", ["https://elsewhere/cockpit?project=alpha", "//elsewhere/cockpit?project=alpha", "/login?project=alpha", "/cockpit?project=beta", "/cockpit?project=alpha&project=beta", "/cockpit?project=alpha&task_offset=-1"])
+def test_login_return_target_is_local_and_project_scoped(target):
+    from devcore_api.team_login import cockpit_destination
+    assert cockpit_destination("alpha", target) == "/cockpit?project=alpha"
+
+
+def test_login_restores_terminal_page_and_offset():
+    from devcore_api.team_login import render_team_login
+    page = render_team_login("alpha", "/index_terminal.html?project=alpha&task_offset=120")
+    assert 'location.assign("/index_terminal.html?project=alpha&task_offset=120")' in page

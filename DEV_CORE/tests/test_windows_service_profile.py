@@ -7,7 +7,7 @@ import types
 import pytest
 
 from Scripts.install_individual_service import install, prepare
-from devcore_engine.windows_service import load_profile
+from devcore_engine.windows_service import candidate_command, load_profile
 
 
 def fixture_release(tmp_path):
@@ -34,6 +34,34 @@ def test_portable_roots_survive_release_change(tmp_path):
     assert profile["identity"] == identity
     assert prepare(release, "state/local", "state/data")["identity_ready"]
     assert identity.read_bytes() == b"untouched"
+
+
+def test_lan_service_profile_keeps_tls_files_inside_private_root(tmp_path):
+    release = fixture_release(tmp_path)
+    prepare(release, "state/local", "state/data")
+    local = tmp_path / "runtime/state/local"
+    identity = local / "Security/identity.db"
+    identity.parent.mkdir()
+    identity.write_bytes(b"fixture")
+    tls = local / "Security/lan"
+    tls.mkdir()
+    (tls / "cert.pem").write_bytes(b"certificate fixture")
+    (tls / "key.pem").write_bytes(b"key fixture")
+    config_path = release / "individual-service.json"
+    config = json.loads(config_path.read_text())
+    config["schema_version"] = 3
+    config["network"] = {"bind": "172.16.210.32",
+                         "cert_relative": "state/local/Security/lan/cert.pem",
+                         "key_relative": "state/local/Security/lan/key.pem"}
+    config_path.write_text(json.dumps(config), encoding="utf-8")
+    profile = load_profile(release)
+    command = candidate_command(profile)
+    assert command[-6:] == ["--lan-bind", "172.16.210.32", "--tls-certfile", str(tls / "cert.pem"),
+                            "--tls-keyfile", str(tls / "key.pem")]
+    config["network"]["key_relative"] = "state/data/key.pem"
+    config_path.write_text(json.dumps(config), encoding="utf-8")
+    with pytest.raises(ValueError, match="private local root"):
+        load_profile(release)
 
 
 @pytest.mark.parametrize("bad", ["../outside", "C:relative", "C:/absolute", "", "state/../other"])

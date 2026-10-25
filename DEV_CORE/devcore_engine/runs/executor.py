@@ -24,6 +24,7 @@ SENSITIVE_ENV_SUBSTRINGS = (
     "APIKEY",
     "PRIVATE_KEY",
     "AUTH_KEY",
+    "DATABASE_URL",
 )
 
 

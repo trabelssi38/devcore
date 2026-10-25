@@ -176,6 +176,22 @@ def test_cross_project_access_denied_with_403(auth_env):
     assert bob_alpha.status_code == 403
 
 
+def test_gemini_route_requires_project_mutation_access(auth_env, monkeypatch):
+    """A project-scoped Gemini call cannot bypass identity or role checks."""
+    monkeypatch.delenv("DEVCORE_DATABASE_URL", raising=False)
+    monkeypatch.delenv("DEVCORE_TASK_READ_MODE", raising=False)
+    client = auth_env["client"]
+    route = "/api/v1/llm/gemini"
+    prompt = {"project": "alpha", "prompt": "Reply with OK."}
+    assert client.post(route, json=prompt).status_code == 401
+    reader = {"Authorization": f"Bearer {auth_env['credentials']['charlie']['token']}"}
+    assert client.post(route, json=prompt, headers=reader).status_code == 403
+    owner = {"Authorization": f"Bearer {auth_env['credentials']['alice']['token']}"}
+    assert client.post(route, json={"project": "beta", "prompt": "Reply with OK."},
+                       headers=owner).status_code == 403
+    assert client.post(route, json=prompt, headers=owner).status_code == 503
+
+
 def test_role_matrix_enforcement(auth_env):
     """Readers can query tasks but cannot mutate them."""
     client = auth_env["client"]
@@ -451,3 +467,76 @@ def test_run_step_cross_project_isolation(auth_env):
     assert step_bob.json()["status"] == "succeeded"
 
 
+def test_postgres_browser_cookie_uses_postgres_identity_without_sqlite_fallback(auth_env, monkeypatch):
+    """The team gateway must authorize a PostgreSQL cookie on every scoped route."""
+    import importlib
+    from devcore_engine.security.browser_sessions import BrowserSession
+    from devcore_engine.security.identity import Principal, ProjectAccessDenied
+
+    api_module = importlib.import_module("devcore_api.app")
+    postgres_sessions = importlib.import_module("devcore_engine.security.postgres_browser_sessions")
+    sqlite_sessions = importlib.import_module("devcore_engine.security.browser_sessions")
+    dsn = "postgresql://unused/isolated_fixture"
+    monkeypatch.setenv("DEVCORE_IDENTITY_READ_MODE", "postgres")
+    monkeypatch.setenv("DEVCORE_DATABASE_URL", dsn)
+    monkeypatch.setattr(api_module, "resolve_identity_store_path", lambda: None)
+
+    calls = []
+
+    def authorize(source, secret, project, action, origin, *, csrf=None, mutate=False):
+        calls.append((source, secret, project, action, origin, csrf, mutate))
+        if project != "alpha" or (mutate and csrf != "csrf-ok"):
+            raise ProjectAccessDenied("Project action denied")
+        return BrowserSession(Principal("alice", "pg-session", project, action),
+                              "pg-session", project, time.time() + 60, (READ, WRITE))
+
+    def sqlite_fallback(*args, **kwargs):
+        raise AssertionError("SQLite session adapter must not be used in PostgreSQL mode")
+
+    monkeypatch.setattr(postgres_sessions, "authorize_session", authorize)
+    monkeypatch.setattr(sqlite_sessions, "authorize_session", sqlite_fallback)
+    client = auth_env["client"]
+    client.cookies.set("devcore_session", "fixture-cookie")
+
+    assert client.get("/api/v1/tasks", params={"project": "alpha"}).status_code == 200
+    assert client.get("/api/v1/tasks", params={"project": "beta"}).status_code == 403
+    blocked = client.post("/api/v1/tasks/pause", json={"project": "alpha", "id": "T-01", "expected_version": 1},
+                          headers={"Origin": "http://127.0.0.1:20131", "X-CSRF-Token": "wrong"})
+    assert blocked.status_code == 403
+    allowed = client.post("/api/v1/tasks/pause", json={"project": "alpha", "id": "T-01", "expected_version": 1},
+                          headers={"Origin": "http://127.0.0.1:20131", "X-CSRF-Token": "csrf-ok"})
+    assert allowed.status_code == 200
+    assert all(call[0:2] == (dsn, "fixture-cookie") for call in calls)
+    assert calls[-1][3:] == (WRITE, "http://127.0.0.1:20131", "csrf-ok", True)
+
+
+
+
+@pytest.mark.parametrize("path", ["/cockpit", "/cockpit/terminal", "/index.html", "/index_terminal.html"])
+def test_cockpit_denied_redirects_to_project_login(auth_env, path):
+    from urllib.parse import parse_qs, urlsplit
+    client = auth_env["client"]
+    response = client.get(path + "?project=alpha&task_offset=120", follow_redirects=False)
+    assert response.status_code == 303
+    parts = urlsplit(response.headers["location"])
+    assert parts.path == "/login"
+    assert parse_qs(parts.query) == {"project": ["alpha"], "next": [path + "?project=alpha&task_offset=120"]}
+    assert response.headers["cache-control"] == "no-store"
+    invalid = client.get(path + "?project=alpha", headers={"Authorization": "Bearer invalid"}, follow_redirects=False)
+    assert invalid.status_code == 303
+    token = auth_env["credentials"]["alice"]["token"]
+    denied = client.get(path + "?project=beta", headers={"Authorization": "Bearer " + token}, follow_redirects=False)
+    assert denied.status_code == 303
+    assert "project=beta" in denied.headers["location"]
+
+
+def test_dashboard_api_errors_remain_json(auth_env):
+    client = auth_env["client"]
+    response = client.get("/api/dashboard?project=alpha", follow_redirects=False)
+    assert response.status_code == 401
+    assert "location" not in response.headers
+    assert response.headers["content-type"].startswith("application/json")
+    token = auth_env["credentials"]["alice"]["token"]
+    response = client.get("/api/dashboard?project=beta", headers={"Authorization": "Bearer " + token}, follow_redirects=False)
+    assert response.status_code == 403
+    assert "location" not in response.headers

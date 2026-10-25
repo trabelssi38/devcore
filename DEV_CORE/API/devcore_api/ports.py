@@ -330,6 +330,46 @@ class SqliteTaskRepository:
             connection.close()
 
 
+class PostgresTaskRepository:
+    """Read-only adapter for the qualified DevCore team schema."""
+
+    def __init__(self, url: str) -> None:
+        self.url = url
+
+    def _connect(self):
+        from urllib.parse import urlparse
+        import pg8000.dbapi
+        parsed = urlparse(self.url.replace("postgresql+pg8000://", "postgresql://", 1))
+        if parsed.scheme != "postgresql":
+            raise ValueError("DEVCORE_DATABASE_URL must use postgresql://")
+        return pg8000.dbapi.connect(
+            user=parsed.username,
+            password=parsed.password,
+            host=parsed.hostname or "127.0.0.1",
+            port=parsed.port or 5432,
+            database=(parsed.path or "/postgres").lstrip("/"),
+        )
+
+    def list_tasks(self, project: str) -> list[TaskContract]:
+        project = validate_project_id(project)
+        connection = self._connect()
+        try:
+            cursor = connection.cursor()
+            cursor.execute("SELECT set_config('app.current_project_id', %s, false)", (project,))
+            cursor.execute(
+                "SELECT legacy_id, title, status, mode, steps_done, steps_total, version "
+                "FROM tasks WHERE project_id = %s AND status <> 'deleted' "
+                "ORDER BY created_at, task_number",
+                (project,),
+            )
+            return [TaskContract(
+                id=row[0], title=row[1], status=canonical_task_status(row[2]), mode=row[3],
+                steps_done=row[4], steps_total=row[5], project=project, version=row[6],
+            ) for row in cursor.fetchall()]
+        finally:
+            connection.close()
+
+
 class StaticHealthPort:
     def get_health(self) -> HealthContract:
         return HealthContract(status="ok", checks={"api": "ok"})
@@ -344,6 +384,11 @@ def configured_task_repository() -> TaskRepository:
     legacy = FileTaskRepository()
     if mode == "json":
         return legacy
+    if mode == "postgres":
+        url = os.environ.get("DEVCORE_DATABASE_URL", "").strip()
+        if not url:
+            raise ValueError("DEVCORE_DATABASE_URL is required for postgres task read mode")
+        return PostgresTaskRepository(url)
     if mode not in {"sql", "dual"}:
         raise ValueError(f"Invalid task read mode: {mode}")
     db_path = os.environ.get("DEVCORE_SQLITE_DB_PATH", "").strip()

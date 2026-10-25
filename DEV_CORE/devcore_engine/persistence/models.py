@@ -14,6 +14,7 @@ from sqlalchemy import (
     Column,
     DateTime,
     ForeignKey,
+    Float,
     Index,
     Integer,
     MetaData,
@@ -178,11 +179,42 @@ runs = Table(
     Column("task_uuid", UUID(as_uuid=True), ForeignKey("tasks.task_uuid", ondelete="SET NULL"), nullable=True),
     Column("status", String(50), nullable=False, server_default="queued"),
     Column("runner", Text, nullable=True),
+    Column("task_id", Text, nullable=True),
+    Column("title", Text, nullable=True),
+    Column("command", JSONB, nullable=True),
+    Column("timeout_seconds", Float, nullable=True),
+    Column("attempt_number", Integer, nullable=False, server_default="0"),
+    Column("max_attempts", Integer, nullable=False, server_default="3"),
+    Column("worker_token", Text, nullable=True),
+    Column("heartbeat_at", DateTime(timezone=True), nullable=True),
+    Column("cancellation_requested", Boolean, nullable=False, server_default="false"),
+    Column("output", Text, nullable=True),
+    Column("error", Text, nullable=True),
+    Column("exit_code", Integer, nullable=True),
+    Column("idempotency_key", Text, nullable=True),
+    Column("actor", Text, nullable=False, server_default="system"),
+    Column("env", JSONB, nullable=False, server_default="{}"),
+    Column("execution_ready", Boolean, nullable=False, server_default="false"),
     Column("started_at", DateTime(timezone=True), nullable=True),
     Column("finished_at", DateTime(timezone=True), nullable=True),
     Column("metadata", JSONB, nullable=False, server_default="{}"),
     Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
     Column("updated_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+)
+
+
+external_effects = Table(
+    "external_effects",
+    metadata,
+    Column("project_id", Text, ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True),
+    Column("idempotency_key", Text, primary_key=True),
+    Column("effect_type", Text, primary_key=True),
+    Column("status", Text, nullable=False),
+    Column("result", JSONB, nullable=True),
+    Column("error", Text, nullable=True),
+    Column("created_at", DateTime(timezone=True), nullable=False, server_default=func.now()),
+    Column("completed_at", DateTime(timezone=True), nullable=True),
+    CheckConstraint("status in ('pending', 'completed', 'failed')", name="external_effects_status"),
 )
 
 
@@ -330,6 +362,10 @@ Index("idx_sessions_user_token", sessions.c.user_id, sessions.c.token_hash)
 Index("idx_project_memberships_project_role", project_memberships.c.project_id, project_memberships.c.role)
 Index("idx_workspaces_organization_status", workspaces.c.organization_id, workspaces.c.status, workspaces.c.updated_at.desc())
 Index("idx_runs_task_status", runs.c.task_uuid, runs.c.status, runs.c.updated_at.desc())
+Index("uq_runs_project_idempotency", runs.c.project_id, runs.c.idempotency_key,
+      unique=True, postgresql_where=runs.c.idempotency_key.isnot(None))
+Index("idx_runs_ready_project_status_created", runs.c.project_id, runs.c.status, runs.c.created_at,
+      postgresql_where=runs.c.execution_ready)
 Index("idx_events_project_created", events.c.project_id, events.c.created_at.desc())
 Index("idx_audit_log_project_created", audit_log.c.project_id, audit_log.c.created_at.desc())
 Index("idx_schedules_project_status_next_run", schedules.c.project_id, schedules.c.status, schedules.c.next_run_at.asc())

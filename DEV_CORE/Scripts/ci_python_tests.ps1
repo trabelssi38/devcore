@@ -79,20 +79,29 @@ if ($existingTests.Count -eq 0) {
 
 $pytestCheck = & python -c "import importlib.util, sys; sys.exit(0 if importlib.util.find_spec('pytest') else 1)"
 if ($LASTEXITCODE -eq 0) {
-    & python -m pytest @existingTests
+    if ($IsWindows -or $env:OS -eq 'Windows_NT') {
+        & python (Join-Path $PSScriptRoot 'run_windows_pytest.py') @existingTests
+    } else {
+        & python -m pytest -p no:cacheprovider @existingTests
+    }
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 } else {
     Write-Host "[WARN] pytest unavailable; using stdlib fallback runner" -ForegroundColor Yellow
-    $runner = Join-Path $env:TEMP "devcore_pytest_fallback.py"
+    $fallbackRoot = Join-Path $repoRoot ("pytest-fallback-" + [guid]::NewGuid().ToString("N"))
+    New-Item -ItemType Directory -Path $fallbackRoot | Out-Null
+    $runner = Join-Path $fallbackRoot "runner.py"
     @'
 import importlib.util
 import inspect
+import os
+import shutil
 import sys
-import tempfile
+from uuid import uuid4
 from pathlib import Path
 
 failures = []
 tests = sys.argv[1:]
+root = Path(__file__).resolve().parent
 
 for test_path in tests:
     path = Path(test_path).resolve()
@@ -105,13 +114,14 @@ for test_path in tests:
             continue
 
         kwargs = {}
-        tmp_ctx = None
+        tmp_path = None
         try:
             sig = inspect.signature(func)
             for param in sig.parameters.values():
                 if param.name == "tmp_path":
-                    tmp_ctx = tempfile.TemporaryDirectory()
-                    kwargs[param.name] = Path(tmp_ctx.name)
+                    tmp_path = root / ("fixture-" + uuid4().hex)
+                    tmp_path.mkdir(mode=0o750)
+                    kwargs[param.name] = tmp_path
                 else:
                     raise RuntimeError(f"unsupported fixture: {param.name}")
             func(**kwargs)
@@ -119,8 +129,8 @@ for test_path in tests:
         except Exception as exc:
             failures.append(f"{path.name}::{name} -- {exc}")
         finally:
-            if tmp_ctx:
-                tmp_ctx.cleanup()
+            if tmp_path:
+                shutil.rmtree(tmp_path)
 
 if failures:
     print("[FAIL] Python fallback test failures:")
@@ -130,9 +140,12 @@ if failures:
 
 print("[OK] Python fallback tests passed")
 '@ | Set-Content -LiteralPath $runner -Encoding UTF8
-    & python $runner @existingTests
-    $fallbackExit = $LASTEXITCODE
-    Remove-Item -LiteralPath $runner -Force -ErrorAction SilentlyContinue
+    try {
+        & python $runner @existingTests
+        $fallbackExit = $LASTEXITCODE
+    } finally {
+        Remove-Item -LiteralPath $fallbackRoot -Recurse -Force -ErrorAction SilentlyContinue
+    }
     if ($fallbackExit -ne 0) { exit $fallbackExit }
 }
 
