@@ -26,7 +26,6 @@ PILOT_REPO = Path("E:/DevCoreRuntime/qualification/devcore-agent-pilot")
 MAX_PATCH_BYTES = 128_000
 MAX_TASK_BYTES = 8_000
 MAX_SNIPPET_BYTES = 8_000
-MAX_PROPOSALS_PER_DAY = 3
 PATCH_HEADER = re.compile(r"diff --git a/([A-Za-z0-9_./-]+) b/([A-Za-z0-9_./-]+)$")
 
 
@@ -131,22 +130,6 @@ def _audit(state: Path, event: dict) -> None:
         stream.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
 
 
-def _enforce_daily_quota(state: Path) -> None:
-    log = state / "audit.jsonl"
-    if not log.exists():
-        return
-    today = datetime.now(timezone.utc).date().isoformat()
-    attempts = 0
-    for line in log.read_text(encoding="utf-8").splitlines():
-        event = json.loads(line)
-        if not isinstance(event, dict) or "at_utc" not in event:
-            raise ValueError("Invalid pilot audit log")
-        if event.get("event") == "proposal_started" and event["at_utc"].startswith(today):
-            attempts += 1
-    if attempts >= MAX_PROPOSALS_PER_DAY:
-        raise ValueError("Daily pilot proposal quota exhausted")
-
-
 def propose(repo: Path, state: Path, task: str, target: str,
             *, codex: str = "codex") -> dict:
     repo, base = _repo(repo)
@@ -160,7 +143,6 @@ def propose(repo: Path, state: Path, task: str, target: str,
             _git(repo, "ls-files", "--", target) != target):
         raise ValueError("Pilot target must be an existing DevCore source file")
     state.mkdir(parents=True, exist_ok=True)
-    _enforce_daily_quota(state)
     proposal_id = uuid4().hex
     _audit(state, {"event": "proposal_started", "id": proposal_id,
                    "base": base, "project": PROJECT})

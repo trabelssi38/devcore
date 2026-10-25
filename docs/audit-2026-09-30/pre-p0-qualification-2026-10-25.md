@@ -63,9 +63,10 @@ vérifie le fichier existant sous `DEV_CORE/`, la base Git et construit un patch
 à partir d'un remplacement de texte exact fourni par l'agent. Il
 conserve une proposition avec son SHA-256. Une seconde commande interactive
 montre le patch et exige `APPLY <sha256>` avant `git apply --index` ; l'audit
-consigne identité locale, empreinte et application. Les limites sont trois
-propositions par jour, quinze minutes par invocation, un fichier, 8 000 octets
-par extrait et 128 000 octets de patch. Une sortie sans changement est refusée.
+consigne identité locale, empreinte et application. À la demande de
+l'utilisateur, la limite arbitraire de trois propositions par jour a été
+retirée ; restent quinze minutes par invocation, un fichier, 8 000 octets par
+extrait et 128 000 octets de patch. Une sortie sans changement est refusée.
 
 Cette version est un **prototype qualifié en isolation**, pas encore une mise
 en service autonome : aucun déclenchement sur tâche, aucun compte `majdi`
@@ -75,7 +76,7 @@ création d'un patch approuvable : le premier et le second par la validation
 `git apply --index` sur CRLF, le troisième par un diff mal formé. Le correctif
 suivant remplace le diff libre par un remplacement d'extrait exact et construit
 le diff localement ; il passe les tests isolés mais n'a pas encore eu de nouvel
-essai réel, le quota quotidien de trois propositions étant atteint.
+essai réel au moment de cette note.
 L'approbation est interactive dans un terminal local. Les tests utilisent un
 dépôt Git et des racines DEVCORE temporaires ; ils ne touchent pas aux données
 actives.

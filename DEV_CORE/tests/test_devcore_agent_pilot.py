@@ -1,7 +1,6 @@
 """The autonomous pilot cannot edit a checkout without exact human approval."""
 
 import importlib.util
-from datetime import datetime, timezone
 import json
 from pathlib import Path
 import subprocess
@@ -25,7 +24,8 @@ def _pilot(tmp_path, monkeypatch, *, autocrlf="false"):
     (repo / "DEV_CORE").mkdir()
     target = repo / "DEV_CORE" / "example.txt"
     target.write_text("before\n")
-    for command in (["git", "init", "-q"], ["git", "config", "core.autocrlf", autocrlf],
+    for command in (["git", "init", "-q"],
+                    ["git", "config", "core.autocrlf", autocrlf],
                     ["git", "config", "user.name", "Pilot Test"],
                     ["git", "config", "user.email", "pilot@example.invalid"],
                     ["git", "add", "README.md", "DEV_CORE/example.txt"],
@@ -108,12 +108,20 @@ def test_checkout_change_invalidates_stored_approval(tmp_path, monkeypatch):
     assert target.read_text() == "changed elsewhere\n"
 
 
-def test_daily_proposal_quota_blocks_fourth_model_call(tmp_path, monkeypatch):
-    pilot, repo, _, state = _pilot(tmp_path, monkeypatch)
-    state.mkdir(parents=True)
-    today = datetime.now(timezone.utc).isoformat()
-    (state / "audit.jsonl").write_text("".join(
-        json.dumps({"at_utc": today, "event": "proposal_started", "id": str(i)}) + "\n"
-        for i in range(3)))
-    with pytest.raises(ValueError, match="quota exhausted"):
-        pilot.propose(repo, state, "Change fixture", "DEV_CORE/example.txt")
+def test_repeated_read_only_proposals_are_allowed(tmp_path, monkeypatch):
+    pilot, repo, target, state = _pilot(tmp_path, monkeypatch)
+    real_run = subprocess.run
+
+    def run(command, *args, **kwargs):
+        if command[0] == "codex":
+            Path(command[command.index("--output-last-message") + 1]).write_text(
+                json.dumps({"summary": "Change the fixture", "path": "DEV_CORE/example.txt",
+                            "old": "before\n", "new": "after\n"}))
+            return subprocess.CompletedProcess(command, 0, "", "")
+        return real_run(command, *args, **kwargs)
+
+    monkeypatch.setattr(pilot.subprocess, "run", run)
+    proposals = [pilot.propose(repo, state, "Change fixture", "DEV_CORE/example.txt")
+                 for _ in range(4)]
+    assert len({item["id"] for item in proposals}) == 4
+    assert target.read_text() == "before\n"
