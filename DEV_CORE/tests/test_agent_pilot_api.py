@@ -95,6 +95,10 @@ def test_devcore_agent_routes_bind_identity_project_and_patch(tmp_path, monkeypa
     assert engine.submission.project_id == "devcore"
     assert engine.submission.command[-3:] == ["--file", "DEV_CORE/example.txt", "Change fixture"]
     assert target.read_text() == "before\n"
+    assert client.get("/agent/pilot", params={"project": "devcore"}).status_code == 401
+    page = client.get("/agent/pilot", params={"project": "devcore"}, headers=writer)
+    assert page.status_code == 200
+    assert 'id="request-form"' in page.text and 'id="approve"' in page.text
 
     proposal_id = uuid4().hex
     patch = pilot._proposal_patch(repo, {"summary": "Change fixture",
@@ -109,6 +113,10 @@ def test_devcore_agent_routes_bind_identity_project_and_patch(tmp_path, monkeypa
     (state / f"{proposal_id}.json").write_text(json.dumps({**payload, "id": proposal_id,
         "sha256": digest, "paths": ["DEV_CORE/example.txt"], "status": "waiting_approval"}))
 
+    listing = client.get("/api/v1/agent/proposals", params={"project": "devcore"},
+                         headers=writer)
+    assert listing.status_code == 200
+    assert listing.json()["proposals"][0]["id"] == proposal_id
     path = f"/api/v1/agent/proposals/{proposal_id}"
     assert client.get(path, params={"project": "devcore"}).status_code == 401
     viewed = client.get(path, params={"project": "devcore"}, headers=writer)

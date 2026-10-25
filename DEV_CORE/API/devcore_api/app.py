@@ -1330,6 +1330,18 @@ def create_app(
         )
         return HTMLResponse(page, headers={"Cache-Control": "no-store"})
 
+    @app.get("/agent/pilot", tags=["agent"])
+    def agent_pilot_page(request: Request, project: str) -> HTMLResponse:
+        from devcore_engine.security.identity import READ
+
+        agent_pilot_principal(request, READ)
+        if project != "devcore":
+            raise HTTPException(status_code=403, detail="DevCore project required")
+        agent_pilot_state()
+        source = Path(__file__).parent / "team_agent_pilot.html"
+        return HTMLResponse(source.read_text(encoding="utf-8"),
+                            headers={"Cache-Control": "no-store"})
+
     @app.post(f"{API_PREFIX}/agent/proposals", status_code=202, tags=["agent"])
     def submit_agent_proposal(request: Request, response: Response,
                               body: AgentPilotProposalRequest) -> dict:
@@ -1373,6 +1385,32 @@ def create_app(
         response.headers["Location"] = f"{API_PREFIX}/runs/{record.id}?project=devcore"
         return {"project": "devcore", "run_id": record.id, "status": record.status,
                 "tracking_url": response.headers["Location"]}
+
+    @app.get(f"{API_PREFIX}/agent/proposals", tags=["agent"])
+    def list_agent_proposals(request: Request, project: str) -> dict:
+        from Scripts.devcore_agent_pilot import read_proposal
+        from devcore_engine.security.identity import READ
+
+        agent_pilot_principal(request, READ)
+        if project != "devcore":
+            raise HTTPException(status_code=403, detail="DevCore project required")
+        state = agent_pilot_state()
+        rows = []
+        if state.is_dir():
+            candidates = sorted(state.glob("*.json"), key=lambda path: path.stat().st_mtime,
+                                reverse=True)
+            for candidate in candidates:
+                if not re.fullmatch(r"[0-9a-f]{32}", candidate.stem):
+                    continue
+                try:
+                    proposal = read_proposal(state, candidate.stem)
+                except (OSError, ValueError):
+                    continue
+                rows.append({key: proposal[key] for key in
+                             ("id", "sha256", "summary", "status", "paths", "base")})
+                if len(rows) == 20:
+                    break
+        return {"project": "devcore", "proposals": rows}
 
     @app.get(f"{API_PREFIX}/agent/proposals/{{proposal_id}}", tags=["agent"])
     def get_agent_proposal(request: Request, project: str, proposal_id: str) -> dict:

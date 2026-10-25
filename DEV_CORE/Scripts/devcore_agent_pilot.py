@@ -16,6 +16,7 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 from uuid import uuid4
@@ -192,6 +193,10 @@ def propose(repo: Path, state: Path, task: str, target: str,
               "unless the task explicitly requires a change. If no safe edit is "
               "possible, return an empty old string.\nTarget: " + target +
               "\n\nTask:\n" + task)
+    if codex == "codex":
+        codex = os.environ.get("DEVCORE_CODEX_EXE", "") or shutil.which("codex") or ""
+        if not codex or not Path(codex).is_file():
+            raise ValueError("Codex executable unavailable for agent pilot")
     command = [codex, "exec", "-C", str(repo), "--sandbox", "read-only",
                "--ephemeral", "--output-schema", str(schema),
                "--output-last-message", str(output), "-"]
