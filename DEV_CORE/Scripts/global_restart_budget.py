@@ -2,6 +2,8 @@
 
 The Task Scheduler time trigger may run forever, but three recorded failures
 within thirty minutes latch the budget as exhausted and block subsequent launches.
+The periodic trigger may continue to fire while the budget is exhausted without
+relaunching the supervisor.
 Elapsed time alone does not clear exhaustion; an operator must explicitly reset
 it with ``--reset-restart-budget --reason ...``. ``IgnoreNew`` on the task
 serializes callers.
