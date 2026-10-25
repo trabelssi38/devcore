@@ -147,6 +147,9 @@ def _audit(state: Path, event: dict) -> None:
 
 def propose(repo: Path, state: Path, task: str, target: str,
             *, codex: str = "codex") -> dict:
+    run_project = os.environ.get("DEVCORE_PROJECT_ID")
+    if run_project and run_project != PROJECT:
+        raise ValueError("Agent pilot run belongs to another project")
     repo, base = _repo(repo)
     state = state.resolve()
     if state.is_relative_to(repo):
@@ -158,7 +161,20 @@ def propose(repo: Path, state: Path, task: str, target: str,
             _git(repo, "ls-files", "--", target) != target):
         raise ValueError("Pilot target must be an existing DevCore source file")
     state.mkdir(parents=True, exist_ok=True)
-    proposal_id = uuid4().hex
+    run_id = os.environ.get("DEVCORE_RUN_ID", "")
+    if run_id and not re.fullmatch(r"[A-Za-z0-9._-]{1,128}", run_id):
+        raise ValueError("Invalid durable run id")
+    proposal_id = (hashlib.sha256(f"{PROJECT}:{run_id}".encode()).hexdigest()[:32]
+                   if run_id else uuid4().hex)
+    existing_path = state / f"{proposal_id}.json"
+    if existing_path.exists():
+        existing = read_proposal(state, proposal_id)
+        if (existing["base"] != base or existing["task"] != task or
+                existing["paths"] != [target]):
+            raise ValueError("Durable run proposal conflicts with existing state")
+        return {"id": proposal_id, "sha256": existing["sha256"],
+                "summary": existing["summary"], "paths": existing["paths"],
+                "status": existing["status"]}
     _audit(state, {"event": "proposal_started", "id": proposal_id,
                    "base": base, "project": PROJECT})
     schema = state / f"{proposal_id}.schema.json"
@@ -208,15 +224,23 @@ def propose(repo: Path, state: Path, task: str, target: str,
         output.unlink(missing_ok=True)
 
 
-def approve(repo: Path, state: Path, proposal_id: str, sha256: str) -> dict:
+def read_proposal(state: Path, proposal_id: str) -> dict:
     if not re.fullmatch(r"[0-9a-f]{32}", proposal_id):
         raise ValueError("Invalid proposal id")
     path = state / f"{proposal_id}.json"
     proposal = json.loads(path.read_text(encoding="utf-8"))
     if (proposal.get("id") != proposal_id or proposal.get("project") != PROJECT or
-            proposal.get("status") != "waiting_approval" or
-            proposal.get("sha256") != sha256 or _digest(proposal) != sha256):
+            proposal.get("sha256") != _digest(proposal)):
         raise ValueError("Proposal identity or hash mismatch")
+    return proposal
+
+
+def approve(repo: Path, state: Path, proposal_id: str, sha256: str,
+            *, principal=None) -> dict:
+    proposal = read_proposal(state, proposal_id)
+    if proposal.get("status") != "waiting_approval" or proposal["sha256"] != sha256:
+        raise ValueError("Proposal is not awaiting this exact approval")
+    path = state / f"{proposal_id}.json"
     repo, base = _repo(repo)
     state = state.resolve(strict=True)
     if state.is_relative_to(repo):
@@ -226,17 +250,26 @@ def approve(repo: Path, state: Path, proposal_id: str, sha256: str) -> dict:
     paths = _patch_paths(proposal["patch"])
     if paths != proposal["paths"]:
         raise ValueError("Proposal paths changed")
-    if not sys.stdin.isatty():
-        raise ValueError("Interactive human approval is required")
-    print(f"Files: {', '.join(paths)}\nSummary: {proposal['summary']}")
-    print(proposal["patch"])
-    confirmation = input(f"Type APPLY {sha256} to approve this exact patch: ")
-    if confirmation != f"APPLY {sha256}":
-        raise ValueError("Approval phrase does not match proposal hash")
+    if principal is None:
+        if not sys.stdin.isatty():
+            raise ValueError("Interactive human approval is required")
+        print(f"Files: {', '.join(paths)}\nSummary: {proposal['summary']}")
+        print(proposal["patch"])
+        confirmation = input(f"Type APPLY {sha256} to approve this exact patch: ")
+        if confirmation != f"APPLY {sha256}":
+            raise ValueError("Approval phrase does not match proposal hash")
+        actor = getpass.getuser()
+        approval_source = "local_terminal"
+    else:
+        from devcore_engine.security.identity import Principal, WRITE
+        if (not isinstance(principal, Principal) or principal.project_id != PROJECT
+                or principal.action != WRITE or not principal.user_id.strip()):
+            raise ValueError("Authenticated devcore write principal required")
+        actor = principal.user_id
+        approval_source = "authenticated_project_api"
     _apply_check(repo, proposal["patch"])
-    actor = getpass.getuser()
     _audit(state, {"event": "human_approved", "id": proposal_id,
-                   "sha256": sha256, "actor": actor})
+                   "sha256": sha256, "actor": actor, "source": approval_source})
     subprocess.run(["git", "apply", "--index", "--ignore-whitespace", "-"], cwd=repo,
                    input=proposal["patch"], text=True, capture_output=True,
                    timeout=45, check=True)
@@ -250,10 +283,11 @@ def approve(repo: Path, state: Path, proposal_id: str, sha256: str) -> dict:
     _verify_staged_patch(repo, paths, proposal["patch"])
     proposal["status"] = "applied"
     proposal["approved_by"] = actor
+    proposal["approval_source"] = approval_source
     path.write_text(json.dumps(proposal, ensure_ascii=False, indent=2) + "\n",
                     encoding="utf-8")
     _audit(state, {"event": "patch_applied", "id": proposal_id,
-                   "sha256": sha256, "actor": actor})
+                   "sha256": sha256, "actor": actor, "source": approval_source})
     return {"id": proposal_id, "status": "applied", "approved_by": actor,
             "paths": paths}
 

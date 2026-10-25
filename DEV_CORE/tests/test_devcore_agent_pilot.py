@@ -57,7 +57,7 @@ def test_read_only_proposal_waits_for_exact_interactive_approval(tmp_path, monke
     result = pilot.propose(repo, state, "Change the fixture", "DEV_CORE/example.txt")
     assert result["status"] == "waiting_approval"
     assert target.read_text() == "before\n"
-    with pytest.raises(ValueError, match="hash mismatch"):
+    with pytest.raises(ValueError, match="exact approval"):
         pilot.approve(repo, state, result["id"], "0" * 64)
     with pytest.raises(ValueError, match="Interactive human approval"):
         pilot.approve(repo, state, result["id"], result["sha256"])
@@ -128,3 +128,58 @@ def test_repeated_read_only_proposals_are_allowed(tmp_path, monkeypatch):
                  for _ in range(4)]
     assert len({item["id"] for item in proposals}) == 4
     assert target.read_text() == "before\n"
+
+
+def test_authenticated_devcore_writer_can_approve_exact_proposal(tmp_path, monkeypatch):
+    from devcore_engine.security.identity import Principal, READ, WRITE
+
+    pilot, repo, target, state = _pilot(tmp_path, monkeypatch)
+    real_run = subprocess.run
+
+    def run(command, *args, **kwargs):
+        if command[0] == "codex":
+            Path(command[command.index("--output-last-message") + 1]).write_text(
+                json.dumps({"summary": "Change the fixture", "path": "DEV_CORE/example.txt",
+                            "old": "before\n", "new": "after\n"}))
+            return subprocess.CompletedProcess(command, 0, "", "")
+        return real_run(command, *args, **kwargs)
+
+    monkeypatch.setattr(pilot.subprocess, "run", run)
+    proposal = pilot.propose(repo, state, "Change fixture", "DEV_CORE/example.txt")
+    for principal in (Principal("majdi", "session", "other_project", WRITE),
+                      Principal("majdi", "session", "devcore", READ)):
+        with pytest.raises(ValueError, match="Authenticated devcore write"):
+            pilot.approve(repo, state, proposal["id"], proposal["sha256"], principal=principal)
+        assert target.read_text() == "before\n"
+    result = pilot.approve(repo, state, proposal["id"], proposal["sha256"],
+                           principal=Principal("majdi", "session", "devcore", WRITE))
+    assert result["approved_by"] == "majdi"
+    assert target.read_text() == "after\n"
+    assert pilot.read_proposal(state, proposal["id"])["approval_source"] == "authenticated_project_api"
+
+
+def test_durable_run_retry_reuses_approved_proposal_identity(tmp_path, monkeypatch):
+    pilot, repo, target, state = _pilot(tmp_path, monkeypatch)
+    monkeypatch.setenv("DEVCORE_PROJECT_ID", "devcore")
+    monkeypatch.setenv("DEVCORE_RUN_ID", "run-test-123")
+    real_run = subprocess.run
+    calls = []
+
+    def run(command, *args, **kwargs):
+        if command[0] == "codex":
+            calls.append(1)
+            Path(command[command.index("--output-last-message") + 1]).write_text(
+                json.dumps({"summary": "Change the fixture", "path": "DEV_CORE/example.txt",
+                            "old": "before\n", "new": "after\n"}))
+            return subprocess.CompletedProcess(command, 0, "", "")
+        return real_run(command, *args, **kwargs)
+
+    monkeypatch.setattr(pilot.subprocess, "run", run)
+    first = pilot.propose(repo, state, "Change fixture", "DEV_CORE/example.txt")
+    second = pilot.propose(repo, state, "Change fixture", "DEV_CORE/example.txt")
+    assert first == second
+    assert calls == [1]
+    assert target.read_text() == "before\n"
+    monkeypatch.setenv("DEVCORE_PROJECT_ID", "other_project")
+    with pytest.raises(ValueError, match="another project"):
+        pilot.propose(repo, state, "Change fixture", "DEV_CORE/example.txt")

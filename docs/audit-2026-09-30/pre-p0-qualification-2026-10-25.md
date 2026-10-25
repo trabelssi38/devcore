@@ -98,6 +98,26 @@ les fins de ligne avant de vérifier que le diff indexé est exactement celui
 de la proposition. Les cinq tests ciblés repassent, y compris `autocrlf=true`.
 Ce succès qualifie une proposition et une application manuelle approuvée,
 pas une approbation Cockpit sous `majdi` ni un déclenchement autonome.
+
+### Intégration API et run durable en recette isolée
+
+La candidate de phase 6 ajoute trois routes derrière l'authentification de
+projet : soumettre une proposition `devcore` avec clé d'idempotence, lire le
+patch et approuver son SHA-256. La soumission construit elle-même la commande
+du pilote et l'envoie au `DurableRunEngine` ; le client ne choisit ni exécutable
+ni dépôt. Le processus de proposition est borné à 930 secondes par le run,
+utilise le checkout dédié et conserve l'état sous `AgentPilot`. Une reprise
+d'un même `DEVCORE_RUN_ID` réutilise la proposition déjà écrite ; l'agent ne
+peut pas travailler pour un autre `DEVCORE_PROJECT_ID`. L'approbation par API
+exige le droit `task.mutate` sur `devcore` ; la session navigateur exige en
+plus origine et CSRF. Le compte authentifié est consigné avec l'empreinte.
+
+Huit tests ciblés passent sur identité, base et Git temporaires, dont refus
+sans identité, refus d'un lecteur, refus sans CSRF, application par une session
+`majdi` de test et reprise idempotente. Trois tests ciblés existants du moteur
+passent pour fencing après interruption, confinement de descendance Windows et
+arrêt du worker. La candidate n'est pas encore déployée dans `DevCoreGlobal` ;
+aucun run réel piloté par cette API n'est revendiqué.
 L'approbation est interactive dans un terminal local. Les tests utilisent un
 dépôt Git et des racines DEVCORE temporaires ; ils ne touchent pas aux données
 actives.

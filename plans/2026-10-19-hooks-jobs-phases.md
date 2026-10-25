@@ -415,3 +415,10 @@ normalisation des fins de ligne Windows (`454bbdb` local). Le contrôle exact
 du diff est ajouté au code et testé. L'identité enregistrée est le compte
 Windows local, pas une approbation Cockpit `majdi` ; hook, run durable et
 arrêt/reprise de l'agent restent à qualifier.
+
+**Intégration isolée suivante :** une API authentifiée `devcore` soumet la
+proposition au moteur de runs, expose le patch et accepte seulement l'empreinte
+approuvée par un principal `task.mutate`. La session navigateur vérifie origine
+et CSRF. Les tests isolés du parcours et du moteur passent ; le déploiement,
+un run réel en service et la qualification de reprise de ce pilote restent
+ouverts. Aucun schedule n'est réactivé.
