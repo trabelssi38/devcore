@@ -1,0 +1,46 @@
+{
+  "report_version": 1,
+  "date": "2026-10-15",
+  "status": "historical_task_delta_import_verified",
+  "database": "devcore_qualification_team_20261013",
+  "operator_sql_result": {
+    "begin": true,
+    "staged_rows": 9,
+    "inserted_rows": 9,
+    "verification_passed": true,
+    "commit": true,
+    "assigned_task_numbers": [478, 479, 480, 481, 482, 483, 484, 485, 486]
+  },
+  "backup": {
+    "path": "E:/DevCoreRuntime/migration/before-task-delta-20261015.dump",
+    "bytes": 11180780,
+    "sha256": "a3f321e6ef340ecef8a152169683e9c2c5ffdf8805087f1976a8f67ab1188e8e",
+    "pg_restore_list_exit_code": 0,
+    "restore_rehearsed": false
+  },
+  "independent_read_only_checks": {
+    "devcore_task_count": 398,
+    "imported_legacy_ids": 9,
+    "imported_source_uuids": 9,
+    "unique_uuids": 9,
+    "unique_task_numbers": 9,
+    "status": "done",
+    "steps_done": 1,
+    "steps_total": 1,
+    "other_project_visibility_of_imported_uuids": 0,
+    "rls_enabled_on_tasks": true,
+    "app_role_bypassrls": false
+  },
+  "service": {
+    "DevCoreIndividual": "Running",
+    "postgresql-x64-17": "Running",
+    "start_type": "Automatic",
+    "project_http": 200,
+    "status_http": 200
+  },
+  "limitations": [
+    "The operator's psql transcript provides transaction and commit evidence; the assistant verified the final rows independently with the application role.",
+    "The backup archive was listed successfully but a full restore was not rehearsed during this window.",
+    "Legacy IDs are project scoped; another project may contain the same text IDs."
+  ]
+}

@@ -1,103 +1,90 @@
 # Fiche projet — DevCore
 
-Projet : `devcore`. Version : 233. Revue : 2026-10-11.
-Portée : ce dépôt. Production non qualifiée.
+Projet : `devcore`. Revue : 2026-10-25.
+Portée : ce dépôt et son pilote local. Une qualification de production générale n'est pas établie.
 
-## Objectif et vocabulaire
+## Objectif et architecture
 
-DevCore coordonne les tâches, agents, connaissances du code et le Cockpit.
-La cible permet à plusieurs utilisateurs de travailler chacun sur son projet
-sans blocage mutuel. Un **projet** délimite données et droits ; un **run** est
-une tentative d'exécution persistante ; un **workspace** est son répertoire
-de travail, sans garantie de sandbox.
+DevCore coordonne tâches, agents, connaissances du code et Cockpit. Un projet
+délimite les données et les droits ; un run est une tentative persistante ;
+un workspace est un répertoire de travail, sans garantie de sandbox.
+Le profil équipe actif utilise l'API commune, PostgreSQL local, les droits par
+projet et le Cockpit. Le profil individuel historique et ses adaptateurs
+SQLite/JSON restent distincts. RepoWise garde un index séparé par dépôt.
+Les décisions applicables et leurs remplacements sont dans `context.json`.
 
-## Architecture actuelle et cible
+## État vérifié le 25 octobre 2026
 
-Actuel : Python, CLI/PowerShell, tâches SQLite, API FastAPI, MCP, Cockpit et
-scheduler. Des adaptateurs JSON historiques subsistent. RepoWise garde son
-propre index du dépôt. Cible : API commune, PostgreSQL local pour le profil
-équipe, droits par projet, workers durables, outbox et SSE. DBOS est à
-qualifier. La bascule PostgreSQL et cette chaîne complète ne sont pas
-déployées. Lire les décisions en vigueur du registre structuré.
+- `DevCoreGlobal` exécute la candidate Git `1f5ec0f6e9d31898d11f0f41dc5d2682d916b7c6`.
+  Son démarrage au troisième reboot du 23 octobre était automatique. Depuis
+  le 24 octobre, un déclencheur temporel toutes les cinq minutes complète
+  celui du boot et ignore les passages si la tâche tourne déjà. Après arrêt
+  contrôlé du processus RepoWise, le superviseur a quitté avec code 1 puis
+  Windows a relancé seul la pile : `ready` en 255 secondes. Le même superviseur
+  PID 3628 est encore actif le 25 octobre à 12:30 Tunis, six composants et
+  cinq sondes HTTP sains. Un état gateway faux sur un battement a disparu à
+  la sonde suivante, sans arrêt. Voir journal v494–v495.
+- Le Cockpit équipe affiche les projets Git autorisés à l'utilisateur connecté,
+  permet leur sélection et leur archivage, et charge les données propres au
+  projet sans recharger la page. La projection PostgreSQL a rendu les deux
+  vues pour `devcore`, `dashboard_recette_br` et `job_tracker` en lecture seule.
+- « Composition du contexte » lit séparément la fiche et les décisions sous
+  le droit `context.read`, affiche leur revue, leur provenance et les alertes
+  de fraîcheur. La réponse complète est bornée en octets UTF-8 ; ce volume
+  n'est pas une mesure des tokens réellement envoyés à Codex. Les entrées
+  `memory_entries` et l'index RepoWise restent des sources distinctes.
+  DevCore sait produire un instantané Git et d'empreintes vérifiées ; le
+  Cockpit le présente. Son échéance quotidienne de 09:00 Tunis est désactivée
+  depuis le 25 octobre à la demande de l'utilisateur. La revue narrative et
+  les décisions ne sont jamais datées automatiquement.
+- L'audit des 29 appartenances de `majdi`, avant filtre Git, trouvait zéro ligne
+  dans `memory_entries`, `budgets` et `plugins`. Le bilan quotidien non destructif
+  de `devcore` à 08:00 Tunis et le renouvellement des faits à 09:00 ont réussi
+  les 24 et 25 octobre. Le 25, `run-c51cdbf1dc32` et `run-3c73ae09f1e6`
+  sont `succeeded`, code 0, avec un seul run par clé d'échéance et l'historique
+  `dispatched` puis `finished`. Le 25 octobre, les deux échéances suivantes ont
+  été arrêtées : schedules `disabled`, `next_run_at=NULL`, derniers runs
+  conservés. La lecture PostgreSQL, le journal du scheduler, le lecteur borné
+  et le Cockpit sous `majdi` concordent.
+  La mesure quotidienne des dépassements et la conformité du
+  protocole agent ne sont pas encore produites par projet ; le Cockpit montre
+  des états explicites pour les sources manquantes.
+- La séparation LLM conserve 8787 pour le natif et 8789 pour l'auxiliaire
+  explicite vers Gemini Router 20130. Un appel Gemini réel a été vérifié ;
+  OpenAI et Anthropic sont hors du périmètre actuel. Aucun gain effectif de
+  tokens n'est établi par une comparaison contrôlée.
 
-## État utile à la reprise
+## Limites et reprise
 
-- Pilote sur ce poste en localhost. Les données transactionnelles actives
-  doivent rester hors Dropbox ; tests uniquement sur copies et racines
-  temporaires. Aucun second poste requis. Accès réseau après qualification
-  des identités, des droits et de l'isolation.
-- L0–L2 finalisé : sauvegarde/import sur copies, mutations de tâches isolées par projet
-  sur fixtures, ports @runtime_checkable et contrats typés dans devcore_api.
-  FileTaskRepository adaptateur atomique, statuts active/in_progress unifiés,
-  pagination limit/offset, catalogue /api/v1/routes. Conflits 409 et codes d'erreur
-  universels dans task_mutations.py. Routage API du CLI devcore task, dc.py et MCP ;
-  barrière DEVCORE_CLIENT_MODE=1 interdisant l'accès direct SQLite côté client.
-  Binding gateway sur 127.0.0.1:20131. Voir le journal v164–v217.
-- L3 : schéma PostgreSQL v2 (19 tables), RLS par projet, numérotation atomique,
-  versions et import dry-run ; aucun cluster réel qualifié. Voir v218–v222.
-- L4 : autorisation par projet, refus des divergences query/body, versions, Bearer/cookie,
-  audit et DDL `NOBYPASSRLS` qualifiés sur fixtures. Voir v219–v222.
-- L5 : `DurableRunEngine` à 8 états, worker borné, pause sûre, confinement Windows Job
-  et déduplication. D-008 remplace DBOS (D-005). Voir v220–v222.
-- L6 : outbox transactionnelle, snapshots versionnés, producteur unique et SSE à
-  reprise stricte ; 362 tests. Voir v223.
-- L7 : fournisseurs mémoire SQLite/RepoWise/composite, isolation par projet,
-  FTS5/graphe/embeddings 768d avec repli lexical ; 132 tests. Voir v224.
-- L8 : scheduler à baux atomiques et arrêt coopératif, Job Object, métriques par
-  projet/tâche, export OTLP/LLMOps borné ; 694 tests sur banc. Activation continue
-  et Langfuse distant ouverts. Voir v225.
-- L9 v226 : runtime Python 3.13.16 / SQLite 3.53.1 et snapshot individuel figé,
-  tests WAL et 267 tests collectés (266 réussis, 1 ignoré), gate CI 11/11.
-  `operationally_qualified=false`. Voir v226.
-- L9 v227 : release candidate séparée `devcore-py31316-20261010-l9`, wheel, contrôles et
-  hôte pywin32/DLL attestés par manifeste/provenance ; cycle coopératif réussi sur racines
-  temporaires et sur le service SCM réel. Racines portables `state/local` et `state/data`
-  sous `E:/DevCoreRuntime`, identité privée initialisée. `DevCoreIndividual` est installé
-  et actif sous `.\Administrateur` après attribution de `SeServiceLogonRight` ; `/project`
-  répond HTTP 200. Ce compte n'est pas restreint ; reprise après redémarrage Windows,
-  bascule des données et pilote restent ouverts.
-  Voir journal v227.
-- L9 v228 : copie SQLite cohérente de l'ancien état local et de 31 JSON `Memory`
-  vers `E:/DevCoreRuntime/qualification`, sans toucher les sources. Prévisualiseur FK
-  corrigé pour le schéma historique ; 10 tests ciblés passés. Réconciliation sur
-  copies : 1 378 tâches conservées, mais 268 866 arêtes orphelines, 2 projets
-  provisoires, 2 collisions et 460 identifiants de tâches non interprétables.
-  Le schéma cible manque encore dans la copie (knowledge_items, colonnes project_id
-  du graphe/vault et version des tâches). `review_required=true`,
-  `ready_for_cutover=false` ; aucun import réel. Voir v228.
-- L9 v229 : pilote préparé exclusivement sur copie sous
-  `E:/DevCoreRuntime/qualification/pilot-v229` ; 1 378 tâches et 427 401 arêtes
-  valides conservées, 268 866 arêtes en quarantaine. Numéros de pilote uniques :
-  460 identifiants texte, 1 collision et 2 identifiants `T-00` réattribués dans
-  la table de correspondance, avec identifiants originaux intacts. Schéma courant
-  ajouté à la copie ; intégrité et clés étrangères OK. Dashboard isolé sur 20132
-  et deux comptes temporaires : lecture propre 200, lecture croisée 403 ; comptes
-  désactivés et jetons révoqués. Aucune bascule de `state/local`, aucun gel des
-  écrivains ; cinq sessions, deux runs, retour arrière et reprise Windows ouverts.
-  Voir v229.
-- L9 v230–v231 : défaut de confinement des runs reproduit dans la release v227
-  (`DEV_CORE.Scheduler` absent du paquet isolé), corrigé dans une release candidate
-  séparée `devcore-py31316-20261011-l9-runfix`, sans changer le service.
-  Sur copie : 5 sessions concurrentes isolées, 2 runs confinés en parallèle et
-  restauration indépendante des tâches/runs/identités. L'ancienne release ouvre
-  le Dashboard restauré, mais ne qualifie pas le retour arrière des runs.
-  Bascule, compte restreint et reboot restent ouverts. Voir v230–v231.
-- L9 v232–v233 : 20 sessions simulées et 200 lectures sur copie, p95 observé
-  89,74 ms ; 2 runs réussis. Mémoire libre avant/après ~5,9 Gio, pas de pic
-  mesuré. Crash d'un worker de recette : enfant terminé par Job Object, run
-  remis en file avec jeton effacé, puis annulé. Voir v232–v233.
-- Routage LLM : 8787 natif préserve fournisseur et modèle ; 8789 auxiliaire
-  va vers Gemini Router 20130 avec alias explicites, embeddings directs.
-  Des contrôles de ports et de refus ont été testés en localhost ; usage
-  attribué, authentification et économie réelle restent à qualifier.
+Le Cockpit connecté sous `majdi` affiche le 25 octobre les deux passages
+réussis et l'instantané du contexte, puis les deux planifications désactivées
+sans prochain passage, sans rechargement de page. La séparation visible entre
+`devcore` et `dashboard_recette_br` a été
+vérifiée le 22 octobre. Les passages sont aussi contrôlés en base et dans le
+journal du scheduler.
+Un échec simulé a été qualifié sur PostgreSQL temporaire jusqu'à son rendu
+Cockpit isolé. Un retour arrière réel avec le schedule actif, suivi de la
+restauration de la candidate, a préservé le dernier passage et l'échéance.
+Les deux premiers reboots ont nécessité une récupération manuelle ; le
+troisième a prouvé le démarrage automatique. Une panne contrôlée du 24 octobre
+a prouvé une reprise en cours d'exécution sans intervention. La cause des
+pertes de santé antérieures et le comportement après un nouveau reboot avec
+le déclencheur temporel restent à observer ; la qualification porte sur le
+pilote local, pas sur une disponibilité générale.
+Le retour arrière de la candidate, l'affichage distinct des heures de tentative
+et de réussite, et le rafraîchissement ciblé après reconnexion SSE ont été
+contrôlés en serveur et sous `majdi` (journal v473–v485). Aucun hook client
+n'est installé.
+L'index RepoWise du dépôt principal doit être confronté au code courant
+lorsqu'il est ancien ; ses estimations de tokens ne prouvent pas
+une économie réelle. Ne jamais utiliser les données actives, Dropbox ni un
+index RepoWise réel comme fixture de test. Définir `DEVCORE_LOCAL_ROOT` et
+`DEVCORE_DATA_ROOT` temporaires avant imports et sous-processus de recette.
 
-## Prochaine action et preuves
-
-Poursuivre le Lot L9 (qualification opérationnelle et déploiement sur ce poste :
-mise en service sous compte restreint, bascule vers l'API unique, pilote localhost
-multi-utilisateurs et gel définitif des écritures historiques).
-Le budget du contexte est en octets, pas en tokens.
-
-[Plan](../../plans/2026-10-01-devcore-local-multiutilisateur.md) ·
-[Journal récent](../audit-2026-09-30/execution-2026-10-05.md) ·
-[Protocole tokens](../audit-2026-09-30/protocole-tokens-codex.md).
+Pour reprendre, lire les décisions en vigueur du registre structuré, puis
+contrôler les preuves actuelles avant d'annoncer une qualification ou une
+mise en service. L'historique L0–L9 et les limites se trouvent dans le
+[plan](../../plans/2026-10-01-devcore-local-multiutilisateur.md) et le
+[journal](../audit-2026-09-30/execution-2026-10-05.md), notamment v493–v495.
+Le [protocole de mesure des tokens](../audit-2026-09-30/protocole-tokens-codex.md)
+reste à exécuter sur des tâches comparables.
