@@ -40,10 +40,38 @@ explicite avec motif. Les commandes de contrôle et d'arrêt ne consomment pas
 ce budget. Le test ciblé passe **6/6** avec racines DEVCORE temporaires avant
 imports ; il confirme qu'un quatrième essai n'atteint ni Git ni la base.
 
-Ce garde est qualifié en isolation seulement au moment de cette note. Son
-installation dans le wrapper de la tâche et son observation opérationnelle
-seront consignées séparément. La tâche active et les deux schedules quotidiens
-ne sont pas modifiés par les tests.
+À 18:18 `Africa/Tunis`, le lanceur utilisé par `DevCoreGlobal` a été remplacé
+après vérification SHA-256 de l'ancien fichier ; la copie de retour est
+`E:/DevCoreRuntime/qualification/pre-p0-launcher-backup-20261025.py`.
+`--budget-status` sur le profil actif retourne `failures=[]` et
+`exhausted=false`. La tâche reste `Running`, le superviseur PID 3628 et ses
+six enfants restent `ready` ; aucune relance ou panne n'a éprouvé le garde en
+production. Le contrôle `--budget-status` ne crée pas le fichier d'état : il
+sera créé lors d'un premier résultat de lancement. Le tick de cinq minutes
+reste sans fin, mais le wrapper refusera le quatrième lancement après trois
+échecs rapides. Les deux schedules quotidiens restent désactivés.
+
+## Phase 6 — pilote agent
+
+Le choix utilisateur du 25 octobre limite l'agent au projet `devcore` et
+exige une approbation humaine avant une modification des fichiers. Le nouveau
+pilote `devcore_agent_pilot.py` est un point d'entrée séparé, sans connexion
+à `task_sync` ni à un schedule. Il n'accepte que le checkout dédié
+`E:/DevCoreRuntime/qualification/devcore-agent-pilot` propre. `codex exec`
+est lancé avec `--sandbox read-only` et produit un diff ; le contrôleur
+vérifie les chemins existants sous `DEV_CORE/`, la base Git et le patch. Il
+conserve une proposition avec son SHA-256. Une seconde commande interactive
+montre le patch et exige `APPLY <sha256>` avant `git apply --index` ; l'audit
+consigne identité locale, empreinte et application. Les limites sont trois
+propositions par jour, quinze minutes par invocation, huit fichiers et
+128 000 octets de patch. Une sortie sans diff est refusée.
+
+Cette version est un **prototype qualifié en isolation**, pas encore une mise
+en service autonome : aucun déclenchement sur tâche, aucun compte `majdi`
+authentifié pour l'approbation, aucun essai réel de Codex ni essai d'arrêt et
+reprise n'est revendiqué à ce stade. Son approbation est interactive dans un
+terminal local. Les tests utilisent un dépôt Git et des racines DEVCORE
+temporaires ; ils ne touchent pas aux données actives.
 
 ## Stabilité
 

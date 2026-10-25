@@ -392,3 +392,12 @@ mise en service séparée. La présence d'une tâche `in_progress` ne suffit jam
 
 **Sortie attendue :** décision indépendante documentée ; en son absence,
 aucun agent autonome planifié.
+
+**Décision utilisateur du 25 octobre 2026 :** pilote limité à `devcore`,
+approbation humaine avant toute modification de fichiers. L'implémentation
+isolée `devcore_agent_pilot.py` sépare proposition en lecture seule et
+application interactive d'un patch identifié par SHA-256. Elle n'est liée
+à aucun hook ou schedule. Statut : implémentation et tests en isolation en
+cours ; la qualification opérationnelle et l'intégration à une identité
+authentifiée restent ouvertes. Voir
+`docs/audit-2026-09-30/pre-p0-qualification-2026-10-25.md`.
