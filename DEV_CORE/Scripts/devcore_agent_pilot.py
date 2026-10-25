@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import argparse
 from datetime import datetime, timezone
+import difflib
 import getpass
 import hashlib
 import json
@@ -24,6 +25,7 @@ PROJECT = "devcore"
 PILOT_REPO = Path("E:/DevCoreRuntime/qualification/devcore-agent-pilot")
 MAX_PATCH_BYTES = 128_000
 MAX_TASK_BYTES = 8_000
+MAX_SNIPPET_BYTES = 8_000
 MAX_PROPOSALS_PER_DAY = 3
 PATCH_HEADER = re.compile(r"diff --git a/([A-Za-z0-9_./-]+) b/([A-Za-z0-9_./-]+)$")
 
@@ -79,6 +81,33 @@ def _patch_paths(patch: str) -> list[str]:
     return paths
 
 
+def _proposal_patch(repo: Path, response: dict, target: str) -> str:
+    if (set(response) != {"summary", "path", "old", "new"} or
+            not all(isinstance(value, str) for value in response.values()) or
+            response["path"] != target):
+        raise ValueError("Invalid Codex replacement structure")
+    if (not re.fullmatch(r"DEV_CORE/[A-Za-z0-9_./-]+", target) or
+            ".." in Path(target).parts or ".git" in Path(target).parts or
+            _git(repo, "ls-files", "--", target) != target):
+        raise ValueError("Pilot target must be an existing DevCore source file")
+    original = subprocess.run(["git", "show", "HEAD:" + target], cwd=repo,
+                              capture_output=True, text=True, timeout=45,
+                              check=True).stdout
+    old = response["old"].replace("\r\n", "\n")
+    new = response["new"].replace("\r\n", "\n")
+    if (not old or len(old.encode("utf-8")) > MAX_SNIPPET_BYTES or
+            len(new.encode("utf-8")) > MAX_SNIPPET_BYTES or
+            original.count(old) != 1 or old == new):
+        raise ValueError("Replacement must match exactly once within quota")
+    revised = original.replace(old, new, 1)
+    patch = (f"diff --git a/{target} b/{target}\n" + "".join(
+        difflib.unified_diff(original.splitlines(keepends=True),
+                             revised.splitlines(keepends=True),
+                             fromfile="a/" + target, tofile="b/" + target)))
+    _patch_paths(patch)
+    return patch
+
+
 def _digest(payload: dict) -> str:
     source = {key: payload[key] for key in ("project", "base", "task", "summary", "patch")}
     encoded = json.dumps(source, ensure_ascii=False, sort_keys=True,
@@ -118,13 +147,18 @@ def _enforce_daily_quota(state: Path) -> None:
         raise ValueError("Daily pilot proposal quota exhausted")
 
 
-def propose(repo: Path, state: Path, task: str, *, codex: str = "codex") -> dict:
+def propose(repo: Path, state: Path, task: str, target: str,
+            *, codex: str = "codex") -> dict:
     repo, base = _repo(repo)
     state = state.resolve()
     if state.is_relative_to(repo):
         raise ValueError("Pilot state must be outside the repository")
     if not task.strip() or len(task.encode("utf-8")) > MAX_TASK_BYTES:
         raise ValueError("Task missing or exceeds pilot quota")
+    if (not re.fullmatch(r"DEV_CORE/[A-Za-z0-9_./-]+", target) or
+            ".." in Path(target).parts or ".git" in Path(target).parts or
+            _git(repo, "ls-files", "--", target) != target):
+        raise ValueError("Pilot target must be an existing DevCore source file")
     state.mkdir(parents=True, exist_ok=True)
     _enforce_daily_quota(state)
     proposal_id = uuid4().hex
@@ -134,13 +168,17 @@ def propose(repo: Path, state: Path, task: str, *, codex: str = "codex") -> dict
     output = state / f"{proposal_id}.response.json"
     schema.write_text(json.dumps({
         "type": "object", "additionalProperties": False,
-        "required": ["summary", "patch"],
-        "properties": {"summary": {"type": "string"}, "patch": {"type": "string"}},
+        "required": ["summary", "path", "old", "new"],
+        "properties": {key: {"type": "string"}
+                       for key in ("summary", "path", "old", "new")},
     }), encoding="utf-8")
-    prompt = ("Project devcore. Inspect this checkout read-only. Propose a minimal "
-              "unified git diff editing existing text files under DEV_CORE only. "
-              "Do not modify files. Return JSON with summary and patch. "
-              "If no safe edit is possible, return an empty patch.\n\nTask:\n" + task)
+    prompt = ("Project devcore. Inspect this checkout read-only. Propose exactly "
+              "one replacement in the named existing file. Do not modify files. "
+              "Return JSON with summary, path, old (an exact unique snippet from "
+              "the file) and new (its replacement). Preserve executable behavior "
+              "unless the task explicitly requires a change. If no safe edit is "
+              "possible, return an empty old string.\nTarget: " + target +
+              "\n\nTask:\n" + task)
     command = [codex, "exec", "-C", str(repo), "--sandbox", "read-only",
                "--ephemeral", "--output-schema", str(schema),
                "--output-last-message", str(output), "-"]
@@ -152,17 +190,13 @@ def propose(repo: Path, state: Path, task: str, *, codex: str = "codex") -> dict
         if _repo(repo)[1] != base:
             raise RuntimeError("Repository changed while Codex was proposing")
         response = json.loads(output.read_text(encoding="utf-8"))
-        if not isinstance(response, dict) or set(response) != {"summary", "patch"}:
+        if not isinstance(response, dict):
             raise ValueError("Invalid Codex proposal structure")
-        if not all(isinstance(value, str) for value in response.values()):
-            raise ValueError("Invalid Codex proposal values")
-        paths = _patch_paths(response["patch"])
-        for path in paths:
-            if not (_git(repo, "ls-files", "--", path) == path):
-                raise ValueError("Proposal touches an untracked file")
-        _apply_check(repo, response["patch"])
+        patch = _proposal_patch(repo, response, target)
+        paths = _patch_paths(patch)
+        _apply_check(repo, patch)
         payload = {"project": PROJECT, "base": base, "task": task,
-                   "summary": response["summary"], "patch": response["patch"]}
+                   "summary": response["summary"], "patch": patch}
         digest = _digest(payload)
         proposal = {**payload, "id": proposal_id, "sha256": digest,
                     "paths": paths, "status": "waiting_approval"}
@@ -225,7 +259,9 @@ def main() -> int:
     parser.add_argument("--state", type=Path,
                         default=Path(os.environ.get("DEVCORE_LOCAL_ROOT", "")) / "AgentPilot")
     sub = parser.add_subparsers(dest="command", required=True)
-    sub.add_parser("propose").add_argument("task")
+    proposal = sub.add_parser("propose")
+    proposal.add_argument("--file", required=True)
+    proposal.add_argument("task")
     approval = sub.add_parser("approve")
     approval.add_argument("proposal_id")
     approval.add_argument("sha256")
@@ -233,7 +269,7 @@ def main() -> int:
     if not args.state.is_absolute() or not os.environ.get("DEVCORE_LOCAL_ROOT"):
         parser.error("Set an absolute DEVCORE_LOCAL_ROOT before using the pilot")
     try:
-        result = (propose(args.repo, args.state, args.task) if args.command == "propose"
+        result = (propose(args.repo, args.state, args.task, args.file) if args.command == "propose"
                   else approve(args.repo, args.state, args.proposal_id, args.sha256))
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
         print(json.dumps({"status": "refused", "reason": str(exc)}))

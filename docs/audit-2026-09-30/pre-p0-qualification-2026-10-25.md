@@ -59,19 +59,26 @@ pilote `devcore_agent_pilot.py` est un point d'entrée séparé, sans connexion
 à `task_sync` ni à un schedule. Il n'accepte que le checkout dédié
 `E:/DevCoreRuntime/qualification/devcore-agent-pilot` propre. `codex exec`
 est lancé avec `--sandbox read-only` et produit un diff ; le contrôleur
-vérifie les chemins existants sous `DEV_CORE/`, la base Git et le patch. Il
+vérifie le fichier existant sous `DEV_CORE/`, la base Git et construit un patch
+à partir d'un remplacement de texte exact fourni par l'agent. Il
 conserve une proposition avec son SHA-256. Une seconde commande interactive
 montre le patch et exige `APPLY <sha256>` avant `git apply --index` ; l'audit
 consigne identité locale, empreinte et application. Les limites sont trois
-propositions par jour, quinze minutes par invocation, huit fichiers et
-128 000 octets de patch. Une sortie sans diff est refusée.
+propositions par jour, quinze minutes par invocation, un fichier, 8 000 octets
+par extrait et 128 000 octets de patch. Une sortie sans changement est refusée.
 
 Cette version est un **prototype qualifié en isolation**, pas encore une mise
 en service autonome : aucun déclenchement sur tâche, aucun compte `majdi`
-authentifié pour l'approbation, aucun essai réel de Codex ni essai d'arrêt et
-reprise n'est revendiqué à ce stade. Son approbation est interactive dans un
-terminal local. Les tests utilisent un dépôt Git et des racines DEVCORE
-temporaires ; ils ne touchent pas aux données actives.
+authentifié pour l'approbation et aucun essai d'arrêt/reprise n'est revendiqué.
+Trois essais réels de proposition Codex en lecture seule ont été refusés avant
+création d'un patch approuvable : le premier et le second par la validation
+`git apply --index` sur CRLF, le troisième par un diff mal formé. Le correctif
+suivant remplace le diff libre par un remplacement d'extrait exact et construit
+le diff localement ; il passe les tests isolés mais n'a pas encore eu de nouvel
+essai réel, le quota quotidien de trois propositions étant atteint.
+L'approbation est interactive dans un terminal local. Les tests utilisent un
+dépôt Git et des racines DEVCORE temporaires ; ils ne touchent pas aux données
+actives.
 
 ## Stabilité
 

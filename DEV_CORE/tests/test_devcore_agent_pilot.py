@@ -1,6 +1,7 @@
 """The autonomous pilot cannot edit a checkout without exact human approval."""
 
 import importlib.util
+from datetime import datetime, timezone
 import json
 from pathlib import Path
 import subprocess
@@ -37,19 +38,9 @@ def _pilot(tmp_path, monkeypatch, *, autocrlf="false"):
     return module, repo, target, tmp_path / "local" / "AgentPilot"
 
 
-def _diff(repo, target):
-    target.write_text("after\n")
-    patch = subprocess.run(["git", "diff", "--", "DEV_CORE/example.txt"],
-                           cwd=repo, capture_output=True, text=True, check=True).stdout
-    subprocess.run(["git", "checkout", "--", "DEV_CORE/example.txt"],
-                   cwd=repo, check=True, capture_output=True)
-    return patch
-
-
 @pytest.mark.parametrize("autocrlf", ["false", "true"])
 def test_read_only_proposal_waits_for_exact_interactive_approval(tmp_path, monkeypatch, autocrlf):
     pilot, repo, target, state = _pilot(tmp_path, monkeypatch, autocrlf=autocrlf)
-    patch = _diff(repo, target)
     real_run = subprocess.run
 
     def run(command, *args, **kwargs):
@@ -57,12 +48,13 @@ def test_read_only_proposal_waits_for_exact_interactive_approval(tmp_path, monke
             assert command[command.index("--sandbox") + 1] == "read-only"
             assert "--ephemeral" in command
             Path(command[command.index("--output-last-message") + 1]).write_text(
-                json.dumps({"summary": "Change the fixture", "patch": patch}))
+                json.dumps({"summary": "Change the fixture", "path": "DEV_CORE/example.txt",
+                            "old": "before\n", "new": "after\n"}))
             return subprocess.CompletedProcess(command, 0, "", "")
         return real_run(command, *args, **kwargs)
 
     monkeypatch.setattr(pilot.subprocess, "run", run)
-    result = pilot.propose(repo, state, "Change the fixture")
+    result = pilot.propose(repo, state, "Change the fixture", "DEV_CORE/example.txt")
     assert result["status"] == "waiting_approval"
     assert target.read_text() == "before\n"
     with pytest.raises(ValueError, match="hash mismatch"):
@@ -89,7 +81,7 @@ def test_dirty_or_outside_checkout_and_unsafe_patch_refused(tmp_path, monkeypatc
         pilot._repo(tmp_path)
     target.write_text("dirty\n")
     with pytest.raises(ValueError, match="clean"):
-        pilot.propose(repo, state, "Change fixture")
+        pilot.propose(repo, state, "Change fixture", "DEV_CORE/example.txt")
     for patch in ("diff --git a/../secret b/../secret\n", "diff --git a/docs/x b/docs/x\n",
                   "diff --git a/DEV_CORE/x b/DEV_CORE/x\nnew file mode 100644\n"):
         with pytest.raises(ValueError):
@@ -98,19 +90,30 @@ def test_dirty_or_outside_checkout_and_unsafe_patch_refused(tmp_path, monkeypatc
 
 def test_checkout_change_invalidates_stored_approval(tmp_path, monkeypatch):
     pilot, repo, target, state = _pilot(tmp_path, monkeypatch)
-    patch = _diff(repo, target)
     real_run = subprocess.run
 
     def run(command, *args, **kwargs):
         if command[0] == "codex":
             Path(command[command.index("--output-last-message") + 1]).write_text(
-                json.dumps({"summary": "Change the fixture", "patch": patch}))
+                json.dumps({"summary": "Change the fixture", "path": "DEV_CORE/example.txt",
+                            "old": "before\n", "new": "after\n"}))
             return subprocess.CompletedProcess(command, 0, "", "")
         return real_run(command, *args, **kwargs)
 
     monkeypatch.setattr(pilot.subprocess, "run", run)
-    proposal = pilot.propose(repo, state, "Change fixture")
+    proposal = pilot.propose(repo, state, "Change fixture", "DEV_CORE/example.txt")
     target.write_text("changed elsewhere\n")
     with pytest.raises(ValueError, match="clean"):
         pilot.approve(repo, state, proposal["id"], proposal["sha256"])
     assert target.read_text() == "changed elsewhere\n"
+
+
+def test_daily_proposal_quota_blocks_fourth_model_call(tmp_path, monkeypatch):
+    pilot, repo, _, state = _pilot(tmp_path, monkeypatch)
+    state.mkdir(parents=True)
+    today = datetime.now(timezone.utc).isoformat()
+    (state / "audit.jsonl").write_text("".join(
+        json.dumps({"at_utc": today, "event": "proposal_started", "id": str(i)}) + "\n"
+        for i in range(3)))
+    with pytest.raises(ValueError, match="quota exhausted"):
+        pilot.propose(repo, state, "Change fixture", "DEV_CORE/example.txt")
