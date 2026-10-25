@@ -71,6 +71,9 @@ def test_read_only_proposal_waits_for_exact_interactive_approval(tmp_path, monke
     applied = pilot.approve(repo, state, result["id"], result["sha256"])
     assert applied["status"] == "applied"
     assert target.read_text() == "after\n"
+    assert b"\r" not in target.read_bytes()
+    assert subprocess.run(["git", "diff", "--cached", "--check"], cwd=repo,
+                          capture_output=True).returncode == 0
     assert [json.loads(line)["event"] for line in (state / "audit.jsonl").read_text().splitlines()] == [
         "proposal_started", "proposal_ready", "human_approved", "patch_applied"]
 

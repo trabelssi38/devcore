@@ -404,6 +404,14 @@ authentifiée restent ouvertes. Voir
 
 **Essai réel du 25 octobre :** après retrait du quota quotidien arbitraire,
 une proposition Codex en lecture seule a passé la validation du remplacement
-exact et du patch Git. Elle attend une approbation humaine avant application ;
-le checkout est encore propre. Cet essai qualifie le chemin de proposition,
-pas l'exécution autonome ni la reprise après interruption.
+exact et du patch Git. Elle attendait alors une approbation humaine avant
+application. Cet essai qualifie le chemin de proposition, pas l'exécution
+autonome ni la reprise après interruption.
+
+**Application approuvée du 25 octobre :** l'utilisateur a approuvé l'empreinte
+de cette proposition ; le pilote l'a appliquée dans son checkout dédié et
+l'a consignée. Le diff final, limité à la docstring, est propre après
+normalisation des fins de ligne Windows (`454bbdb` local). Le contrôle exact
+du diff est ajouté au code et testé. L'identité enregistrée est le compte
+Windows local, pas une approbation Cockpit `majdi` ; hook, run durable et
+arrêt/reprise de l'agent restent à qualifier.

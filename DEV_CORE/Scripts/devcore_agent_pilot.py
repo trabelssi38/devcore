@@ -123,6 +123,21 @@ def _apply_check(repo: Path, patch: str) -> None:
         raise ValueError("Patch does not apply: " + result.stderr.strip()[:500])
 
 
+def _verify_staged_patch(repo: Path, paths: list[str], expected: str) -> None:
+    check = subprocess.run(["git", "diff", "--cached", "--check"], cwd=repo,
+                           capture_output=True, text=True, timeout=45, check=False)
+    if check.returncode:
+        raise ValueError("Applied patch has whitespace errors: " + check.stdout[:500])
+    result = subprocess.run(["git", "diff", "--cached", "--no-ext-diff",
+                             "--no-color", "--no-renames", "--unified=3",
+                             "--", *paths], cwd=repo, capture_output=True,
+                            text=True, timeout=45, check=True)
+    actual = "".join(line for line in result.stdout.splitlines(keepends=True)
+                     if not line.startswith("index "))
+    if actual != expected:
+        raise ValueError("Applied patch differs from the approved proposal")
+
+
 def _audit(state: Path, event: dict) -> None:
     state.mkdir(parents=True, exist_ok=True)
     record = {"at_utc": datetime.now(timezone.utc).isoformat(), **event}
@@ -225,6 +240,14 @@ def approve(repo: Path, state: Path, proposal_id: str, sha256: str) -> dict:
     subprocess.run(["git", "apply", "--index", "--ignore-whitespace", "-"], cwd=repo,
                    input=proposal["patch"], text=True, capture_output=True,
                    timeout=45, check=True)
+    for relative in paths:
+        target = repo / relative
+        contents = target.read_bytes()
+        if b"\r\n" in contents:
+            target.write_bytes(contents.replace(b"\r\n", b"\n"))
+        subprocess.run(["git", "add", "--", relative], cwd=repo,
+                       capture_output=True, text=True, timeout=45, check=True)
+    _verify_staged_patch(repo, paths, proposal["patch"])
     proposal["status"] = "applied"
     proposal["approved_by"] = actor
     path.write_text(json.dumps(proposal, ensure_ascii=False, indent=2) + "\n",

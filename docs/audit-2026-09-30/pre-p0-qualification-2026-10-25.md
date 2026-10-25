@@ -84,7 +84,20 @@ proposition applicable pour la seule docstring de
 `6516726c5e3646ac4519b7114783aa78a2aa9a98568114aeefe435f705bff672`,
 base Git `9c2f8cee27a1c825438870dd715fd0dabd669df6`. Le contrôleur a
 construit et vérifié le patch ; le checkout pilote est resté propre. Statut
-`waiting_approval` : aucune application ni approbation n'est revendiquée.
+`waiting_approval` au moment de la proposition ; aucune application n'était
+encore revendiquée à cet instant.
+L'utilisateur a ensuite approuvé explicitement cette empreinte dans le fil.
+La commande interactive du pilote a enregistré `human_approved` et
+`patch_applied` sous le compte Windows `Administrateur`. Le premier contrôle
+`git diff --cached --check` a révélé des retours chariot sur les lignes
+ajoutées par `git apply --ignore-whitespace` dans ce checkout CRLF. Après
+normalisation LF, le diff indexé correspond exactement au patch approuvé et
+le contrôle est propre ; le changement de docstring est conservé par le
+commit local du checkout pilote `454bbdb`. Le contrôleur normalise désormais
+les fins de ligne avant de vérifier que le diff indexé est exactement celui
+de la proposition. Les cinq tests ciblés repassent, y compris `autocrlf=true`.
+Ce succès qualifie une proposition et une application manuelle approuvée,
+pas une approbation Cockpit sous `majdi` ni un déclenchement autonome.
 L'approbation est interactive dans un terminal local. Les tests utilisent un
 dépôt Git et des racines DEVCORE temporaires ; ils ne touchent pas aux données
 actives.
