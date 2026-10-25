@@ -1,8 +1,10 @@
 """Persistent, fail-closed launch budget for the Windows global stack task.
 
-The Task Scheduler time trigger may run forever, but no more than three failed
-launches in thirty minutes may start the supervisor. Exhaustion is latched until
-an operator explicitly resets it. ``IgnoreNew`` on the task serializes callers.
+The Task Scheduler time trigger may run forever, but three recorded failures
+within thirty minutes latch the budget as exhausted and block subsequent launches.
+Elapsed time alone does not clear exhaustion; an operator must explicitly reset
+it with ``--reset-restart-budget --reason ...``. ``IgnoreNew`` on the task
+serializes callers.
 """
 
 from __future__ import annotations
