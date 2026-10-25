@@ -86,6 +86,16 @@ Au contrôle du 25 octobre vers 14:39 `Africa/Tunis`, le superviseur PID 3628
 créé le 24 octobre à 12:23 reste `ready`, six enfants vivants avec ce parent,
 et cinq sondes HTTP répondent 200. Le journal Windows donne 315 événements
 322 depuis le nouveau cycle : le tick a été ignoré quand la tâche tournait.
+À 18:25 `Africa/Tunis`, le même superviseur et les six mêmes enfants sont
+encore présents (dates de création du 24 octobre, parents contrôlés par CIM),
+le manifeste a un heartbeat récent et les cinq chemins exacts de sonde
+(`20130/healthz`, `8787/healthz`, `8789/healthz`,
+`20131/api/v1/health`, `7337/health`) répondent 200. Depuis le premier
+`ready`, le canal TaskScheduler contient 360 événements 322 pour
+`DevCoreGlobal` et aucun autre événement de cette tâche ; le journal de
+lanceur n'a pas de nouvelle sortie en échec après celle du 24 octobre à
+11:20 UTC. Cela représente environ 30 heures, sans prouver chaque intervalle
+de disponibilité.
 Ce contrôle ponctuel ne démontre pas la disponibilité continue. Les 48 heures
 depuis le premier `ready` ne peuvent être vérifiées avant le 26 octobre à
 12:24:27 `Africa/Tunis`, puis doivent être confrontées aux journaux et incidents.
