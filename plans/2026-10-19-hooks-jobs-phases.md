@@ -401,3 +401,9 @@ application interactive d'un patch identifié par SHA-256. Elle n'est liée
 cours ; la qualification opérationnelle et l'intégration à une identité
 authentifiée restent ouvertes. Voir
 `docs/audit-2026-09-30/pre-p0-qualification-2026-10-25.md`.
+
+**Essai réel du 25 octobre :** après retrait du quota quotidien arbitraire,
+une proposition Codex en lecture seule a passé la validation du remplacement
+exact et du patch Git. Elle attend une approbation humaine avant application ;
+le checkout est encore propre. Cet essai qualifie le chemin de proposition,
+pas l'exécution autonome ni la reprise après interruption.

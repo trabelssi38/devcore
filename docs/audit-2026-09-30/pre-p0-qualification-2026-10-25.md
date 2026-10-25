@@ -76,7 +76,15 @@ création d'un patch approuvable : le premier et le second par la validation
 `git apply --index` sur CRLF, le troisième par un diff mal formé. Le correctif
 suivant remplace le diff libre par un remplacement d'extrait exact et construit
 le diff localement ; il passe les tests isolés mais n'a pas encore eu de nouvel
-essai réel au moment de cette note.
+essai réel au moment de cette note. Après suppression du quota quotidien,
+un nouvel appel réel de `codex exec --sandbox read-only` a produit une
+proposition applicable pour la seule docstring de
+`DEV_CORE/Scripts/global_restart_budget.py` :
+`c4358a6acadf41d2bf25847cf757dc4d`, SHA-256
+`6516726c5e3646ac4519b7114783aa78a2aa9a98568114aeefe435f705bff672`,
+base Git `9c2f8cee27a1c825438870dd715fd0dabd669df6`. Le contrôleur a
+construit et vérifié le patch ; le checkout pilote est resté propre. Statut
+`waiting_approval` : aucune application ni approbation n'est revendiquée.
 L'approbation est interactive dans un terminal local. Les tests utilisent un
 dépôt Git et des racines DEVCORE temporaires ; ils ne touchent pas aux données
 actives.
