@@ -12,7 +12,7 @@ import pytest
 SCRIPT = Path(__file__).resolve().parents[1] / "Scripts" / "devcore_agent_pilot.py"
 
 
-def _pilot(tmp_path, monkeypatch):
+def _pilot(tmp_path, monkeypatch, *, autocrlf="false"):
     monkeypatch.setenv("DEVCORE_LOCAL_ROOT", str(tmp_path / "local"))
     monkeypatch.setenv("DEVCORE_DATA_ROOT", str(tmp_path / "data"))
     spec = importlib.util.spec_from_file_location("isolated_devcore_agent_pilot", SCRIPT)
@@ -24,12 +24,15 @@ def _pilot(tmp_path, monkeypatch):
     (repo / "DEV_CORE").mkdir()
     target = repo / "DEV_CORE" / "example.txt"
     target.write_text("before\n")
-    for command in (["git", "init", "-q"], ["git", "config", "core.autocrlf", "false"],
+    for command in (["git", "init", "-q"], ["git", "config", "core.autocrlf", autocrlf],
                     ["git", "config", "user.name", "Pilot Test"],
                     ["git", "config", "user.email", "pilot@example.invalid"],
                     ["git", "add", "README.md", "DEV_CORE/example.txt"],
                     ["git", "-c", "core.hooksPath=NUL", "commit", "-qm", "fixture"]):
         subprocess.run(command, cwd=repo, check=True, capture_output=True)
+    if autocrlf == "true":
+        subprocess.run(["git", "checkout-index", "--force", "--all"], cwd=repo,
+                       check=True, capture_output=True)
     monkeypatch.setattr(module, "PILOT_REPO", repo)
     return module, repo, target, tmp_path / "local" / "AgentPilot"
 
@@ -43,8 +46,9 @@ def _diff(repo, target):
     return patch
 
 
-def test_read_only_proposal_waits_for_exact_interactive_approval(tmp_path, monkeypatch):
-    pilot, repo, target, state = _pilot(tmp_path, monkeypatch)
+@pytest.mark.parametrize("autocrlf", ["false", "true"])
+def test_read_only_proposal_waits_for_exact_interactive_approval(tmp_path, monkeypatch, autocrlf):
+    pilot, repo, target, state = _pilot(tmp_path, monkeypatch, autocrlf=autocrlf)
     patch = _diff(repo, target)
     real_run = subprocess.run
 

@@ -87,7 +87,8 @@ def _digest(payload: dict) -> str:
 
 
 def _apply_check(repo: Path, patch: str) -> None:
-    result = subprocess.run(["git", "apply", "--check", "--index", "-"],
+    result = subprocess.run(["git", "apply", "--check", "--index",
+                             "--ignore-whitespace", "-"],
                             cwd=repo, input=patch, text=True, capture_output=True,
                             timeout=45, check=False)
     if result.returncode:
@@ -205,7 +206,7 @@ def approve(repo: Path, state: Path, proposal_id: str, sha256: str) -> dict:
     actor = getpass.getuser()
     _audit(state, {"event": "human_approved", "id": proposal_id,
                    "sha256": sha256, "actor": actor})
-    subprocess.run(["git", "apply", "--index", "-"], cwd=repo,
+    subprocess.run(["git", "apply", "--index", "--ignore-whitespace", "-"], cwd=repo,
                    input=proposal["patch"], text=True, capture_output=True,
                    timeout=45, check=True)
     proposal["status"] = "applied"
