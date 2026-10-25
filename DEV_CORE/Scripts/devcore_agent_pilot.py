@@ -40,7 +40,7 @@ def _repo(repo: Path) -> tuple[Path, str]:
         raise ValueError("Only the dedicated devcore pilot checkout is allowed")
     if Path(_git(repo, "rev-parse", "--show-toplevel")).resolve(strict=True) != repo:
         raise ValueError("Repository root mismatch")
-    if not (repo / "AGENTS.md").is_file() or not (repo / "DEV_CORE").is_dir():
+    if not (repo / "README.md").is_file() or not (repo / "DEV_CORE").is_dir():
         raise ValueError("DevCore project markers missing")
     if _git(repo, "status", "--porcelain", "--untracked-files=all"):
         raise ValueError("Pilot checkout must be clean")

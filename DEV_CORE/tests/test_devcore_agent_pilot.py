@@ -20,14 +20,14 @@ def _pilot(tmp_path, monkeypatch):
     spec.loader.exec_module(module)
     repo = tmp_path / "devcore-pilot"
     repo.mkdir()
-    (repo / "AGENTS.md").write_text("Pilot instructions\n")
+    (repo / "README.md").write_text("DevCore pilot\n")
     (repo / "DEV_CORE").mkdir()
     target = repo / "DEV_CORE" / "example.txt"
     target.write_text("before\n")
     for command in (["git", "init", "-q"], ["git", "config", "core.autocrlf", "false"],
                     ["git", "config", "user.name", "Pilot Test"],
                     ["git", "config", "user.email", "pilot@example.invalid"],
-                    ["git", "add", "AGENTS.md", "DEV_CORE/example.txt"],
+                    ["git", "add", "README.md", "DEV_CORE/example.txt"],
                     ["git", "-c", "core.hooksPath=NUL", "commit", "-qm", "fixture"]):
         subprocess.run(command, cwd=repo, check=True, capture_output=True)
     monkeypatch.setattr(module, "PILOT_REPO", repo)
