@@ -157,8 +157,9 @@ puis affiché « Patch appliqué par majdi » et l'état `applied`. Le journal
 `patch_applied` à 22:36:57 UTC, tous deux avec `actor=majdi`,
 `source=authenticated_project_api` et le SHA-256 approuvé. Le diff indexé
 ne contient que les deux lignes de docstring, et `git diff --cached --check`
-passe. Le checkout pilote est redevenu propre après le commit local
-`0b5589ece73ae47b75215748371ab4b4fb5f56bc`, sans hook Git. Cette preuve
+passe. Le checkout pilote est redevenu propre après le commit
+`0b5589ece73ae47b75215748371ab4b4fb5f56bc`, poussé sur
+`codex/devcore-agent-pilot-approved-20261025`, sans hook Git. Cette preuve
 qualifie l'approbation authentifiée et l'application exacte pour le pilote.
 Aucun déclenchement autonome par tâche ou schedule n'est activé.
 
