@@ -1,6 +1,6 @@
 # Reprise des hooks et jobs DevCore — plan par phases
 
-Date : 19 octobre 2026. État revu le 25 octobre : phases 0 à 4 qualifiées en isolation ; sortie de phase 5 vérifiée pour le seul pilote `devcore`. Les deux schedules du pilote sont ensuite désactivés à la demande de l'utilisateur. L'extension à d'autres projets et la phase 6 optionnelle ne sont pas réalisées.
+Date : 19 octobre 2026. État revu le 25 octobre : phases 0 à 4 qualifiées en isolation ; sortie de phase 5 vérifiée pour le seul pilote `devcore`. Les deux schedules du pilote sont ensuite désactivés à la demande de l'utilisateur. L'extension à d'autres projets et la phase 6 optionnelle ne sont pas réalisées. La source qualifiée et la documentation sont publiées sur `codex/devcore-hooks-jobs-20261025` (commit de code `1242dc6b…`) ; `main` n'est pas fusionnée.
 
 ## Objectif et périmètre
 
@@ -22,7 +22,7 @@ Sources de référence :
 
 - [archive et interdiction d'activation](../docs/audit-2026-09-30/scheduler-archive-2026-10-12.json) ;
 - [registre JSON](../DEV_CORE/Scheduler/jobs.devcore.json) et [registre Hermes](../DEV_CORE/Scripts/hermes_cron.yaml) ;
-- dispatcher PostgreSQL `DEV_CORE/devcore_engine/runs/postgres_schedules.py` et projection Cockpit `DEV_CORE/devcore_engine/services/postgres_dashboard.py` (sources locales du pilote, non incluses dans la publication documentaire) ;
+- dispatcher PostgreSQL `DEV_CORE/devcore_engine/runs/postgres_schedules.py` et projection Cockpit `DEV_CORE/devcore_engine/services/postgres_dashboard.py` (sources publiées dans la branche du pilote) ;
 - [revue opérationnelle](../docs/audit-2026-09-30/execution-2026-10-05.md), notamment v457–v460.
 - [inventaire des déclencheurs installés et matrice de décision](../docs/audit-2026-09-30/hooks-jobs-inventory-2026-10-19.md).
 - [contrat PostgreSQL des hooks et état de qualification](../docs/audit-2026-09-30/automation-hooks-contract-2026-10-19.md).

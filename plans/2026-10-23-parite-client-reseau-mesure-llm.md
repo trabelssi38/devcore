@@ -8,10 +8,12 @@ panne et retour arrière). Ses deux schedules quotidiens sont désormais
 `disabled`, sans prochaine échéance ; leur historique est conservé. La phase 6
 du plan précédent, consacrée à l'agent autonome, n'a pas été déclenchée. Ce
 constat prépare l'admission P0 mais ne valide aucune phase P0–P9 ci-dessous.
-La source active est une candidate Git figée distincte du dépôt de travail,
-qui comporte encore des modifications locales non publiées. Les preuves du
-pilote décrivent donc ce poste, pas une installation reproductible depuis
-`main` seul.
+La source active est une candidate Git figée distincte du dépôt de travail.
+Son contenu `DEV_CORE/`, sauf deux scripts historiques à mots de passe en dur,
+et la documentation du pilote sont publiés sur
+`codex/devcore-hooks-jobs-20261025`. Le dépôt de travail comporte encore des
+modifications locales non publiées. Les preuves du pilote décrivent donc ce
+poste, pas une installation reproductible depuis `main` seul.
 
 ## Déclenchement et objectif
 
