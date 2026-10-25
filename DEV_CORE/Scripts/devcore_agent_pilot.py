@@ -86,6 +86,14 @@ def _digest(payload: dict) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+def _apply_check(repo: Path, patch: str) -> None:
+    result = subprocess.run(["git", "apply", "--check", "--index", "-"],
+                            cwd=repo, input=patch, text=True, capture_output=True,
+                            timeout=45, check=False)
+    if result.returncode:
+        raise ValueError("Patch does not apply: " + result.stderr.strip()[:500])
+
+
 def _audit(state: Path, event: dict) -> None:
     state.mkdir(parents=True, exist_ok=True)
     record = {"at_utc": datetime.now(timezone.utc).isoformat(), **event}
@@ -151,9 +159,7 @@ def propose(repo: Path, state: Path, task: str, *, codex: str = "codex") -> dict
         for path in paths:
             if not (_git(repo, "ls-files", "--", path) == path):
                 raise ValueError("Proposal touches an untracked file")
-        subprocess.run(["git", "apply", "--check", "--index", "-"], cwd=repo,
-                       input=response["patch"], text=True, capture_output=True,
-                       timeout=45, check=True)
+        _apply_check(repo, response["patch"])
         payload = {"project": PROJECT, "base": base, "task": task,
                    "summary": response["summary"], "patch": response["patch"]}
         digest = _digest(payload)
@@ -195,9 +201,7 @@ def approve(repo: Path, state: Path, proposal_id: str, sha256: str) -> dict:
     confirmation = input(f"Type APPLY {sha256} to approve this exact patch: ")
     if confirmation != f"APPLY {sha256}":
         raise ValueError("Approval phrase does not match proposal hash")
-    subprocess.run(["git", "apply", "--check", "--index", "-"], cwd=repo,
-                   input=proposal["patch"], text=True, capture_output=True,
-                   timeout=45, check=True)
+    _apply_check(repo, proposal["patch"])
     actor = getpass.getuser()
     _audit(state, {"event": "human_approved", "id": proposal_id,
                    "sha256": sha256, "actor": actor})
