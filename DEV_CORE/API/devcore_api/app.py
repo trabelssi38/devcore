@@ -7,6 +7,7 @@ import re
 import sys
 import time
 import sqlite3
+import subprocess
 from contextlib import asynccontextmanager, closing
 from pathlib import Path
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request, Response
@@ -58,6 +59,8 @@ from .schemas import (
     GitScanRequest,
     ProjectJobRequest,
     DailyMetricsScheduleRequest,
+    AgentPilotProposalRequest,
+    AgentPilotApprovalRequest,
     ErrorBody,
     ErrorResponse,
     HealthResponse,
@@ -251,6 +254,24 @@ def create_app(
         from devcore_engine.services.postgres_automation_lifecycle import PostgresAutomationLifecycle
         return PostgresAutomationLifecycle(os.environ["DEVCORE_DATABASE_URL"])
 
+    def agent_pilot_state() -> Path:
+        if os.environ.get("DEVCORE_AGENT_PILOT_ENABLED") != "1":
+            raise HTTPException(status_code=503, detail="DevCore agent pilot is disabled")
+        root = Path(os.environ.get("DEVCORE_LOCAL_ROOT", ""))
+        data_root = Path(os.environ.get("DEVCORE_DATA_ROOT", ""))
+        if not root.is_absolute() or not data_root.is_absolute():
+            raise HTTPException(status_code=503, detail="Agent pilot roots unavailable")
+        return root / "AgentPilot"
+
+    def agent_pilot_principal(request: Request, action: str):
+        from devcore_engine.security.identity import Principal
+
+        principal = getattr(request.state, "principal", None)
+        if (not isinstance(principal, Principal) or principal.project_id != "devcore"
+                or principal.action != action or not principal.user_id.strip()):
+            raise HTTPException(status_code=403, detail="DevCore project permission required")
+        return principal
+
     project_stream_slots = asyncio.Semaphore(32)
 
     @asynccontextmanager
@@ -441,7 +462,13 @@ def create_app(
                     from devcore_engine.security.browser_sessions import authorize_session
                     identity_source = identity_path
 
-                origin = trusted_session_origin(request, allowed_origins, require_origin=method != "GET")
+                try:
+                    origin = trusted_session_origin(request, allowed_origins,
+                                                    require_origin=method != "GET")
+                except HTTPException as exc:
+                    return build_error_response(request=request, status_code=exc.status_code,
+                                                code="invalid_session_origin",
+                                                message=str(exc.detail))
                 session = await asyncio.to_thread(
                     authorize_session,
                     identity_source,
@@ -1302,6 +1329,117 @@ def create_app(
             user_id=request.state.principal.user_id,
         )
         return HTMLResponse(page, headers={"Cache-Control": "no-store"})
+
+    @app.get("/agent/pilot", tags=["agent"])
+    def agent_pilot_page(request: Request, project: str) -> HTMLResponse:
+        from devcore_engine.security.identity import READ
+
+        agent_pilot_principal(request, READ)
+        if project != "devcore":
+            raise HTTPException(status_code=403, detail="DevCore project required")
+        agent_pilot_state()
+        source = Path(__file__).parent / "team_agent_pilot.html"
+        return HTMLResponse(source.read_text(encoding="utf-8"),
+                            headers={"Cache-Control": "no-store"})
+
+    @app.post(f"{API_PREFIX}/agent/proposals", status_code=202, tags=["agent"])
+    def submit_agent_proposal(request: Request, response: Response,
+                              body: AgentPilotProposalRequest) -> dict:
+        from Scripts.devcore_agent_pilot import PILOT_REPO, _git, _repo
+        from devcore_engine.security.identity import WRITE
+
+        principal = agent_pilot_principal(request, WRITE)
+        state = agent_pilot_state()
+        if (len(body.task.encode("utf-8")) > 8000 or not re.fullmatch(
+                r"DEV_CORE/[A-Za-z0-9_./-]+", body.file) or
+                ".." in Path(body.file).parts or ".git" in Path(body.file).parts):
+            raise HTTPException(status_code=400, detail="Agent pilot task or file invalid")
+        try:
+            repo, _ = _repo(PILOT_REPO)
+            if _git(repo, "ls-files", "--", body.file) != body.file:
+                raise ValueError("Agent pilot file must be tracked")
+        except (OSError, ValueError, subprocess.SubprocessError) as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        key = request.headers.get("Idempotency-Key", "").strip()
+        if not re.fullmatch(r"[A-Za-z0-9._:-]{8,128}", key):
+            raise HTTPException(status_code=400, detail="Idempotency-Key of 8-128 characters required")
+        command = [sys.executable, str(DEVCORE_BASE / "Scripts" / "devcore_agent_pilot.py"),
+                   "--repo", str(repo), "--state", str(state), "propose",
+                   "--file", body.file, body.task]
+        submission = RunSubmission(
+            project_id="devcore", title="Agent proposal: " + body.file,
+            command=command, timeout_seconds=930, actor=principal.user_id,
+            idempotency_key=f"agent-pilot:{principal.user_id}:{key}",
+            env={"DEVCORE_LOCAL_ROOT": str(state.parent),
+                 "DEVCORE_DATA_ROOT": os.environ.get("DEVCORE_DATA_ROOT", "")},
+            metadata={"agent_pilot": True, "approval_required": True,
+                      "file": body.file},
+        )
+        try:
+            record, _ = get_run_engine().submit_run(submission)
+        except RunBackpressureError as exc:
+            raise HTTPException(status_code=429, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        get_run_engine().wake_worker()
+        response.headers["Location"] = f"{API_PREFIX}/runs/{record.id}?project=devcore"
+        return {"project": "devcore", "run_id": record.id, "status": record.status,
+                "tracking_url": response.headers["Location"]}
+
+    @app.get(f"{API_PREFIX}/agent/proposals", tags=["agent"])
+    def list_agent_proposals(request: Request, project: str) -> dict:
+        from Scripts.devcore_agent_pilot import read_proposal
+        from devcore_engine.security.identity import READ
+
+        agent_pilot_principal(request, READ)
+        if project != "devcore":
+            raise HTTPException(status_code=403, detail="DevCore project required")
+        state = agent_pilot_state()
+        rows = []
+        if state.is_dir():
+            candidates = sorted(state.glob("*.json"), key=lambda path: path.stat().st_mtime,
+                                reverse=True)
+            for candidate in candidates:
+                if not re.fullmatch(r"[0-9a-f]{32}", candidate.stem):
+                    continue
+                try:
+                    proposal = read_proposal(state, candidate.stem)
+                except (OSError, ValueError):
+                    continue
+                rows.append({key: proposal[key] for key in
+                             ("id", "sha256", "summary", "status", "paths", "base")})
+                if len(rows) == 20:
+                    break
+        return {"project": "devcore", "proposals": rows}
+
+    @app.get(f"{API_PREFIX}/agent/proposals/{{proposal_id}}", tags=["agent"])
+    def get_agent_proposal(request: Request, project: str, proposal_id: str) -> dict:
+        from Scripts.devcore_agent_pilot import read_proposal
+        from devcore_engine.security.identity import READ
+
+        agent_pilot_principal(request, READ)
+        if project != "devcore":
+            raise HTTPException(status_code=403, detail="DevCore project required")
+        state = agent_pilot_state()
+        try:
+            proposal = read_proposal(state, proposal_id)
+        except (OSError, ValueError) as exc:
+            raise HTTPException(status_code=404, detail="Agent proposal unavailable") from exc
+        return proposal
+
+    @app.post(f"{API_PREFIX}/agent/proposals/{{proposal_id}}/approve", tags=["agent"])
+    async def approve_agent_proposal(request: Request, proposal_id: str,
+                                     body: AgentPilotApprovalRequest) -> dict:
+        from Scripts.devcore_agent_pilot import PILOT_REPO, approve
+        from devcore_engine.security.identity import WRITE
+
+        principal = agent_pilot_principal(request, WRITE)
+        state = agent_pilot_state()
+        try:
+            return await asyncio.to_thread(approve, PILOT_REPO, state, proposal_id,
+                                           body.sha256, principal=principal)
+        except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
 
     @app.post(f"{API_PREFIX}/automation/hooks", tags=["automation"])
     async def record_team_automation_hook(request: Request, payload: AutomationHookRequest) -> dict:

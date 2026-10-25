@@ -71,6 +71,8 @@ def render_team_cockpit(template_dir: Path, snapshot: dict, *, terminal: bool = 
         safe_user = escape(user_id)
         safe_project = escape(snapshot['project'])
         login_href = '/login?project=' + escape(quote(snapshot['project'], safe=''), quote=True)
+        agent_link = ('<a href="/agent/pilot?project=devcore">Agent pilote</a>'
+                      if snapshot['project'] == 'devcore' else '')
         identity = ('<details id="team-profile" class="team-profile">'
                     '<summary id="team-connected-user" aria-label="Profil de ' + safe_user + '">'
                     '<span class="team-profile-avatar" aria-hidden="true">●</span>'
@@ -79,6 +81,7 @@ def render_team_cockpit(template_dir: Path, snapshot: dict, *, terminal: bool = 
                     '<h3>Profil</h3>'
                     '<div>Utilisateur connecté : <strong>' + safe_user + '</strong></div>'
                     '<div>Projet : <strong data-team-profile-project>' + safe_project + '</strong></div>'
+                    + agent_link +
                     '<a id="team-logout" href="' + login_href + '">Déconnexion</a>'
                     '<p id="team-profile-error" role="alert"></p>'
                     '</div></details>')
