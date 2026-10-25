@@ -44,7 +44,7 @@ def test_read_only_proposal_waits_for_exact_interactive_approval(tmp_path, monke
     real_run = subprocess.run
 
     def run(command, *args, **kwargs):
-        if command[0] == "codex":
+        if len(command) > 1 and command[1] == "exec":
             assert command[command.index("--sandbox") + 1] == "read-only"
             assert "--ephemeral" in command
             Path(command[command.index("--output-last-message") + 1]).write_text(
@@ -96,7 +96,7 @@ def test_checkout_change_invalidates_stored_approval(tmp_path, monkeypatch):
     real_run = subprocess.run
 
     def run(command, *args, **kwargs):
-        if command[0] == "codex":
+        if len(command) > 1 and command[1] == "exec":
             Path(command[command.index("--output-last-message") + 1]).write_text(
                 json.dumps({"summary": "Change the fixture", "path": "DEV_CORE/example.txt",
                             "old": "before\n", "new": "after\n"}))
@@ -116,7 +116,7 @@ def test_repeated_read_only_proposals_are_allowed(tmp_path, monkeypatch):
     real_run = subprocess.run
 
     def run(command, *args, **kwargs):
-        if command[0] == "codex":
+        if len(command) > 1 and command[1] == "exec":
             Path(command[command.index("--output-last-message") + 1]).write_text(
                 json.dumps({"summary": "Change the fixture", "path": "DEV_CORE/example.txt",
                             "old": "before\n", "new": "after\n"}))
@@ -137,7 +137,7 @@ def test_authenticated_devcore_writer_can_approve_exact_proposal(tmp_path, monke
     real_run = subprocess.run
 
     def run(command, *args, **kwargs):
-        if command[0] == "codex":
+        if len(command) > 1 and command[1] == "exec":
             Path(command[command.index("--output-last-message") + 1]).write_text(
                 json.dumps({"summary": "Change the fixture", "path": "DEV_CORE/example.txt",
                             "old": "before\n", "new": "after\n"}))
@@ -166,7 +166,7 @@ def test_durable_run_retry_reuses_approved_proposal_identity(tmp_path, monkeypat
     calls = []
 
     def run(command, *args, **kwargs):
-        if command[0] == "codex":
+        if len(command) > 1 and command[1] == "exec":
             calls.append(1)
             Path(command[command.index("--output-last-message") + 1]).write_text(
                 json.dumps({"summary": "Change the fixture", "path": "DEV_CORE/example.txt",
