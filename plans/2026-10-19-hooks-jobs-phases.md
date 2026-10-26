@@ -1,6 +1,6 @@
 # Reprise des hooks et jobs DevCore — plan par phases
 
-Date : 19 octobre 2026. Statut : phases 0 à 2 qualifiées ; pilotes de phase 3 qualifiés en isolation ; aucune activation.
+Date : 19 octobre 2026. État revu le 25 octobre : phases 0 à 4 qualifiées en isolation ; sortie de phase 5 vérifiée pour le seul pilote `devcore`. Les deux schedules du pilote sont ensuite désactivés à la demande de l'utilisateur. L'extension à d'autres projets et la phase 6 optionnelle ne sont pas réalisées.
 
 ## Objectif et périmètre
 
@@ -22,7 +22,7 @@ Sources de référence :
 
 - [archive et interdiction d'activation](../docs/audit-2026-09-30/scheduler-archive-2026-10-12.json) ;
 - [registre JSON](../DEV_CORE/Scheduler/jobs.devcore.json) et [registre Hermes](../DEV_CORE/Scripts/hermes_cron.yaml) ;
-- [dispatcher PostgreSQL](../DEV_CORE/devcore_engine/runs/postgres_schedules.py) et [projection Cockpit](../DEV_CORE/devcore_engine/services/postgres_dashboard.py) ;
+- dispatcher PostgreSQL `DEV_CORE/devcore_engine/runs/postgres_schedules.py` et projection Cockpit `DEV_CORE/devcore_engine/services/postgres_dashboard.py` (sources locales du pilote, non incluses dans la publication documentaire) ;
 - [revue opérationnelle](../docs/audit-2026-09-30/execution-2026-10-05.md), notamment v457–v460.
 - [inventaire des déclencheurs installés et matrice de décision](../docs/audit-2026-09-30/hooks-jobs-inventory-2026-10-19.md).
 - [contrat PostgreSQL des hooks et état de qualification](../docs/audit-2026-09-30/automation-hooks-contract-2026-10-19.md).
@@ -198,6 +198,188 @@ et la recette HTTP/visuelle sont des travaux de phase 5.
 redémarrage Windows vérifié, historique PostgreSQL cohérent et retour arrière
 essayé. Étendre à d'autres projets seulement sur cette preuve.
 
+**État au 20 octobre :** migration sauvegardée et restaurée en essai, puis
+candidate `ea06de89…` active et saine sur `DevCoreGlobal`. Les 53 tests ciblés
+et les préflights serveur passent. Le bilan quotidien non destructif du seul
+projet `devcore` est inscrit à 08:00 `Africa/Tunis` par l'opérateur Windows
+élevé, après vérification de l'appartenance contributrice de `majdi`. Il est
+visible dans la projection Cockpit ; première échéance le 21 octobre.
+Un déclenchement manuel tracé a produit un run `succeeded` pour le 19 octobre,
+sans déplacer l'échéance de demain. Le Cockpit connecté sous `majdi` montre ce
+succès et le prochain passage ; la même session confirme que le run est absent
+d'un autre projet. Un échec simulé, son historique terminal et son rendu isolé
+dans le Cockpit ont été qualifiés sur PostgreSQL temporaire. L'observation de
+deux échéances planifiées, ainsi que la
+reprise après redémarrage restent ouvertes ; la
+phase 5 n'est donc pas déclarée terminée. Voir le [journal v466](../docs/audit-2026-09-30/execution-2026-10-05.md).
+La bascule vers l'heure tunisienne et la candidate Cockpit ont révélé puis
+corrigé le conflit entre l'interpréteur du superviseur et celui du scheduler.
+Le service est redevenu sain après l'indisponibilité détaillée dans le journal
+v470 ; le contrôle visuel de la nouvelle version sous `majdi` a ensuite été
+effectué dans le navigateur connecté. Le préflight des deux interpréteurs est
+couvert sur PostgreSQL temporaire. Un retour arrière vers `355e6dfc…` suivi
+du retour à `ea06de89…` a réussi avec la planification brièvement suspendue ;
+celle-ci est redevenue active sans déplacer l'échéance. Les passages planifiés
+réels et un retour arrière avec schedule actif restent ouverts. Voir v472.
+
+**État au 21 octobre :** le premier passage automatique réel à 08:00
+`Africa/Tunis` a créé un unique run pour sa clé d'idempotence, terminé
+`succeeded` ; `schedule_history` contient `dispatched` puis
+`finished/succeeded`, et le scheduler a déplacé la prochaine échéance au
+22 octobre à 08:00. Le préflight serveur de la candidate active rend le succès
+et cette échéance pour `devcore`, ainsi que des états vides pour
+`dashboard_recette_br` et `job_tracker`. L'onglet navigateur est revenu sur la
+page de connexion ; le passage réel n'est donc pas encore vérifié visuellement
+sous `majdi`. La seconde échéance, la reprise après redémarrage Windows et le
+retour arrière avec schedule actif restent à qualifier. La correction candidate
+du libellé « dernière tentative » n'est pas déployée. Voir journal v474–v475.
+
+**État au 22 octobre :** les deux passages réels prévus les 21 et 22 octobre
+à 08:00 `Africa/Tunis` ont chacun créé un run distinct terminé `succeeded`.
+Les journaux du scheduler, `runs` et `schedule_history` concordent ; aucune
+clé d'idempotence en doublon n'a été observée. La prochaine échéance est le
+23 octobre à 08:00. Le préflight de la source active rend trois runs et le
+prochain passage pour `devcore`, et aucun job ni planification pour
+`dashboard_recette_br` et `job_tracker` ; les vues normale et terminale sont
+rendues pour chaque projet. Le suivi quotidien dédié à ces deux échéances peut
+être mis en pause. La phase 5 reste ouverte pour la preuve visuelle authentifiée
+des nouveaux passages sous `majdi`, la reprise après redémarrage Windows, le
+retour arrière avec planification active et le correctif d'affichage non encore
+déployé. Voir journal v476–v477.
+
+**Séquence demandée le 22 octobre :** l'essai de redémarrage Windows est
+reporté à la fin de l'implémentation des phases, après les corrections de code
+et les autres contrôles de phase 5. Aucun redémarrage n'est lancé pendant cette
+vérification du Cockpit. Dans le navigateur connecté sous `majdi`, `devcore`
+montre les deux runs planifiés réussis, la prochaine échéance du 23 octobre et
+l'historique associé. La sélection de `dashboard_recette_br` montre « Aucun job
+lancé » et « Aucune planification » ; le retour à `devcore` restaure ses
+données propres. Cette preuve visuelle complète le contrôle serveur par projet.
+Le 22 octobre, la correction « dernière tentative » a été installée sur le
+commit figé `5eff4ac0…`. Son préflight serveur affiche le dispatch à 08:00:01
+et le dernier succès à 08:00:10 ; la planification conserve l'échéance du
+23 octobre. La pile a subi un arrêt de santé du gateway avant cette bascule ;
+elle a été rétablie sur l'ancien commit, puis la bascule contrôlée a terminé
+avec six composants sains. Le redémarrage du service a expiré la session du
+navigateur ; après reconnexion, le contrôle visuel sous `majdi` montre la
+tentative à 08:00:01, le succès à 08:00:10 et la prochaine échéance du
+23 octobre. Le retour arrière avec schedule actif et le redémarrage Windows
+restent ouverts. Voir journal v478–v479.
+
+**Contrôles complémentaires du 22 octobre :** le retour arrière réel vers
+`ea06de89…` avec le schedule actif, puis la restauration de `5eff4ac0…`, ont
+conservé le dernier passage et l'échéance du 23 octobre à 08:00 Tunis. La
+candidate `657de6b1…` rafraîchit seulement les données du projet sélectionné
+quand le flux SSE se reconnecte ; les tests ciblés passent et la bascule est
+active avec six composants sains. Un arrêt et une relance contrôlés de ce
+service ont rétabli cinq listeners et quatre sondes HTTP à 200. La session
+navigateur a expiré lors de la relance. Après reconnexion de `majdi`, une
+coupure réseau limitée à son onglet a montré la reconnexion SSE suivie d'un
+fetch ciblé `project=devcore` à 200, sans navigation de page ; la nouvelle
+fiche de contexte est apparue sans rechargement. L'essai de redémarrage Windows demeure
+la dernière vérification de la phase 5, conformément au report demandé ; la
+cause des délais et pertes de santé intermittents du gateway reste ouverte.
+La vérification de reprise Windows est préparée par
+`verify_global_after_windows_restart_elevated.ps1` : le préflight avant reboot
+confirme la tâche S4U, la source figée, les six composants, les cinq ports,
+quatre réponses HTTP 200 et la commande du schedule sans la modifier. Le
+contrôle final exige une heure de boot postérieure au préflight et un Cockpit
+authentifié après le retour du poste.
+
+**Reboot réel du 22 octobre :** Windows a redémarré à 15:53:35 heure de
+Tunisie, après le préflight. `DevCoreGlobal` n'a pas repris seul : la tâche est
+revenue à `Ready` avec code 1 après un échec du statut RepoWise et dix relances
+épuisées. Les ports étaient fermés. La récupération contrôlée a validé
+l'absence d'orphelins, relancé la tâche et retrouvé six composants sains,
+cinq listeners et quatre HTTP 200. La planification `devcore` reste active
+pour le 23 octobre à 08:00 Tunis. La candidate `c8ab7979…` déployée ensuite
+retente le statut RepoWise trois fois sans accepter un index périmé ; la tâche
+dispose maintenant de 288 relances toutes les cinq minutes. Le préflight
+post-reboot passe sur cette version, mais **la reprise automatique corrigée
+demande encore un futur reboot réel**. Après reconnexion de `majdi`, le Cockpit
+a été vérifié visuellement sur `devcore` puis `dashboard_recette_br`, et le
+retour ciblé à `devcore` a rétabli son run et son échéance sans rechargement
+explicite de la page. La phase 5 n'est pas déclarée terminée. Voir journal
+v482–v483. Le préflight élevé du 22 octobre à 19:25Z confirme la source,
+les six composants, les cinq ports, les quatre sondes et l'échéance du 23
+octobre ; il ne remplace pas la preuve d'un nouveau démarrage automatique.
+Voir journal v484.
+
+**Second reboot du 23 octobre :** Windows a démarré à 00:09:50 heure de
+Tunisie. `DevCoreGlobal` a démarré avant que PostgreSQL accepte les connexions,
+puis son contrôle de schéma a échoué (code 1) et la tâche est revenue à `Ready`.
+Le type d'exception n'a pas été conservé ; la cause interne exacte reste donc
+à établir. Le lanceur attend désormais PostgreSQL avec tentatives bornées et
+refuse immédiatement une vraie divergence de schéma. Deux tests ciblés
+passent. La relance élevée contrôlée a retrouvé six composants sains et
+conservé l'échéance du 23 octobre à 08:00. Le déclencheur Windows attend
+maintenant deux minutes après le boot ; sa sauvegarde XML et la tâche en cours
+ont été vérifiées. **La reprise automatique après redémarrage n'est toujours
+pas qualifiée.** Voir journal v485.
+
+**Troisième reboot du 23 octobre :** la tâche S4U a démarré sans intervention,
+la pile est devenue prête et le passage réel de 08:00 Tunis a réussi une fois.
+La prochaine échéance est le 24 octobre à 08:00. Vers 08:44, le gateway et
+RepoWise ont perdu leur santé ; le superviseur a terminé avec code 1 et la
+relance manuelle contrôlée a rétabli six composants. Le démarrage automatique
+à froid est observé, mais **la phase 5 reste ouverte sur la stabilité et
+l'auto-récupération après une panne en cours d'exécution**. Voir journal v486.
+
+**Renouvellement du contexte par DevCore (23 octobre) :** un schedule distinct
+`schedule-context-refresh-devcore` est actif à 09:00 `Africa/Tunis`. Son run
+immédiat a réussi et a préservé l'échéance du 24 octobre. Il renouvelle un
+instantané vérifiable de Git, de la fiche et du registre, sans antidater la
+revue narrative. Le lecteur du Cockpit et sa présentation ont été déployés
+dans la source figée `1f5ec0f…` ; le lecteur PostgreSQL renvoie l'instantané
+sous 12 000 octets sans avertissement, et le test JS de la ligne affichée
+passe. Le rendu a été vérifié dans le navigateur reconnecté sous `majdi` :
+instantané à 10:54 Tunis, schedule actif et changement de projet ciblé.
+Le 24 octobre, la première échéance quotidienne réelle a terminé `succeeded`
+une seule fois à 09:00 Tunis. PostgreSQL, le journal du daemon, le lecteur MCP
+de nouveau accessible et le Cockpit connecté sous `majdi` concordent ; le
+prochain passage est le 25 octobre à 09:00. Restent le traitement d'une revue
+narrative expirée sur preuves, la stabilité de la pile et l'auto-récupération
+après panne. Voir journal v488–v493.
+Le canal Windows `TaskScheduler/Operational` a été activé le 23 octobre pour
+tracer les prochaines tentatives de relance de `DevCoreGlobal` ; il ne permet
+pas de reconstituer les échecs antérieurs. La pile est restée saine de 10:50
+à 15:01 Tunis, sans que cela qualifie encore l'auto-récupération. Voir v492.
+
+**Reprise après panne du 24 octobre :** une sonde S4U isolée a montré que
+`RestartOnFailure` ne relançait pas une action sortie avec code non nul dans
+ce profil, quelle que soit la valeur 3 ou 288 du compteur. Un déclencheur
+temporel répétitif toutes les cinq minutes a donc été ajouté à
+`DevCoreGlobal`, avec `IgnoreNew` ; l'événement 322 a prouvé l'absence de
+doublon lorsque la pile tournait. Après arrêt contrôlé du processus RepoWise
+supervisé, l'ancien superviseur a quitté avec code 1 et Windows a lancé une
+nouvelle instance au passage de 12:23 Tunis, sans relance manuelle. La pile
+était prête à 12:24 avec six composants et cinq sondes HTTP sains. La reprise
+après cette panne en cours d'exécution est qualifiée une fois ; la cause des
+incidents précédents et la stabilité prolongée restent à observer. La revue
+narrative du contexte demeure distincte du job automatique. Voir journal v494.
+
+**Contrôle du 25 octobre :** les passages naturels du bilan à 08:00 et des
+faits de contexte à 09:00 Tunis ont chacun réussi avec une seule clé
+d'idempotence et leur historique PostgreSQL complet ; le Cockpit connecté
+sous `majdi` affiche les deux résultats et les échéances du 26 octobre.
+Le superviseur revenu automatiquement le 24 est resté actif jusqu'au contrôle
+de 12:30 le 25. Les passages du déclencheur de reprise ont été ignorés sans
+nouvelle instance ; les cinq sondes HTTP répondent 200. La sortie attendue
+du **pilote `devcore`** est satisfaite : candidat actif, Cockpit authentifié,
+démarrage Windows déjà observé, reprise après panne observée, historique et
+retour arrière qualifiés. L'extension des jobs à d'autres projets Git n'est
+pas encore faite. La cause des anciens incidents, un nouveau reboot avec le
+déclencheur additionnel et une disponibilité prolongée restent des limites
+opérationnelles, pas des preuves déjà acquises. Voir journal v495.
+
+**Arrêt des échéances après qualification (25 octobre) :** sur instruction de
+l'utilisateur, les deux schedules quotidiens du seul projet `devcore` sont
+`disabled` et leurs `next_run_at` sont vides. Les runs, leurs derniers
+passages et l'historique PostgreSQL sont conservés. Le Cockpit sous `majdi`
+affiche « prochain passage — » pour chacun. Le déclencheur Windows de reprise
+de `DevCoreGlobal` reste un mécanisme de disponibilité de la pile, distinct
+des deux jobs du pilote. Voir journal v496.
+
 ## Phase 6 — Autonomie de l'agent, option distincte
 
 L'ancien `active_agent_task_runner` ne fait pas partie de la reprise de base.
@@ -210,3 +392,24 @@ mise en service séparée. La présence d'une tâche `in_progress` ne suffit jam
 
 **Sortie attendue :** décision indépendante documentée ; en son absence,
 aucun agent autonome planifié.
+
+**Décision du 25 octobre, lors du lancement de P0 du plan de parité :**
+l'utilisateur choisit « À réaliser séparément avant de qualifier P0 ».
+La phase 6 devient donc un prérequis de clôture de cette admission. Ce
+prérequis est satisfait le 25 octobre pour le seul pilote manuel `devcore` :
+run PostgreSQL `run-22282cc0c0ad` soumis sous `majdi`, proposition Codex en
+lecture seule, approbation explicite de son SHA-256 dans ce fil, application
+sous la session `majdi` et audit `human_approved`/`patch_applied`. Le diff
+indexé est limité à une docstring et le checkout pilote est propre au commit
+`0b5589e`. Les tests isolés couvrent identité, projet, CSRF, arrêt/fencing et
+reprise idempotente. La source de service figée est `d4dbfe2`. Aucun hook ou
+schedule agent n'est activé ; l'extension à d'autres projets exige une
+nouvelle décision. Les autres réserves de P0 restent distinctes.
+
+**Clôture de l’Agent pilote (26 octobre) :** après l’accord utilisateur, le
+pilote manuel de phase 6 a été retiré du service au commit propre `d6cac93`.
+Les patchs demandés dans ce fil nécessitent toujours l’accord humain avant
+application. Les deux jobs planifiés et les hooks restent en place ; leurs
+commandes pointent vers la nouvelle source, échéances du 27 octobre inchangées.
+Le contrôle immédiat de la pile est sain, mais la stabilité du nouveau commit
+et son prochain passage naturel n’ont pas encore été observés. Voir v506.

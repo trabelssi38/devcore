@@ -1,9 +1,10 @@
 {
   "schema_version": 1,
   "project": "devcore",
-  "reviewed_at": "2026-10-11",
+  "reviewed_at": "2026-10-26",
   "card": "devcore.md",
-  "card_sha256": "24cd5cb64d850d55ef986ab4e764ec6182f9b9a1d0d0c75a2b6775d5fdd8ab21",
+  "automatic_context": "automatic.json",
+  "card_sha256": "bb99c64956b93ab75cc0adede46d0b323f0dd20bce30953a04a642b6121c6ee8",
   "decisions": [
     {
       "id": "D-001",
@@ -47,11 +48,12 @@
       "status": "effective",
       "required": true,
       "date": "2026-10-01",
-      "decision": "PostgreSQL cible du profil équipe via API commune ; SQLite pour correctif et import. Une seule source de vérité active par instance. Bascule non réalisée.",
+      "decision": "PostgreSQL pour le profil équipe via API commune ; SQLite pour correctif et import. Une seule source de vérité active par instance.",
       "rationale": "Centraliser la concurrence et les droits des utilisateurs.",
-      "validation": "Direction du plan accepté, qualification opérationnelle encore ouverte.",
+      "validation": "Profil équipe PostgreSQL actif ; troisième reboot du 2026-10-23 autonome, reprise après panne du 2026-10-24 autonome, passages du 2026-10-25 réussis et vus sous majdi. Pilote local seulement ; cause des anciennes pertes de santé indéterminée.",
       "sources": [
-        "plans/2026-10-01-devcore-local-multiutilisateur.md §3 et L3"
+        "plans/2026-10-01-devcore-local-multiutilisateur.md §3 et L3",
+        "docs/audit-2026-09-30/execution-2026-10-05.md v466-v468"
       ],
       "tags": [
         "postgresql",
@@ -127,9 +129,10 @@
       "date": "2026-10-04",
       "decision": "Séparer 8787 natif (fournisseur et modèle conservés), 8789 auxiliaire explicite vers Router 20130 ; embeddings directs. Refuser les modèles natifs sur Router, replis explicites, routage par application.",
       "rationale": "Empêcher une substitution silencieuse de Codex/Claude vers Gemini.",
-      "validation": "Instruction utilisateur ; activation et appels authentifiés non qualifiés.",
+      "validation": "Gemini réel vérifié ; OpenAI/Anthropic hors périmètre actuel (utilisateur, 2026-10-17).",
       "sources": [
-        "docs/audit-2026-09-30/separation-llm-2026-10-04.md"
+        "docs/audit-2026-09-30/separation-llm-2026-10-04.md",
+        "docs/audit-2026-09-30/execution-2026-10-05.md v431"
       ],
       "tags": [
         "routage",
@@ -180,6 +183,24 @@
         "tls",
         "firewall",
         "migration"
+      ],
+      "replaces": []
+    },
+    {
+      "id": "D-011",
+      "status": "effective",
+      "required": true,
+      "date": "2026-10-26",
+      "decision": "Retirer l’Agent pilote ; traiter les patchs à chaque demande dans ce fil, avec accord humain avant application. Conserver les jobs et hooks DevCore.",
+      "rationale": "Choix explicite de l’utilisateur de remplacer le pilote par une intervention sur demande.",
+      "validation": "Réponses utilisateur « À chaque demande, avec mon accord » et « Approuver patch et déploiement » dans ce fil ; bascule locale vérifiée le 26 octobre.",
+      "sources": [
+        "docs/audit-2026-09-30/execution-2026-10-05.md v506"
+      ],
+      "tags": [
+        "agent",
+        "approbation",
+        "patchs"
       ],
       "replaces": []
     }

@@ -1,11 +1,12 @@
 # Suivi des étapes après la qualification L9
 
-Date de suivi : 2026-10-15
+Date de suivi : 2026-10-18
 
 La qualification locale L9 et le cutover PostgreSQL sont terminés. Le service
 `DevCoreIndividual` actif est v254 ; le pilote LAN et sa reprise après
 redémarrage ont été vérifiés depuis le second poste le 16 octobre. La checklist
-post-L9 complète reste ouverte pour la pile globale et l'observabilité distante.
+post-L9 complète reste ouverte pour l'observabilité distante et les autres
+chantiers hors de la pile globale. La phase « pile globale » est qualifiée.
 
 ## 1. Gel et traitement des écritures historiques — terminé pour le profil local
 
@@ -76,7 +77,7 @@ OTLP/Langfuse :
   distant de ce poste et la reprise après redémarrage ont passé les contrôles
   du 16 octobre ; l'ingestion distante n'est pas activée.
 
-## 4. Remise en service coordonnée de la pile globale — qualifiée sur copies, non activée
+## 4. Remise en service coordonnée de la pile globale — reprise Windows vérifiée
 
 Objectif : réactiver le mode global et ses dépendances historiques après la
 qualification L9, sans considérer le seul service `DevCoreIndividual` comme
@@ -113,12 +114,33 @@ Leurs PID, ports, sondes et arrêt coordonné sont vérifiés ; le navigateur a
 ouvert les deux cockpits et clôturé une tâche fictive. Un second cycle sur
 une copie Git propre a inclus RepoWise : index aligné sur le commit servi,
 six PID/sondes vérifiés, puis six arrêts coopératifs à code 0. Le dépôt de
-travail reste modifié et son propre index n'est pas à jour. Le profil actif
-demeure individuel et la reprise globale après redémarrage n'est pas prouvée.
+travail reste modifié et son propre index n'est pas à jour ; cette première
+copie Git épinglée a depuis été remplacée par `ba9f9a9…`.
+La tâche Windows `DevCoreGlobal` a été installée avec déclencheur `AtStartup`
+et vérifiée en marche avec six composants sains. Sa reprise après redémarrage
+Windows a échoué au premier essai du 17 octobre : après le boot de 15:24, la
+tâche était `Ready` avec résultat 1 et le manifeste datait d'avant le boot.
+Un lancement manuel à 17:25 a rétabli six composants sains, mais ne qualifie
+pas le déclencheur automatique. Le lanceur journalise maintenant les phases
+d'échec sans secret et cherche RepoWise dans le profil Administrateur même si
+`APPDATA` est absent sous S4U. Le second boot de 17:42 a révélé un délai
+dépassé pendant le contrôle Git de la source propre ; chaque commande Git
+dispose maintenant de trois tentatives bornées à 45 s. Un démarrage manuel
+à 18:09 a rétabli les six sondes et cinq ports. Un nouveau redémarrage est
+nécessaire pour qualifier `AtStartup`. Le boot de 18:13 a révélé un second
+délai fixe, cette fois l'import RepoWise de 10 s dans le superviseur épinglé.
+Une copie séparée au commit `525d14a011eacb822ce9005ab670c6250fe83444`
+élargit ses délais sans retirer les contrôles ; son index RepoWise est aligné
+et la bascule élevée avec retour arrière a réussi. L'action de tâche, le
+marqueur, six sondes et cinq listeners ont été contrôlés indépendamment.
+Le boot de 21:24 le 17 octobre a passé `global_post_restart_verified` :
+déclenchement automatique S4U, six composants sains, cinq listeners au bon
+PID, index aligné et route Gemini auxiliaire réelle. Le contrôle indépendant
+observe un battement frais après cet appel. Le gate de reprise Windows est clos.
 La section « services » du Cockpit équipe lit maintenant les battements et
 sondes du superviseur candidat sur copie, refuse un manifeste périmé et
-n'affiche que les composants effectivement lancés. Cette supervision n'a pas
-encore été installée dans le profil actif.
+n'affiche que les composants effectivement lancés. Cette supervision est
+servie par le Gateway actif sur `127.0.0.1:20131`.
 La section « Automation hooks » affiche maintenant les plannings et leur
 historique PostgreSQL sous RLS par projet sur la recette ; une session `alpha`
 voit ses deux jobs et reçoit 403 pour la projection `beta`. Les commandes des
@@ -128,22 +150,20 @@ Le lanceur historique `launch_all.ps1` délègue à `launch.ps1`, qui passe par
 `PlatformLauncher` et `SystemWatcher` avec `init_db()` SQLite et des relances
 automatiques. Son attente de `20129` peut aussi prendre le listener du service
 v254 déjà actif pour une preuve de démarrage global. Il refuse maintenant son
-lancement lorsque `DevCoreIndividual` est en cours d'exécution. Une
-orchestration distincte et PostgreSQL doit être qualifiée sur racines
-temporaires avant une fenêtre opérationnelle.
+lancement lorsque `DevCoreIndividual` est en cours d'exécution. La tâche
+`DevCoreGlobal` lance désormais l'orchestration PostgreSQL distincte.
 
-Le moteur de runs possède maintenant un adaptateur PostgreSQL candidat, une
-déduplication des effets par projet et un contrôle de schéma/RLS au démarrage.
-Il n'est pas déployé ; sa migration SQL n'a pas été appliquée à la base active.
+Le moteur de runs possède un adaptateur PostgreSQL, une déduplication des effets
+par projet et un contrôle de schéma/RLS au démarrage. Le DDL correspondant est
+appliqué à la base active et ce moteur est chargé par le Gateway global.
 Le schéma cible et les chemins de tâches/runs ont passé une recette sur un
 cluster PostgreSQL temporaire isolé : versions, audit, événements, RLS,
-idempotence et routes HTTP principales. Les autres routes Gateway, les flux et
-les dépendances de la pile doivent encore être qualifiés ensemble avant le
-lanceur global opérationnel.
+idempotence et routes HTTP principales. Les flux et les dépendances de la pile
+ont ensuite été exercés ensemble sous le superviseur.
 Les lectures Gateway de contexte enregistré et d'audit paginé ont aussi passé
 sur ce cluster, avec refus 403 interprojet, 400 sur curseur invalide et 413 sur
-budget insuffisant. La qualification des flux, du cockpit global et de la
-reprise coordonnée reste ouverte.
+budget insuffisant. Les flux et les cockpits ont ensuite passé une recette
+isolée ; la reprise automatique après redémarrage est maintenant vérifiée.
 Un flux de notification par projet fondé sur les événements PostgreSQL a
 passé une recette isolée avec reprise par curseur et refus interprojet. Les
 templates demandent ce flux avec projet explicite. Le rendu `/api/dashboard`
@@ -156,21 +176,63 @@ sont pas servies par ces routes. Les actions de clôture et de suppression
 avec cookie, CSRF et version ont ensuite passé un parcours HTTP sur la recette
 PostgreSQL. Le contrôle dans le navigateur des deux vues et d'une clôture
 fictive a suivi ; les autres sections et les métriques restent à raccorder.
-Le profil actif v254 n'a pas changé.
+Le service individuel actif reste v254, et le Gateway global est séparé.
 
-Les critères restants exigent encore la stabilisation du dépôt de travail et
-son index RepoWise, les fournisseurs LLM réels, les sections du cockpit encore
-non raccordées et la reprise opérationnelle après redémarrage. Le daemon Scheduler historique
-initialise SQLite et JSON. Un ordonnanceur PostgreSQL candidat et une migration
-RLS ont maintenant passé une recette isolée (dispatch unique, concurrence,
-arrêt/reprise), mais ils ne sont pas installés ni raccordés à la pile active.
-Le contrôle du schéma actif confirme aussi que les DDL de runs/plannings
-manquent et que le rôle applicatif opérationnel n'avait aucun droit sur leurs
-tables. Les SQL ont été corrigés et regroupés en une migration atomique testée
-sur recette ; la base active attend une sauvegarde complète et une fenêtre de
-maintenance avant application. Une commande locale vérifie maintenant la cible,
-l'empreinte des sources, la sauvegarde et le schéma final ; seul son préflight
-en lecture a été exécuté sur le profil actif. Son application reste en attente.
+Les dix sections du snapshot Cockpit sont raccordées au projet ; les cinq
+dernières sources ont été requalifiées par les deux comptes réels après boot.
+OpenAI et Anthropic ne sont pas prévus dans ce déploiement : leurs appels réels
+sont sans objet pour la clôture. Le contrat de routage natif reste vérifié sur
+simulation ; une qualification fournisseur réelle sera nécessaire seulement
+si leur usage est activé plus tard.
+Le daemon Scheduler historique
+initialise SQLite et JSON. Un ordonnanceur PostgreSQL distinct et sa migration
+RLS ont passé une recette isolée (dispatch unique, concurrence, arrêt/reprise)
+et le daemon est lancé dans la pile active. Les jobs historiques archivés ne
+sont pas réactivés implicitement. La sauvegarde complète de la base active et
+le DDL atomique ont été appliqués avec succès ; le schéma actif est prêt. Les six
+processus globaux tournent sous la tâche de démarrage `DevCoreGlobal`, avec deux
+utilisateurs réels vérifiés avant et après ce redémarrage. La reprise après
+Windows est vérifiée ; les fournisseurs natifs ne sont pas des gates de ce
+déploiement.
+Le contrôle Gemini auxiliaire a réussi avec le fournisseur réel
+`google-gemini`, l'alias `devcore-summary` et le modèle retourné
+`gemini-2.5-flash`, HTTP 200. Après sauvegarde complète vérifiée, le DDL
+Cockpit a ajouté les droits `SELECT` et les protections RLS par projet de
+`plugins`, `memory_entries` et `budgets` ; l'audit actif ne trouve plus de
+manque. La projection réelle a passé sa recette sur PostgreSQL isolé.
+La copie Git Cockpit est maintenant servie par la tâche Windows ; les deux
+comptes réels ont passé quatre vues Cockpit et l'isolation HTTP sur cette
+version avant redémarrage ; leur requalification HTTP après la reprise
+automatique a réussi : quatre vues Cockpit à 200, projet croisé à 403 et
+sessions révoquées après déconnexion.
+Les deux dernières sections Cockpit disposent maintenant d'un candidat de
+lecture par projet. L'audit intégral établit l'identité des tables historiques
+PostgreSQL avec la candidate graphe scindée : 2 272 nœuds et 696 267 arêtes.
+La projection stockée rend 681 642 arêtes `devcore` lisibles et conserve 14 625
+arêtes traversant une frontière de projet en quarantaine invisible sous RLS.
+L'usage Gemini futur sera enregistré uniquement après un appel authentifié
+portant un projet ; les sondes techniques passées restent non attribuées. Les
+deux DDL ont réussi une recette PostgreSQL isolée, et le candidat Git propre
+`af3b646…` a été servi avec les deux utilisateurs réels et un appel Gemini
+attribué au projet. Son premier boot a échoué sur l'import préalable RepoWise
+de 90 secondes ; la pile a été relancée manuellement, ce qui ne valide pas
+`AtStartup`. Un correctif propre `ba9f9a9…` supprime ce contrôle redondant,
+conserve la sonde HTTP réelle et possède 833 pages RepoWise indexées.
+Les deux DDL sont appliqués à la
+base active avec sauvegardes complètes vérifiées. Le préflight indépendant
+confirme 2 272 nœuds, 696 267 arêtes dont 14 625 en quarantaine, et le schéma
+d'usage Gemini par projet prêt sous RLS. La tâche globale sert maintenant
+`ba9f9a9…` automatiquement après le boot du 18 octobre : six composants sains,
+cinq listeners aux bons PID, index RepoWise de 833 pages aligné, Gemini réel
+HTTP 200 et battement frais. `majdi` et `mohd` ont chacun passé quatre vues
+Cockpit, dashboard et tâches à 200, refus interprojet à 403 et révocation des
+sessions après logout sur ce même boot. La ligne d'usage Gemini attribuée à
+`devcore` persiste après redémarrage. La phase « pile globale » est close.
+
+`postgresql-x64-17` et `DevCoreIndividual` démarrent automatiquement comme
+services Windows. `DevCoreGlobal` démarre automatiquement sous la tâche
+`AtStartup/S4U` et supervise Router, les deux Headroom, Gateway, Scheduler et
+RepoWise. Les scripts d'audit et les opérations de maintenance restent manuels.
 Le démarrage de
 `DevCoreIndividual` seul n'active pas la pile globale.
 
@@ -230,7 +292,7 @@ La pile globale est qualifiée sur copie, mais son activation reste désactivée
 
 ## Préflight et exécution du gel historique — 14 octobre 2026
 
-Le préflight en lecture seule est consigné dans [`historical-freeze-preflight-2026-10-14.json`](historical-freeze-preflight-2026-10-14.json). Aucun processus DevCore historique n'a été observé sur ce poste et le service actif a été identifié séparément. La fenêtre confirmée a produit la capture [`historical-freeze-20261014-130504`](E:/DevCoreRuntime/qualification/historical-freeze-20261014-130504) et la restauration de contrôle [`historical-restore-20261014`](E:/DevCoreRuntime/qualification/historical-restore-20261014). Aucune source active n'a été supprimée ni remplacée.
+Le préflight en lecture seule est consigné dans [`historical-freeze-preflight-2026-10-14.json`](historical-freeze-preflight-2026-10-14.json). Aucun processus DevCore historique n'a été observé sur ce poste et le service actif a été identifié séparément. La fenêtre confirmée a produit la capture locale `E:/DevCoreRuntime/qualification/historical-freeze-20261014-130504` et la restauration de contrôle locale `E:/DevCoreRuntime/qualification/historical-restore-20261014`. Ces dossiers de recette ne sont pas publiés avec la documentation. Aucune source active n'a été supprimée ni remplacée.
 
 ## État et décision
 
@@ -335,4 +397,13 @@ boot. Il reste à refaire le contrôle depuis le second poste après ce boot.
 Le contrôle a ensuite réussi depuis le second poste sur ce boot : TLS, accès
 des deux comptes, refus interprojets, révocation des sessions et six ports
 internes inaccessibles. Le gate de reprise LAN du pilote v254 est clos. La
-remise en service opérationnelle de la pile globale demeure ouverte.
+remise en service opérationnelle de la pile globale a ensuite été clôturée le
+18 octobre ; voir la section 4 et le journal d'exécution.
+
+**État au 26 octobre 2026 :** le pilote local P0 a été qualifié à 11:02
+sur la source `d4dbfe2`, avec les réserves détaillées au journal v505.
+Sur accord utilisateur, l’Agent pilote a ensuite été retiré et la source
+`d6cac93` déployée. Les hooks et les deux jobs `devcore` restent actifs ;
+les échéances du 27 octobre à 08:00 et 09:00 Tunis sont conservées.
+Le contrôle immédiat de la nouvelle pile est sain. Sa stabilité prolongée et
+son prochain passage naturel ne sont pas encore qualifiés (journal v506).
