@@ -50,17 +50,6 @@ class DailyMetricsScheduleRequest(BaseModel):
     minute: int = Field(ge=0, le=59)
 
 
-class AgentPilotProposalRequest(BaseModel):
-    project: Literal["devcore"]
-    file: str = Field(min_length=1, max_length=260)
-    task: str = Field(min_length=1, max_length=8000)
-
-
-class AgentPilotApprovalRequest(BaseModel):
-    project: Literal["devcore"]
-    sha256: str = Field(pattern=r"^[0-9a-f]{64}$")
-
-
 class WorkflowStepState(BaseModel):
     id: str
     status: str
